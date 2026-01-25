@@ -15,7 +15,7 @@ export interface OrderAddress {
 
 export interface OrderBooking {
   date?: string;
-  time?: string;
+  starttime?: string;
   timeSlot?: string;
 }
 

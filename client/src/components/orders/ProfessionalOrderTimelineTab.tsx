@@ -101,6 +101,39 @@ export default function ProfessionalOrderTimelineTab({
     type: "image" | "pdf" | "other";
   } | null>(null);
 
+  // Helper function to check if we're within 24 hours of delivery time
+  const isWithin24HoursOfDelivery = () => {
+    if (!currentOrder) return false;
+
+    // Don't show button if delivery work has already been submitted
+    if (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) {
+      return false;
+    }
+
+    // Get the delivery date/time from booking or scheduledDate
+    let deliveryDateTime: Date | null = null;
+
+    if (currentOrder.booking?.date) {
+      const dateStr = currentOrder.booking.date;
+      const timeStr = currentOrder.booking.starttime || "00:00";
+      deliveryDateTime = new Date(`${dateStr}T${timeStr}`);
+    } else if (currentOrder.scheduledDate) {
+      deliveryDateTime = new Date(currentOrder.scheduledDate);
+    }
+
+    if (!deliveryDateTime || isNaN(deliveryDateTime.getTime())) {
+      return false;
+    }
+
+    const now = new Date();
+    const timeDiff = deliveryDateTime.getTime() - now.getTime();
+    const hoursUntilDelivery = timeDiff / (1000 * 60 * 60);
+
+    // Show button only if 1 day (24 hours) or less remaining until delivery
+    // This includes when delivery time has passed but work hasn't been submitted yet
+    return hoursUntilDelivery <= 24;
+  };
+
   const handleRespondToCancellation = async (action: 'approve' | 'reject') => {
     try {
       await onRespondToCancellation(action);
@@ -352,23 +385,25 @@ export default function ProfessionalOrderTimelineTab({
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Chat
               </Button>
-              <Button
-                onClick={() => {
-                  const currentDate = currentOrder.scheduledDate 
-                    ? new Date(currentOrder.scheduledDate) 
-                    : new Date();
-                  currentDate.setDate(currentDate.getDate() + 7);
-                  onSetExtensionNewDate(currentDate.toISOString().split('T')[0]);
-                  onSetExtensionNewTime("09:00");
-                  onSetExtensionReason("");
-                  onOpenModal('extension');
-                }}
-                variant="outline"
-                className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-orange-50 font-['Poppins',sans-serif]"
-              >
-                <Clock className="w-4 h-4 mr-2" />
-                Extend Delivery Time
-              </Button>
+              {isWithin24HoursOfDelivery() && (
+                <Button
+                  onClick={() => {
+                    const currentDate = currentOrder.scheduledDate
+                      ? new Date(currentOrder.scheduledDate)
+                      : new Date();
+                    currentDate.setDate(currentDate.getDate() + 7);
+                    onSetExtensionNewDate(currentDate.toISOString().split('T')[0]);
+                    onSetExtensionNewTime("09:00");
+                    onSetExtensionReason("");
+                    onOpenModal('extension');
+                  }}
+                  variant="outline"
+                  className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-orange-50 font-['Poppins',sans-serif]"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Extend Delivery Time
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -499,11 +534,11 @@ export default function ProfessionalOrderTimelineTab({
               </Button>
               
               {/* Request Extension Button */}
-              {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && (
+              {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && isWithin24HoursOfDelivery() && (
                 <Button
                   onClick={() => {
-                    const currentDate = currentOrder.scheduledDate 
-                      ? new Date(currentOrder.scheduledDate) 
+                    const currentDate = currentOrder.scheduledDate
+                      ? new Date(currentOrder.scheduledDate)
                       : new Date();
                     currentDate.setDate(currentDate.getDate() + 7);
                     onSetExtensionNewDate(currentDate.toISOString().split('T')[0]);

@@ -1801,17 +1801,40 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Status Alert Box - Service In Progress */}
-            {currentOrder.status === "In Progress" && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
-                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                  Service In Progress
-                </h4>
-                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
-                  The professional is currently working on your service.
-                </p>
-              </div>
-            )}
+            {/* Status Alert Box - Service In Progress or Under Revision */}
+            {currentOrder.status === "In Progress" && (() => {
+              // Check if there's an active revision request
+              const revisionRequests = currentOrder.revisionRequest
+                ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
+                : [];
+              const hasActiveRevision = revisionRequests.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+
+              if (hasActiveRevision) {
+                // Show "Under Revision" message
+                return (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                      Your order is now under revision.
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
+                      Your order is currently in revision. The requested changes or updates are being made, and you will be notified once the revisions are complete. Please feel free to chat with the PRO if you have any additional feedback or questions.
+                    </p>
+                  </div>
+                );
+              } else {
+                // Show normal "Service In Progress" message
+                return (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
+                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                      Service In Progress
+                    </h4>
+                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
+                      The professional is currently working on your service.
+                    </p>
+                  </div>
+                );
+              }
+            })()}
 
             {/* Service In Progress / Work Delivered - Show based on status */}
             {currentOrder.status === "delivered" ? (
