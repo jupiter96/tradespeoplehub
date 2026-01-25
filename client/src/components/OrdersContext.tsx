@@ -111,6 +111,8 @@ export interface Order {
   deliveredDate?: string;
   rating?: number | null;
   review?: string;
+	  // Professional's review of the buyer/client (comes from backend as `professionalReview`)
+	  professionalReview?: { rating: number; comment?: string; reviewedAt?: string };
   deliveryStatus?: "active" | "delivered" | "completed" | "cancelled" | "dispute";
   booking?: {
     date: string;
@@ -218,6 +220,8 @@ export interface Order {
     respondedAt?: string;
     additionalNotes?: string;
   };
+	  // Misc server-side metadata (schema uses Mixed)
+	  metadata?: any;
 }
 
 interface OrdersContextType {

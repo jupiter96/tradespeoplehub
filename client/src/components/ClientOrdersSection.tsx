@@ -234,6 +234,9 @@ export default function ClientOrdersSection() {
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
+  const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
+  const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
 
   // Function to close all modals and reset related states
   const closeAllModals = () => {
@@ -244,6 +247,8 @@ export default function ClientOrdersSection() {
     setIsRevisionRequestDialogOpen(false);
     setIsDisputeResponseDialogOpen(false);
     setIsAddInfoDialogOpen(false);
+    setIsApproveConfirmDialogOpen(false);
+    setApproveOrderId(null);
     // Reset form states when closing modals
     setCancelReason("");
     setCancelFiles([]);
@@ -920,16 +925,38 @@ export default function ClientOrdersSection() {
     }
   };
 
-  const handleAcceptDelivery = async (orderId: string) => {
+  // Open approve confirmation dialog (keep consistent with other modal flows)
+  // We intentionally route this through closeAllModals() like Revision Request,
+  // because several dialogs use onOpenChange -> closeAllModals(), which can
+  // otherwise immediately close a newly-opened dialog.
+  const handleAcceptDelivery = (orderId: string) => {
+    // Ensure we stay in the correct order context
+    setSelectedOrder(orderId);
+    // Close any other open dialogs first
+    closeAllModals();
+    // Then open approve confirm
+    setApproveOrderId(orderId);
+    setIsApproveConfirmDialogOpen(true);
+  };
+
+  // Confirm and execute the approval
+  const confirmApproveDelivery = async () => {
+    if (!approveOrderId) return;
+
+    setIsApproving(true);
     try {
-      await acceptDelivery(orderId);
+      await acceptDelivery(approveOrderId);
       toast.success("Order completed! Funds have been released to the professional. You can now rate the service.");
-      setSelectedOrder(orderId);
+      setSelectedOrder(approveOrderId);
+      setIsApproveConfirmDialogOpen(false);
+      setApproveOrderId(null);
       openModal('rating');
       // Refresh orders to update status
       await refreshOrders();
     } catch (error: any) {
       toast.error(error.message || "Failed to complete order");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -1968,12 +1995,10 @@ export default function ClientOrdersSection() {
                         )}
                         <div className="mt-4">
                           <Button
-                            onClick={async () => {
-                              try {
-                                await handleAcceptDelivery(currentOrder.id);
-                              } catch (error: any) {
-                                toast.error(error.message || "Failed to complete order");
-                              }
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleAcceptDelivery(currentOrder.id);
                             }}
                             className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[14px] w-full sm:w-auto"
                           >
@@ -2219,7 +2244,11 @@ export default function ClientOrdersSection() {
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-center">
                           <Button
-                            onClick={() => handleAcceptDelivery(currentOrder.id)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleAcceptDelivery(currentOrder.id);
+                            }}
                             className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
                           >
                             Approve
@@ -2624,7 +2653,11 @@ export default function ClientOrdersSection() {
                         </div>
                         <div className="flex gap-3 justify-center">
                           <Button
-                            onClick={() => handleAcceptDelivery(currentOrder.id)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleAcceptDelivery(currentOrder.id);
+                            }}
                             className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
                           >
                             Approve
@@ -3143,7 +3176,11 @@ export default function ClientOrdersSection() {
                                 </div>
                                 <div className="flex gap-3 justify-center">
                                   <Button
-                                    onClick={() => handleAcceptDelivery(currentOrder.id)}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleAcceptDelivery(currentOrder.id);
+                                    }}
                                     className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
                                   >
                                     Approve
@@ -3261,11 +3298,36 @@ export default function ClientOrdersSection() {
                   <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
                     Order Details
                   </h3>
-                  {/* Three Dots Menu - Hide when Cancelled or Cancellation Pending */}
-                  {currentOrder.status !== "Cancelled" && currentOrder.status !== "Cancellation Pending" &&
-                   currentOrder.status === "In Progress" &&
-                   (!((currentOrder as any).cancellationRequest?.status === "pending" || (currentOrder as any).metadata?.cancellationRequest?.status === "pending") ||
-                    (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
+	                  {/* Three Dots Menu (actions) */}
+	                  {(() => {
+	                    const status = currentOrder.status;
+	                    const statusNormalized = String(status || "").toLowerCase();
+	
+	                    const hasDeliveryFiles = !!(currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0);
+	                    const hasDeliveredSignals =
+	                      hasDeliveryFiles ||
+	                      !!currentOrder.deliveredDate ||
+	                      !!currentOrder.deliveryMessage;
+
+	                    const isPendingCancellation =
+	                      (currentOrder as any).cancellationRequest?.status === "pending" ||
+	                      (currentOrder as any).metadata?.cancellationRequest?.status === "pending";
+	
+	                    const canCancel = (statusNormalized === "in progress" || statusNormalized === "active") && !isPendingCancellation;
+	                    // Dispute is available once work is delivered (or after completion)
+	                    const canDispute =
+	                      hasDeliveredSignals ||
+	                      statusNormalized === "delivered" ||
+	                      statusNormalized === "completed";
+	
+	                    const isCancelled = statusNormalized === "cancelled";
+	                    const isCancellationPending = statusNormalized === "cancellation pending";
+	
+	                    const showMenu = !isCancelled && !isCancellationPending && (canCancel || canDispute);
+	
+	                    if (!showMenu) return null;
+	
+	                    return (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -3277,7 +3339,7 @@ export default function ClientOrdersSection() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        {currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0 ? (
+	                        {canDispute ? (
                           <DropdownMenuItem
                             onClick={() => openModal('dispute')}
                             className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
@@ -3285,7 +3347,7 @@ export default function ClientOrdersSection() {
                             <AlertTriangle className="w-4 h-4 mr-2" />
                             Open Dispute
                           </DropdownMenuItem>
-                        ) : ((currentOrder as any).cancellationRequest?.status !== "pending" && (currentOrder as any).metadata?.cancellationRequest?.status !== "pending") ? (
+	                        ) : canCancel ? (
                           <DropdownMenuItem
                             onClick={() => openModal('cancel')}
                             className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
@@ -3296,7 +3358,8 @@ export default function ClientOrdersSection() {
                         ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  )}
+	                    );
+	                  })()}
                 </div>
 
                 {/* Service Preview */}
@@ -3638,14 +3701,16 @@ export default function ClientOrdersSection() {
             );
           })()}
 
-        {/* Rating Dialog - Full Page Style */}
-        <Dialog open={isRatingDialogOpen} onOpenChange={(open) => {
-          if (open) {
-            openModal('rating');
-          } else {
-            closeAllModals();
-          }
-        }}>
+	      {/* Rating Dialog - Full Page Style */}
+	      <Dialog
+	        open={isRatingDialogOpen}
+	        onOpenChange={(open) => {
+	          // Avoid calling openModal() here (it calls closeAllModals()) because Radix
+	          // invokes onOpenChange(true) when we programmatically open the dialog.
+	          // That pattern can cause immediate-close/flicker.
+	          if (!open) closeAllModals();
+	        }}
+	      >
           <DialogContent className="w-[48vw] min-w-[280px] sm:max-w-[280px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
             <DialogHeader className="sr-only shrink-0">
               <DialogTitle>Rate Your Service</DialogTitle>
@@ -3926,14 +3991,14 @@ export default function ClientOrdersSection() {
           </DialogContent>
         </Dialog>
 
-        {/* Cancel Order Dialog */}
-        <Dialog open={isCancelDialogOpen} onOpenChange={(open) => {
-          if (open) {
-            openModal('cancel');
-          } else {
-            closeAllModals();
-          }
-        }}>
+	      {/* Cancel Order Dialog */}
+	      <Dialog
+	        open={isCancelDialogOpen}
+	        onOpenChange={(open) => {
+	          // Close-only handler; opening is controlled via openModal('cancel')
+	          if (!open) closeAllModals();
+	        }}
+	      >
           <DialogContent className="w-[35vw] min-w-[280px] max-w-[360px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
@@ -4022,14 +4087,14 @@ export default function ClientOrdersSection() {
           </DialogContent>
         </Dialog>
 
-        {/* Dispute Dialog */}
-        <Dialog open={isDisputeDialogOpen} onOpenChange={(open) => {
-          if (open) {
-            openModal('dispute');
-          } else {
-            closeAllModals();
-          }
-        }}>
+	      {/* Dispute Dialog */}
+	      <Dialog
+	        open={isDisputeDialogOpen}
+	        onOpenChange={(open) => {
+	          // Close-only handler; opening is controlled via openModal('dispute')
+	          if (!open) closeAllModals();
+	        }}
+	      >
           <DialogContent className="w-[48vw] sm:w-[42vw] md:w-[38vw] lg:w-[35vw] min-w-[280px] max-w-[460px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
@@ -4322,6 +4387,51 @@ export default function ClientOrdersSection() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+	      
+	      {/* Approve Confirmation Dialog */}
+	      <Dialog
+	        open={isApproveConfirmDialogOpen}
+	        onOpenChange={(open) => {
+	          setIsApproveConfirmDialogOpen(open);
+	          if (!open) {
+	            setApproveOrderId(null);
+	          }
+	        }}
+	      >
+	        <DialogContent className="w-[400px] sm:max-w-[400px]">
+	          <div className="flex flex-col items-center text-center py-4">
+	            <div className="w-10 h-10 rounded-full border-4 border-[#FE8A0F] flex items-center justify-center mb-6">
+	              <span className="text-[#FE8A0F] text-4xl font-light">!</span>
+	            </div>
+	            <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] font-semibold mb-3">
+	              Confirm?
+	            </h2>
+	            <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mb-6">
+	              Are you sure you want to approve this order?
+	            </p>
+	            <div className="flex gap-3 w-full justify-center">
+	              <Button
+	                variant="outline"
+	                onClick={() => {
+	                  setIsApproveConfirmDialogOpen(false);
+	                  setApproveOrderId(null);
+	                }}
+	                disabled={isApproving}
+	                className="font-['Poppins',sans-serif] text-[14px] px-6 border-[#3D78CB] text-[#3D78CB] hover:bg-blue-50"
+	              >
+	                Cancel
+	              </Button>
+	              <Button
+	                onClick={confirmApproveDelivery}
+	                disabled={isApproving}
+	                className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+	              >
+	                {isApproving ? "Approving..." : "Yes, Approve"}
+	              </Button>
+	            </div>
+	          </div>
+	        </DialogContent>
+	      </Dialog>
       </div>
     );
   }
@@ -5056,11 +5166,8 @@ export default function ClientOrdersSection() {
       <AddInfoDialog
         open={isAddInfoDialogOpen}
         onOpenChange={(open) => {
-          if (open) {
-            openModal('addInfo');
-          } else {
-            closeAllModals();
-          }
+	          // Close-only handler; opening is controlled via openModal('addInfo')
+	          if (!open) closeAllModals();
         }}
         order={orders.find(o => o.id === selectedOrder) || null}
         onSubmit={async (orderId, message, files) => {
@@ -5070,14 +5177,66 @@ export default function ClientOrdersSection() {
         }}
       />
 
-      {/* Dispute Response Dialog */}
-      <Dialog open={isDisputeResponseDialogOpen} onOpenChange={(open) => {
-        if (open) {
-          openModal('disputeResponse');
-        } else {
-          closeAllModals();
-        }
-      }}>
+	      {/* Approve Confirmation Dialog */}
+	      <Dialog
+	        open={isApproveConfirmDialogOpen}
+	        onOpenChange={(open) => {
+	          setIsApproveConfirmDialogOpen(open);
+	          if (!open) {
+	            setApproveOrderId(null);
+	          }
+	        }}
+	      >
+        <DialogContent className="sm:max-w-[400px]">
+          <div className="flex flex-col items-center text-center py-4">
+            {/* Warning Icon */}
+            <div className="w-20 h-20 rounded-full border-4 border-[#FE8A0F] flex items-center justify-center mb-6">
+              <span className="text-[#FE8A0F] text-4xl font-light">!</span>
+            </div>
+
+            {/* Title */}
+            <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] font-semibold mb-3">
+              Confirm?
+            </h2>
+
+            {/* Description */}
+            <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mb-6">
+              Are you sure you want to approve this order?
+            </p>
+
+            {/* Buttons */}
+            <div className="flex gap-3 w-full justify-center">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsApproveConfirmDialogOpen(false);
+                  setApproveOrderId(null);
+                }}
+                disabled={isApproving}
+                className="font-['Poppins',sans-serif] text-[14px] px-6 border-[#3D78CB] text-[#3D78CB] hover:bg-blue-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmApproveDelivery}
+                disabled={isApproving}
+                className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif] text-[14px] px-6"
+              >
+                {isApproving ? "Approving..." : "Yes, Approve"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+	      {/* Dispute Response Dialog */}
+	      <Dialog
+	        open={isDisputeResponseDialogOpen}
+	        onOpenChange={(open) => {
+	          // Close-only handler; opening is controlled via openModal('disputeResponse')
+	          if (!open) closeAllModals();
+	        }}
+	      >
         <DialogContent className="w-[45vw] min-w-[280px] max-w-xl">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">

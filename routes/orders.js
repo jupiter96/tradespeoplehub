@@ -2773,6 +2773,9 @@ router.post('/:orderId/buyer-review', authenticateToken, requireRole(['professio
       reviewerName: `${professional.firstName || ''} ${professional.lastName || ''}`.trim() || professional.tradingName || 'Professional',
       reviewedAt: new Date(),
     };
+	    // NOTE: `metadata` is a Mixed type in the Order schema, so we must mark it modified
+	    // otherwise Mongoose may not persist nested changes like `metadata.buyerReview`.
+	    order.markModified('metadata');
     
     await order.save();
 

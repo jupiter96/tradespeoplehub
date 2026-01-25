@@ -1448,11 +1448,10 @@ function ProfessionalOrdersSection() {
         <DeliveryDialog
           open={isDeliveryDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('delivery');
-            } else {
-              closeAllModals();
-            }
+	          // Avoid openModal() here (it calls closeAllModals()) because Radix calls
+	          // onOpenChange(true) when we programmatically open the dialog.
+	          // Opening is controlled via openModal('delivery') from buttons.
+	          if (!open) closeAllModals();
           }}
           deliveryMessage={deliveryMessage}
           onDeliveryMessageChange={setDeliveryMessage}
@@ -1471,11 +1470,8 @@ function ProfessionalOrdersSection() {
         <ExtensionDialog
           open={isExtensionDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('extension');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('extension')
+	          if (!open) closeAllModals();
           }}
           extensionNewDate={extensionNewDate}
           onExtensionNewDateChange={setExtensionNewDate}
@@ -1497,11 +1493,8 @@ function ProfessionalOrdersSection() {
         <CompletionDialog
           open={isCompletionDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('completion');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('completion')
+	          if (!open) closeAllModals();
           }}
           completionMessage={completionMessage}
           onCompletionMessageChange={setCompletionMessage}
@@ -1515,14 +1508,14 @@ function ProfessionalOrdersSection() {
           }}
         />
 
-        {/* Professional Review Dialog - Review Buyer */}
-        <Dialog open={isProfessionalReviewDialogOpen} onOpenChange={(open) => {
-          if (open) {
-            openModal('professionalReview');
-          } else {
-            closeAllModals();
-          }
-        }}>
+	      {/* Professional Review Dialog - Review Buyer */}
+	      <Dialog
+	        open={isProfessionalReviewDialogOpen}
+	        onOpenChange={(open) => {
+	          // Close-only handler; opening is controlled via openModal('professionalReview')
+	          if (!open) closeAllModals();
+	        }}
+	      >
           <DialogContent className="w-[48vw] min-w-[280px] sm:max-w-[280px] max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
             <DialogHeader className="sr-only shrink-0">
               <DialogTitle>Leave Public Review</DialogTitle>
@@ -1905,14 +1898,14 @@ function ProfessionalOrdersSection() {
           </DialogContent>
         </Dialog>
 
-        {/* Delivery Dialog */}
-        <Dialog open={isDeliveryDialogOpen} onOpenChange={(open) => {
-          if (open) {
-            openModal('delivery');
-          } else {
-            closeAllModals();
-          }
-        }}>
+	      {/* Delivery Dialog */}
+	      <Dialog
+	        open={isDeliveryDialogOpen}
+	        onOpenChange={(open) => {
+	          // Close-only handler; opening is controlled via openModal('delivery')
+	          if (!open) closeAllModals();
+	        }}
+	      >
           <DialogContent className="w-[45vw] min-w-[280px] max-w-[320px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
@@ -2042,11 +2035,8 @@ function ProfessionalOrdersSection() {
         <DisputeDialog
           open={isDisputeDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('dispute');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('dispute')
+	          if (!open) closeAllModals();
           }}
           disputeRequirements={disputeRequirements}
           onDisputeRequirementsChange={setDisputeRequirements}
@@ -2071,11 +2061,8 @@ function ProfessionalOrdersSection() {
         <CancellationRequestDialog
           open={isCancellationRequestDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('cancellationRequest');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('cancellationRequest')
+	          if (!open) closeAllModals();
           }}
           cancellationReason={cancellationReason}
           onCancellationReasonChange={setCancellationReason}
@@ -2090,11 +2077,8 @@ function ProfessionalOrdersSection() {
         <DisputeResponseDialog
           open={isDisputeResponseDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('disputeResponse');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('disputeResponse')
+	          if (!open) closeAllModals();
           }}
           disputeResponseMessage={disputeResponseMessage}
           onDisputeResponseMessageChange={setDisputeResponseMessage}
@@ -2109,11 +2093,8 @@ function ProfessionalOrdersSection() {
         <RevisionResponseDialog
           open={isRevisionResponseDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('revisionResponse');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('revisionResponse')
+	          if (!open) closeAllModals();
           }}
           revisionResponseAction={revisionResponseAction}
           revisionAdditionalNotes={revisionAdditionalNotes}
@@ -2130,11 +2111,8 @@ function ProfessionalOrdersSection() {
         <WithdrawCancellationDialog
           open={isWithdrawCancellationDialogOpen}
           onOpenChange={(open) => {
-            if (open) {
-              openModal('withdrawCancellation');
-            } else {
-              closeAllModals();
-            }
+	          // Close-only handler; opening is controlled via openModal('withdrawCancellation')
+	          if (!open) closeAllModals();
           }}
           withdrawCancellationReason={withdrawCancellationReason}
           onWithdrawCancellationReasonChange={setWithdrawCancellationReason}
