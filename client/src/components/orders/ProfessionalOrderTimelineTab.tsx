@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -13,10 +13,13 @@ import {
   Edit,
   ChevronDown,
   Paperclip,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Order, TimelineEvent } from "./types";
 import { buildProfessionalTimeline, formatDate, formatDateTime, resolveFileUrl } from "./index";
 import { toast } from "sonner";
@@ -38,7 +41,7 @@ interface ProfessionalOrderTimelineTabProps {
   appointmentDeadline: Date | null;
   showDisputeSection: boolean;
   getOrderDisputeById: (disputeId: string) => any;
-  onOpenModal: (modalName: 'delivery' | 'extension' | 'completion' | 'dispute' | 'disputeResponse' | 'revisionResponse' | 'withdrawCancellation' | 'professionalReview') => void;
+  onOpenModal: (modalName: 'delivery' | 'extension' | 'completion' | 'dispute' | 'disputeResponse' | 'revisionResponse' | 'withdrawCancellation' | 'rejectCancellation' | 'professionalReview') => void;
   onStartConversation: (params: {
     id: string;
     name: string;
@@ -92,6 +95,12 @@ export default function ProfessionalOrderTimelineTab({
   onSetBuyerReview,
   navigate,
 }: ProfessionalOrderTimelineTabProps) {
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    url: string;
+    fileName: string;
+    type: "image" | "pdf" | "other";
+  } | null>(null);
+
   const handleRespondToCancellation = async (action: 'approve' | 'reject') => {
     try {
       await onRespondToCancellation(action);
@@ -230,19 +239,30 @@ export default function ProfessionalOrderTimelineTab({
                     <div className="mb-3">
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({cr.files.length})</p>
                       <div className="flex flex-wrap gap-2">
-                        {cr.files.map((file: any, idx: number) => (
-                          <Button
-                            key={idx}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                            onClick={() => window.open(resolveFileUrl(file.url), "_blank")}
-                          >
-                            <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                            <span className="truncate">{file.fileName || "Attachment"}</span>
-                          </Button>
-                        ))}
+                        {cr.files.map((file: any, idx: number) => {
+                          const fileUrl = file.url || "";
+                          const fileName = file.fileName || "Attachment";
+                          const resolvedUrl = resolveFileUrl(fileUrl);
+                          const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                          const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                          return (
+                            <Button
+                              key={idx}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
+                              onClick={() => setPreviewAttachment({
+                                url: resolvedUrl,
+                                fileName: fileName,
+                                type: isImage ? "image" : (isPdf ? "pdf" : "other")
+                              })}
+                            >
+                              <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                              <span className="truncate">{fileName}</span>
+                            </Button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -266,7 +286,7 @@ export default function ProfessionalOrderTimelineTab({
                       Approve Cancellation
                     </Button>
                     <Button
-                      onClick={() => onOpenModal('withdrawCancellation')}
+                      onClick={() => handleRespondToCancellation('reject')}
                       variant="outline"
                       className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
                     >
@@ -623,7 +643,11 @@ export default function ProfessionalOrderTimelineTab({
                                   src={resolvedUrl}
                                   alt={fileName}
                                   className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() => window.open(resolvedUrl, "_blank")}
+                                  onClick={() => setPreviewAttachment({
+                                    url: resolvedUrl,
+                                    fileName: fileName,
+                                    type: "image"
+                                  })}
                                 />
                               ) : (
                                 <Button
@@ -631,7 +655,14 @@ export default function ProfessionalOrderTimelineTab({
                                   variant="outline"
                                   size="sm"
                                   className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                  onClick={() => window.open(resolvedUrl, "_blank")}
+                                  onClick={() => {
+                                    const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                    setPreviewAttachment({
+                                      url: resolvedUrl,
+                                      fileName: fileName,
+                                      type: isPdf ? "pdf" : "other"
+                                    });
+                                  }}
                                 >
                                   <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
                                   <span className="truncate">{fileName}</span>
@@ -719,6 +750,75 @@ export default function ProfessionalOrderTimelineTab({
           </div>
         )}
       </div>
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+          <DialogContent className="w-[90vw] max-w-[900px] max-h-[90vh] bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  {previewAttachment.fileName}
+                </DialogTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = previewAttachment.url;
+                      link.download = previewAttachment.fileName;
+                      link.click();
+                    }}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
+              {previewAttachment.type === "image" ? (
+                <img
+                  src={previewAttachment.url}
+                  alt={previewAttachment.fileName}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                />
+              ) : previewAttachment.type === "pdf" ? (
+                <iframe
+                  src={previewAttachment.url}
+                  className="w-full h-[calc(90vh-180px)] min-h-[600px] border-0 rounded-lg"
+                  title={previewAttachment.fileName}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                    Preview not available for this file type
+                  </p>
+                  <Button
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

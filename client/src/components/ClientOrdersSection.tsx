@@ -43,6 +43,7 @@ import {
   PoundSterling,
   Paperclip,
   Play,
+  ExternalLink,
 } from "lucide-react";
 
 // Import separated order components
@@ -237,6 +238,11 @@ export default function ClientOrdersSection() {
   const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
   const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    url: string;
+    fileName: string;
+    type: "image" | "pdf" | "other";
+  } | null>(null);
 
   // Function to close all modals and reset related states
   const closeAllModals = () => {
@@ -249,6 +255,7 @@ export default function ClientOrdersSection() {
     setIsAddInfoDialogOpen(false);
     setIsApproveConfirmDialogOpen(false);
     setApproveOrderId(null);
+    setPreviewAttachment(null);
     // Reset form states when closing modals
     setCancelReason("");
     setCancelFiles([]);
@@ -1716,19 +1723,30 @@ export default function ClientOrdersSection() {
                       <div className="mb-3">
                         <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({currentOrder.cancellationRequest.files.length})</p>
                         <div className="flex flex-wrap gap-2">
-                          {currentOrder.cancellationRequest.files.map((file: any, idx: number) => (
-                            <Button
-                              key={idx}
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                              onClick={() => window.open(resolveFileUrl(file.url), "_blank")}
-                            >
-                              <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                              <span className="truncate">{file.fileName || "Attachment"}</span>
-                            </Button>
-                          ))}
+                          {currentOrder.cancellationRequest.files.map((file: any, idx: number) => {
+                            const fileUrl = file.url || "";
+                            const fileName = file.fileName || "Attachment";
+                            const resolvedUrl = resolveFileUrl(fileUrl);
+                            const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                            const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                            return (
+                              <Button
+                                key={idx}
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
+                                onClick={() => setPreviewAttachment({
+                                  url: resolvedUrl,
+                                  fileName: fileName,
+                                  type: isImage ? "image" : (isPdf ? "pdf" : "other")
+                                })}
+                              >
+                                <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                <span className="truncate">{fileName}</span>
+                              </Button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -2206,7 +2224,11 @@ export default function ClientOrdersSection() {
                                     src={resolvedUrl}
                                     alt={fileName}
                                     className="max-w-full max-h-48 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                                    onClick={() => window.open(resolvedUrl, "_blank")}
+                                    onClick={() => setPreviewAttachment({
+                                      url: resolvedUrl,
+                                      fileName: fileName,
+                                      type: "image"
+                                    })}
                                   />
                                 ) : (
                                   <Button
@@ -2214,7 +2236,14 @@ export default function ClientOrdersSection() {
                                     variant="outline"
                                     size="sm"
                                     className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                    onClick={() => window.open(resolvedUrl, "_blank")}
+                                    onClick={() => {
+                                      const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                      setPreviewAttachment({
+                                        url: resolvedUrl,
+                                        fileName: fileName,
+                                        type: isPdf ? "pdf" : "other"
+                                      });
+                                    }}
                                   >
                                     <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
                                     <span className="truncate">{fileName}</span>
@@ -2606,28 +2635,42 @@ export default function ClientOrdersSection() {
                               📎 Attachments ({currentOrder.deliveryFiles.length})
                             </p>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              {currentOrder.deliveryFiles.map((file: any, index: number) => (
-                                <div key={index} className="relative group">
-                                  {file.fileType === 'image' ? (
-                                    <img
-                                      src={resolveFileUrl(file.url)}
-                                      alt={file.fileName}
-                                      className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                                      onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                    />
-                                  ) : (
-                                    <div
-                                      className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                                      onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                    >
-                                      <PlayCircle className="w-8 h-8 text-gray-600" />
-                                      <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
-                                        {file.fileName}
+                              {currentOrder.deliveryFiles.map((file: any, index: number) => {
+                                const fileUrl = file.url || "";
+                                const fileName = file.fileName || "attachment";
+                                const resolvedUrl = resolveFileUrl(fileUrl);
+                                const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                return (
+                                  <div key={index} className="relative group">
+                                    {file.fileType === 'image' ? (
+                                      <img
+                                        src={resolvedUrl}
+                                        alt={fileName}
+                                        className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                        onClick={() => setPreviewAttachment({
+                                          url: resolvedUrl,
+                                          fileName: fileName,
+                                          type: "image"
+                                        })}
+                                      />
+                                    ) : (
+                                      <div
+                                        className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                        onClick={() => setPreviewAttachment({
+                                          url: resolvedUrl,
+                                          fileName: fileName,
+                                          type: isPdf ? "pdf" : "other"
+                                        })}
+                                      >
+                                        <PlayCircle className="w-8 h-8 text-gray-600" />
+                                        <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                          {fileName}
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -2992,32 +3035,42 @@ export default function ClientOrdersSection() {
                         Attachments ({currentOrder.additionalInformation.files.length}):
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {currentOrder.additionalInformation.files.map((file, index) => (
-                          <div 
-                            key={index} 
-                            className="relative rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
-                            onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                          >
-                            {file.fileType === 'image' ? (
-                              <img 
-                                src={resolveFileUrl(file.url)}
-                                alt={file.fileName}
-                                className="w-full h-24 object-cover"
-                              />
-                            ) : file.fileType === 'video' ? (
-                              <div className="w-full h-24 bg-gray-200 flex items-center justify-center">
-                                <PlayCircle className="w-8 h-8 text-gray-600" />
-                              </div>
-                            ) : (
-                              <div className="w-full h-24 bg-gray-100 flex items-center justify-center">
-                                <FileText className="w-8 h-8 text-gray-600" />
-                              </div>
-                            )}
-                            <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] p-2 truncate">
-                              {file.fileName}
-                            </p>
-                          </div>
-                        ))}
+                        {currentOrder.additionalInformation.files.map((file, index) => {
+                          const fileUrl = file.url || "";
+                          const fileName = file.fileName || "attachment";
+                          const resolvedUrl = resolveFileUrl(fileUrl);
+                          const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                          return (
+                            <div
+                              key={index}
+                              className="relative rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors"
+                              onClick={() => setPreviewAttachment({
+                                url: resolvedUrl,
+                                fileName: fileName,
+                                type: file.fileType === 'image' ? "image" : (isPdf ? "pdf" : "other")
+                              })}
+                            >
+                              {file.fileType === 'image' ? (
+                                <img
+                                  src={resolvedUrl}
+                                  alt={fileName}
+                                  className="w-full h-24 object-cover"
+                                />
+                              ) : file.fileType === 'video' ? (
+                                <div className="w-full h-24 bg-gray-200 flex items-center justify-center">
+                                  <PlayCircle className="w-8 h-8 text-gray-600" />
+                                </div>
+                              ) : (
+                                <div className="w-full h-24 bg-gray-100 flex items-center justify-center">
+                                  <FileText className="w-8 h-8 text-gray-600" />
+                                </div>
+                              )}
+                              <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] p-2 truncate">
+                                {fileName}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -3126,28 +3179,42 @@ export default function ClientOrdersSection() {
                                         📎 Attachments ({filteredFiles.length})
                                       </p>
                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        {filteredFiles.map((file: any, fileIndex: number) => (
-                                        <div key={fileIndex} className="relative group">
-                                          {file.fileType === 'image' ? (
-                                            <img
-                                              src={resolveFileUrl(file.url)}
-                                              alt={file.fileName}
-                                              className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                            />
-                                          ) : (
-                                            <div
-                                              className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
-                                              onClick={() => window.open(resolveFileUrl(file.url), '_blank')}
-                                            >
-                                              <PlayCircle className="w-8 h-8 text-gray-600" />
-                                              <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
-                                                {file.fileName}
-                                              </div>
+                                        {filteredFiles.map((file: any, fileIndex: number) => {
+                                          const fileUrl = file.url || "";
+                                          const fileName = file.fileName || "attachment";
+                                          const resolvedUrl = resolveFileUrl(fileUrl);
+                                          const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                          return (
+                                            <div key={fileIndex} className="relative group">
+                                              {file.fileType === 'image' ? (
+                                                <img
+                                                  src={resolvedUrl}
+                                                  alt={fileName}
+                                                  className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                                  onClick={() => setPreviewAttachment({
+                                                    url: resolvedUrl,
+                                                    fileName: fileName,
+                                                    type: "image"
+                                                  })}
+                                                />
+                                              ) : (
+                                                <div
+                                                  className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative"
+                                                  onClick={() => setPreviewAttachment({
+                                                    url: resolvedUrl,
+                                                    fileName: fileName,
+                                                    type: isPdf ? "pdf" : "other"
+                                                  })}
+                                                >
+                                                  <PlayCircle className="w-8 h-8 text-gray-600" />
+                                                  <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-[10px] px-1 py-0.5 rounded truncate">
+                                                    {fileName}
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
-                                          )}
-                                        </div>
-                                      ))}
+                                          );
+                                        })}
                                     </div>
                                   </div>
                                   );
@@ -5302,6 +5369,75 @@ export default function ClientOrdersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Attachment Preview Modal */}
+      {previewAttachment && (
+        <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
+          <DialogContent className="w-[90vw] max-w-[900px] max-h-[90vh] bg-white p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                  {previewAttachment.fileName}
+                </DialogTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = previewAttachment.url;
+                      link.download = previewAttachment.fileName;
+                      link.click();
+                    }}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
+              {previewAttachment.type === "image" ? (
+                <img
+                  src={previewAttachment.url}
+                  alt={previewAttachment.fileName}
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                />
+              ) : previewAttachment.type === "pdf" ? (
+                <iframe
+                  src={previewAttachment.url}
+                  className="w-full h-[calc(90vh-180px)] min-h-[600px] border-0 rounded-lg"
+                  title={previewAttachment.fileName}
+                />
+              ) : (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                    Preview not available for this file type
+                  </p>
+                  <Button
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

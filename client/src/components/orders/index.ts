@@ -20,6 +20,7 @@ export { default as DisputeDialog } from './dialogs/DisputeDialog';
 export { default as DisputeResponseDialog } from './dialogs/DisputeResponseDialog';
 export { default as RevisionResponseDialog } from './dialogs/RevisionResponseDialog';
 export { default as WithdrawCancellationDialog } from './dialogs/WithdrawCancellationDialog';
+export { default as RejectCancellationDialog } from './dialogs/RejectCancellationDialog';
 export { default as CancellationRequestDialog } from './dialogs/CancellationRequestDialog';
 
 // Types

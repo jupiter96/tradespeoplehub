@@ -100,6 +100,7 @@ import {
   DisputeResponseDialog,
   RevisionResponseDialog,
   WithdrawCancellationDialog,
+  RejectCancellationDialog,
   CancellationRequestDialog,
   formatDate,
   formatDateTime,
@@ -146,6 +147,8 @@ function ProfessionalOrdersSection() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [isWithdrawCancellationDialogOpen, setIsWithdrawCancellationDialogOpen] = useState(false);
   const [withdrawCancellationReason, setWithdrawCancellationReason] = useState("");
+  const [isRejectCancellationDialogOpen, setIsRejectCancellationDialogOpen] = useState(false);
+  const [rejectCancellationReason, setRejectCancellationReason] = useState("");
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
   const [revisionResponseAction, setRevisionResponseAction] = useState<'accept' | 'reject'>('accept');
   const [revisionAdditionalNotes, setRevisionAdditionalNotes] = useState("");
@@ -171,6 +174,7 @@ function ProfessionalOrdersSection() {
     setIsExtensionDialogOpen(false);
     setIsCancellationRequestDialogOpen(false);
     setIsWithdrawCancellationDialogOpen(false);
+    setIsRejectCancellationDialogOpen(false);
     setIsRevisionResponseDialogOpen(false);
     setIsCompletionDialogOpen(false);
     setIsProfessionalReviewDialogOpen(false);
@@ -178,6 +182,7 @@ function ProfessionalOrdersSection() {
     setCancelReason("");
     setCancellationReason("");
     setWithdrawCancellationReason("");
+    setRejectCancellationReason("");
     setExtensionReason("");
     setExtensionNewDate("");
     setExtensionNewTime("09:00");
@@ -190,7 +195,7 @@ function ProfessionalOrdersSection() {
   };
 
   // Function to open a specific modal and close all others
-  const openModal = (modalName: 'view' | 'cancel' | 'dispute' | 'delivery' | 'disputeResponse' | 'extension' | 'cancellationRequest' | 'withdrawCancellation' | 'revisionResponse' | 'completion' | 'professionalReview') => {
+  const openModal = (modalName: 'view' | 'cancel' | 'dispute' | 'delivery' | 'disputeResponse' | 'extension' | 'cancellationRequest' | 'withdrawCancellation' | 'rejectCancellation' | 'revisionResponse' | 'completion' | 'professionalReview') => {
     closeAllModals();
     switch (modalName) {
       case 'view':
@@ -216,6 +221,9 @@ function ProfessionalOrdersSection() {
         break;
       case 'withdrawCancellation':
         setIsWithdrawCancellationDialogOpen(true);
+        break;
+      case 'rejectCancellation':
+        setIsRejectCancellationDialogOpen(true);
         break;
       case 'revisionResponse':
         setIsRevisionResponseDialogOpen(true);
@@ -818,6 +826,22 @@ function ProfessionalOrdersSection() {
       setWithdrawCancellationReason("");
     } catch (error: any) {
       toast.error(error.message || "Failed to withdraw cancellation request");
+    }
+  };
+
+  const handleRejectCancellation = async () => {
+    if (!selectedOrder) return;
+    if (!rejectCancellationReason.trim()) {
+      toast.error("Please provide a reason for rejecting the cancellation request");
+      return;
+    }
+    try {
+      await respondToCancellation(selectedOrder, 'reject', rejectCancellationReason.trim());
+      toast.success("Cancellation request rejected. Your reason has been sent to the client.");
+      closeAllModals();
+      setRejectCancellationReason("");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reject cancellation request");
     }
   };
 
@@ -2120,6 +2144,22 @@ function ProfessionalOrdersSection() {
           onCancel={() => {
             closeAllModals();
             setWithdrawCancellationReason("");
+          }}
+        />
+
+        {/* Reject Cancellation Request Dialog (Professional rejecting client's request) */}
+        <RejectCancellationDialog
+          open={isRejectCancellationDialogOpen}
+          onOpenChange={(open) => {
+	          // Close-only handler; opening is controlled via openModal('rejectCancellation')
+	          if (!open) closeAllModals();
+          }}
+          rejectCancellationReason={rejectCancellationReason}
+          onRejectCancellationReasonChange={setRejectCancellationReason}
+          onSubmit={handleRejectCancellation}
+          onCancel={() => {
+            closeAllModals();
+            setRejectCancellationReason("");
           }}
         />
       </div>
