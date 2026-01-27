@@ -1025,10 +1025,10 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="serviceFees"
                           type="number"
-                          value={settings.serviceFees || 0}
+                          value={settings.serviceFees || 0.01}
                           onChange={(e) => updateField("serviceFees", parseFloat(e.target.value) || 0)}
                           className="pl-8 font-['Poppins',sans-serif]"
-                          min="0"
+                          min="0.01"
                           step="0.01"
                         />
                       </div>
@@ -1043,10 +1043,10 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="serviceFeeThreshold"
                           type="number"
-                          value={settings.serviceFeeThreshold || 0}
+                          value={settings.serviceFeeThreshold || 0.01}
                           onChange={(e) => updateField("serviceFeeThreshold", parseFloat(e.target.value) || 0)}
                           className="pl-8 font-['Poppins',sans-serif]"
-                          min="0"
+                          min="0.01"
                           step="0.01"
                         />
                       </div>

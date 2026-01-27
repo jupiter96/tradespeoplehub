@@ -116,8 +116,8 @@ export interface Order {
   deliveryStatus?: "active" | "delivered" | "completed" | "cancelled" | "dispute";
   booking?: {
     date: string;
-    time: string;
-    endTime?: string;
+    starttime: string;
+    endtime?: string;
     timeSlot?: string;
   };
   disputeId?: string;

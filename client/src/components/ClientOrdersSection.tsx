@@ -1168,7 +1168,7 @@ export default function ClientOrdersSection() {
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
             Appointment: {formatDate(order.booking?.date || order.scheduledDate)}
-            {(order.booking?.starttime || order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.time || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && (order.booking.starttime || order.booking.time) ? ` (${order.booking.timeSlot})` : ''}`}
+            {(order.booking?.starttime || order.booking?.starttime || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.starttime || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && (order.booking.starttime || order.booking.time) ? ` (${order.booking.starttimeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -1319,7 +1319,7 @@ export default function ClientOrdersSection() {
     
     // Second priority: booking date/time
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || "09:00";
     
     if (bookingDate) {
       // Combine date and time
@@ -1355,7 +1355,7 @@ export default function ClientOrdersSection() {
 
     // Second priority: Auto-start work timer when scheduled booking time arrives
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || "09:00";
     if (bookingDate) {
       const [hours, minutes] = bookingTime.split(":").map(Number);
       const start = new Date(bookingDate);
@@ -1405,7 +1405,7 @@ export default function ClientOrdersSection() {
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
                       {currentOrder.booking?.date
-                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`
+                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`
                         : currentOrder.scheduledDate
                           ? formatDate(currentOrder.scheduledDate)
                           : "TBD"}
@@ -2848,14 +2848,14 @@ export default function ClientOrdersSection() {
                             </p>
                           </div>
                         )}
-                        {(currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
+                        {(currentOrder.booking?.starttime || currentOrder.booking?.timeSlot) && (
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                               Appointment Time
                             </p>
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                              {currentOrder.booking?.time || currentOrder.booking?.timeSlot || 'TBD'}
-                              {currentOrder.booking?.timeSlot && currentOrder.booking?.time && ` (${currentOrder.booking.timeSlot})`}
+                              {currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || 'TBD'}
+                              {currentOrder.booking?.timeSlot && currentOrder.booking?.starttime && ` (${currentOrder.booking.timeSlot})`}
                             </p>
                           </div>
                         )}
@@ -2961,14 +2961,14 @@ export default function ClientOrdersSection() {
                         {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}
                       </td>
                     </tr>
-                    {(currentOrder.booking?.date || currentOrder.booking?.time) && (
+                    {(currentOrder.booking?.date || currentOrder.booking?.starttime) && (
                       <tr className="border-t border-gray-200">
                         <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                           Delivery Date & Time
                         </td>
                         <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : "TBD"}
-                          {(currentOrder.booking?.starttime || currentOrder.booking?.time) && ` at ${currentOrder.booking.starttime || currentOrder.booking.time}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
+                          {(currentOrder.booking?.starttime || currentOrder.booking?.starttime) && ` at ${currentOrder.booking.starttime || currentOrder.booking.starttime}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
                           {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
                         </td>
                       </tr>
@@ -3569,7 +3569,7 @@ export default function ClientOrdersSection() {
                 <Separator className="mb-6" />
 
                 {/* Delivery Date and Time */}
-                {(currentOrder.booking?.date || currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.scheduledDate) && (
+                {(currentOrder.booking?.date || currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.scheduledDate) && (
                   <div className="mb-6">
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       Delivery Date & Time
@@ -3582,13 +3582,13 @@ export default function ClientOrdersSection() {
                         </span>
                       </div>
                     )}
-                    {(currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot) && (
+                    {(currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot) && (
                       <div className="flex items-center gap-2 text-[#2c353f] mt-2">
                         <Clock className="w-4 h-4 text-[#6b6b6b]" />
                         <span className="font-['Poppins',sans-serif] text-[13px]">
-                          {currentOrder.booking.starttime || currentOrder.booking.time || currentOrder.booking.timeSlot}
+                          {currentOrder.booking.starttime || currentOrder.booking.starttime || currentOrder.booking.timeSlot}
                           {currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}
-                          {currentOrder.booking?.timeSlot && (currentOrder.booking.starttime || currentOrder.booking.time) && ` (${currentOrder.booking.timeSlot})`}
+                          {currentOrder.booking?.timeSlot && (currentOrder.booking.starttime || currentOrder.booking.starttime) && ` (${currentOrder.booking.timeSlot})`}
                         </span>
                       </div>
                     )}
