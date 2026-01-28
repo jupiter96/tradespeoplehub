@@ -4040,6 +4040,36 @@ router.get('/profile/addresses', requireAuth, async (req, res) => {
       isDefault: addr.isDefault || false,
     }));
 
+    // Check if user has profile address from registration that's not in the addresses array
+    if (user.postcode && user.address && user.phone) {
+      // Check if this profile address already exists in the addresses array
+      const profileAddressExists = addresses.some(addr => 
+        addr.postcode === user.postcode && 
+        addr.address === user.address &&
+        addr.city === (user.townCity || '')
+      );
+      
+      // If profile address doesn't exist and there are no addresses, add it as default
+      if (!profileAddressExists) {
+        const profileAddress = {
+          id: 'profile-address-' + user._id.toString(),
+          postcode: user.postcode || '',
+          address: user.address || '',
+          city: user.townCity || '',
+          county: user.county || '',
+          phone: user.phone || '',
+          isDefault: addresses.length === 0, // Make default only if no other addresses
+        };
+        
+        // Add profile address at the beginning if it's default, otherwise at the end
+        if (profileAddress.isDefault) {
+          addresses.unshift(profileAddress);
+        } else {
+          addresses.push(profileAddress);
+        }
+      }
+    }
+
     return res.json({ addresses });
   } catch (error) {
     console.error('Error fetching addresses:', error);

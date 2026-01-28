@@ -47,7 +47,7 @@ import {
 } from "lucide-react";
 
 // Import separated order components
-import { AddInfoDialog, getStatusLabel, getStatusLabelForTable } from "./orders";
+import { getStatusLabel, getStatusLabelForTable } from "./orders";
 import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -235,6 +235,10 @@ export default function ClientOrdersSection() {
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
+  const [addInfoMessage, setAddInfoMessage] = useState("");
+  const [addInfoFiles, setAddInfoFiles] = useState<File[]>([]);
+  const [isAddInfoSubmitting, setIsAddInfoSubmitting] = useState(false);
+  const addInfoFileInputRef = useRef<HTMLInputElement | null>(null);
   const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
   const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
@@ -264,11 +268,45 @@ export default function ClientOrdersSection() {
     setRevisionMessage("");
     setRevisionFiles([]);
     setDisputeResponseMessage("");
+    setAddInfoMessage("");
+    setAddInfoFiles([]);
   };
 
   // Function to open a specific modal and close all others
   const openModal = (modalName: 'rating' | 'cancel' | 'dispute' | 'cancellationRequest' | 'revisionRequest' | 'disputeResponse' | 'addInfo') => {
-    closeAllModals();
+    // Close all modals EXCEPT the one we're about to open
+    // This avoids the false->true batching issue
+    if (modalName !== 'rating') setIsRatingDialogOpen(false);
+    if (modalName !== 'cancel') setIsCancelDialogOpen(false);
+    if (modalName !== 'dispute') setIsDisputeDialogOpen(false);
+    if (modalName !== 'cancellationRequest') setIsCancellationRequestDialogOpen(false);
+    if (modalName !== 'revisionRequest') setIsRevisionRequestDialogOpen(false);
+    if (modalName !== 'disputeResponse') setIsDisputeResponseDialogOpen(false);
+    if (modalName !== 'addInfo') setIsAddInfoDialogOpen(false);
+    setIsApproveConfirmDialogOpen(false);
+    setApproveOrderId(null);
+    setPreviewAttachment(null);
+    // Reset form states for other modals
+    if (modalName !== 'cancel') {
+      setCancelReason("");
+      setCancelFiles([]);
+    }
+    if (modalName !== 'cancellationRequest') {
+      setCancellationReason("");
+    }
+    if (modalName !== 'revisionRequest') {
+      setRevisionReason("");
+      setRevisionMessage("");
+      setRevisionFiles([]);
+    }
+    if (modalName !== 'disputeResponse') {
+      setDisputeResponseMessage("");
+    }
+    if (modalName !== 'addInfo') {
+      setAddInfoMessage("");
+      setAddInfoFiles([]);
+    }
+    // Now open the requested modal
     switch (modalName) {
       case 'rating':
         setIsRatingDialogOpen(true);
@@ -295,17 +333,65 @@ export default function ClientOrdersSection() {
   };
 
   // Check for orderId in URL params and auto-select that order
+  // Keep the orderId in state so we can retry once orders load
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 10; // Maximum number of retries (10 * 500ms = 5 seconds)
+  
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const orderId = params.get("orderId");
-    if (orderId && orders.find(o => o.id === orderId)) {
-      setSelectedOrder(orderId);
-      // Clear the orderId from URL after opening
-      const newUrl = window.location.pathname + "?tab=orders";
-      window.history.replaceState({}, "", newUrl);
+    
+    if (orderId) {
+      // Store the orderId we're looking for
+      setPendingOrderId(orderId);
+      setRetryCount(0);
+      
+      // Try to find and select the order
+      const foundOrder = orders.find(o => o.id === orderId);
+      if (foundOrder) {
+        setSelectedOrder(orderId);
+        setPendingOrderId(null);
+        // Clear the orderId from URL after opening
+        const newUrl = window.location.pathname + "?tab=orders";
+        window.history.replaceState({}, "", newUrl);
+      }
     }
+  }, [location.search]);
 
-  }, [location.search, orders]);
+  // Retry selecting order when orders change (for when orders load after initial mount)
+  useEffect(() => {
+    if (pendingOrderId && orders.length > 0) {
+      const foundOrder = orders.find(o => o.id === pendingOrderId);
+      if (foundOrder) {
+        setSelectedOrder(pendingOrderId);
+        setPendingOrderId(null);
+        setRetryCount(0);
+        // Clear the orderId from URL after opening
+        const newUrl = window.location.pathname + "?tab=orders";
+        window.history.replaceState({}, "", newUrl);
+      }
+    }
+  }, [orders, pendingOrderId]);
+
+  // If order not found and we have a pending order ID, keep retrying with refreshOrders
+  useEffect(() => {
+    if (pendingOrderId && retryCount < maxRetries) {
+      const foundOrder = orders.find(o => o.id === pendingOrderId);
+      if (!foundOrder) {
+        // Order not found yet, retry after a delay
+        const timer = setTimeout(async () => {
+          setRetryCount(prev => prev + 1);
+          // Refresh orders to get the latest data
+          if (refreshOrders) {
+            await refreshOrders();
+          }
+        }, 500); // Retry every 500ms
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pendingOrderId, retryCount, orders, refreshOrders]);
 
   // Filter orders for client view (orders where professional is NOT "Current User")
   const clientOrders = orders.filter(
@@ -1168,7 +1254,7 @@ export default function ClientOrdersSection() {
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
             Appointment: {formatDate(order.booking?.date || order.scheduledDate)}
-            {(order.booking?.starttime || order.booking?.starttime || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.starttime || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && (order.booking.starttime || order.booking.time) ? ` (${order.booking.starttimeSlot})` : ''}`}
+            {(order.booking?.starttime || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && order.booking.starttime ? ` (${order.booking.timeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -2968,7 +3054,7 @@ export default function ClientOrdersSection() {
                         </td>
                         <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                           {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : "TBD"}
-                          {(currentOrder.booking?.starttime || currentOrder.booking?.starttime) && ` at ${currentOrder.booking.starttime || currentOrder.booking.starttime}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
+                          {currentOrder.booking?.starttime && ` at ${currentOrder.booking.starttime}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
                           {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
                         </td>
                       </tr>
@@ -3027,10 +3113,7 @@ export default function ClientOrdersSection() {
                   <Button
                     type="button"
                     className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px] relative z-10"
-                    onClick={() => {
-                      setSelectedOrder(currentOrder.id);
-                      openModal('addInfo');
-                    }}
+                    onClick={() => openModal('addInfo')}
                   >
                     + Add now
                   </Button>
@@ -3582,13 +3665,13 @@ export default function ClientOrdersSection() {
                         </span>
                       </div>
                     )}
-                    {(currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot) && (
+                    {(currentOrder.booking?.starttime || currentOrder.booking?.timeSlot) && (
                       <div className="flex items-center gap-2 text-[#2c353f] mt-2">
                         <Clock className="w-4 h-4 text-[#6b6b6b]" />
                         <span className="font-['Poppins',sans-serif] text-[13px]">
-                          {currentOrder.booking.starttime || currentOrder.booking.starttime || currentOrder.booking.timeSlot}
+                          {currentOrder.booking.starttime || currentOrder.booking.timeSlot}
                           {currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}
-                          {currentOrder.booking?.timeSlot && (currentOrder.booking.starttime || currentOrder.booking.starttime) && ` (${currentOrder.booking.timeSlot})`}
+                          {currentOrder.booking?.timeSlot && currentOrder.booking.starttime && ` (${currentOrder.booking.timeSlot})`}
                         </span>
                       </div>
                     )}
@@ -5307,20 +5390,206 @@ export default function ClientOrdersSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Additional Info Dialog */}
-      <AddInfoDialog
-        open={isAddInfoDialogOpen}
-        onOpenChange={(open) => {
-	          // Close-only handler; opening is controlled via openModal('addInfo')
-	          if (!open) closeAllModals();
-        }}
-        order={orders.find(o => o.id === selectedOrder) || null}
-        onSubmit={async (orderId, message, files) => {
-          await addAdditionalInfo(orderId, message, files);
-          // Refresh orders to update Additional Info tab and Timeline
-          await refreshOrders();
-        }}
-      />
+      {/* Additional Info Modal - Custom React Modal (not Radix UI) */}
+      {isAddInfoDialogOpen && (
+        <div 
+          className="fixed inset-0 z-[99999] flex items-center justify-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddInfoDialogOpen(false);
+              setAddInfoMessage("");
+              setAddInfoFiles([]);
+            }
+          }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" />
+          
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 p-6 z-[100000]">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setIsAddInfoDialogOpen(false);
+                setAddInfoMessage("");
+                setAddInfoFiles([]);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Header */}
+            <div className="mb-4">
+              <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
+                Add Remarks
+              </h2>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
+                Add any special requirements or remarks for the service
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-6">
+              {currentOrder ? (
+                <>
+                  <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                    {/* Service Name */}
+                    <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-3">
+                      {currentOrder.service}
+                    </h3>
+
+                    {/* Message Input */}
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Message
+                      </Label>
+                      <Textarea
+                        placeholder="Enter any special requirements, instructions, or additional information..."
+                        value={addInfoMessage}
+                        onChange={(e) => setAddInfoMessage(e.target.value)}
+                        rows={4}
+                        className="font-['Poppins',sans-serif] text-[13px]"
+                      />
+                    </div>
+
+                    {/* File Upload */}
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                        Attachments (Optional) - Max 10 files
+                      </Label>
+                      <div
+                        className="border-2 border-dashed border-[#3D78CB] rounded-lg p-4 text-center hover:bg-blue-50 transition-colors cursor-pointer"
+                        onClick={() => addInfoFileInputRef.current?.click()}
+                      >
+                        <input
+                          ref={addInfoFileInputRef}
+                          type="file"
+                          accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                          multiple
+                          onChange={(e) => {
+                            if (e.target.files) {
+                              const newFiles = Array.from(e.target.files);
+                              const validFiles = newFiles.filter((file) => {
+                                const type = file.type;
+                                return (
+                                  type.startsWith("image/") ||
+                                  type.startsWith("video/") ||
+                                  type === "application/pdf" ||
+                                  type === "application/msword" ||
+                                  type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+                                  type === "text/plain"
+                                );
+                              });
+                              if (validFiles.length !== newFiles.length) {
+                                toast.error("Some files were not added. Only images, videos, and documents are allowed.");
+                              }
+                              setAddInfoFiles((prev) => [...prev, ...validFiles].slice(0, 10));
+                              e.target.value = "";
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className="w-6 h-6 text-[#3D78CB]" />
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] font-medium">
+                            Click to upload files ({addInfoFiles.length}/10)
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            Images, videos, PDF, DOC, DOCX, or TXT files
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selected Files */}
+                    {addInfoFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          Selected Files:
+                        </Label>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {addInfoFiles.map((file, index) => (
+                            <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                              {file.type.startsWith("image/") ? (
+                                <Image className="w-4 h-4 text-blue-500" />
+                              ) : file.type.startsWith("video/") ? (
+                                <Film className="w-4 h-4 text-purple-500" />
+                              ) : (
+                                <FileText className="w-4 h-4 text-gray-500" />
+                              )}
+                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] flex-1 truncate">
+                                {file.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setAddInfoFiles((prev) => prev.filter((_, i) => i !== index))}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setAddInfoMessage("");
+                        setAddInfoFiles([]);
+                        setIsAddInfoDialogOpen(false);
+                      }}
+                      className="font-['Poppins',sans-serif]"
+                    >
+                      Clear & Close
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (!addInfoMessage.trim() && addInfoFiles.length === 0) {
+                          toast.error("Please add a message or upload files");
+                          return;
+                        }
+                        if (!currentOrder) return;
+
+                        setIsAddInfoSubmitting(true);
+                        try {
+                          await addAdditionalInfo(currentOrder.id, addInfoMessage, addInfoFiles.length > 0 ? addInfoFiles : undefined);
+                          toast.success("Additional information submitted successfully!");
+                          setAddInfoMessage("");
+                          setAddInfoFiles([]);
+                          setIsAddInfoDialogOpen(false);
+                          await refreshOrders();
+                        } catch (error: any) {
+                          toast.error(error.message || "Failed to submit additional information");
+                        } finally {
+                          setIsAddInfoSubmitting(false);
+                        }
+                      }}
+                      disabled={isAddInfoSubmitting}
+                      className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif]"
+                    >
+                      {isAddInfoSubmitting ? "Submitting..." : "Done"}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="p-8 text-center">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    Loading order details...
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
 	      {/* Approve Confirmation Dialog */}
 	      <Dialog

@@ -21,9 +21,12 @@ const bookingInfoSchema = new mongoose.Schema({
     type: String, // ISO date string
     required: true,
   },
-  time: {
+  starttime: {
     type: String, // "09:00", "14:30", etc.
     required: true,
+  },
+  endtime: {
+    type: String, // "10:00", "15:30", etc.
   },
   timeSlot: {
     type: String, // "Morning", "Afternoon", "Evening"

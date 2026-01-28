@@ -3459,7 +3459,8 @@ export default function ServicesPage() {
               addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
               booking: data.booking ? {
                 date: data.booking.date.toISOString(),
-                time: data.booking.time,
+                starttime: data.booking.time,
+                endtime: data.booking.time,
                 timeSlot: data.booking.timeSlot
               } : undefined,
               packageType: data.packageType,

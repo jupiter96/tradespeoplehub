@@ -86,7 +86,7 @@ export default function ExtensionDialog({
               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                 <span className="font-medium">Current scheduled:</span>{" "}
                 {currentOrder?.booking?.date 
-                  ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                  ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}`
                   : currentOrder?.scheduledDate 
                     ? formatDate(currentOrder.scheduledDate) 
                     : "TBD"}

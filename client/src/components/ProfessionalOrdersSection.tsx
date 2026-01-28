@@ -240,16 +240,65 @@ function ProfessionalOrdersSection() {
 
 
   // Check for orderId in URL params and auto-select that order
+  // Keep the orderId in state so we can retry once orders load
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 10; // Maximum number of retries (10 * 500ms = 5 seconds)
+  
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const orderId = params.get("orderId");
-    if (orderId && orders.find(o => o.id === orderId)) {
-      setSelectedOrder(orderId);
-      // Clear the orderId from URL after opening
-      const newUrl = window.location.pathname + "?tab=orders";
-      window.history.replaceState({}, "", newUrl);
+    
+    if (orderId) {
+      // Store the orderId we're looking for
+      setPendingOrderId(orderId);
+      setRetryCount(0);
+      
+      // Try to find and select the order
+      const foundOrder = orders.find(o => o.id === orderId);
+      if (foundOrder) {
+        setSelectedOrder(orderId);
+        setPendingOrderId(null);
+        // Clear the orderId from URL after opening
+        const newUrl = window.location.pathname + "?tab=orders";
+        window.history.replaceState({}, "", newUrl);
+      }
     }
-  }, [location.search, orders]);
+  }, [location.search]);
+
+  // Retry selecting order when orders change (for when orders load after initial mount)
+  useEffect(() => {
+    if (pendingOrderId && orders.length > 0) {
+      const foundOrder = orders.find(o => o.id === pendingOrderId);
+      if (foundOrder) {
+        setSelectedOrder(pendingOrderId);
+        setPendingOrderId(null);
+        setRetryCount(0);
+        // Clear the orderId from URL after opening
+        const newUrl = window.location.pathname + "?tab=orders";
+        window.history.replaceState({}, "", newUrl);
+      }
+    }
+  }, [orders, pendingOrderId]);
+
+  // If order not found and we have a pending order ID, keep retrying with refreshOrders
+  useEffect(() => {
+    if (pendingOrderId && retryCount < maxRetries) {
+      const foundOrder = orders.find(o => o.id === pendingOrderId);
+      if (!foundOrder) {
+        // Order not found yet, retry after a delay
+        const timer = setTimeout(async () => {
+          setRetryCount(prev => prev + 1);
+          // Refresh orders to get the latest data
+          if (refreshOrders) {
+            await refreshOrders();
+          }
+        }, 500); // Retry every 500ms
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [pendingOrderId, retryCount, orders, refreshOrders]);
 
   // Filter orders for professional view
   // API already filters orders by professional role when userRole === 'professional'
@@ -413,7 +462,7 @@ function ProfessionalOrdersSection() {
     
     // Second priority: booking date/time
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || "09:00";
     
     if (bookingDate) {
       // Combine date and time
@@ -459,7 +508,7 @@ function ProfessionalOrdersSection() {
 
     // Second priority: Auto-start work timer when scheduled booking time arrives
     const bookingDate = currentOrder.booking?.date;
-    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.time || currentOrder.booking?.timeSlot || "09:00";
+    const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || "09:00";
     if (bookingDate) {
       const [hours, minutes] = bookingTime.split(":").map(Number);
       const start = new Date(bookingDate);
@@ -941,7 +990,7 @@ function ProfessionalOrdersSection() {
           <Calendar className="w-4 h-4" />
           <span className="font-['Poppins',sans-serif] text-[13px]">
             Scheduled: {formatDate(order.scheduledDate)}
-            {(order.booking?.starttime || order.booking?.time || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.time || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && (order.booking.starttime || order.booking.time) ? ` (${order.booking.timeSlot})` : ''}`}
+            {(order.booking?.starttime || order.booking?.timeSlot) && ` - ${order.booking.starttime || order.booking.timeSlot}${order.booking?.endtime && order.booking.endtime !== order.booking.starttime ? ` - ${order.booking.endtime}` : ''}${order.booking?.timeSlot && order.booking.starttime ? ` (${order.booking.timeSlot})` : ''}`}
           </span>
         </div>
       )}
@@ -1008,7 +1057,7 @@ function ProfessionalOrdersSection() {
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
                       {currentOrder.booking?.date
-                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}`
                         : currentOrder.scheduledDate
                           ? formatDate(currentOrder.scheduledDate)
                           : "TBD"}

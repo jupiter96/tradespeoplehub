@@ -39,7 +39,7 @@ interface CartContextType {
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   updateCartItem: (itemKeyOrId: string, updates: Partial<CartItem>) => Promise<void>;
-  clearCart: () => void;
+  clearCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -66,12 +66,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAccount();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cartCleared, setCartCleared] = useState(false);
 
   // Load cart from API when user logs in
   useEffect(() => {
     const fetchCart = async () => {
       if (!isLoggedIn) {
         setCartItems([]);
+        setCartCleared(false);
+        return;
+      }
+
+      // Don't refetch if cart was just cleared (prevents race condition)
+      if (cartCleared) {
         return;
       }
 
@@ -97,7 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     fetchCart();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, cartCleared]);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => {
@@ -106,6 +113,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, 0);
 
   const addToCart = async (item: Omit<CartItem, "quantity">, quantity: number = 1) => {
+    // Reset cartCleared flag since user is adding items
+    setCartCleared(false);
+    
     // Ensure serviceId is set (use id if serviceId is not provided for backward compatibility)
     const cartItem: Omit<CartItem, "quantity"> = {
       ...item,
@@ -374,7 +384,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const clearCart = async () => {
-    // Optimistic update
+    // Set flag to prevent refetch race condition
+    setCartCleared(true);
+    
+    // Clear local state immediately
     setCartItems([]);
 
     // Sync with API if logged in
@@ -385,31 +398,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
           credentials: "include",
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setCartItems(data.items || []);
-        } else {
-          // Revert optimistic update on error
-          const response = await fetch(resolveApiUrl("/api/cart"), {
-            credentials: "include",
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setCartItems(data.items || []);
-          }
+        if (!response.ok) {
+          console.error("Failed to clear cart on server");
         }
+        // Don't set cart items from response - keep it empty
+        // The server returns { items: [] } on success anyway
       } catch (error) {
         console.error("Failed to clear cart:", error);
-        // Revert optimistic update on error
-        const response = await fetch(resolveApiUrl("/api/cart"), {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCartItems(data.items || []);
-        }
+        // Don't revert - keep cart empty locally even if server fails
+        // User can refresh if needed
       }
     }
+    
+    // Note: cartCleared flag stays true until user adds a new item to cart
+    // This prevents race conditions where the cart refetches old data
+    // The addToCart function will reset the flag when user adds new items
   };
 
   return (

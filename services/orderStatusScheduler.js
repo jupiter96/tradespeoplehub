@@ -15,7 +15,7 @@ async function processOrderStatusUpdates() {
       deliveryStatus: 'pending',
       paymentMethod: { $ne: 'bank_transfer' },
       'items.booking.date': { $exists: true, $ne: null },
-      'items.booking.time': { $exists: true, $ne: null },
+      'items.booking.starttime': { $exists: true, $ne: null },
     });
 
     let updatedCount = 0;
@@ -25,14 +25,14 @@ async function processOrderStatusUpdates() {
       try {
         // Get booking info from first item
         const booking = order.items?.[0]?.booking;
-        if (!booking || !booking.date || !booking.time) {
+        if (!booking || !booking.date || !booking.starttime) {
           skippedCount++;
           continue;
         }
 
         // Parse booking date and time
         const bookingDate = new Date(booking.date);
-        const [hours, minutes] = booking.time.split(':').map(Number);
+        const [hours, minutes] = booking.starttime.split(':').map(Number);
         
         if (isNaN(hours) || isNaN(minutes)) {
           skippedCount++;

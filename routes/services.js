@@ -1553,5 +1553,76 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get reviews for a specific service
+router.get('/:serviceId/reviews', async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    // First, get the service to find the professional
+    // Support both MongoDB ObjectId and slug
+    let service;
+    if (serviceId.match(/^[0-9a-fA-F]{24}$/)) {
+      service = await Service.findById(serviceId).select('professional').lean();
+    } else {
+      service = await Service.findOne({ slug: serviceId }).select('professional').lean();
+    }
+    
+    if (!service) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // Get all reviews for this professional that are not hidden
+    const reviews = await Review.find({
+      professional: service.professional,
+      isHidden: false
+    })
+      .populate('reviewer', 'firstName lastName avatar')
+      .populate({
+        path: 'order',
+        select: 'items'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // For service detail page, show all reviews for this professional
+    // Reviews are tied to professionals and orders, so all of them are relevant
+    // to show the professional's reputation for this service
+    let serviceReviews = reviews;
+
+    // Calculate average rating and total count for this service's reviews
+    const totalRating = serviceReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+    const averageRating = serviceReviews.length > 0 ? totalRating / serviceReviews.length : 0;
+
+    // Transform reviews to include necessary data
+    const transformedReviews = serviceReviews.map(review => ({
+      _id: review._id,
+      rating: review.rating || 0,
+      comment: review.comment || '',
+      createdAt: review.createdAt,
+      reviewer: review.reviewer ? {
+        _id: review.reviewer._id,
+        name: review.reviewerName || `${review.reviewer.firstName} ${review.reviewer.lastName}`,
+        avatar: review.reviewer.avatar
+      } : {
+        name: review.reviewerName || 'Anonymous',
+        avatar: null
+      },
+      response: review.response ? {
+        text: review.response,
+        respondedAt: review.responseAt
+      } : null
+    }));
+
+    res.json({
+      reviews: transformedReviews,
+      totalCount: transformedReviews.length,
+      averageRating: Math.round(averageRating * 10) / 10
+    });
+  } catch (error) {
+    console.error('Get service reviews error:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch reviews' });
+  }
+});
+
 export default router;
 

@@ -104,6 +104,17 @@ const orderSchema = new mongoose.Schema(
     paymentMethodId: {
       type: String, // For card payments - Stripe payment method ID
     },
+    paypalOrderId: {
+      type: String, // PayPal order ID for tracking
+    },
+    paypalCaptureId: {
+      type: String, // PayPal capture ID after payment is captured
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'completed', 'failed', 'refunded'],
+      default: 'completed',
+    },
     total: {
       type: Number,
       required: true,
@@ -143,7 +154,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['In Progress', 'Completed', 'Cancelled', 'Cancellation Pending', 'Rejected', 'disputed', 'delivered'],
+      enum: ['Pending Payment', 'In Progress', 'Completed', 'Cancelled', 'Cancellation Pending', 'Rejected', 'disputed', 'delivered'],
       default: 'In Progress',
       index: true,
     },

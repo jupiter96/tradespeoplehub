@@ -232,7 +232,7 @@ export default function ProfessionalOrderDetailSidebar({
         </div>
 
         {/* Delivery Date and Time */}
-        {(order.booking?.date || order.booking?.time || (order as any).scheduledDate) && (
+        {(order.booking?.date || order.booking?.starttime || (order as any).scheduledDate) && (
           <div className="mb-6">
             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
               Delivery Date & Time
@@ -245,12 +245,13 @@ export default function ProfessionalOrderDetailSidebar({
                 </span>
               </div>
             )}
-            {(order.booking?.time || order.booking?.timeSlot) && (
+            {(order.booking?.starttime || order.booking?.timeSlot) && (
               <div className="flex items-center gap-2 text-[#2c353f] mt-2">
                 <Clock className="w-4 h-4 text-[#6b6b6b]" />
                 <span className="font-['Poppins',sans-serif] text-[13px]">
-                  {order.booking.time ? order.booking.time : order.booking.timeSlot}
-                  {order.booking.timeSlot && order.booking.time && ` (${order.booking.timeSlot})`}
+                  {order.booking.starttime ? order.booking.starttime : order.booking.timeSlot}
+                  {order.booking.endtime && order.booking.endtime !== order.booking.starttime && ` - ${order.booking.endtime}`}
+                  {order.booking.timeSlot && order.booking.starttime && ` (${order.booking.timeSlot})`}
                 </span>
               </div>
             )}

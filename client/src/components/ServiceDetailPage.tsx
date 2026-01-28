@@ -274,6 +274,27 @@ const generateReviews = (serviceId: number, reviewCount: number, providerName: s
   return reviews;
 };
 
+// Helper function to format review date
+const formatReviewDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 7) {
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  } else if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  } else if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  } else {
+    const years = Math.floor(diffDays / 365);
+    return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  }
+};
+
 export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -528,12 +549,68 @@ export default function ServiceDetailPage() {
   
   // Initialize vote counts from review data - will be set properly after service check
   const [reviewVoteCounts, setReviewVoteCounts] = useState<Map<number, { helpful: number; notHelpful: number }>>(new Map());
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [fetchedReviewStats, setFetchedReviewStats] = useState<{ averageRating: number; totalCount: number } | null>(null);
+
+  // Fetch real reviews from API
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!service?._id) return;
+      
+      try {
+        setReviewsLoading(true);
+        const { resolveApiUrl } = await import("../config/api");
+        
+        const response = await fetch(
+          resolveApiUrl(`/api/services/${service._id}/reviews`),
+          { credentials: 'include' }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRealReviews(data.reviews || []);
+          // Store the fetched stats to override service.rating and service.reviewCount
+          setFetchedReviewStats({
+            averageRating: data.averageRating || 0,
+            totalCount: data.totalCount || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch reviews:', error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    
+    fetchReviews();
+  }, [service?._id]);
 
   // Derived data (must be declared before any early returns to keep hook order stable)
   const reviews = useMemo(() => {
     if (!service) return [];
+    
+    // Use real reviews if available, otherwise fallback to generated reviews
+    if (realReviews.length > 0) {
+      return realReviews.map((review: any, index: number) => ({
+        id: index + 1,
+        userName: review.reviewer?.name || 'Anonymous',
+        userAvatar: review.reviewer?.avatar || '',
+        userLocation: undefined,
+        rating: review.rating || 0,
+        date: formatReviewDate(review.createdAt),
+        comment: review.comment || '',
+        helpfulVotes: 0,
+        notHelpfulVotes: 0,
+        professionalResponse: review.response ? {
+          text: review.response.text,
+          providerName: service.providerName,
+          providerImage: service.providerImage
+        } : undefined
+      }));
+    }
+    
     return generateReviews(service.id, service.reviewCount, service.providerName, service.providerImage);
-  }, [service]);
+  }, [service, realReviews]);
 
   const selectedPackage = useMemo(() => {
     if (!service?.packages || service.packages.length === 0) return undefined;
@@ -933,11 +1010,39 @@ export default function ServiceDetailPage() {
   // Price information (use selected package if available, otherwise use service base price)
   // Note: In service creation, "Your Price" is stored as price, "Sale / Discounted Price" is stored as originalPrice
   // So: price = original/regular price, originalPrice = discounted/sale price
+  // However, some packages may have price stored in originalPrice field, so we need to handle both cases
   const hasPackages = !!(service.packages && service.packages.length > 0);
-  const regularPrice = selectedPackage ? parseMoney(selectedPackage.price) : parseMoney(service.price);
-  const discountedPrice = selectedPackage && selectedPackage.originalPrice
-    ? parseMoney(selectedPackage.originalPrice)
-    : (service.originalPrice ? parseMoney(service.originalPrice) : null);
+  
+  // For packages, check both price and originalPrice fields to get the actual price
+  const getPackagePrice = (pkg: any): number => {
+    const priceValue = parseMoney(pkg.price);
+    const originalPriceValue = parseMoney(pkg.originalPrice);
+    // If price is 0 or very small but originalPrice has a value, use originalPrice as the main price
+    // Otherwise, use price as the regular price
+    if (priceValue <= 0 && originalPriceValue > 0) {
+      return originalPriceValue;
+    }
+    return priceValue;
+  };
+  
+  const regularPrice = selectedPackage 
+    ? getPackagePrice(selectedPackage)
+    : parseMoney(service.price);
+  
+  // For discounted price: only use originalPrice if both price and originalPrice are set and price > originalPrice
+  // This means there's an actual discount
+  const discountedPrice = (() => {
+    if (selectedPackage) {
+      const priceVal = parseMoney(selectedPackage.price);
+      const origPriceVal = parseMoney(selectedPackage.originalPrice);
+      // Only show as discounted if price > 0 and originalPrice > 0 and originalPrice < price (it's a sale)
+      if (priceVal > 0 && origPriceVal > 0 && origPriceVal < priceVal) {
+        return origPriceVal;
+      }
+      return null;
+    }
+    return service.originalPrice ? parseMoney(service.originalPrice) : null;
+  })();
   
   // Display: if discountedPrice exists, show it as the main price and regularPrice as crossed out
   // Otherwise, show regularPrice as the main price
@@ -1077,12 +1182,15 @@ export default function ServiceDetailPage() {
       };
     }
     
+    // Calculate the correct price for the cart item (same logic as handleAddToCart)
+    const cartItemPrice = basePrice;
+    
     addToCart({
       id: serviceIdForCart, // Item key (will be generated on backend)
       serviceId: serviceIdForCart, // Actual MongoDB service ID
       title: itemTitle,
       seller: service.providerName,
-      price: basePrice,
+      price: cartItemPrice,
       image: service.image,
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
@@ -1092,11 +1200,13 @@ export default function ServiceDetailPage() {
         endtime: time,
         timeSlot: timeSlot
       },
-      thumbnailVideo: thumbnailVideo || undefined
+      packageType: selectedPackage?.name.toLowerCase() || undefined,
+      thumbnailVideo: thumbnailVideo || undefined,
+      priceUnit: service.priceUnit || 'fixed'
     }, quantity);
     
-    // Navigate to cart page
-    navigate('/cart');
+    // Show success toast instead of navigating
+    toast.success("Item added to cart with booking");
   };
 
   const incrementQuantity = () => {
@@ -1127,11 +1237,14 @@ export default function ServiceDetailPage() {
   };
 
   const calculateRatingDistribution = () => {
-    const distribution = [0, 0, 0, 0, 0];
+    const distribution = [0, 0, 0, 0, 0]; // index 0 = 1 star, index 4 = 5 stars
     reviews.forEach(review => {
-      distribution[review.rating - 1]++;
+      const rating = Math.round(review.rating || 0);
+      if (rating >= 1 && rating <= 5) {
+        distribution[rating - 1]++;
+      }
     });
-    return distribution.reverse();
+    return distribution.reverse(); // Returns [5-star count, 4-star, 3-star, 2-star, 1-star]
   };
 
   const ratingDistribution = calculateRatingDistribution();
@@ -1355,7 +1468,8 @@ export default function ServiceDetailPage() {
     : generateHighlights();
 
   // Generate detailed description for service
-  const aboutService = `Discover exceptional ${service.category.toLowerCase()} with ${service.providerName}. With a proven track record of ${service.completedTasks} completed tasks and a ${service.rating} star rating, you can trust in the quality and professionalism of this service. ${service.description} Our commitment to excellence ensures that every client receives personalized attention and outstanding results.`;
+  const displayRating = (fetchedReviewStats?.averageRating || service.rating || 0).toFixed(1);
+  const aboutService = `Discover exceptional ${service.category.toLowerCase()} with ${service.providerName}. With a proven track record of ${service.completedTasks} completed tasks and a ${displayRating} star rating, you can trust in the quality and professionalism of this service. ${service.description} Our commitment to excellence ensures that every client receives personalized attention and outstanding results.`;
 
   // Use service highlights for What's Included, fallback to generated highlights if not available
   const whatsIncluded = service.highlights && service.highlights.length > 0 
@@ -1376,14 +1490,15 @@ export default function ServiceDetailPage() {
     ? service.faqs
     : [];
 
-  // Determine provider level
-  const providerLevel = service.rating >= 4.8 ? "Top Rated Seller" : 
-                        service.rating >= 4.5 ? "Verified Professional" : 
+  // Determine provider level - use fetched stats if available
+  const effectiveRating = fetchedReviewStats?.averageRating || service.rating || 0;
+  const providerLevel = effectiveRating >= 4.8 ? "Top Rated Seller" : 
+                        effectiveRating >= 4.5 ? "Verified Professional" : 
                         "Verified Seller";
 
   // Provider badge for mobile display
-  const providerBadge = service.rating >= 4.8 ? "Top rated Seller" : 
-                        service.rating >= 4.5 ? "Verified Professional" : 
+  const providerBadge = effectiveRating >= 4.8 ? "Top rated Seller" : 
+                        effectiveRating >= 4.5 ? "Verified Professional" : 
                         null;
 
   // Generate SEO metadata
@@ -1670,25 +1785,30 @@ export default function ServiceDetailPage() {
                 {service.description}
               </h1>
               <div className="flex items-center justify-between flex-wrap gap-4">
-                {/* Only show rating and completed tasks if user has reviews */}
-                {service.reviewCount > 0 ? (
+                {/* Show rating and reviews info */}
+                {(fetchedReviewStats?.totalCount || service.reviewCount || 0) > 0 ? (
                   <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
-                      {renderStars(service.rating)}
+                      {renderStars(fetchedReviewStats?.averageRating || service.rating || 0)}
                       <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
-                        {service.rating}
+                        {(fetchedReviewStats?.averageRating || service.rating || 0).toFixed(1)}
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        ({service.reviewCount} reviews)
+                        ({fetchedReviewStats?.totalCount || service.reviewCount} {(fetchedReviewStats?.totalCount || service.reviewCount) === 1 ? 'review' : 'reviews'})
                       </span>
                     </div>
-                    <Separator orientation="vertical" className="h-5" />
-                    <div className="flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-[#10B981]" />
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        {service.completedTasks} tasks completed
-                      </span>
-                    </div>
+                    {/* Only show completed tasks if it's different from review count and > 0 */}
+                    {service.completedTasks > 0 && service.completedTasks !== (fetchedReviewStats?.totalCount || service.reviewCount) && (
+                      <>
+                        <Separator orientation="vertical" className="h-5" />
+                        <div className="flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-[#10B981]" />
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                            {service.completedTasks} tasks completed
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -1960,14 +2080,6 @@ export default function ServiceDetailPage() {
                       Availability
                     </TabsTrigger>
                   )}
-                  {service.reviewCount > 0 && (
-                    <TabsTrigger 
-                      value="reviews"
-                      className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
-                    >
-                      Reviews ({service.reviewCount})
-                    </TabsTrigger>
-                  )}
                   <TabsTrigger 
                     value="portfolio"
                     className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
@@ -1979,6 +2091,12 @@ export default function ServiceDetailPage() {
                     className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
                   >
                     FAQ
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="reviews"
+                    className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] md:text-[15px] data-[state=active]:text-[#FE8A0F] data-[state=active]:border-b-2 data-[state=active]:border-[#FE8A0F] rounded-none pb-3 data-[state=active]:bg-transparent whitespace-nowrap px-3 sm:px-4 md:px-6 snap-start flex-shrink-0"
+                  >
+                    Reviews {(fetchedReviewStats?.totalCount || service.reviewCount || 0) > 0 && `(${fetchedReviewStats?.totalCount || service.reviewCount})`}
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -2075,7 +2193,10 @@ export default function ServiceDetailPage() {
                         <div className="overflow-x-auto">
                           <div className="grid grid-cols-3 gap-4">
                             {service.packages.map((pkg: any) => {
-                              const pkgPrice = parseMoney(pkg.price || pkg.originalPrice || 0);
+                              // Get package price - handle case where price might be in originalPrice field
+                              const priceVal = parseMoney(pkg.price);
+                              const origPriceVal = parseMoney(pkg.originalPrice);
+                              const pkgPrice = priceVal > 0 ? priceVal : origPriceVal;
                               
                               // Get delivery text
                               const deliveryDays = pkg.deliveryDays;
@@ -2345,19 +2466,9 @@ export default function ServiceDetailPage() {
                                           // Check if item already exists in cart
                                           const existingItem = cartItems.find(item => item.id === serviceIdForCart || item.serviceId === serviceIdForCart);
                                           
-                                          // If item already exists, just navigate to cart
+                                          // If item already exists, show a message
                                           if (existingItem) {
-                                            navigate('/cart', {
-                                              state: {
-                                                preSelectTimeSlot: {
-                                                  serviceId: serviceIdForCart,
-                                                  date: availabilityDate,
-                                                  time: block.from,
-                                                  endTime: block.to,
-                                                  timeSlot: timeSlot
-                                                }
-                                              }
-                                            });
+                                            toast.info("This service is already in your cart. You can update the time slot in the cart page.");
                                             return;
                                           }
                                           
@@ -2368,12 +2479,9 @@ export default function ServiceDetailPage() {
                                               : galleryItems[0].url
                                             : service.image || '';
                                           
-                                          // Calculate price (same logic as handleAddToCart)
-                                          const regularPrice = service.price ? (typeof service.price === 'string' ? parseFloat(service.price.replace(/[£,]/g, '')) : service.price) : 0;
-                                          const discountedPrice = service.discountedPrice 
-                                            ? (typeof service.discountedPrice === 'string' ? parseFloat(service.discountedPrice.replace(/[£,]/g, '')) : service.discountedPrice)
-                                            : (service.originalPrice ? (typeof service.originalPrice === 'string' ? parseFloat(service.originalPrice.replace(/[£,]/g, '')) : service.originalPrice) : null);
-                                          const itemPrice = discountedPrice || regularPrice;
+                                          // Calculate price - use the already computed basePrice which handles packages correctly
+                                          // basePrice already considers selectedPackage pricing with proper fallback logic
+                                          const itemPrice = basePrice;
                                           
                                           // Determine thumbnail video
                                           let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
@@ -2384,11 +2492,16 @@ export default function ServiceDetailPage() {
                                             };
                                           }
                                           
+                                          // Build title with package name if package selected
+                                          const itemTitle = selectedPackage 
+                                            ? `${service.description} (${selectedPackage.name} Package)`
+                                            : service.description;
+                                          
                                           // Add to cart with booking info
                                           addToCart({
                                             id: serviceIdForCart,
                                             serviceId: serviceIdForCart,
-                                            title: service.description,
+                                            title: itemTitle,
                                             seller: service.providerName,
                                             price: itemPrice,
                                             image: serviceImage,
@@ -2400,23 +2513,12 @@ export default function ServiceDetailPage() {
                                               endtime: block.to,
                                               timeSlot: timeSlot
                                             },
+                                            packageType: selectedPackage?.name.toLowerCase() || undefined,
                                             thumbnailVideo: thumbnailVideo || undefined,
                                             priceUnit: service.priceUnit || 'fixed'
                                           });
                                           
-                                          // Navigate to cart page
-                                          navigate('/cart', {
-                                            state: {
-                                              preSelectTimeSlot: {
-                                                serviceId: serviceIdForCart,
-                                                date: availabilityDate,
-                                                time: block.from,
-                                                endTime: block.to,
-                                                timeSlot: timeSlot
-                                              }
-                                            }
-                                          });
-                                          
+                                          // Show success message - stay on service detail page
                                           toast.success("Service added to cart with selected time slot");
                                         }}
                                         className="px-3 py-1.5 rounded-full bg-[#F8FAFC] border border-gray-200 text-[13px] text-[#2c353f] font-['Poppins',sans-serif] hover:bg-[#FE8A0F] hover:text-white hover:border-[#FE8A0F] transition-all duration-200 cursor-pointer"
@@ -2441,50 +2543,74 @@ export default function ServiceDetailPage() {
                 </TabsContent>
               )}
 
-              {service.reviewCount > 0 && (
-                <TabsContent value="reviews" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-                {/* Rating Overview */}
-                <Card className="border-2 border-gray-200">
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="text-center">
-                        <div className="text-[48px] font-['Poppins',sans-serif] text-[#2c353f] mb-2">
-                          {service.rating}
+              <TabsContent value="reviews" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+                {reviewsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#3D78CB]" />
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      Loading reviews...
+                    </p>
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <Card className="border-2 border-gray-200">
+                    <CardContent className="p-12">
+                      <div className="text-center space-y-3">
+                        <div className="flex justify-center">
+                          <Star className="w-12 h-12 text-gray-300" />
                         </div>
-                        <div className="flex justify-center mb-2">
-                          {renderStars(service.rating)}
-                        </div>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          Based on {service.reviewCount} reviews
+                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                          No reviews yet
+                        </h3>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] max-w-md mx-auto">
+                          Be the first to book this service and leave a review!
                         </p>
                       </div>
-                      <div className="space-y-2">
-                        {[5, 4, 3, 2, 1].map((star, index) => {
-                          const count = ratingDistribution[index] || 0;
-                          const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
-                          return (
-                            <div key={star} className="flex items-center gap-3">
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] w-8">
-                                {star} <Star className="w-3 h-3 inline fill-[#FE8A0F] text-[#FE8A0F]" />
-                              </span>
-                              <Progress 
-                                value={percentage} 
-                                className="flex-1 h-2"
-                              />
-                              <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] w-12 text-right">
-                                {count}
-                              </span>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    {/* Rating Overview */}
+                    <Card className="border-2 border-gray-200">
+                      <CardContent className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="text-center">
+                            <div className="text-[48px] font-['Poppins',sans-serif] text-[#2c353f] mb-2">
+                              {(fetchedReviewStats?.averageRating || service.rating || 0).toFixed(1)}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                            <div className="flex justify-center mb-2">
+                              {renderStars(fetchedReviewStats?.averageRating || service.rating || 0)}
+                            </div>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              Based on {fetchedReviewStats?.totalCount || service.reviewCount || 0} {(fetchedReviewStats?.totalCount || service.reviewCount || 0) === 1 ? 'review' : 'reviews'}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            {[5, 4, 3, 2, 1].map((star, index) => {
+                              const count = ratingDistribution[index] || 0;
+                              const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                              return (
+                                <div key={star} className="flex items-center gap-3">
+                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] w-8">
+                                    {star} <Star className="w-3 h-3 inline fill-[#FE8A0F] text-[#FE8A0F]" />
+                                  </span>
+                                  <Progress 
+                                    value={percentage} 
+                                    className="flex-1 h-2"
+                                  />
+                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] w-12 text-right">
+                                    {count}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                {/* Reviews List */}
-                <div className="space-y-4">
-                  {reviews.map((review) => {
+                    {/* Reviews List */}
+                    <div className="space-y-4">
+                      {reviews.map((review) => {
                     const userVote = userVotes.get(review.id);
                     const isResponseExpanded = expandedResponses.has(review.id);
                     const voteCounts = reviewVoteCounts.get(review.id) || { helpful: review.helpfulVotes, notHelpful: review.notHelpfulVotes };
@@ -2647,9 +2773,10 @@ export default function ServiceDetailPage() {
                       </Card>
                     );
                   })}
-                </div>
+                    </div>
+                  </>
+                )}
               </TabsContent>
-              )}
 
               <TabsContent value="portfolio" className="mt-6">
                 <Card className="border-2 border-gray-200">
@@ -2867,9 +2994,13 @@ export default function ServiceDetailPage() {
                         
                         {service.packages.map((pkg: any) => {
                           const pkgId = pkg.id || pkg._id || String(pkg._id) || `pkg-${Date.now()}`;
-                          // Use originalPrice (discounted) if available, otherwise use price
-                          const pkgRegularPrice = typeof pkg.price === 'number' ? pkg.price : parseMoney(pkg.price || 0);
-                          const pkgDiscountedPrice = pkg.originalPrice ? (typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseMoney(pkg.originalPrice)) : null;
+                          // Get package price - handle case where price might be in originalPrice field
+                          const priceVal = parseMoney(pkg.price);
+                          const origPriceVal = parseMoney(pkg.originalPrice);
+                          // If price is 0 but originalPrice has value, use originalPrice as main price
+                          const pkgRegularPrice = priceVal > 0 ? priceVal : origPriceVal;
+                          // Only show discount if both values exist and originalPrice < price (actual discount)
+                          const pkgDiscountedPrice = (priceVal > 0 && origPriceVal > 0 && origPriceVal < priceVal) ? origPriceVal : null;
                           const pkgPrice = pkgDiscountedPrice || pkgRegularPrice;
                           // Check if package has priceUnit (not "fixed" or empty)
                           const pkgPriceUnit = pkg.priceUnit && pkg.priceUnit !== "fixed" ? pkg.priceUnit : null;
@@ -3842,7 +3973,8 @@ export default function ServiceDetailPage() {
             addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
             booking: data.booking ? {
               date: data.booking.date.toISOString(),
-              time: data.booking.time,
+              starttime: data.booking.time,
+              endtime: data.booking.time,
               timeSlot: data.booking.timeSlot
             } : undefined,
             packageType: data.packageType,
@@ -3855,12 +3987,16 @@ export default function ServiceDetailPage() {
         sellerName={service.providerName}
         basePrice={basePrice}
         addons={(selectedPackage?.addons || service.addons) || []}
-        packages={service.packages ? service.packages.map(pkg => ({
-          type: pkg.name.toLowerCase() as "basic" | "standard" | "premium",
-          name: pkg.name,
-          price: parseMoney(pkg.price),
-          features: pkg.highlights
-        })) : []}
+        packages={service.packages ? service.packages.map(pkg => {
+          const priceVal = parseMoney(pkg.price);
+          const origPriceVal = parseMoney(pkg.originalPrice);
+          return {
+            type: pkg.name.toLowerCase() as "basic" | "standard" | "premium",
+            name: pkg.name,
+            price: priceVal > 0 ? priceVal : origPriceVal,
+            features: pkg.highlights
+          };
+        }) : []}
         serviceType={service.serviceType || "in-person"}
         onlineDeliveryDays={service.onlineDeliveryDays}
         serviceImage={service.image}

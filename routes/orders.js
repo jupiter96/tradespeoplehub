@@ -490,7 +490,75 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
           return res.status(500).json({ error: error.message || 'Failed to process card payment' });
         }
       } else if (paymentMethod === 'paypal') {
-        // PayPal payment: return approval URL for remainder amount
+        // PayPal payment: Create order first, then return approval URL
+        // Order will be in 'pending_payment' status until PayPal payment is captured
+        
+        // Process items for order creation
+        const processedItemsForPaypal = items.map((item, index) => {
+          const orderItem = {
+            serviceId: item.serviceId || item.id,
+            title: item.title,
+            seller: item.seller,
+            price: item.price,
+            image: item.image,
+            rating: item.rating,
+            quantity: item.quantity,
+            addons: item.addons || [],
+            packageType: item.packageType,
+          };
+          
+          if (item.booking && (item.booking.date || item.booking.starttime || item.booking.time)) {
+            orderItem.booking = {
+              date: item.booking.date,
+              starttime: item.booking.starttime || item.booking.time || '',
+              endtime: item.booking.endtime || item.booking.endTime || item.booking.starttime || item.booking.time || '',
+              timeSlot: item.booking.timeSlot || undefined,
+            };
+          }
+          
+          return orderItem;
+        });
+
+        // Create order with pending_payment status
+        const paypalOrder = new Order({
+          orderNumber,
+          client: user._id,
+          professional: professionalId,
+          items: processedItemsForPaypal,
+          address: address ? {
+            postcode: address.postcode,
+            address: address.address,
+            city: address.city,
+            county: address.county,
+            phone: address.phone,
+          } : undefined,
+          skipAddress: skipAddress || false,
+          paymentMethod: 'paypal',
+          total,
+          subtotal,
+          discount,
+          promoCode: promoCodeData,
+          serviceFee: serviceFeeAmount,
+          status: 'Pending Payment',
+          deliveryStatus: 'pending',
+          paymentStatus: 'pending',
+          walletTransactionId,
+          metadata: {
+            createdAt: new Date(),
+            professionalPayoutAmount,
+            promoCodeType: promoCodeData?.type || null,
+            walletAmount,
+            remainderAmount,
+          },
+        });
+        
+        await paypalOrder.save();
+        
+        // Update wallet transaction with order ID
+        if (walletTransactionId) {
+          await Wallet.findByIdAndUpdate(walletTransactionId, { orderId: paypalOrder._id });
+        }
+
         try {
           const settings = await PaymentSettings.getSettings();
           const environment = getPayPalClient(settings);
@@ -523,10 +591,11 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
             },
           });
 
-          const order = await client.execute(request);
+          const paypalApiOrder = await client.execute(request);
 
-          if (order.statusCode !== 201) {
-            // Rollback wallet deduction if PayPal order creation fails
+          if (paypalApiOrder.statusCode !== 201) {
+            // Rollback: delete order and restore wallet
+            await Order.findByIdAndDelete(paypalOrder._id);
             if (walletAmount > 0) {
               user.walletBalance = (user.walletBalance || 0) + walletAmount;
               await user.save();
@@ -537,21 +606,28 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
             return res.status(400).json({ error: 'Failed to create PayPal order' });
           }
 
+          // Store PayPal order ID in our order
+          paypalOrder.paypalOrderId = paypalApiOrder.result.id;
+          await paypalOrder.save();
+
           // Return PayPal approval URL for client to redirect
-          const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
+          const approveUrl = paypalApiOrder.result.links.find(link => link.rel === 'approve')?.href;
 
           return res.json({
             orderId: orderNumber,
-            paypalOrderId: order.result.id,
+            orderIds: [orderNumber],
+            paypalOrderId: paypalApiOrder.result.id,
             approveUrl,
             requiresApproval: true,
             walletAmount,
             remainderAmount,
+            newBalance,
             walletTransactionId: walletTransactionId?.toString(),
             message: 'Please approve PayPal payment to complete order',
           });
         } catch (error) {
-          // Rollback wallet deduction if PayPal order creation fails
+          // Rollback: delete order and restore wallet
+          await Order.findByIdAndDelete(paypalOrder._id);
           if (walletAmount > 0) {
             user.walletBalance = (user.walletBalance || 0) + walletAmount;
             await user.save();
@@ -852,51 +928,242 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
           return res.status(500).json({ error: error.message || 'Failed to process card payment' });
         }
       } else if (paymentMethod === 'paypal') {
-        // For PayPal, return approval URL (similar to single order)
-        const environment = getPayPalClient(settings);
-        const client = new paypal.core.PayPalHttpClient(environment);
+        // For PayPal bulk orders, create orders first with pending status, then return approval URL
+        const Service = (await import('../models/Service.js')).default;
+        const createdPendingOrders = [];
+        const orderNumbers = [];
+        const bulkOrderId = `BULK-${Date.now()}`;
 
-        const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
-        const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
-        const paypalCommission = (remainderAmount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
-        const totalChargeAmount = remainderAmount + paypalCommission;
+        // Create all orders with pending payment status
+        for (const orderReq of orderRequests) {
+          const { item, booking, subtotal, discount = 0, additionalInformation: orderAdditionalInfo } = orderReq;
 
-        const request = new paypal.orders.OrdersCreateRequest();
-        request.prefer("return=representation");
-        request.requestBody({
-          intent: "CAPTURE",
-          purchase_units: [{
-            amount: {
-              currency_code: "GBP",
-              value: totalChargeAmount.toFixed(2),
+          // Find service and professional
+          const serviceId = item.serviceId || item.id;
+          let service = null;
+          let professionalId = null;
+
+          if (serviceId.match(/^[0-9a-fA-F]{24}$/)) {
+            service = await Service.findById(serviceId);
+          } else {
+            service = await Service.findOne({ slug: serviceId });
+          }
+
+          if (service) {
+            professionalId = service.professional;
+          } else if (item.seller) {
+            const professional = await User.findOne({ 
+              tradingName: item.seller,
+              role: 'professional'
+            });
+            if (professional) {
+              professionalId = professional._id;
+            }
+          }
+
+          if (!professionalId) {
+            console.error(`[Server] Could not find professional for service: ${serviceId}`);
+            continue;
+          }
+
+          const orderNumber = generateOrderNumber();
+          orderNumbers.push(orderNumber);
+
+          // Create order item with booking
+          const processedItem = {
+            serviceId: serviceId,
+            title: item.title,
+            seller: item.seller,
+            price: item.price,
+            image: item.image,
+            rating: item.rating,
+            quantity: item.quantity,
+            addons: item.addons || [],
+            packageType: item.packageType,
+          };
+
+          if (booking && booking.date) {
+            processedItem.booking = {
+              date: booking.date,
+              starttime: booking.starttime || booking.time || '',
+              endtime: booking.endtime || booking.endTime || booking.starttime || booking.time || '',
+              timeSlot: booking.timeSlot || '',
+            };
+          }
+
+          const orderTotal = subtotal - discount;
+
+          // Prepare additional information
+          const infoToUse = orderAdditionalInfo || additionalInformation;
+          let additionalInfo = undefined;
+          if (infoToUse && (infoToUse.message?.trim() || (infoToUse.files && infoToUse.files.length > 0))) {
+            const additionalFiles = [];
+            if (infoToUse.files && Array.isArray(infoToUse.files)) {
+              for (const file of infoToUse.files) {
+                let fileType = file.fileType;
+                if (!fileType || !['image', 'video', 'document'].includes(fileType)) {
+                  if (file.url && (file.url.includes('.jpg') || file.url.includes('.jpeg') || file.url.includes('.png') || file.url.includes('.gif') || file.url.includes('.webp'))) {
+                    fileType = 'image';
+                  } else if (file.url && (file.url.includes('.mp4') || file.url.includes('.webm') || file.url.includes('.mov') || file.url.includes('.avi'))) {
+                    fileType = 'video';
+                  } else {
+                    fileType = 'document';
+                  }
+                }
+                additionalFiles.push({
+                  url: file.url,
+                  fileName: file.fileName,
+                  fileType: fileType,
+                  uploadedAt: new Date(),
+                });
+              }
+            }
+            additionalInfo = {
+              message: infoToUse.message?.trim() || '',
+              files: additionalFiles,
+              submittedAt: new Date(),
+            };
+          }
+
+          const pendingOrder = new Order({
+            orderNumber,
+            client: user._id,
+            professional: professionalId,
+            items: [processedItem],
+            address: address ? {
+              postcode: address.postcode,
+              address: address.address,
+              city: address.city,
+              county: address.county,
+              phone: address.phone,
+            } : undefined,
+            skipAddress: skipAddress || false,
+            paymentMethod: 'paypal',
+            total: orderTotal,
+            subtotal,
+            discount,
+            serviceFee: 0,
+            status: 'Pending Payment',
+            deliveryStatus: 'pending',
+            paymentStatus: 'pending',
+            walletTransactionId,
+            additionalInformation: additionalInfo,
+            metadata: {
+              createdAt: new Date(),
+              bulkOrderId,
+              professionalPayoutAmount: subtotal - discount,
+              walletAmount,
+              remainderAmount,
             },
-            description: `Bulk Order Payment (${orderRequests.length} orders) - Remainder: £${remainderAmount.toFixed(2)}${walletAmount > 0 ? `, Wallet: £${walletAmount.toFixed(2)}` : ''}`,
-          }],
-          application_context: {
-            return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
-            cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
-            brand_name: "Sortars UK",
-            locale: "en-GB",
-          },
-        });
+          });
 
-        const order = await client.execute(request);
-        const approveUrl = order.result.links.find(link => link.rel === 'approve')?.href;
+          await pendingOrder.save();
+          
+          // Update wallet transaction with order ID (for first order)
+          if (walletTransactionId && createdPendingOrders.length === 0) {
+            await Wallet.findByIdAndUpdate(walletTransactionId, { orderId: pendingOrder._id });
+          }
+          
+          createdPendingOrders.push(pendingOrder);
+        }
 
-        return res.json({
-          paypalOrderId: order.result.id,
-          approveUrl,
-          requiresApproval: true,
-          orderRequests, // Return order requests for later processing
-          walletAmount,
-          remainderAmount,
-          walletTransactionId: walletTransactionId?.toString(),
-          message: 'Please approve PayPal payment to complete orders',
-        });
+        if (createdPendingOrders.length === 0) {
+          // Rollback wallet if no orders created
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await Wallet.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          return res.status(400).json({ error: 'Failed to create any orders' });
+        }
+
+        // Now create PayPal order
+        try {
+          const environment = getPayPalClient(settings);
+          const client = new paypal.core.PayPalHttpClient(environment);
+
+          const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
+          const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
+          const paypalCommission = (remainderAmount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+          const totalChargeAmount = remainderAmount + paypalCommission;
+
+          const request = new paypal.orders.OrdersCreateRequest();
+          request.prefer("return=representation");
+          request.requestBody({
+            intent: "CAPTURE",
+            purchase_units: [{
+              amount: {
+                currency_code: "GBP",
+                value: totalChargeAmount.toFixed(2),
+              },
+              description: `Bulk Order Payment (${createdPendingOrders.length} orders) - Remainder: £${remainderAmount.toFixed(2)}${walletAmount > 0 ? `, Wallet: £${walletAmount.toFixed(2)}` : ''}`,
+              custom_id: orderNumbers.join(','), // Store all order numbers for capture
+            }],
+            application_context: {
+              return_url: `${req.headers.origin || 'http://localhost:5000'}/thank-you`,
+              cancel_url: `${req.headers.origin || 'http://localhost:5000'}/cart`,
+              brand_name: "Sortars UK",
+              locale: "en-GB",
+            },
+          });
+
+          const paypalApiOrder = await client.execute(request);
+
+          if (paypalApiOrder.statusCode !== 201) {
+            // Rollback: delete orders and restore wallet
+            for (const order of createdPendingOrders) {
+              await Order.findByIdAndDelete(order._id);
+            }
+            if (walletAmount > 0) {
+              user.walletBalance = (user.walletBalance || 0) + walletAmount;
+              await user.save();
+              if (walletTransactionId) {
+                await Wallet.findByIdAndDelete(walletTransactionId);
+              }
+            }
+            return res.status(400).json({ error: 'Failed to create PayPal order' });
+          }
+
+          // Update all orders with PayPal order ID
+          for (const order of createdPendingOrders) {
+            order.paypalOrderId = paypalApiOrder.result.id;
+            await order.save();
+          }
+
+          const approveUrl = paypalApiOrder.result.links.find(link => link.rel === 'approve')?.href;
+
+          return res.json({
+            orderIds: orderNumbers,
+            paypalOrderId: paypalApiOrder.result.id,
+            approveUrl,
+            requiresApproval: true,
+            walletAmount,
+            remainderAmount,
+            newBalance,
+            walletTransactionId: walletTransactionId?.toString(),
+            message: 'Please approve PayPal payment to complete orders',
+          });
+        } catch (error) {
+          // Rollback: delete orders and restore wallet
+          for (const order of createdPendingOrders) {
+            await Order.findByIdAndDelete(order._id);
+          }
+          if (walletAmount > 0) {
+            user.walletBalance = (user.walletBalance || 0) + walletAmount;
+            await user.save();
+            if (walletTransactionId) {
+              await Wallet.findByIdAndDelete(walletTransactionId);
+            }
+          }
+          console.error('[Server] PayPal order creation error:', error);
+          return res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
+        }
       }
     }
 
-    // Create orders
+    // Create orders (for non-PayPal payments)
     const Service = (await import('../models/Service.js')).default;
     const createdOrders = [];
 
@@ -1058,44 +1325,104 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
   try {
     const { paypalOrderId, orderNumber } = req.body;
 
-    if (!paypalOrderId || !orderNumber) {
-      return res.status(400).json({ error: 'PayPal order ID and order number are required' });
+    if (!paypalOrderId) {
+      return res.status(400).json({ error: 'PayPal order ID is required' });
     }
 
-    // Find order
-    const order = await Order.findOne({ orderNumber });
-    if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
-    }
-
-    // Verify order belongs to user
-    if (order.client.toString() !== req.user.id.toString()) {
-      return res.status(403).json({ error: 'You can only capture payments for your own orders' });
-    }
-
-    // Get settings
+    // Get settings first to set up PayPal client
     const settings = await PaymentSettings.getSettings();
     const environment = getPayPalClient(settings);
     const client = new paypal.core.PayPalHttpClient(environment);
 
-    // Capture PayPal payment
-    const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
-    request.requestBody({});
+    // First, find orders by PayPal order ID (stored during order creation)
+    let orders = await Order.find({ 
+      paypalOrderId: paypalOrderId,
+      client: req.user.id
+    });
 
-    const capture = await client.execute(request);
+    // If not found by paypalOrderId, try to get from custom_id after capture
+    if (orders.length === 0) {
+      // We need to capture first to get the custom_id
+      const captureRequest = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+      captureRequest.requestBody({});
+
+      const capture = await client.execute(captureRequest);
+
+      if (capture.statusCode !== 201) {
+        return res.status(400).json({ error: 'Failed to capture PayPal payment' });
+      }
+
+      const customId = capture.result.purchase_units[0].custom_id;
+      const extractedOrderNumber = orderNumber || customId;
+
+      if (!extractedOrderNumber) {
+        return res.status(400).json({ error: 'Could not determine order number from PayPal payment' });
+      }
+
+      // Find order(s) - could be single order or multiple orders (comma-separated)
+      const orderNumbers = extractedOrderNumber.includes(',') 
+        ? extractedOrderNumber.split(',').map(n => n.trim())
+        : [extractedOrderNumber];
+      
+      orders = await Order.find({ 
+        orderNumber: { $in: orderNumbers },
+        client: req.user.id
+      });
+
+      if (orders.length === 0) {
+        return res.status(404).json({ error: 'Order(s) not found' });
+      }
+
+      const captureId = capture.result.purchase_units[0].payments.captures[0].id;
+
+      // Get user
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Update all orders - activate them since payment is complete
+      for (const order of orders) {
+        order.status = 'In Progress';
+        order.deliveryStatus = 'active';
+        order.paymentStatus = 'completed';
+        order.paypalCaptureId = captureId;
+        await order.save();
+      }
+
+      return res.json({
+        orderId: orderNumbers[0],
+        orderIds: orderNumbers,
+        newBalance: user.walletBalance || 0,
+        message: 'PayPal payment captured and order(s) completed',
+      });
+    }
+
+    // Orders found by paypalOrderId - capture and update
+    // Check if already captured (to prevent double capture)
+    const firstOrder = orders[0];
+    if (firstOrder.paymentStatus === 'completed') {
+      // Already captured, just return success
+      const user = await User.findById(req.user.id);
+      return res.json({
+        orderId: firstOrder.orderNumber,
+        orderIds: orders.map(o => o.orderNumber),
+        newBalance: user?.walletBalance || 0,
+        message: 'Payment already captured',
+      });
+    }
+
+    // Capture PayPal payment
+    const captureRequest = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    captureRequest.requestBody({});
+
+    const capture = await client.execute(captureRequest);
 
     if (capture.statusCode !== 201) {
       return res.status(400).json({ error: 'Failed to capture PayPal payment' });
     }
 
     const captureId = capture.result.purchase_units[0].payments.captures[0].id;
-    const totalAmount = parseFloat(capture.result.purchase_units[0].payments.captures[0].amount.value);
-
-    // Calculate fees and actual deposit amount
-    const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
-    const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
-    const paypalCommission = (order.total * paypalCommissionPercentage / 100) + paypalCommissionFixed;
-    const depositAmount = order.total; // Amount to deposit to wallet
 
     // Get user
     const user = await User.findById(req.user.id);
@@ -1103,63 +1430,20 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Fund wallet with order amount (before deducting)
-    let newBalance = (user.walletBalance || 0) + depositAmount;
-    user.walletBalance = newBalance;
-    await user.save();
-
-    // Create deposit transaction
-    const depositTransaction = new Wallet({
-      userId: user._id,
-      type: 'deposit',
-      amount: depositAmount,
-      balance: newBalance,
-      status: 'completed',
-      paymentMethod: 'paypal',
-      paypalOrderId: paypalOrderId,
-      paypalCaptureId: captureId,
-      description: `PayPal Deposit - Order ${order.orderNumber}`,
-      metadata: {
-        depositAmount,
-        fee: paypalCommission,
-        feePercentage: paypalCommissionPercentage,
-        feeFixed: paypalCommissionFixed,
-        orderNumber: order.orderNumber,
-      },
-    });
-    await depositTransaction.save();
-
-    // Deduct from wallet for order payment
-    newBalance = newBalance - order.total;
-    user.walletBalance = newBalance;
-    await user.save();
-
-    // Create payment transaction
-    const paymentTransaction = new Wallet({
-      userId: user._id,
-      type: 'payment',
-      amount: order.total,
-      balance: newBalance,
-      status: 'completed',
-      paymentMethod: 'wallet',
-      description: `Order Payment - ${order.orderNumber}`,
-      orderId: order._id,
-      metadata: {
-        orderNumber: order.orderNumber,
-        depositTransactionId: depositTransaction._id.toString(),
-      },
-    });
-    await paymentTransaction.save();
-
-    // Update order
-    order.walletTransactionId = depositTransaction._id;
-    order.paymentTransactionId = paymentTransaction._id;
-    await order.save();
+    // Update all orders - activate them since payment is complete
+    for (const order of orders) {
+      order.status = 'In Progress';
+      order.deliveryStatus = 'active';
+      order.paymentStatus = 'completed';
+      order.paypalCaptureId = captureId;
+      await order.save();
+    }
 
     return res.json({
-      orderId: order.orderNumber,
-      newBalance,
-      message: 'PayPal payment captured and order completed',
+      orderId: orders[0].orderNumber,
+      orderIds: orders.map(o => o.orderNumber),
+      newBalance: user.walletBalance || 0,
+      message: 'PayPal payment captured and order(s) completed',
     });
   } catch (error) {
     console.error('PayPal capture error:', error);

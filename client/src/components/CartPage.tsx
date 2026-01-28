@@ -348,6 +348,48 @@ export default function CartPage() {
   }}>({});
   const [showTimeSection, setShowTimeSection] = useState(false);
   
+  // Initialize time slots from cart items that already have booking info
+  useEffect(() => {
+    const slotsToSet: {[itemId: string]: {
+      date?: Date;
+      time?: string;
+      endTime?: string;
+      timeSlot?: string;
+      showTimePicker?: boolean;
+    }} = {};
+    
+    let hasBookingData = false;
+    
+    cartItems.forEach(item => {
+      // Skip if already set in itemTimeSlots
+      if (itemTimeSlots[item.id]?.date) return;
+      
+      // Check if cart item has booking info
+      if (item.booking && item.booking.date) {
+        hasBookingData = true;
+        slotsToSet[item.id] = {
+          date: new Date(item.booking.date),
+          time: item.booking.starttime || '',
+          endTime: item.booking.endtime || '',
+          timeSlot: item.booking.timeSlot || '',
+          showTimePicker: false
+        };
+      }
+    });
+    
+    if (Object.keys(slotsToSet).length > 0) {
+      setItemTimeSlots(prev => ({
+        ...prev,
+        ...slotsToSet
+      }));
+      
+      // Open time section if we have booking data
+      if (hasBookingData) {
+        setShowTimeSection(true);
+      }
+    }
+  }, [cartItems]);
+  
   // Check for pre-selected time slot from navigation state
   useEffect(() => {
     const preSelectTimeSlot = (location.state as any)?.preSelectTimeSlot;
@@ -1681,8 +1723,8 @@ export default function CartPage() {
         await refreshOrders();
       }
       
-      // Clear cart
-      clearCart();
+      // Clear cart (await to ensure it completes before navigation)
+      await clearCart();
       
       // Navigate to thank you page with all order IDs
       const orderIds = result.orderIds?.join(',') || '';
@@ -2073,70 +2115,77 @@ export default function CartPage() {
                           </div>
                         ) : addresses.length === 0 ? (
                           <div className="text-center py-6">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                              <MapPin className="w-6 h-6 text-gray-400" />
+                            </div>
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                              No addresses saved. Please add an address using the button above.
+                              No addresses saved yet.
                             </p>
+                            <Button
+                              onClick={() => {
+                                setEditingAddressId(null);
+                                setNewAddress({
+                                  postcode: "",
+                                  address: "",
+                                  city: "",
+                                  county: "",
+                                  phone: ""
+                                });
+                                setShowAddressDialog(true);
+                              }}
+                              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add New Address
+                            </Button>
                           </div>
                         ) : (
                           <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
                             {addresses.map((address) => (
-                            <div key={address.id} className="mb-3 md:mb-4">
+                            <div key={address.id} className="mb-2 md:mb-3">
                               <div className={`relative border-2 rounded-lg md:rounded-xl p-3 md:p-4 transition-all ${
                                 selectedAddress === address.id 
                                   ? "border-[#FE8A0F] bg-[#FFF5EB]" 
                                   : "border-gray-200 hover:border-gray-300"
                               }`}>
-                                <div className="flex items-start gap-2 md:gap-3">
-                                  <RadioGroupItem value={address.id} id={address.id} className="mt-0.5 shrink-0" />
+                                <div className="flex items-center gap-2 md:gap-3">
+                                  <RadioGroupItem value={address.id} id={address.id} className="shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <Label htmlFor={address.id} className="cursor-pointer">
-                                      <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-                                        <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#FE8A0F] shrink-0" />
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {/* Address on one line */}
+                                        <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] font-medium">
+                                          {address.address}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                        <MapPin className="w-3.5 h-3.5 text-[#FE8A0F] shrink-0" />
                                         {address.isDefault && (
-                                          <Badge className="bg-[#10B981] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
+                                          <Badge className="bg-[#FE8A0F] text-white text-[9px] md:text-[10px] px-1.5 py-0">Default</Badge>
                                         )}
+                                        <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b]">
+                                          {address.city}{address.county && `, ${address.county}`}
+                                        </span>
                                       </div>
-                                      {/* Mobile: Show minimal info */}
-                                      <div className="md:hidden">
-                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium truncate">
-                                          {address.address}
-                                        </p>
-                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] truncate">
-                                          {address.city}
-                                        </p>
-                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                                          {address.postcode}
-                                        </p>
-                                      </div>
-                                      {/* Desktop: Show full info */}
-                                      <div className="hidden md:block">
-                                        <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-1">
-                                          {address.address}
-                                        </p>
-                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                                          {address.city}
-                                          {address.county && `, ${address.county}`}
-                                        </p>
-                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                                          {address.postcode}
-                                        </p>
-                                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mt-1">
-                                          Phone: {address.phone}
-                                        </p>
-                                      </div>
+                                      <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mt-0.5 ml-5">
+                                        {address.postcode}
+                                      </p>
+                                      <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] ml-5">
+                                        Phone: {address.phone}
+                                      </p>
                                     </Label>
                                   </div>
-                                  <div className="flex items-center gap-2 shrink-0">
+                                  <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
                                     {selectedAddress === address.id && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleOpenChangeAddress(address.id);
                                         }}
-                                        className="px-3 py-1.5 md:px-4 md:py-2 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex items-center gap-1.5 md:gap-2 shadow-md hover:shadow-lg font-['Poppins',sans-serif] text-[12px] md:text-[13px]"
+                                        className="px-2.5 py-1.5 md:px-3 md:py-1.5 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-lg transition-colors flex items-center gap-1 md:gap-1.5 shadow-sm hover:shadow-md font-['Poppins',sans-serif] text-[11px] md:text-[12px]"
                                       >
-                                        <Edit2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                                        <span className="hidden md:inline">Change</span>
+                                        <Edit2 className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                                        <span>Change</span>
                                       </button>
                                     )}
                                     {!address.isDefault && (
@@ -2145,9 +2194,9 @@ export default function CartPage() {
                                           e.stopPropagation();
                                           handleRemoveAddress(address.id);
                                         }}
-                                        className="p-1.5 md:p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                                       >
-                                        <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4 text-red-500" />
+                                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
                                       </button>
                                     )}
                                   </div>
@@ -2669,25 +2718,6 @@ export default function CartPage() {
                             )}
 
                             {/* Booking Information - Minimalist */}
-                            {item.booking && (
-                              <div className="bg-blue-50/70 border border-blue-200 rounded-md md:rounded-lg p-2 mb-2">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <Calendar className="w-3 h-3 text-[#3B82F6]" />
-                                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#3B82F6] font-medium">
-                                    Appointment Scheduled
-                                  </p>
-                                </div>
-                                <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#2c353f]">
-                                  {new Date(item.booking.date).toLocaleDateString('en-GB', { 
-                                    weekday: 'short',
-                                    month: 'short', 
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  })} • {item.booking.starttime || item.booking.time || ''}{item.booking.endtime && item.booking.endtime !== item.booking.starttime ? ` - ${item.booking.endtime}` : (item.booking.endTime ? ` - ${item.booking.endTime}` : '')}
-                                </p>
-                              </div>
-                            )}
-
                             {/* Quantity and Price - Mobile Optimized */}
                             <div className="flex items-center justify-between mt-2">
                               <div className="flex items-center gap-1.5 md:gap-2">
@@ -2841,7 +2871,7 @@ export default function CartPage() {
                                         day: 'numeric',
                                         month: 'short',
                                         year: 'numeric'
-                                      })} • {item.booking.starttime || item.booking.time || ''}{item.booking.endtime && item.booking.endtime !== item.booking.starttime ? ` - ${item.booking.endtime}` : (item.booking.endTime ? ` - ${item.booking.endTime}` : '')}
+                                      })} • {item.booking.starttime || ''}{item.booking.endtime && item.booking.endtime !== item.booking.starttime ? ` - ${item.booking.endtime}` : ''}
                                     </>
                                   ) : itemTimeSlots[item.id]?.date ? (
                                     <>

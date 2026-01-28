@@ -61,14 +61,15 @@ export default function ProfessionalOrderDetailsTab({
                 {(order as any).scheduledDate ? formatDate((order as any).scheduledDate) : "10-12-2025"}
               </td>
             </tr>
-            {(order.booking?.date || order.booking?.time) && (
+            {(order.booking?.date || order.booking?.starttime) && (
               <tr className="border-t border-gray-200">
                 <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                   Delivery Date & Time
                 </td>
                 <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                   {order.booking?.date ? formatDate(order.booking.date) : "TBD"}
-                  {order.booking?.time && ` at ${order.booking.time}`}
+                  {order.booking?.starttime && ` at ${order.booking.starttime}`}
+                  {order.booking?.endtime && order.booking.endtime !== order.booking.starttime && ` - ${order.booking.endtime}`}
                   {order.booking?.timeSlot && ` (${order.booking.timeSlot})`}
                 </td>
               </tr>

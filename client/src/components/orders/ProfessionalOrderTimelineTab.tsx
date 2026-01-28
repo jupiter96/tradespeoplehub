@@ -352,7 +352,7 @@ export default function ProfessionalOrderTimelineTab({
           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
             Expected delivery: <span className="text-orange-600 font-medium">
               {currentOrder.booking?.date 
-                ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.time || currentOrder.booking?.timeSlot || ''}`
+                ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}`
                 : currentOrder.scheduledDate 
                   ? formatDate(currentOrder.scheduledDate) 
                   : "TBD"}
