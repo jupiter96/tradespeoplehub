@@ -72,14 +72,20 @@ export default function PaymentMethodModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[card-add][step 1] submit clicked");
     
     if (!stripe || !cardElement) {
+      console.log("[card-add][step 1.1] stripe or cardElement missing", {
+        hasStripe: Boolean(stripe),
+        hasCardElement: Boolean(cardElement),
+      });
       toast.error("Payment form not ready");
       return;
     }
 
     setLoading(true);
     try {
+      console.log("[card-add][step 2] create setup intent request");
       // Create setup intent on backend
       const response = await fetch(`${API_BASE_URL}/api/payment-methods/create-setup-intent`, {
         method: "POST",
@@ -90,12 +96,15 @@ export default function PaymentMethodModal({
       });
 
       const data = await response.json();
-      console.log("[create-setup-intent] status:", response.status);
-      console.log("[create-setup-intent] response:", data);
+      console.log("[card-add][step 2.1] create-setup-intent response", {
+        status: response.status,
+        data,
+      });
       if (!response.ok) {
         throw new Error(data.error || "Failed to create setup intent");
       }
 
+      console.log("[card-add][step 3] confirm card setup");
       // Confirm setup intent with card
       const { error: confirmError, setupIntent: confirmedIntent } = await stripe.confirmCardSetup(
         data.clientSecret,
@@ -107,9 +116,13 @@ export default function PaymentMethodModal({
       );
 
       if (confirmError) {
+        console.log("[card-add][step 3.1] confirm error", confirmError);
         throw new Error(confirmError.message);
       }
 
+      console.log("[card-add][step 4] save payment method", {
+        paymentMethodId: confirmedIntent?.payment_method,
+      });
       // Save payment method to user account
       const saveResponse = await fetch(`${API_BASE_URL}/api/payment-methods/setup`, {
         method: "POST",
@@ -123,6 +136,10 @@ export default function PaymentMethodModal({
       });
 
       const saveData = await saveResponse.json();
+      console.log("[card-add][step 4.1] save response", {
+        status: saveResponse.status,
+        data: saveData,
+      });
       if (!saveResponse.ok) {
         throw new Error(saveData.error || "Failed to save payment method");
       }
@@ -131,9 +148,11 @@ export default function PaymentMethodModal({
       onSuccess();
       onClose();
     } catch (error: any) {
+      console.log("[card-add][error]", error);
       toast.error(error.message || "Failed to add payment method");
     } finally {
       setLoading(false);
+      console.log("[card-add][step 5] done");
     }
   };
 

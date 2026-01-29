@@ -9,10 +9,17 @@ import paypal from '@paypal/checkout-server-sdk';
 
 const router = express.Router();
 
+// Helper function to resolve Stripe environment (supports legacy flags)
+function getStripeEnvironment(settings) {
+  if (settings?.stripeLiveMode === true) {
+    return 'live';
+  }
+  return settings.stripeEnvironment || settings.environment || 'test';
+}
+
 // Helper function to get Stripe keys based on environment
 function getStripeKeys(settings) {
-  const environment = settings.stripeEnvironment || settings.environment || 'test';
-  
+  const environment = getStripeEnvironment(settings);
   
   let keys;
   if (environment === 'live') {
@@ -28,8 +35,6 @@ function getStripeKeys(settings) {
       webhookSecret: settings.stripeTestWebhookSecret || settings.stripeWebhookSecret || null,
     };
   }
-  
-  // Log key presence and full keys (for debugging)
   
   return keys;
 }
@@ -69,7 +74,7 @@ router.get('/payment/publishable-key', authenticateToken, async (req, res) => {
     
     const paypalKeys = getPayPalKeys(settings);
     
-    const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
+    const stripeEnvironment = getStripeEnvironment(settings);
     
     // Debug logs (can be removed in production)
     
@@ -177,7 +182,7 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
     const settings = await PaymentSettings.getSettings();
     
     const stripeKeys = getStripeKeys(settings);
-    const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
+    const stripeEnvironment = getStripeEnvironment(settings);
     console.log('[create-setup-intent] settings', {
       stripeEnvironment,
       isActive: Boolean(settings.isActive),
@@ -219,6 +224,9 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
       customerId = customer.id;
       user.stripeCustomerId = customerId;
       await user.save();
+      console.log('[create-setup-intent] customer created', {
+        customerId,
+      });
     }
     
     // Create setup intent
@@ -228,6 +236,9 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       payment_method_types: ['card'],
+    });
+    console.log('[create-setup-intent] setup intent created', {
+      setupIntentId: setupIntent.id,
     });
     
     res.json({
@@ -299,6 +310,10 @@ router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
   
   try {
     const { paymentMethodId } = req.body;
+    console.log('[payment-methods/setup] request', {
+      userId: req.user?.id,
+      hasPaymentMethodId: Boolean(paymentMethodId),
+    });
     
     if (!paymentMethodId) {
       return res.status(400).json({ error: 'Payment method ID is required' });
@@ -322,6 +337,7 @@ router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
     // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
     if (!customerId) {
+      console.log('[payment-methods/setup] creating stripe customer');
       const customer = await stripe.customers.create({
         email: user.email,
         name: `${user.firstName} ${user.lastName}`,
@@ -331,14 +347,22 @@ router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
       });
       customerId = customer.id;
       user.stripeCustomerId = customerId;
+      console.log('[payment-methods/setup] customer created', {
+        customerId,
+      });
     }
     
     // Attach payment method to customer
+    console.log('[payment-methods/setup] attaching payment method', {
+      paymentMethodId,
+      customerId,
+    });
     await stripe.paymentMethods.attach(paymentMethodId, {
       customer: customerId,
     });
     
     // Get payment method details
+    console.log('[payment-methods/setup] retrieving payment method');
     const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
     
     // Save payment method to user
@@ -360,12 +384,22 @@ router.post('/payment-methods/setup', authenticateToken, async (req, res) => {
     }
     user.paymentMethods.push(cardInfo);
     await user.save();
+    console.log('[payment-methods/setup] saved payment method', {
+      userId: req.user?.id,
+      paymentMethodId: cardInfo.paymentMethodId,
+    });
     
     res.json({ 
       message: 'Payment method saved successfully',
       paymentMethod: cardInfo,
     });
   } catch (error) {
+    console.error('[payment-methods/setup] error', {
+      message: error?.message,
+      type: error?.type,
+      code: error?.code,
+      stack: error?.stack,
+    });
     res.status(500).json({ error: error.message || 'Failed to setup payment method' });
   }
 });
