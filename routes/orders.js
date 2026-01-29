@@ -2228,14 +2228,16 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if order is in progress (status 'In Progress' or deliveryStatus 'active')
+    // Check if order is in progress or revision (status 'In Progress', 'Revision' or deliveryStatus 'active', 'revision')
     const isInProgress = order.status === 'In Progress' || 
-                         order.status === 'in_progress' || 
+                         order.status === 'in_progress' ||
+                         order.status === 'Revision' ||
                          order.deliveryStatus === 'active' ||
+                         order.deliveryStatus === 'revision' ||
                          (order.acceptedByProfessional && order.status !== 'Completed' && order.status !== 'Cancelled');
     
     if (!isInProgress) {
-      // Clean up uploaded files if order is not in progress
+      // Clean up uploaded files if order is not in progress or revision
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => {
           if (file.path) {
@@ -2243,7 +2245,7 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
           }
         });
       }
-      return res.status(400).json({ error: 'Order must be in progress before marking as delivered' });
+      return res.status(400).json({ error: 'Order must be in progress or revision before marking as delivered' });
     }
 
     // Mark order as delivered
@@ -2478,9 +2480,9 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     
     order.revisionRequest.push(newRevisionRequest);
 
-    // Update order status - when revision is requested, move order back to "In Progress"
-    order.status = 'In Progress';
-    order.deliveryStatus = 'active';
+    // Update order status - when revision is requested, change status to "Revision"
+    order.status = 'Revision';
+    order.deliveryStatus = 'revision';
 
     await order.save();
 

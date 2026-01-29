@@ -649,6 +649,9 @@ export default function ClientOrdersSection() {
           description: order.extensionRequest.status === "approved"
             ? "Your extension request was approved."
             : "Your extension request was rejected.",
+          message: order.extensionRequest.status === "rejected"
+            ? "Your extension request has been rejected. Please deliver the work by the original deadline."
+            : undefined,
           colorClass:
             order.extensionRequest.status === "approved"
               ? "bg-green-600"
@@ -1899,7 +1902,7 @@ export default function ClientOrdersSection() {
             )}
 
             {/* Status Alert Box - Service In Progress, Under Revision, or Extension Request */}
-            {currentOrder.status === "In Progress" && (() => {
+            {currentOrder.status === "Revision" && (() => {
               // Check if there's a pending extension request
               if (currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending') {
                 return (
@@ -1923,7 +1926,7 @@ export default function ClientOrdersSection() {
               const revisionRequests = currentOrder.revisionRequest
                 ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
                 : [];
-              const hasActiveRevision = revisionRequests.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+              const hasActiveRevision = revisionRequests.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress' || rr.status === 'Revision'));
 
               if (hasActiveRevision) {
                 // Show "Under Revision" message
@@ -1979,32 +1982,18 @@ export default function ClientOrdersSection() {
                     })() : "Your work has been delivered. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
                   </p>
 
-                {/* Extension Request Status (approved/rejected) - Only show if order is in progress */}
+                {/* Extension Request Status (approved only) - Only show if order is in progress */}
                 {currentOrder.extensionRequest && 
-                 currentOrder.extensionRequest.status !== 'pending' && 
-                 currentOrder.status === 'In Progress' && 
-                 (currentOrder.extensionRequest.status === 'approved' || currentOrder.extensionRequest.status === 'rejected') && (
-                  <div className={`mb-4 p-4 rounded-lg border ${
-                    currentOrder.extensionRequest.status === 'approved' 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-red-50 border-red-200'
-                  }`}>
+                 currentOrder.extensionRequest.status === 'approved' && 
+                 currentOrder.status === 'In Progress' && (
+                  <div className="mb-4 p-4 rounded-lg border bg-green-50 border-green-200">
                     <div className="flex items-center gap-2 mb-2">
-                      {currentOrder.extensionRequest.status === 'approved' && (
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      )}
-                      {currentOrder.extensionRequest.status === 'rejected' && (
-                        <XCircle className="w-5 h-5 text-red-600" />
-                      )}
-                      <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium ${
-                        currentOrder.extensionRequest.status === 'approved' 
-                          ? 'text-green-700' 
-                          : 'text-red-700'
-                      }`}>
-                        Extension Request {currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
+                        Extension Request Approved
                       </h5>
                     </div>
-                    {currentOrder.extensionRequest.status === 'approved' && currentOrder.extensionRequest.newDeliveryDate && (
+                    {currentOrder.extensionRequest.newDeliveryDate && (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                         New delivery date & time:{" "}
                         {(() => {
@@ -4801,7 +4790,6 @@ export default function ClientOrdersSection() {
                 variant="outline"
                 onClick={() => {
                   closeAllModals();
-                  setSelectedOrder(null);
                   setRevisionReason("");
                   setRevisionMessage("");
                   setRevisionFiles([]);
@@ -6020,7 +6008,6 @@ export default function ClientOrdersSection() {
               variant="outline"
               onClick={() => {
                 closeAllModals();
-                setSelectedOrder(null);
                 setRevisionReason("");
                 setRevisionMessage("");
                 setRevisionFiles([]);

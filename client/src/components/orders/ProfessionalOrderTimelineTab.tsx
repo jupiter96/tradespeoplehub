@@ -130,9 +130,9 @@ export default function ProfessionalOrderTimelineTab({
     const timeDiff = deliveryDateTime.getTime() - now.getTime();
     const hoursUntilDelivery = timeDiff / (1000 * 60 * 60);
 
-    // Show button only if 1 day (24 hours) or less remaining until delivery
-    // This includes when delivery time has passed but work hasn't been submitted yet
-    return hoursUntilDelivery <= 24;
+    // Show button only if between 24 hours before delivery and delivery start time
+    // Don't show if delivery time has already passed
+    return hoursUntilDelivery <= 24 && hoursUntilDelivery >= 0;
   };
 
   const handleRespondToCancellation = async (action: 'approve' | 'reject') => {
@@ -337,13 +337,9 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
-      {/* Service In Progress - Only show if no pending cancellation request from client and status is not delivered */}
-      {(currentOrder.deliveryStatus === "active" || workElapsedTime.started) &&
-        currentOrder.status !== "Cancelled" &&
-        currentOrder.status !== "Cancellation Pending" &&
-        currentOrder.status !== "Completed" &&
-        currentOrder.status !== "disputed" &&
-        currentOrder.status !== "delivered" &&
+      {/* Service In Progress - Only show if status is In Progress and not under revision */}
+      {currentOrder.status === "In Progress" &&
+        (currentOrder.deliveryStatus === "active" || workElapsedTime.started) &&
         currentOrder.deliveryStatus !== "delivered" &&
         currentOrder.deliveryStatus !== "pending" &&
         !(currentOrder.cancellationRequest && 
@@ -405,22 +401,6 @@ export default function ProfessionalOrderTimelineTab({
             </div>
           )}
 
-          {/* Extension Request Rejected Status */}
-          {currentOrder.extensionRequest && 
-           currentOrder.extensionRequest.status === 'rejected' && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <XCircle className="w-5 h-5 text-red-600" />
-                <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-red-700">
-                  Extension Request Rejected
-                </h5>
-              </div>
-              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                Your extension request has been rejected. Please deliver the work by the original deadline.
-              </p>
-            </div>
-          )}
-
           {currentOrder.deliveryStatus !== "delivered" && (
             <div className="flex gap-3 flex-wrap">
               {/* Deliver Work Button */}
@@ -461,8 +441,51 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
+      {/* Revision Status Alert */}
+      {currentOrder.status === "Revision" && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 shadow-md">
+          <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+            Your order is now under revision.
+          </h4>
+          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+            {currentOrder.client || "The client"} has requested changes or updates to the order you delivered. Please redeliver the order once the revisions are complete.
+          </p>
+          <Button
+            onClick={() => {
+              onOpenModal('delivery');
+              onSetDeliveryMessage("");
+              onSetDeliveryFiles([]);
+            }}
+            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+          >
+            <Truck className="w-4 h-4 mr-2" />
+            Re-Deliver Work
+          </Button>
+        </div>
+      )}
+
       {timelineTimer}
 
+      {/* Order Completed Status Alert */}
+      {currentOrder.status === "Completed" && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md">
+          <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
+            Order Completed Successfully!
+          </h4>
+          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+            This order has been completed successfully. {currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}
+          </p>
+          {currentOrder.rating && (
+            <Button
+              onClick={() => onOpenModal('professionalReview')}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              View Review
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Disputed Status Alert */}
       {currentOrder.status === "disputed" && (
