@@ -160,6 +160,8 @@ export default function ProfessionalOrderTimelineTab({
 
   return (
     <div className="space-y-4 md:space-y-6 px-4 md:px-6">
+      {/* STATUS MESSAGE CARDS - Display above timeline (No action buttons) */}
+      
       {/* Order Cancellation Initiated – Professional sent cancel request (pending) or already cancelled */}
       {(() => {
         const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
@@ -174,21 +176,32 @@ export default function ProfessionalOrderTimelineTab({
               <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
                 {isCancelled ? "Order Cancelled" : "Cancellation Request Initiated"}
               </h3>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                 {isCancelled
                   ? `You have initiated the cancellation of this order. The order has been cancelled.${cr?.reason ? ` Reason: ${cr.reason}` : ''}`
-                  : `You have initiated the cancellation of this order. ${(currentOrder as any).client ? `Please wait for ${(currentOrder as any).client} to respond.` : 'Please wait for the client to respond.'}${cr?.responseDeadline ? ' If they fail to respond before the deadline, the order will be automatically canceled.' : ''}`}
+                  : `You have initiated the cancellation of this order. ${(currentOrder as any).client ? `Please wait for ${(currentOrder as any).client} to respond.` : 'Please wait for the client to respond.'} If they fail to respond before the deadline, the order will be automatically canceled in your favor.`}
               </p>
-              {!isCancelled && isPending && (
-                <Button
-                  onClick={() => onOpenModal('withdrawCancellation')}
-                  variant="outline"
-                  className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[13px] sm:text-[14px]"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Withdraw Request
-                </Button>
-              )}
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Order Cancellation Initiated by Client – Show when client sent cancel request */}
+      {(() => {
+        const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+        const isClientRequest = cr?.requestedBy && cr.requestedBy.toString() !== userInfo?.id?.toString();
+        const isPending = cr?.status === "pending";
+        
+        if (isPending && isClientRequest) {
+          return (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 shadow-md mb-6">
+              <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+                Order Cancellation Initiated
+              </h3>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                {(currentOrder as any).client || "The client"} has initiated the cancellation of the order. Please respond to the request, as failure to do so before the deadline will result in the automatic cancellation of the order.
+              </p>
             </div>
           );
         }
@@ -212,123 +225,6 @@ export default function ProfessionalOrderTimelineTab({
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                 Your order has been successfully cancelled, and the payment has been debited.
               </p>
-            </div>
-          );
-        }
-        return null;
-      })()}
-
-      {/* Completion Message for Completed Orders */}
-      {currentOrder.status === "Completed" && (
-        <div className="bg-white rounded-lg p-6 shadow-md">
-          <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
-            Your order has been completed!
-          </h3>
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-            Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.
-          </p>
-          <Button
-            onClick={() => {
-              onOpenModal('professionalReview');
-              onSetBuyerRating(0);
-              onSetBuyerReview("");
-            }}
-            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
-          >
-            View review
-          </Button>
-        </div>
-      )}
-
-      {/* Cancellation Request - Pending (Professional can respond) - Show at top of page */}
-      {(() => {
-        const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
-        if (cr && 
-            cr.status === 'pending' && 
-            cr.requestedBy && 
-            cr.requestedBy.toString() !== userInfo?.id?.toString()) {
-          return (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6 shadow-md">
-              <div className="flex items-start gap-3 mb-4">
-                <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-                    Cancellation Request Received
-                  </h4>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
-                    {(currentOrder as any).client || "The client"} has requested to cancel this order.
-                  </p>
-                  {cr.reason && (
-                    <div className="mb-3 p-3 bg-white rounded">
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                        Reason:
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                        {cr.reason}
-                      </p>
-                    </div>
-                  )}
-                  {(cr.files || []).length > 0 && (
-                    <div className="mb-3">
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({cr.files.length})</p>
-                      <div className="flex flex-wrap gap-2">
-                        {cr.files.map((file: any, idx: number) => {
-                          const fileUrl = file.url || "";
-                          const fileName = file.fileName || "Attachment";
-                          const resolvedUrl = resolveFileUrl(fileUrl);
-                          const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
-                          const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
-                          return (
-                            <Button
-                              key={idx}
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                              onClick={() => setPreviewAttachment({
-                                url: resolvedUrl,
-                                fileName: fileName,
-                                type: isImage ? "image" : (isPdf ? "pdf" : "other")
-                              })}
-                            >
-                              <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                              <span className="truncate">{fileName}</span>
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {cr.responseDeadline && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-orange-700 mb-4">
-                      ⚠️ Response deadline: {new Date(cr.responseDeadline).toLocaleString('en-GB', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  )}
-                  <div className="flex gap-3 flex-wrap">
-                    <Button
-                      onClick={() => handleRespondToCancellation('approve')}
-                      className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif]"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Approve Cancellation
-                    </Button>
-                    <Button
-                      onClick={() => handleRespondToCancellation('reject')}
-                      variant="outline"
-                      className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Reject Request
-                    </Button>
-                  </div>
-                </div>
-              </div>
             </div>
           );
         }
@@ -657,6 +553,45 @@ export default function ProfessionalOrderTimelineTab({
                       </p>
                     </div>
                   )}
+                  
+                  {/* Withdraw button for Cancellation Requested event (professional-initiated) */}
+                  {event.label === "Cancellation Requested" && 
+                   event.id === "cancellation-requested" &&
+                   (() => {
+                     const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                     return cr?.requestedBy?.toString() === userInfo?.id?.toString() && cr?.status === "pending";
+                   })() && (
+                    <div className="mt-3">
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] break-words">
+                          {(currentOrder as any).client || "The client"} has until{" "}
+                          {(() => {
+                            const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                            if (cr?.responseDeadline) {
+                              const deadline = new Date(cr.responseDeadline);
+                              const day = deadline.getDate();
+                              const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                              const month = monthNames[deadline.getMonth()];
+                              const year = deadline.getFullYear();
+                              return `${day}${daySuffix} ${month} ${year}`;
+                            }
+                            return "the deadline";
+                          })()}{" "}
+                          to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => onOpenModal('withdrawCancellation')}
+                        variant="outline"
+                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[12px] sm:text-[13px]"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Withdraw Request
+                      </Button>
+                    </div>
+                  )}
+                  
                   {event.files && event.files.length > 0 && (
                     <div className="mt-3">
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
@@ -706,6 +641,105 @@ export default function ProfessionalOrderTimelineTab({
                             </div>
                           );
                         })}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Action Message Card for client-initiated cancellation - Display below "Cancellation Requested" event */}
+                  {event.label === "Cancellation Requested" && 
+                   event.id === "cancellation-requested" &&
+                   (() => {
+                     const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                     return cr?.requestedBy && cr.requestedBy.toString() !== userInfo?.id?.toString() && cr?.status === "pending";
+                   })() && (
+                    <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-4 shadow-md">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          {(() => {
+                            const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                            return (
+                              <>
+                                {cr?.reason && (
+                                  <div className="mb-3">
+                                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                      {cr.reason}
+                                    </p>
+                                  </div>
+                                )}
+                                {(cr?.files || []).length > 0 && (
+                                  <div className="mb-3">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({cr.files.length})</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {cr.files.map((file: any, idx: number) => {
+                                        const fileUrl = file.url || "";
+                                        const fileName = file.fileName || "Attachment";
+                                        const resolvedUrl = resolveFileUrl(fileUrl);
+                                        const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                                        const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                        return (
+                                          <Button
+                                            key={idx}
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
+                                            onClick={() => setPreviewAttachment({
+                                              url: resolvedUrl,
+                                              fileName: fileName,
+                                              type: isImage ? "image" : (isPdf ? "pdf" : "other")
+                                            })}
+                                          >
+                                            <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                            <span className="truncate">{fileName}</span>
+                                          </Button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="mb-4">
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                    You have until{" "}
+                                    {cr?.responseDeadline ? (
+                                      <>
+                                        {(() => {
+                                          const deadline = new Date(cr.responseDeadline);
+                                          const day = deadline.getDate();
+                                          const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                                          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                          const month = monthNames[deadline.getMonth()];
+                                          const year = deadline.getFullYear();
+                                          return `${day}${daySuffix} ${month} ${year}`;
+                                        })()}
+                                      </>
+                                    ) : (
+                                      "the deadline"
+                                    )}{" "}
+                                    to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
+                                  </p>
+                                </div>
+                                <div className="flex gap-3 flex-wrap">
+                                  <Button
+                                    onClick={() => handleRespondToCancellation('approve')}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    Accept Request
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleRespondToCancellation('reject')}
+                                    variant="outline"
+                                    className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px]"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Decline
+                                  </Button>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
                   )}

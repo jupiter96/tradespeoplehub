@@ -669,6 +669,25 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     });
     
 
+    // Get deliveryDays from service package (for online services)
+    let deliveryDays = null;
+    let scheduledDate = null;
+    if (service && firstItem.packageType) {
+      // Find the package with matching name/type
+      const selectedPackage = service.packages?.find(pkg => 
+        pkg.name === firstItem.packageType || 
+        pkg.name?.toUpperCase() === firstItem.packageType?.toUpperCase()
+      );
+      if (selectedPackage && selectedPackage.deliveryDays) {
+        deliveryDays = selectedPackage.deliveryDays;
+        // Calculate scheduled date from order creation + delivery days
+        const createdDate = new Date();
+        scheduledDate = new Date(createdDate);
+        scheduledDate.setDate(scheduledDate.getDate() + deliveryDays);
+        scheduledDate.setHours(23, 59, 59, 999); // Set to end of day
+      }
+    }
+
     const isPaidOrder = true; // All orders are paid (wallet + card/paypal)
     const order = new Order({
       orderNumber,
@@ -698,6 +717,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         createdAt: new Date(),
         professionalPayoutAmount, // Store professional payout amount
         promoCodeType: promoCodeData?.type || null,
+        deliveryDays: deliveryDays, // Store delivery days for countdown calculation
+        scheduledDate: scheduledDate, // Store calculated delivery deadline
       },
     });
     
@@ -1581,10 +1602,14 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         clientEmail: userRole === 'professional' ? (client?.email || '') : undefined,
         address,
         description: order.items?.[0]?.title || 'Service Order',
-        scheduledDate,
+        scheduledDate: order.metadata?.scheduledDate || scheduledDate,
         completedDate,
         deliveredDate,
         rating: order.rating || null,
+        metadata: {
+          deliveryDays: order.metadata?.deliveryDays,
+          scheduledDate: order.metadata?.scheduledDate,
+        },
         review: order.review || undefined,
         professionalReview: order.metadata?.buyerReview ? {
           rating: order.metadata.buyerReview.rating,

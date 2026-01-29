@@ -1392,7 +1392,7 @@ export default function ClientOrdersSection() {
   );
 
   // Calculate appointment deadline for countdown
-  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
+  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date > calculated from createdAt + deliveryDays
   const appointmentDeadline = useMemo(() => {
     if (!currentOrder) return null;
     
@@ -1401,7 +1401,7 @@ export default function ClientOrdersSection() {
       return new Date(currentOrder.expectedDelivery);
     }
     
-    // Second priority: booking date/time
+    // Second priority: booking date/time (for in-person services)
     const bookingDate = currentOrder.booking?.date;
     const bookingTime = currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || "09:00";
     
@@ -1414,10 +1414,29 @@ export default function ClientOrdersSection() {
       return deadline;
     }
     
-    // Fallback to scheduled date
+    // Third priority: scheduled date
     if (currentOrder.scheduledDate) {
       return new Date(currentOrder.scheduledDate);
     }
+    
+    // Fourth priority: For online services without booking - calculate from createdAt + deliveryDays
+    // Extract deliveryDays from the first item's package or service
+    if (currentOrder.date && currentOrder.items && currentOrder.items.length > 0) {
+      const firstItem = currentOrder.items[0];
+      // Try to get deliveryDays from metadata or calculate default
+      const deliveryDays = currentOrder.metadata?.deliveryDays || 
+                          currentOrder.metadata?.scheduledDate ||
+                          7; // Default to 7 days if not specified
+      
+      if (typeof deliveryDays === 'number') {
+        const createdDate = new Date(currentOrder.date);
+        const deadline = new Date(createdDate);
+        deadline.setDate(deadline.getDate() + deliveryDays);
+        deadline.setHours(23, 59, 59, 999); // Set to end of day
+        return deadline;
+      }
+    }
+    
     return null;
   }, [currentOrder]);
 
@@ -1492,7 +1511,9 @@ export default function ClientOrdersSection() {
                         ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`
                         : currentOrder.scheduledDate
                           ? formatDate(currentOrder.scheduledDate)
-                          : "TBD"}
+                          : appointmentDeadline
+                            ? formatDate(appointmentDeadline.toISOString())
+                            : "TBD"}
                     </p>
                   </div>
                 </div>
@@ -1728,35 +1749,15 @@ export default function ClientOrdersSection() {
                 <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                   Order Cancellation Initiated
                 </h3>
-                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words mb-4">
+                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
                   {currentOrder.status === "Cancelled"
                     ? (currentOrder.cancellationRequest?.requestedBy?.toString() === userInfo?.id?.toString()
                         ? `You have initiated the cancellation of your order. The order has been cancelled.`
                         : currentOrder.professional
                           ? `The order has been cancelled. ${currentOrder.cancellationRequest?.reason ? `Reason: ${currentOrder.cancellationRequest.reason}` : ''}`
                           : 'The order has been cancelled.')
-                    : `You have initiated the cancellation of your order. ${currentOrder.professional ? `Please wait for ${currentOrder.professional} to respond.` : 'Please wait for the professional to respond.'}${currentOrder.cancellationRequest?.responseDeadline ? ' If they fail to respond before the deadline, the order will be automatically canceled.' : ''}`}
+                    : `You have initiated the cancellation of your order. Please wait for the Pro to respond. If they fail to respond before the deadline, the order will be automatically canceled in your favor.`}
                 </p>
-                {currentOrder.status !== "Cancelled" &&
-                 (currentOrder as any).cancellationRequest?.status === "pending" && (
-                  <Button
-                    onClick={async () => {
-                      try {
-                        if (selectedOrder) {
-                          await withdrawCancellation(selectedOrder);
-                          toast.success("Cancellation request withdrawn. Order will continue.");
-                        }
-                      } catch (error: any) {
-                        toast.error(error.message || "Failed to withdraw cancellation request");
-                      }
-                    }}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[13px] sm:text-[14px]"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Withdraw
-                  </Button>
-                )}
               </div>
             ) : null}
 
@@ -2292,6 +2293,53 @@ export default function ClientOrdersSection() {
                         </p>
                       </div>
                     )}
+                    {/* Withdraw button for Cancellation Requested event (client-initiated) */}
+                    {event.title === "Cancellation Requested" && 
+                     event.id === "cancellation-requested" &&
+                     currentOrder.cancellationRequest?.requestedBy?.toString() === userInfo?.id?.toString() &&
+                     currentOrder.cancellationRequest?.status === "pending" && (
+                      <div className="mt-3">
+                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] break-words">
+                            {currentOrder.professional || "The professional"} has until{" "}
+                            {currentOrder.cancellationRequest.responseDeadline ? (
+                              <>
+                                {(() => {
+                                  const deadline = new Date(currentOrder.cancellationRequest.responseDeadline);
+                                  const day = deadline.getDate();
+                                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                  const month = monthNames[deadline.getMonth()];
+                                  const year = deadline.getFullYear();
+                                  return `${day}${daySuffix} ${month} ${year}`;
+                                })()}
+                              </>
+                            ) : (
+                              "the deadline"
+                            )}{" "}
+                            to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to your Wallet.
+                          </p>
+                        </div>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              if (selectedOrder) {
+                                await withdrawCancellation(selectedOrder);
+                                toast.success("Cancellation request withdrawn. Order will continue.");
+                              }
+                            } catch (error: any) {
+                              toast.error(error.message || "Failed to withdraw cancellation request");
+                            }
+                          }}
+                          variant="outline"
+                          className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[12px] sm:text-[13px]"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Withdraw
+                        </Button>
+                      </div>
+                    )}
+                    
                     {event.files && event.files.length > 0 && (() => {
                       // For "Work Delivered" events, filter files by deliveryNumber
                       // For other events (like "Revision Requested"), show all files
@@ -3042,7 +3090,11 @@ export default function ClientOrdersSection() {
                         Delivered by
                       </td>
                       <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}
+                        {currentOrder.scheduledDate 
+                          ? formatDate(currentOrder.scheduledDate) 
+                          : appointmentDeadline
+                            ? formatDate(appointmentDeadline.toISOString())
+                            : "TBD"}
                       </td>
                     </tr>
                     {(currentOrder.booking?.date || currentOrder.booking?.starttime) && (
@@ -3051,7 +3103,11 @@ export default function ClientOrdersSection() {
                           Delivery Date & Time
                         </td>
                         <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : "TBD"}
+                          {currentOrder.booking?.date 
+                            ? formatDate(currentOrder.booking.date) 
+                            : appointmentDeadline
+                              ? formatDate(appointmentDeadline.toISOString())
+                              : "TBD"}
                           {currentOrder.booking?.starttime && ` at ${currentOrder.booking.starttime}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
                           {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
                         </td>
@@ -3674,7 +3730,13 @@ export default function ClientOrdersSection() {
                       <div className="flex items-center gap-2 text-[#2c353f]">
                         <Calendar className="w-4 h-4 text-[#6b6b6b]" />
                         <span className="font-['Poppins',sans-serif] text-[13px]">
-                          {currentOrder.booking?.date ? formatDate(currentOrder.booking.date) : (currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD")}
+                          {currentOrder.booking?.date 
+                            ? formatDate(currentOrder.booking.date) 
+                            : (currentOrder.scheduledDate 
+                              ? formatDate(currentOrder.scheduledDate) 
+                              : (appointmentDeadline 
+                                ? formatDate(appointmentDeadline.toISOString()) 
+                                : "TBD"))}
                         </span>
                       </div>
                     )}
