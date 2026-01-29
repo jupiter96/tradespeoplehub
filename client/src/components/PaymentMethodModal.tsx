@@ -90,6 +90,8 @@ export default function PaymentMethodModal({
       });
 
       const data = await response.json();
+      console.log("[create-setup-intent] status:", response.status);
+      console.log("[create-setup-intent] response:", data);
       if (!response.ok) {
         throw new Error(data.error || "Failed to create setup intent");
       }
