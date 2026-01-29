@@ -322,6 +322,7 @@ export default function ServiceDetailPage() {
   const [portfolioGalleryOpen, setPortfolioGalleryOpen] = useState(false);
   const [portfolioGalleryIndex, setPortfolioGalleryIndex] = useState(0);
   const [availabilityDate, setAvailabilityDate] = useState<Date | undefined>(undefined);
+  const [selectedTimeBlock, setSelectedTimeBlock] = useState<string | null>(null);
   const [realReviews, setRealReviews] = useState<any[]>([]);
 
   useEffect(() => {
@@ -2340,7 +2341,10 @@ export default function ServiceDetailPage() {
                           <Calendar
                             mode="single"
                             selected={availabilityDate}
-                            onSelect={setAvailabilityDate}
+                            onSelect={(date) => {
+                              setAvailabilityDate(date);
+                              setSelectedTimeBlock(null); // Reset selected time block when date changes
+                            }}
                             disabled={(date) => {
                               // Disable past dates
                               const today = new Date();
@@ -2445,6 +2449,9 @@ export default function ServiceDetailPage() {
                                     
                                     const timeSlot = getTimeSlot(block.from);
                                     
+                                    const timeBlockKey = `${block.from}-${block.to}`;
+                                    const isSelected = selectedTimeBlock === timeBlockKey;
+                                    
                                     return (
                                       <button
                                         key={`${block.from}-${block.to}-${index}`}
@@ -2454,6 +2461,9 @@ export default function ServiceDetailPage() {
                                             toast.error("Please select a date first");
                                             return;
                                           }
+                                          
+                                          // Set selected time block
+                                          setSelectedTimeBlock(timeBlockKey);
                                           
                                           // Add service to cart with selected date and time block
                                           const serviceIdForCart = service._id || service.id?.toString();
@@ -2521,7 +2531,11 @@ export default function ServiceDetailPage() {
                                           // Show success message - stay on service detail page
                                           toast.success("Service added to cart with selected time slot");
                                         }}
-                                        className="px-3 py-1.5 rounded-full bg-[#F8FAFC] border border-gray-200 text-[13px] text-[#2c353f] font-['Poppins',sans-serif] hover:bg-[#FE8A0F] hover:text-white hover:border-[#FE8A0F] transition-all duration-200 cursor-pointer"
+                                        className={`px-3 py-1.5 rounded-full border text-[13px] font-['Poppins',sans-serif] transition-all duration-200 cursor-pointer ${
+                                          isSelected 
+                                            ? 'bg-[#FE8A0F] text-white border-[#FE8A0F]' 
+                                            : 'bg-[#F8FAFC] border-gray-200 text-[#2c353f] hover:bg-[#FE8A0F] hover:text-white hover:border-[#FE8A0F]'
+                                        }`}
                                       >
                                         {block.from} - {block.to}
                                       </button>
