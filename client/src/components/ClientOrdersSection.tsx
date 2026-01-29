@@ -243,6 +243,15 @@ export default function ClientOrdersSection() {
     type: "image" | "pdf" | "other";
   } | null>(null);
 
+  const getTwoLetterInitials = (name?: string, fallback = "U") => {
+    if (!name || !name.trim()) return fallback;
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  };
+
   // Function to close all modals and reset related states
   const closeAllModals = () => {
     setIsRatingDialogOpen(false);
@@ -4940,7 +4949,7 @@ export default function ClientOrdersSection() {
                               <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
+                              {getTwoLetterInitials(order.professional, "P")}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>
@@ -5039,7 +5048,7 @@ export default function ClientOrdersSection() {
                               <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
+                              {getTwoLetterInitials(order.professional, "P")}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>
@@ -5138,7 +5147,7 @@ export default function ClientOrdersSection() {
                               <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
+                              {getTwoLetterInitials(order.professional, "P")}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>
@@ -5237,7 +5246,7 @@ export default function ClientOrdersSection() {
                               <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
+                              {getTwoLetterInitials(order.professional, "P")}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>
@@ -5321,7 +5330,7 @@ export default function ClientOrdersSection() {
                               <AvatarImage src={resolveAvatarUrl(order.professionalAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px]">
-                              {order.professional?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "P"}
+                              {getTwoLetterInitials(order.professional, "P")}
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-['Poppins',sans-serif] text-[13px]">{order.professional}</span>

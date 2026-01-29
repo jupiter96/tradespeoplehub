@@ -118,6 +118,15 @@ function ProfessionalOrdersSection() {
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+
+  const getTwoLetterInitials = (name?: string, fallback = "C") => {
+    if (!name || !name.trim()) return fallback;
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  };
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
@@ -967,11 +976,7 @@ function ProfessionalOrdersSection() {
             <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
           )}
           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
-            {order.client
-              ?.split(" ")
-              .map((n: string) => n[0])
-              .join("")
-              .toUpperCase() || "C"}
+            {getTwoLetterInitials(order.client, "C")}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
@@ -1424,7 +1429,7 @@ function ProfessionalOrdersSection() {
                                   <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
                                 )}
                                 <AvatarFallback className="bg-[#3D78CB] text-white">
-                                  {msg.userName.charAt(0)}
+                                  {getTwoLetterInitials(msg.userName, "U")}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
@@ -1666,7 +1671,7 @@ function ProfessionalOrdersSection() {
                           <AvatarImage src={resolveAvatarUrl(clientReviewData?.reviewer?.avatar || currentOrder.clientAvatar)} />
                         )}
                         <AvatarFallback className="bg-blue-100 text-blue-600">
-                          {(clientReviewData?.reviewer?.name || currentOrder.client)?.charAt(0) || "C"}
+                          {getTwoLetterInitials(clientReviewData?.reviewer?.name || currentOrder.client, "C")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -1734,7 +1739,7 @@ function ProfessionalOrdersSection() {
                         <AvatarImage src={resolveAvatarUrl(currentOrder.clientAvatar)} />
                       )}
                       <AvatarFallback className="bg-blue-100 text-blue-600">
-                        {currentOrder.client?.charAt(0) || "C"}
+                        {getTwoLetterInitials(currentOrder.client, "C")}
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -1880,7 +1885,7 @@ function ProfessionalOrdersSection() {
                           <AvatarImage src={resolveAvatarUrl(clientReviewData.reviewer?.avatar)} />
                         )}
                         <AvatarFallback className="bg-blue-100 text-blue-600">
-                          {clientReviewData.reviewer?.name?.charAt(0) || "C"}
+                          {getTwoLetterInitials(clientReviewData.reviewer?.name, "C")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
