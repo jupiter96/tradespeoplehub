@@ -4,7 +4,7 @@ import { Separator } from "../ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { VideoThumbnail } from "./VideoThumbnail";
 import { Order, ServiceThumbnail } from "./types";
-import { formatDate, resolveFileUrl, resolveAvatarUrl, isVideoFile } from "./utils";
+import { formatDate, resolveFileUrl, resolveAvatarUrl, isVideoFile, getTwoLetterInitials } from "./utils";
 import serviceVector from "../../assets/service_vector.jpg";
 import { toast } from "sonner";
 import {
@@ -188,7 +188,7 @@ export default function ProfessionalOrderDetailSidebar({
                 <AvatarImage src={resolveAvatarUrl(order.clientAvatar)} />
               )}
               <AvatarFallback className="bg-[#3D78CB] text-white">
-                {order.client?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "C"}
+                {getTwoLetterInitials(order.client, "C")}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">

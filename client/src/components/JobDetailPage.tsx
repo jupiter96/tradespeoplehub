@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs, JobQuote, Milestone } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
-import { resolveAvatarUrl } from "./orders/utils";
+import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import {
@@ -689,7 +689,7 @@ export default function JobDetailPage() {
                             <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
                           )}
                           <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
-                            {myAwardedQuote.professionalName.charAt(0)}
+                            {getTwoLetterInitials(myAwardedQuote.professionalName, "P")}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
@@ -780,7 +780,7 @@ export default function JobDetailPage() {
                               <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                              {quote.professionalName.charAt(0)}
+                              {getTwoLetterInitials(quote.professionalName, "P")}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
@@ -854,7 +854,7 @@ export default function JobDetailPage() {
                               <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
                             )}
                               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                                {quote.professionalName.charAt(0)}
+                                {getTwoLetterInitials(quote.professionalName, "P")}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
@@ -1284,7 +1284,7 @@ export default function JobDetailPage() {
                       <AvatarImage src={resolveAvatarUrl(userInfo?.avatar)} />
                     )}
                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                      {userInfo?.name?.charAt(0) || "C"}
+                      {getTwoLetterInitials(userInfo?.name, "C")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -1525,7 +1525,7 @@ export default function JobDetailPage() {
                     <AvatarImage src={resolveAvatarUrl(selectedQuoteForAward.professionalAvatar)} />
                   )}
                   <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
-                    {selectedQuoteForAward.professionalName.charAt(0)}
+                    {getTwoLetterInitials(selectedQuoteForAward.professionalName, "P")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">

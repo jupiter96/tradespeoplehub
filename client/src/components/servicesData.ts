@@ -1,5 +1,4 @@
 import serviceVector from "../assets/service_vector.jpg";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface ServiceAddon {
   id: number;
@@ -63,10 +62,10 @@ export interface Service {
 
 // Provider images pool
 const providerImages = [
-  defaultAvatar,
-  defaultAvatar,
-  defaultAvatar,
-  defaultAvatar,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
 ];
 
 // Addon templates by category
@@ -4033,7 +4032,7 @@ export const allServices: Service[] = [
   const baseService = {
     ...service,
     image: serviceVector,
-    providerImage: defaultAvatar,
+    providerImage: undefined,
   };
 
   // Generate trading name if not present

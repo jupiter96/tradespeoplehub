@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { useNavigate } from "react-router-dom";
+import { getTwoLetterInitials } from "./orders/utils";
 import CustomOfferModal from "./CustomOfferModal";
 import CustomOfferPaymentModal from "./CustomOfferPaymentModal";
 import { toast } from "sonner";
@@ -410,7 +411,7 @@ export default function FloatingMessenger() {
                             <AvatarImage src={resolveAvatarUrl(pro.avatar)} />
                           )}
                           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
-                            {pro.name.split(" ").map((n) => n[0]).join("")}
+                            {getTwoLetterInitials(pro.name, "P")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -456,9 +457,7 @@ export default function FloatingMessenger() {
                                 <AvatarImage src={resolveAvatarUrl(contact.avatar)} />
                               )}
                               <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
-                                {contact.name
-                                  ? contact.name.split(" ").map((n) => n[0]).join("")
-                                  : "U"}
+                                {getTwoLetterInitials(contact.name, "U")}
                               </AvatarFallback>
                             </Avatar>
                             <div 
@@ -516,9 +515,7 @@ export default function FloatingMessenger() {
                             <AvatarImage src={resolveAvatarUrl(selectedContact.avatar)} />
                           )}
                           <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[15px]">
-                            {selectedContact.name
-                              ? selectedContact.name.split(" ").map((n) => n[0]).join("")
-                              : "U"}
+                            {getTwoLetterInitials(selectedContact.name, "U")}
                           </AvatarFallback>
                         </Avatar>
                         <div 
@@ -607,9 +604,7 @@ export default function FloatingMessenger() {
                                       <AvatarImage src={resolveAvatarUrl(senderAvatar)} />
                                     )}
                                     <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[12px]">
-                                      {senderName
-                                        ? senderName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-                                        : "U"}
+                                      {getTwoLetterInitials(senderName, "U")}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}
@@ -921,9 +916,7 @@ export default function FloatingMessenger() {
                                       <AvatarImage src={resolveAvatarUrl(senderAvatar)} />
                                     )}
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[12px]">
-                                      {senderName
-                                        ? senderName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-                                        : "U"}
+                                      {getTwoLetterInitials(senderName, "U")}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}

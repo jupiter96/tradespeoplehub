@@ -13,7 +13,7 @@ import { nameToSlug } from "./categoriesHierarchy";
 import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 import { resolveApiUrl } from "../config/api";
-import { resolveAvatarUrl } from "./orders/utils";
+import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 
 // Helper function to resolve media URLs (images/videos)
 const resolveMediaUrl = (url: string | undefined): string => {
@@ -1741,7 +1741,7 @@ export default function ServiceDetailPage() {
                 <AvatarImage src={resolveAvatarUrl(service.providerImage)} alt={service.tradingName} />
               )}
               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                {getTwoLetterInitials(service.tradingName, "P")}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -1961,7 +1961,7 @@ export default function ServiceDetailPage() {
                           <AvatarImage src={resolveAvatarUrl(service.providerImage)} alt={service.tradingName} />
                         )}
                         <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                          {service.tradingName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                          {getTwoLetterInitials(service.tradingName, "P")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
@@ -2623,7 +2623,7 @@ export default function ServiceDetailPage() {
                                 <AvatarImage src={resolveAvatarUrl(review.userAvatar)} alt={review.userName} />
                               )}
                               <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif]">
-                                {review.userName.split(" ").map(n => n[0]).join("").toUpperCase()}
+                                {getTwoLetterInitials(review.userName, "U")}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
@@ -2698,7 +2698,7 @@ export default function ServiceDetailPage() {
                                       <AvatarImage src={resolveAvatarUrl(review.professionalResponse.providerImage)} alt={review.professionalResponse.providerName} />
                                     )}
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[11px]">
-                                      {review.professionalResponse.providerName.split(" ").map(n => n[0]).join("").toUpperCase()}
+                                      {getTwoLetterInitials(review.professionalResponse.providerName, "P")}
                                     </AvatarFallback>
                                   </Avatar>
                                   <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">

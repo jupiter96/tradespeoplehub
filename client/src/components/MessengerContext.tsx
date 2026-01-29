@@ -3,7 +3,6 @@ import { useAccount } from "./AccountContext";
 import { toast } from "sonner";
 import { resolveApiUrl } from "../config/api";
 import { connectSocket, disconnectSocket, getSocket } from "../services/socket";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface Contact {
   id: string;

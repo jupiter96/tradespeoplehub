@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface JobQuote {
   id: string;
@@ -113,7 +112,7 @@ const JobsContext = createContext<JobsContextType | undefined>(undefined);
 
 export function JobsProvider({ children }: { children: ReactNode }) {
   const normalizeAvatar = (value?: string) =>
-    value && !/images\.unsplash\.com/i.test(value) ? value : defaultAvatar;
+    value && !/images\.unsplash\.com/i.test(value) ? value : undefined;
 
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [jobs, setJobs] = useState<Job[]>(
@@ -137,7 +136,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-1",
           professionalId: "pro-1",
           professionalName: "John Smith Plumbing",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.8,
           professionalReviews: 127,
           price: 135,
@@ -150,7 +149,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-2",
           professionalId: "pro-2",
           professionalName: "FastFix Plumbing Ltd",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.9,
           professionalReviews: 234,
           price: 145,
@@ -163,7 +162,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-3-rejected",
           professionalId: "pro-3",
           professionalName: "Budget Plumbers",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.2,
           professionalReviews: 45,
           price: 180,
@@ -214,7 +213,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-3-1",
           professionalId: "pro-4",
           professionalName: "CleanPro Services",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.7,
           professionalReviews: 89,
           price: 320,
@@ -257,7 +256,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-4-1",
           professionalId: "pro-1",
           professionalName: "Expert Builders Ltd",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.9,
           professionalReviews: 145,
           price: 3200,
@@ -314,7 +313,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-5-1",
           professionalId: "pro-1",
           professionalName: "TechWizards Ltd",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.6,
           professionalReviews: 78,
           price: 4800,
@@ -371,7 +370,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-6-1",
           professionalId: "pro-6",
           professionalName: "Green Thumb Landscaping",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.9,
           professionalReviews: 156,
           price: 2300,
@@ -422,7 +421,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-7-1",
           professionalId: "pro-7",
           professionalName: "TopRoof Services",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.7,
           professionalReviews: 92,
           price: 750,
@@ -454,7 +453,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-8-1",
           professionalId: "pro-1",
           professionalName: "John Smith Plumbing",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.8,
           professionalReviews: 127,
           price: 450,
@@ -486,7 +485,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-9-1",
           professionalId: "pro-1",
           professionalName: "Auto Expert Services",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.8,
           professionalReviews: 127,
           price: 220,
@@ -529,7 +528,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-10-1",
           professionalId: "pro-1",
           professionalName: "PowerWorks Electrical",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.9,
           professionalReviews: 203,
           price: 2600,
@@ -586,7 +585,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-11-1",
           professionalId: "pro-1",
           professionalName: "MobileFirst Developers",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.7,
           professionalReviews: 156,
           price: 7500,
@@ -645,7 +644,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-12-1",
           professionalId: "pro-1",
           professionalName: "Kitchen Pro Installers",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.8,
           professionalReviews: 189,
           price: 1650,
@@ -695,7 +694,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           id: "quote-13-1",
           professionalId: "pro-1",
           professionalName: "SafeGuard Pest Control",
-          professionalAvatar: defaultAvatar,
+          professionalAvatar: undefined,
           professionalRating: 4.9,
           professionalReviews: 276,
           price: 165,

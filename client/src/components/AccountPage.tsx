@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner@2.0.3";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import paypalLogo from "../assets/paypal-logo.png";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import {
@@ -107,7 +106,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
-import { resolveAvatarUrl } from "./orders/utils";
+import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { useCountdown } from "../hooks/useCountdown";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 import {
@@ -1202,7 +1201,7 @@ function JobsSection() {
       id: "JOB-101", 
       title: "Kitchen Renovation", 
       client: "Sarah Johnson",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7234 567890",
       clientEmail: "sarah.johnson@gmail.com",
       date: "2024-11-08",
@@ -1218,7 +1217,7 @@ function JobsSection() {
       id: "JOB-102", 
       title: "Bathroom Plumbing", 
       client: "Mike Brown",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7345 678901",
       clientEmail: "mike.brown@gmail.com",
       date: "2024-11-09", 
@@ -1234,7 +1233,7 @@ function JobsSection() {
       id: "JOB-103", 
       title: "Garden Landscaping", 
       client: "Emma Wilson",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7456 789012",
       clientEmail: "emma.wilson@gmail.com",
       date: "2024-11-10", 
@@ -1250,7 +1249,7 @@ function JobsSection() {
       id: "JOB-104", 
       title: "Roof Repair", 
       client: "David Lee",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7567 890123",
       clientEmail: "david.lee@gmail.com",
       date: "2024-11-10", 
@@ -1266,7 +1265,7 @@ function JobsSection() {
       id: "JOB-098", 
       title: "Office Painting", 
       client: "ABC Company",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7678 901234",
       clientEmail: "contact@abccompany.com",
       date: "2024-11-01", 
@@ -1282,7 +1281,7 @@ function JobsSection() {
       id: "JOB-099", 
       title: "Electrical Rewiring", 
       client: "John Smith",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7789 012345",
       clientEmail: "john.smith@gmail.com",
       date: "2024-11-03", 
@@ -1298,7 +1297,7 @@ function JobsSection() {
       id: "JOB-097", 
       title: "Heating System Installation", 
       client: "Mary Thompson",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7890 123456",
       clientEmail: "mary.thompson@gmail.com",
       date: "2024-10-30", 
@@ -1314,7 +1313,7 @@ function JobsSection() {
       id: "JOB-096", 
       title: "Fence Installation", 
       client: "Robert Davis",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7901 234567",
       clientEmail: "robert.davis@gmail.com",
       date: "2024-11-07", 
@@ -1330,7 +1329,7 @@ function JobsSection() {
       id: "JOB-095", 
       title: "Emergency Repair", 
       client: "Jane Doe",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7012 345678",
       clientEmail: "jane.doe@gmail.com",
       date: "2024-10-28", 
@@ -1346,7 +1345,7 @@ function JobsSection() {
       id: "JOB-105", 
       title: "Carpet Installation", 
       client: "Lisa Anderson",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       clientPhone: "+44 7123 456780",
       clientEmail: "lisa.anderson@gmail.com",
       date: "2024-11-12", 
@@ -1360,7 +1359,7 @@ function JobsSection() {
     },
   ]).map((job) => ({
     ...job,
-    clientAvatar: defaultAvatar,
+    clientAvatar: undefined,
   }));
 
   // Filter and search logic
@@ -1578,7 +1577,7 @@ function JobsSection() {
                           <AvatarImage src={resolveAvatarUrl(job.clientAvatar)} alt={job.client} />
                         )}
                         <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[12px]">
-                          {job.client.split(' ').map(n => n[0]).join('')}
+                          {getTwoLetterInitials(job.client, "C")}
                         </AvatarFallback>
                       </Avatar>
                       <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
@@ -1677,7 +1676,7 @@ function JobsSection() {
                           <AvatarImage src={resolveAvatarUrl(selectedJob.clientAvatar)} alt={selectedJob.client} />
                         )}
                         <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif]">
-                          {selectedJob.client.split(' ').map((n: string) => n[0]).join('')}
+                          {getTwoLetterInitials(selectedJob.client, "C")}
                         </AvatarFallback>
                       </Avatar>
                       <div>
@@ -2150,7 +2149,7 @@ function DetailsSection() {
               className="object-cover"
             />
             <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[28px] sm:text-[32px]">
-              {userInfo?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+              {getTwoLetterInitials(userInfo?.name, "U")}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col gap-3 w-full sm:w-auto">
@@ -7372,7 +7371,7 @@ function ServicesSection() {
       id: 1,
       serviceTitle: "Bathroom Installation",
       clientName: "David Miller",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       rating: 5,
       comment: "Excellent work! Very professional and finished on time. The bathroom looks amazing.",
       date: "2024-11-01",
@@ -7381,7 +7380,7 @@ function ServicesSection() {
       id: 2,
       serviceTitle: "Emergency Plumbing",
       clientName: "Lisa Anderson",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       rating: 5,
       comment: "Arrived quickly and fixed the issue efficiently. Highly recommend!",
       date: "2024-10-28",
@@ -7390,14 +7389,14 @@ function ServicesSection() {
       id: 3,
       serviceTitle: "Kitchen Sink Repair",
       clientName: "James Taylor",
-      clientAvatar: defaultAvatar,
+      clientAvatar: undefined,
       rating: 4,
       comment: "Good service, arrived on time and completed the work well.",
       date: "2024-10-25",
     },
   ]).map((r) => ({
     ...r,
-    clientAvatar: defaultAvatar,
+    clientAvatar: undefined,
   }));
 
   const handleSort = (field: string) => {

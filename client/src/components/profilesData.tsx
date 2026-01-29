@@ -1,4 +1,3 @@
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import serviceVector from "../assets/service_vector.jpg";
 
 // Category-based skills mapping
@@ -87,7 +86,7 @@ export const userProfiles: ProfileData[] = ([
     name: "John Smith",
     title: "Professional Plumber & Heating Engineer",
     category: "Plumbing & Heating",
-    image: defaultAvatar,
+    image: undefined,
     rating: 4.9,
     reviewCount: 127,
     completedJobs: 245,
@@ -140,7 +139,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 1,
         author: "Sarah Johnson",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "2 weeks ago",
         comment: "Excellent service! John was punctual, professional, and completed the job to a very high standard. Would highly recommend."
@@ -148,7 +147,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 2,
         author: "Michael Brown",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "1 month ago",
         comment: "Very happy with the bathroom installation. John explained everything clearly and the finish is perfect. Great value for money."
@@ -156,7 +155,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 3,
         author: "Emma Wilson",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 4,
         date: "2 months ago",
         comment: "Good work overall. A small delay but John kept me informed and the final result was worth the wait."
@@ -168,7 +167,7 @@ export const userProfiles: ProfileData[] = ([
     name: "Sarah Williams",
     title: "Certified Electrician & Smart Home Specialist",
     category: "Electrical",
-    image: defaultAvatar,
+    image: undefined,
     rating: 4.8,
     reviewCount: 98,
     completedJobs: 185,
@@ -214,7 +213,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 1,
         author: "David Thompson",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "1 week ago",
         comment: "Sarah did an amazing job installing our smart home system. Very knowledgeable and professional."
@@ -222,7 +221,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 2,
         author: "Lisa Chen",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "3 weeks ago",
         comment: "Excellent service and very fair pricing. Would definitely use again."
@@ -286,7 +285,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 1,
         author: "Peter Roberts",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "2 weeks ago",
         comment: "James and his team did an outstanding job on our extension. Professional, reliable, and the quality is exceptional."
@@ -294,7 +293,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 2,
         author: "Rachel Green",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "1 month ago",
         comment: "Highly skilled and trustworthy builder. Completed our loft conversion on time and within budget."
@@ -339,7 +338,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 1,
         author: "Karen Wilson",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "3 days ago",
         comment: "Emily is absolutely fantastic! My house has never been so clean. Very thorough and professional."
@@ -347,7 +346,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 2,
         author: "Tom Harris",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "1 week ago",
         comment: "End of tenancy clean was perfect. Got my full deposit back thanks to Emily's amazing work!"
@@ -405,7 +404,7 @@ export const userProfiles: ProfileData[] = ([
       {
         id: 1,
         author: "Jane Mitchell",
-        authorImage: defaultAvatar,
+        authorImage: undefined,
         rating: 5,
         date: "2 weeks ago",
         comment: "Michael transformed our garden completely. His design ideas were brilliant and the execution was perfect."
@@ -414,11 +413,11 @@ export const userProfiles: ProfileData[] = ([
   }
 ]).map((profile) => ({
   ...profile,
-  // Replace any remote portrait/avatar images with local default avatar.
-  image: defaultAvatar,
+  // Use undefined for avatar images to trigger letter avatars
+  image: undefined,
   reviews: (profile.reviews || []).map((r) => ({
     ...r,
-    authorImage: defaultAvatar,
+    authorImage: undefined,
   })),
 }));
 

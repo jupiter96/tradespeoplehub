@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useJobs, JobQuote } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
+import { getTwoLetterInitials } from "./orders/utils";
 import {
   FileText,
   MapPin,
@@ -392,7 +393,7 @@ export default function MyJobsSection() {
                                   <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
                                 )}
                                 <AvatarFallback className="bg-[#1976D2] text-white font-['Poppins',sans-serif]">
-                                  {quote.professionalName.charAt(0)}
+                                  {getTwoLetterInitials(quote.professionalName, "P")}
                                 </AvatarFallback>
                               </Avatar>
                               <div>

@@ -218,3 +218,15 @@ export const isVideoFile = (url?: string): boolean => {
   return /\.(mp4|mpeg|mov|avi|webm|mkv)$/i.test(url) || 
          /video/i.test(url.toLowerCase());
 };
+
+// Generate two-letter initials for avatar fallback
+// For single-word names: takes first 2 characters (e.g., "John" -> "JO")
+// For multi-word names: takes first letter of first and last word (e.g., "John Doe" -> "JD")
+export const getTwoLetterInitials = (name?: string, fallback = "U"): string => {
+  if (!name || !name.trim()) return fallback;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};

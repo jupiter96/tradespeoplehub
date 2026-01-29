@@ -3,7 +3,6 @@ import svgPaths from "../imports/svg-kbvia5rgdw";
 import imgEllipse17 from "figma:asset/abf7759026040812d1be0192ad93cae51d649fa4.png";
 import imgEllipse18 from "figma:asset/3c4f6d7cd8e52d1fbd106cc8702ba2e53af44c6f.png";
 import imgEllipse16 from "figma:asset/2055816d9237a29b336d813b80b43778bb1a2fb9.png";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import {
   Carousel,
@@ -103,21 +102,21 @@ export default function PeopleLoveUsSection() {
       title: "Painting Services",
       review: "Outstanding service from start to finish. The professional was punctual, efficient, and delivered exceptional results. Highly recommend for anyone looking for quality work.",
       rating: 5.0,
-      image: defaultAvatar
+      image: undefined
     },
     {
       name: "Michael Brown",
       title: "Carpentry Services",
       review: "Amazing craftsmanship and attention to detail. The professional was excellent and completed the job ahead of schedule. Will definitely use this service again.",
       rating: 4.9,
-      image: defaultAvatar
+      image: undefined
     },
     {
       name: "Emma Wilson",
       title: "Landscaping",
       review: "Fantastic experience! The team transformed my garden beyond expectations. Professional, reliable, and affordable. I couldn't be happier with the results.",
       rating: 4.9,
-      image: defaultAvatar
+      image: undefined
     }
   ];
 

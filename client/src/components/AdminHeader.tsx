@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import API_BASE_URL from "../config/api";
 import { validatePassword, getPasswordHint } from "../utils/passwordValidation";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { resolveAvatarUrl } from "./orders/utils";
+import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 
 interface Admin {
   id: string;
@@ -431,7 +431,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     <AvatarImage src={resolveAvatarUrl(currentAdmin?.avatar || undefined)} alt="Admin Avatar" />
                   )}
                   <AvatarFallback className="bg-[#FE8A0F] text-white text-xs">
-                    {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
+                    {getTwoLetterInitials(currentAdmin?.fullname, "A")}
                   </AvatarFallback>
                 </Avatar>
                 {currentAdmin?.fullname || "Admin"}
@@ -584,7 +584,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                         <AvatarImage src={resolveAvatarUrl(avatarPreview || currentAdmin?.avatar || undefined)} alt="Admin Avatar" />
                       )}
                       <AvatarFallback className="bg-[#FE8A0F] text-white text-2xl">
-                        {currentAdmin?.fullname?.charAt(0)?.toUpperCase() || "A"}
+                        {getTwoLetterInitials(currentAdmin?.fullname, "A")}
                       </AvatarFallback>
                     </Avatar>
                     {isUploadingAvatar && (

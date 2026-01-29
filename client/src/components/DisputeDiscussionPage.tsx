@@ -14,7 +14,7 @@ import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X } from "lucide-re
 import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
-import { resolveAvatarUrl } from "./orders/utils";
+import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 
 export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
@@ -358,7 +358,7 @@ export default function DisputeDiscussionPage() {
                       <AvatarImage src={resolveAvatarUrl(dispute.claimantAvatar)} />
                     )}
                     <AvatarFallback className="bg-[#3D78CB] text-white">
-                      {dispute.claimantName?.charAt(0) || 'C'}
+                      {getTwoLetterInitials(dispute.claimantName, 'C')}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -432,7 +432,7 @@ export default function DisputeDiscussionPage() {
                               <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
                             )}
                             <AvatarFallback className="bg-[#3D78CB] text-white">
-                              {senderName?.charAt(0) || 'U'}
+                              {getTwoLetterInitials(senderName, 'U')}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">

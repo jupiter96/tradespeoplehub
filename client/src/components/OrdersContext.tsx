@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { CartItem } from "./CartContext";
 import { useAccount } from "./AccountContext";
 import { resolveApiUrl } from "../config/api";
-import defaultAvatar from "../assets/c1e5f236e69ba84c123ce1336bb460f448af2762.png";
 
 export interface OrderItem {
   id: string;
@@ -272,7 +271,7 @@ const OrdersContext = createContext<OrdersContextType | undefined>(undefined);
 export function OrdersProvider({ children }: { children: ReactNode }) {
   const { isLoggedIn } = useAccount();
   const normalizeAvatar = (value?: string) =>
-    value && !/images\.unsplash\.com/i.test(value) ? value : defaultAvatar;
+    value && !/images\.unsplash\.com/i.test(value) ? value : undefined;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -363,7 +362,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       amount: `£${total.toFixed(2)}`,
       amountValue: total,
       professional: professional,
-      professionalAvatar: orderData.items[0]?.image || defaultAvatar,
+      professionalAvatar: orderData.items[0]?.image || undefined,
       professionalPhone: "+44 7XXX XXXXXX",
       professionalEmail: `${professional.toLowerCase().replace(' ', '.')}@gmail.com`,
       address: orderData.address,
