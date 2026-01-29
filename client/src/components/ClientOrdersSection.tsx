@@ -37,8 +37,6 @@ import {
   Edit,
   PlayCircle,
   Upload,
-  Image,
-  Film,
   X,
   PoundSterling,
   Paperclip,
@@ -235,10 +233,7 @@ export default function ClientOrdersSection() {
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
-  const [addInfoMessage, setAddInfoMessage] = useState("");
-  const [addInfoFiles, setAddInfoFiles] = useState<File[]>([]);
-  const [isAddInfoSubmitting, setIsAddInfoSubmitting] = useState(false);
-  const addInfoFileInputRef = useRef<HTMLInputElement | null>(null);
+  
   const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
   const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
@@ -268,8 +263,6 @@ export default function ClientOrdersSection() {
     setRevisionMessage("");
     setRevisionFiles([]);
     setDisputeResponseMessage("");
-    setAddInfoMessage("");
-    setAddInfoFiles([]);
   };
 
   // Function to open a specific modal and close all others
@@ -301,10 +294,6 @@ export default function ClientOrdersSection() {
     }
     if (modalName !== 'disputeResponse') {
       setDisputeResponseMessage("");
-    }
-    if (modalName !== 'addInfo') {
-      setAddInfoMessage("");
-      setAddInfoFiles([]);
     }
     // Now open the requested modal
     switch (modalName) {
@@ -3112,8 +3101,21 @@ export default function ClientOrdersSection() {
                 {!currentOrder?.additionalInformation?.submittedAt && currentOrder && (
                   <Button
                     type="button"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px] relative z-10"
-                    onClick={() => openModal('addInfo')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      // Close other modals but NOT the addInfo modal
+                      setIsRatingDialogOpen(false);
+                      setIsCancelDialogOpen(false);
+                      setIsDisputeDialogOpen(false);
+                      setIsCancellationRequestDialogOpen(false);
+                      setIsRevisionRequestDialogOpen(false);
+                      setIsDisputeResponseDialogOpen(false);
+                      setIsApproveConfirmDialogOpen(false);
+                      // Now open the AddInfo dialog
+                      setIsAddInfoDialogOpen(true);
+                    }}
                   >
                     + Add now
                   </Button>
@@ -4660,6 +4662,122 @@ export default function ClientOrdersSection() {
 	          </div>
 	        </DialogContent>
 	      </Dialog>
+
+        {/* Additional Info Modal - Inline React Modal (not Radix UI) */}
+        {isAddInfoDialogOpen && currentOrder && (
+          <div
+            className="fixed inset-0 z-[99999] flex items-center justify-center px-4"
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsAddInfoDialogOpen(false);
+              }
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-black/50"
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+            />
+            <div
+              className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6"
+              style={{ position: "relative", zIndex: 100000 }}
+            >
+              <button
+                onClick={() => setIsAddInfoDialogOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-4">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
+                  Add Remarks
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
+                  Add any special requirements or remarks for the service
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-3">
+                    {currentOrder.service || "Service"}
+                  </h3>
+
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Message
+                    </Label>
+                    <Textarea
+                      placeholder="Enter any special requirements, instructions, or additional information..."
+                      rows={4}
+                      className="font-['Poppins',sans-serif] text-[13px]"
+                      id="add-info-message"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Attachments (Optional) - Max 10 files
+                    </Label>
+                    <div className="border-2 border-dashed border-[#3D78CB] rounded-lg p-4 text-center hover:bg-blue-50 transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                        multiple
+                        className="hidden"
+                        id="add-info-files"
+                      />
+                      <label htmlFor="add-info-files" className="cursor-pointer flex flex-col items-center gap-2">
+                        <Upload className="w-6 h-6 text-[#3D78CB]" />
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] font-medium">
+                          Click to upload files
+                        </span>
+                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                          Images, videos, PDF, DOC, DOCX, or TXT files
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsAddInfoDialogOpen(false)}
+                    className="font-['Poppins',sans-serif]"
+                  >
+                    Clear & Close
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      const messageEl = document.getElementById("add-info-message") as HTMLTextAreaElement;
+                      const message = messageEl?.value || "";
+                      if (!message.trim()) {
+                        toast.error("Please add a message");
+                        return;
+                      }
+                      try {
+                        await addAdditionalInfo(currentOrder.id, message);
+                        toast.success("Additional information submitted successfully!");
+                        setIsAddInfoDialogOpen(false);
+                        await refreshOrders();
+                      } catch (error: any) {
+                        toast.error(error.message || "Failed to submit additional information");
+                      }
+                    }}
+                    className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif]"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -5390,206 +5508,6 @@ export default function ClientOrdersSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Additional Info Modal - Custom React Modal (not Radix UI) */}
-      {isAddInfoDialogOpen && (
-        <div 
-          className="fixed inset-0 z-[99999] flex items-center justify-center"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsAddInfoDialogOpen(false);
-              setAddInfoMessage("");
-              setAddInfoFiles([]);
-            }
-          }}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50" />
-          
-          {/* Modal Content */}
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 p-6 z-[100000]">
-            {/* Close Button */}
-            <button
-              onClick={() => {
-                setIsAddInfoDialogOpen(false);
-                setAddInfoMessage("");
-                setAddInfoFiles([]);
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            {/* Header */}
-            <div className="mb-4">
-              <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
-                Add Remarks
-              </h2>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
-                Add any special requirements or remarks for the service
-              </p>
-            </div>
-
-            {/* Content */}
-            <div className="space-y-6">
-              {currentOrder ? (
-                <>
-                  <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-                    {/* Service Name */}
-                    <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-3">
-                      {currentOrder.service}
-                    </h3>
-
-                    {/* Message Input */}
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                        Message
-                      </Label>
-                      <Textarea
-                        placeholder="Enter any special requirements, instructions, or additional information..."
-                        value={addInfoMessage}
-                        onChange={(e) => setAddInfoMessage(e.target.value)}
-                        rows={4}
-                        className="font-['Poppins',sans-serif] text-[13px]"
-                      />
-                    </div>
-
-                    {/* File Upload */}
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                        Attachments (Optional) - Max 10 files
-                      </Label>
-                      <div
-                        className="border-2 border-dashed border-[#3D78CB] rounded-lg p-4 text-center hover:bg-blue-50 transition-colors cursor-pointer"
-                        onClick={() => addInfoFileInputRef.current?.click()}
-                      >
-                        <input
-                          ref={addInfoFileInputRef}
-                          type="file"
-                          accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-                          multiple
-                          onChange={(e) => {
-                            if (e.target.files) {
-                              const newFiles = Array.from(e.target.files);
-                              const validFiles = newFiles.filter((file) => {
-                                const type = file.type;
-                                return (
-                                  type.startsWith("image/") ||
-                                  type.startsWith("video/") ||
-                                  type === "application/pdf" ||
-                                  type === "application/msword" ||
-                                  type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-                                  type === "text/plain"
-                                );
-                              });
-                              if (validFiles.length !== newFiles.length) {
-                                toast.error("Some files were not added. Only images, videos, and documents are allowed.");
-                              }
-                              setAddInfoFiles((prev) => [...prev, ...validFiles].slice(0, 10));
-                              e.target.value = "";
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <div className="flex flex-col items-center gap-2">
-                          <Upload className="w-6 h-6 text-[#3D78CB]" />
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] font-medium">
-                            Click to upload files ({addInfoFiles.length}/10)
-                          </span>
-                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            Images, videos, PDF, DOC, DOCX, or TXT files
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Selected Files */}
-                    {addInfoFiles.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          Selected Files:
-                        </Label>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                          {addInfoFiles.map((file, index) => (
-                            <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
-                              {file.type.startsWith("image/") ? (
-                                <Image className="w-4 h-4 text-blue-500" />
-                              ) : file.type.startsWith("video/") ? (
-                                <Film className="w-4 h-4 text-purple-500" />
-                              ) : (
-                                <FileText className="w-4 h-4 text-gray-500" />
-                              )}
-                              <span className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] flex-1 truncate">
-                                {file.name}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setAddInfoFiles((prev) => prev.filter((_, i) => i !== index))}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex justify-end gap-3 pt-4 border-t">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setAddInfoMessage("");
-                        setAddInfoFiles([]);
-                        setIsAddInfoDialogOpen(false);
-                      }}
-                      className="font-['Poppins',sans-serif]"
-                    >
-                      Clear & Close
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        if (!addInfoMessage.trim() && addInfoFiles.length === 0) {
-                          toast.error("Please add a message or upload files");
-                          return;
-                        }
-                        if (!currentOrder) return;
-
-                        setIsAddInfoSubmitting(true);
-                        try {
-                          await addAdditionalInfo(currentOrder.id, addInfoMessage, addInfoFiles.length > 0 ? addInfoFiles : undefined);
-                          toast.success("Additional information submitted successfully!");
-                          setAddInfoMessage("");
-                          setAddInfoFiles([]);
-                          setIsAddInfoDialogOpen(false);
-                          await refreshOrders();
-                        } catch (error: any) {
-                          toast.error(error.message || "Failed to submit additional information");
-                        } finally {
-                          setIsAddInfoSubmitting(false);
-                        }
-                      }}
-                      disabled={isAddInfoSubmitting}
-                      className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif]"
-                    >
-                      {isAddInfoSubmitting ? "Submitting..." : "Done"}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="p-8 text-center">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    Loading order details...
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
 	      {/* Approve Confirmation Dialog */}
 	      <Dialog

@@ -1,22 +1,14 @@
 import { useState, useRef } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../../ui/dialog";
+import { createPortal } from "react-dom";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
 import { Upload, Image, Film, FileText, X } from "lucide-react";
 import { toast } from "sonner";
-import type { Order } from "../types";
-
 interface AddInfoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  order: Order | null;
+  order: { id: string; service?: string } | null;
   onSubmit: (orderId: string, message: string, files?: File[]) => Promise<void>;
 }
 
@@ -95,25 +87,46 @@ export default function AddInfoDialog({
     onOpenChange(false);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-            Add Remarks
-          </DialogTitle>
-          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-            Add any special requirements or remarks for the service
-          </DialogDescription>
-        </DialogHeader>
+  if (!open) {
+    return null;
+  }
 
-        <div className="space-y-6 mt-4">
+  const modal = (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center px-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleClearAndClose();
+        }
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 z-[100000]">
+        <button
+          onClick={handleClearAndClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Close dialog"
+          type="button"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="mb-4">
+          <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
+            Add Remarks
+          </h2>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
+            Add any special requirements or remarks for the service
+          </p>
+        </div>
+
+        <div className="space-y-6">
           {order ? (
             <>
               <div className="border border-gray-200 rounded-lg p-4 space-y-4">
                 {/* Service Name */}
                 <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-3">
-                  {order.service}
+                  {order.service || "Service"}
                 </h3>
 
                 {/* Message Input */}
@@ -175,6 +188,7 @@ export default function AddInfoDialog({
                           <button
                             onClick={() => handleRemoveFile(index)}
                             className="text-red-500 hover:text-red-700"
+                            type="button"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -211,8 +225,14 @@ export default function AddInfoDialog({
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(modal, document.body);
 }
 

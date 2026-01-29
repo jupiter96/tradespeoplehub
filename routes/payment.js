@@ -172,9 +172,20 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
     const settings = await PaymentSettings.getSettings();
     
     const stripeKeys = getStripeKeys(settings);
+    const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
     
     if (!settings.isActive || !stripeKeys.secretKey) {
       return res.status(400).json({ error: 'Stripe payments are not configured' });
+    }
+
+    // Ensure the key matches the selected environment
+    const expectsLiveKey = stripeEnvironment === 'live';
+    const hasLiveKey = stripeKeys.secretKey.startsWith('sk_live_');
+    const hasTestKey = stripeKeys.secretKey.startsWith('sk_test_');
+    if ((expectsLiveKey && !hasLiveKey) || (!expectsLiveKey && !hasTestKey)) {
+      return res.status(400).json({
+        error: `Stripe secret key does not match ${stripeEnvironment} environment.`,
+      });
     }
     
     const stripe = new Stripe(stripeKeys.secretKey);
@@ -209,7 +220,13 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
       clientSecret: setupIntent.client_secret,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create setup intent' });
+    console.error('Stripe setup intent error:', {
+      message: error?.message,
+      type: error?.type,
+      code: error?.code,
+      stack: error?.stack,
+    });
+    res.status(500).json({ error: error?.message || 'Failed to create setup intent' });
   }
 });
 
