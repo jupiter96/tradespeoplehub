@@ -203,6 +203,7 @@ export default function ClientOrdersSection() {
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [orderDetailTab, setOrderDetailTab] = useState("timeline");
   const [searchQuery, setSearchQuery] = useState("");
@@ -932,7 +933,8 @@ export default function ClientOrdersSection() {
     if (!selectedOrder) return;
     try {
       await withdrawCancellation(selectedOrder);
-      toast.success("Cancellation request withdrawn. Order status restored.");
+      setIsWithdrawDialogOpen(false);
+      toast.success("Cancellation request withdrawn. Order will continue.");
     } catch (error: any) {
       toast.error(error.message || "Failed to withdraw cancellation request");
     }
@@ -2321,16 +2323,7 @@ export default function ClientOrdersSection() {
                           </p>
                         </div>
                         <Button
-                          onClick={async () => {
-                            try {
-                              if (selectedOrder) {
-                                await withdrawCancellation(selectedOrder);
-                                toast.success("Cancellation request withdrawn. Order will continue.");
-                              }
-                            } catch (error: any) {
-                              toast.error(error.message || "Failed to withdraw cancellation request");
-                            }
-                          }}
+                          onClick={() => setIsWithdrawDialogOpen(true)}
                           variant="outline"
                           className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[12px] sm:text-[13px]"
                         >
@@ -4851,6 +4844,72 @@ export default function ClientOrdersSection() {
             </div>
           </div>
         )}
+
+        {/* Withdraw Cancellation Confirmation Modal - Inline React Modal (not Radix UI) */}
+        {isWithdrawDialogOpen && (
+          <div
+            className="fixed inset-0 z-[1000000] flex items-center justify-center px-4"
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsWithdrawDialogOpen(false);
+              }
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-black/50"
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            />
+            <div
+              className="relative bg-white rounded-lg shadow-xl w-full max-w-[500px] p-6"
+              style={{ position: "relative", zIndex: 1000001 }}
+            >
+              <button
+                onClick={() => setIsWithdrawDialogOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-4">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
+                  Withdraw Cancellation Request?
+                </h2>
+              </div>
+
+              <div className="py-4">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                  Are you sure you want to withdraw your cancellation request? The order will continue as normal.
+                </p>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    <strong>Note:</strong> Once withdrawn, you will need to submit a new cancellation request if you change your mind.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  onClick={() => setIsWithdrawDialogOpen(false)}
+                  variant="outline"
+                  className="font-['Poppins',sans-serif] text-[14px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleWithdrawCancellation}
+                  className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white text-[14px]"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Yes, Withdraw Request
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -5776,6 +5835,7 @@ export default function ClientOrdersSection() {
           </DialogContent>
         </Dialog>
       )}
+
     </div>
   );
 }
