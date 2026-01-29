@@ -1788,6 +1788,22 @@ router.post('/register/verify-phone', async (req, res) => {
 
     // Create user instance and explicitly save to ensure all fields are persisted
     const user = new User(userData);
+    
+    // Add registration address to addresses array if address fields are provided
+    if (userData.address && userData.townCity && userData.postcode && userData.phone) {
+      const registrationAddress = {
+        id: Date.now().toString(),
+        postcode: userData.postcode,
+        address: userData.address,
+        city: userData.townCity,
+        county: userData.county || '',
+        phone: userData.phone,
+        isDefault: true, // Set registration address as default
+        createdAt: new Date(),
+      };
+      user.addresses = [registrationAddress];
+    }
+    
     await user.save();
 
     // console.log('[Phone Verification] Registration - User created and saved:', {
@@ -1797,6 +1813,7 @@ router.post('/register/verify-phone', async (req, res) => {
     //   townCity: user.townCity,
     //   county: user.county,
     //   travelDistance: user.travelDistance,
+    //   addressesCount: user.addresses?.length || 0,
     // });
 
     // Send welcome email using no-reply category (SMTP_USER_NO_REPLY)
@@ -2203,6 +2220,22 @@ router.post('/social/verify-phone', async (req, res) => {
     }
 
     const user = await User.create(userData);
+    
+    // Add registration address to addresses array if address fields are provided
+    if (userData.address && userData.townCity && userData.postcode && normalizedPhone) {
+      const registrationAddress = {
+        id: Date.now().toString(),
+        postcode: userData.postcode,
+        address: userData.address,
+        city: userData.townCity,
+        county: userData.county || '',
+        phone: normalizedPhone,
+        isDefault: true, // Set registration address as default
+        createdAt: new Date(),
+      };
+      user.addresses = [registrationAddress];
+      await user.save();
+    }
 
     req.session.userId = user._id.toString();
     req.session.role = user.role;
@@ -2331,6 +2364,22 @@ router.post('/social/complete', async (req, res) => {
     }
 
     const user = await User.create(userData);
+    
+    // Add registration address to addresses array if address fields are provided
+    if (userData.address && userData.townCity && userData.postcode && normalizedPhone) {
+      const registrationAddress = {
+        id: Date.now().toString(),
+        postcode: userData.postcode,
+        address: userData.address,
+        city: userData.townCity,
+        county: userData.county || '',
+        phone: normalizedPhone,
+        isDefault: true, // Set registration address as default
+        createdAt: new Date(),
+      };
+      user.addresses = [registrationAddress];
+      await user.save();
+    }
 
     req.session.userId = user._id.toString();
     req.session.role = user.role;
@@ -4029,7 +4078,7 @@ router.get('/profile/addresses', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
-    // Map addresses to ensure id field is present
+    // Map addresses to ensure id field is present - ONLY from addresses array
     const addresses = (user.addresses || []).map(addr => ({
       id: addr.id || addr._id?.toString() || Date.now().toString(),
       postcode: addr.postcode || '',
@@ -4039,36 +4088,6 @@ router.get('/profile/addresses', requireAuth, async (req, res) => {
       phone: addr.phone || '',
       isDefault: addr.isDefault || false,
     }));
-
-    // Check if user has profile address from registration that's not in the addresses array
-    if (user.postcode && user.address && user.phone) {
-      // Check if this profile address already exists in the addresses array
-      const profileAddressExists = addresses.some(addr => 
-        addr.postcode === user.postcode && 
-        addr.address === user.address &&
-        addr.city === (user.townCity || '')
-      );
-      
-      // If profile address doesn't exist and there are no addresses, add it as default
-      if (!profileAddressExists) {
-        const profileAddress = {
-          id: 'profile-address-' + user._id.toString(),
-          postcode: user.postcode || '',
-          address: user.address || '',
-          city: user.townCity || '',
-          county: user.county || '',
-          phone: user.phone || '',
-          isDefault: addresses.length === 0, // Make default only if no other addresses
-        };
-        
-        // Add profile address at the beginning if it's default, otherwise at the end
-        if (profileAddress.isDefault) {
-          addresses.unshift(profileAddress);
-        } else {
-          addresses.push(profileAddress);
-        }
-      }
-    }
 
     return res.json({ addresses });
   } catch (error) {
