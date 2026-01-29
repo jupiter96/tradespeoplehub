@@ -169,10 +169,20 @@ router.get('/wallet/transactions', authenticateToken, async (req, res) => {
 router.post('/payment-methods/create-setup-intent', authenticateToken, async (req, res) => {
   
   try {
+    console.log('[create-setup-intent] request', {
+      userId: req.user?.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
     const settings = await PaymentSettings.getSettings();
     
     const stripeKeys = getStripeKeys(settings);
     const stripeEnvironment = settings.stripeEnvironment || settings.environment || 'test';
+    console.log('[create-setup-intent] settings', {
+      stripeEnvironment,
+      isActive: Boolean(settings.isActive),
+      hasSecretKey: Boolean(stripeKeys.secretKey),
+    });
     
     if (!settings.isActive || !stripeKeys.secretKey) {
       return res.status(400).json({ error: 'Stripe payments are not configured' });
@@ -198,6 +208,7 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
     // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
     if (!customerId) {
+      console.log('[create-setup-intent] creating stripe customer');
       const customer = await stripe.customers.create({
         email: user.email,
         name: `${user.firstName} ${user.lastName}`,
@@ -211,6 +222,9 @@ router.post('/payment-methods/create-setup-intent', authenticateToken, async (re
     }
     
     // Create setup intent
+    console.log('[create-setup-intent] creating setup intent', {
+      customerId,
+    });
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       payment_method_types: ['card'],
