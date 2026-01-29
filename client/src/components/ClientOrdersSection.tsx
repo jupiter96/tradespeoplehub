@@ -204,6 +204,8 @@ export default function ClientOrdersSection() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [isAcceptExtensionDialogOpen, setIsAcceptExtensionDialogOpen] = useState(false);
+  const [isDeclineExtensionDialogOpen, setIsDeclineExtensionDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [orderDetailTab, setOrderDetailTab] = useState("timeline");
   const [searchQuery, setSearchQuery] = useState("");
@@ -243,6 +245,10 @@ export default function ClientOrdersSection() {
     fileName: string;
     type: "image" | "pdf" | "other";
   } | null>(null);
+
+  const openPreviewAttachment = (attachment: { url: string; fileName: string; type: "image" | "pdf" | "other" }) => {
+    setPreviewAttachment(attachment);
+  };
 
   const getTwoLetterInitials = (name?: string, fallback = "U") => {
     if (!name || !name.trim()) return fallback;
@@ -558,7 +564,7 @@ export default function ClientOrdersSection() {
           title: "Order Placed",
           description: "Your order has been placed successfully.",
           colorClass: "bg-gray-800",
-          icon: <ShoppingBag className="w-5 h-5 text-white" />,
+          icon: <ShoppingBag className="w-5 h-5 text-blue-600" />,
         },
         "placed"
       );
@@ -571,7 +577,7 @@ export default function ClientOrdersSection() {
           title: "Order Accepted",
           description: `${order.professional || "Professional"} accepted your order.`,
           colorClass: "bg-green-600",
-          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+          icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
         },
         "accepted"
       );
@@ -594,7 +600,7 @@ export default function ClientOrdersSection() {
               message: rr.clientMessage || rr.reason,
               files: rr.clientFiles,
               colorClass: "bg-orange-500",
-              icon: <AlertTriangle className="w-5 h-5 text-white" />,
+              icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
             },
             `revision-requested-${rr.index || index + 1}`
           );
@@ -611,7 +617,7 @@ export default function ClientOrdersSection() {
           message: order.additionalInformation.message,
           files: order.additionalInformation.files,
           colorClass: "bg-blue-500",
-          icon: <FileText className="w-5 h-5 text-white" />,
+          icon: <FileText className="w-5 h-5 text-blue-600" />,
         },
         "additional-info"
       );
@@ -626,7 +632,7 @@ export default function ClientOrdersSection() {
             ? `Extension requested: ${order.extensionRequest.reason}`
             : "Extension requested for the delivery deadline.",
           colorClass: "bg-indigo-500",
-          icon: <Clock className="w-5 h-5 text-white" />,
+          icon: <Clock className="w-5 h-5 text-blue-600" />,
         },
         "extension-requested"
       );
@@ -649,9 +655,9 @@ export default function ClientOrdersSection() {
               : "bg-red-600",
           icon:
             order.extensionRequest.status === "approved" ? (
-              <CheckCircle2 className="w-5 h-5 text-white" />
+              <CheckCircle2 className="w-5 h-5 text-blue-600" />
             ) : (
-              <XCircle className="w-5 h-5 text-white" />
+              <XCircle className="w-5 h-5 text-blue-600" />
             ),
         },
         "extension-response"
@@ -750,7 +756,7 @@ export default function ClientOrdersSection() {
             message: deliveryMessage || undefined,
             files: files,
             colorClass: "bg-purple-500",
-            icon: <Truck className="w-5 h-5 text-white" />,
+            icon: <Truck className="w-5 h-5 text-blue-600" />,
           },
           `delivered-${deliveryNum}`
         );
@@ -764,7 +770,7 @@ export default function ClientOrdersSection() {
           description: `${order.professional || "Professional"} delivered the work.`,
           files: order.deliveryFiles,
           colorClass: "bg-purple-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
+          icon: <Truck className="w-5 h-5 text-blue-600" />,
         },
         "delivered-1"
       );
@@ -778,7 +784,7 @@ export default function ClientOrdersSection() {
           message: order.deliveryMessage,
           files: order.deliveryFiles,
           colorClass: "bg-purple-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
+          icon: <Truck className="w-5 h-5 text-blue-600" />,
         },
         "delivered-1"
       );
@@ -794,7 +800,7 @@ export default function ClientOrdersSection() {
             : "A cancellation was requested for this order.",
           files: order.cancellationRequest.files && order.cancellationRequest.files.length > 0 ? order.cancellationRequest.files : undefined,
           colorClass: "bg-red-500",
-          icon: <AlertTriangle className="w-5 h-5 text-white" />,
+          icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
         },
         "cancellation-requested"
       );
@@ -813,7 +819,7 @@ export default function ClientOrdersSection() {
             ? `Cancellation reason: ${order.cancellationRequest.reason}`
             : "Order has been cancelled.",
           colorClass: "bg-red-600",
-          icon: <XCircle className="w-5 h-5 text-white" />,
+          icon: <XCircle className="w-5 h-5 text-blue-600" />,
         },
         "cancelled"
       );
@@ -832,7 +838,7 @@ export default function ClientOrdersSection() {
             ? `Your cancellation request was rejected. Reason: ${order.cancellationRequest.rejectionReason}`
             : "Your cancellation request was rejected. The order will continue.",
           colorClass: "bg-green-600",
-          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+          icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
         },
         "cancellation-rejected"
       );
@@ -845,7 +851,7 @@ export default function ClientOrdersSection() {
           title: "Order Completed",
           description: "This order has been completed successfully.",
           colorClass: "bg-green-600",
-          icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+          icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
         },
         "completed"
       );
@@ -1823,11 +1829,15 @@ export default function ClientOrdersSection() {
                                 variant="outline"
                                 size="sm"
                                 className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                onClick={() => setPreviewAttachment({
-                                  url: resolvedUrl,
-                                  fileName: fileName,
-                                  type: isImage ? "image" : (isPdf ? "pdf" : "other")
-                                })}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openPreviewAttachment({
+                                    url: resolvedUrl,
+                                    fileName: fileName,
+                                    type: isImage ? "image" : (isPdf ? "pdf" : "other")
+                                  });
+                                }}
                               >
                                 <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
                                 <span className="truncate">{fileName}</span>
@@ -1888,8 +1898,27 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Status Alert Box - Service In Progress or Under Revision */}
+            {/* Status Alert Box - Service In Progress, Under Revision, or Extension Request */}
             {currentOrder.status === "In Progress" && (() => {
+              // Check if there's a pending extension request
+              if (currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending') {
+                return (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                          A delivery extension has been requested for your order!
+                        </h4>
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] break-words">
+                          {currentOrder.professional} has requested an extension for the order delivery time and is awaiting your response. Please respond, or feel free to discuss any details with the seller.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               // Check if there's an active revision request
               const revisionRequests = currentOrder.revisionRequest
                 ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
@@ -1949,86 +1978,6 @@ export default function ClientOrdersSection() {
                       return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
                     })() : "Your work has been delivered. Kindly approve the delivery or request any modifications. If no response is received, the order will be automatically completed and funds released to the seller."}
                   </p>
-
-                {/* Extension Request Alert */}
-                {currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending' && (
-                  <div className="mb-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-start gap-2 sm:gap-3 mb-3">
-                      <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <h5 className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] font-medium text-yellow-700 mb-1 break-words">
-                          Extension Request Pending
-                        </h5>
-                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-2 break-words">
-                          {currentOrder.professional} has requested an extension for the delivery deadline.
-                        </p>
-                        <div className="space-y-1 mb-3">
-                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] break-words">
-                            <span className="font-medium">Current delivery date:</span> {currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : 'N/A'}
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] break-words">
-                            <span className="font-medium">Requested new date & time:</span>{" "}
-                            {currentOrder.extensionRequest.newDeliveryDate 
-                              ? (() => {
-                                  const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                                  const dateStr = d.toLocaleDateString("en-GB", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  });
-                                  const timeStr = d.toLocaleTimeString("en-GB", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  });
-                                  return `${dateStr} at ${timeStr}`;
-                                })()
-                              : 'N/A'}
-                          </p>
-                          {currentOrder.extensionRequest.reason && (
-                            <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mt-2 break-words">
-                              <span className="font-medium">Reason:</span> {currentOrder.extensionRequest.reason}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3">
-                          <Button
-                            onClick={async () => {
-                              try {
-                                if (selectedOrder) {
-                                  await respondToExtension(selectedOrder, 'approve');
-                                  toast.success("Extension request approved");
-                                }
-                              } catch (error: any) {
-                                toast.error(error.message || "Failed to approve extension");
-                              }
-                            }}
-                            className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[12px] sm:text-[13px] w-full sm:w-auto"
-                          >
-                            <ThumbsUp className="w-4 h-4 mr-2" />
-                            Approve
-                          </Button>
-                          <Button
-                            onClick={async () => {
-                              try {
-                                if (selectedOrder) {
-                                  await respondToExtension(selectedOrder, 'reject');
-                                  toast.success("Extension request rejected");
-                                }
-                              } catch (error: any) {
-                                toast.error(error.message || "Failed to reject extension");
-                              }
-                            }}
-                            variant="outline"
-                            className="border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[12px] sm:text-[13px] w-full sm:w-auto"
-                          >
-                            <ThumbsDown className="w-4 h-4 mr-2" />
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Extension Request Status (approved/rejected) - Only show if order is in progress */}
                 {currentOrder.extensionRequest && 
@@ -2263,190 +2212,288 @@ export default function ClientOrdersSection() {
                     event.at === latestDeliveryEvent.at;
 
                   return (
-                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-3 sm:gap-5 mb-6 sm:mb-8 relative">
+                    <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-0 relative group">
                       <div className="flex flex-col items-center pt-1 relative">
-                        {/* Icon with enhanced modern styling */}
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#3D78CB] flex items-center justify-center flex-shrink-0 shadow-lg ring-2 sm:ring-4 ring-white transition-all duration-300 hover:scale-110 hover:shadow-xl relative z-10">
+                        {/* Icon with consistent timeline styling */}
+                        <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0 relative z-10 text-blue-600">
                           {event.icon}
                         </div>
-                        {/* Bold blue dashed connecting line */}
-                        <div className="relative mt-2 sm:mt-3 flex-1" style={{ minHeight: "30px" }}>
-                          <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0 border-l-[2px] sm:border-l-[3px] border-dashed border-[#3D78CB]" />
-                        </div>
+                        {/* Connecting line - gray consistent style */}
+                        <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                       </div>
-                      <div className="flex-1 pb-2 min-w-0">
-                        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] mb-1 break-words">
-                          {deliveryNumber ? `#${deliveryNumber} ${event.title}` : event.title}
-                        </p>
-                    {event.at && (
-                      <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2 break-words">
-                        {formatDateTime(event.at)}
-                      </p>
-                    )}
-                    {event.description && (
-                      <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-2 break-words">
-                        {event.description}
-                      </p>
-                    )}
-                    {event.message && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3 mt-2 shadow-sm">
-                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
-                          {event.message}
-                        </p>
-                      </div>
-                    )}
-                    {/* Withdraw button for Cancellation Requested event (client-initiated) */}
-                    {event.title === "Cancellation Requested" && 
-                     event.id === "cancellation-requested" &&
-                     currentOrder.cancellationRequest?.requestedBy?.toString() === userInfo?.id?.toString() &&
-                     currentOrder.cancellationRequest?.status === "pending" && (
-                      <div className="mt-3">
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
-                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] break-words">
-                            {currentOrder.professional || "The professional"} has until{" "}
-                            {currentOrder.cancellationRequest.responseDeadline ? (
-                              <>
-                                {(() => {
-                                  const deadline = new Date(currentOrder.cancellationRequest.responseDeadline);
-                                  const day = deadline.getDate();
-                                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                                  const month = monthNames[deadline.getMonth()];
-                                  const year = deadline.getFullYear();
-                                  return `${day}${daySuffix} ${month} ${year}`;
-                                })()}
-                              </>
-                            ) : (
-                              "the deadline"
-                            )}{" "}
-                            to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to your Wallet.
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => setIsWithdrawDialogOpen(true)}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[12px] sm:text-[13px]"
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Withdraw
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {event.files && event.files.length > 0 && (() => {
-                      // For "Work Delivered" events, filter files by deliveryNumber
-                      // For other events (like "Revision Requested"), show all files
-                      let filesToShow = event.files;
-                      
-                      if (event.title === "Work Delivered" && event.id && event.id.startsWith('delivered-')) {
-                        // Extract delivery number from event id (format: "delivered-1", "delivered-2", etc.)
-                        const eventDeliveryNumber = parseInt(event.id.replace('delivered-', ''), 10);
-                        
-                        // Filter files by deliveryNumber
-                        filesToShow = event.files.filter((file: any) => {
-                          const fileDeliveryNumber = file.deliveryNumber || 1;
-                          return fileDeliveryNumber === eventDeliveryNumber;
-                        });
-                      }
-                      
-                      if (filesToShow.length === 0) return null;
-                      
-                      return (
-                        <div className="mt-3">
-                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">
-                            📎 Attachments ({filesToShow.length})
-                          </p>
-                          <div className="space-y-3">
-                            {filesToShow.map((file: any, index: number) => {
-                            const fileUrl = file.url || "";
-                            const fileName = file.fileName || "attachment";
-                            const isImage =
-                              file.fileType === "image" ||
-                              /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
-                              /\.(png|jpe?g|gif|webp)$/i.test(fileName);
-                            const resolvedUrl = resolveFileUrl(fileUrl);
+                      <div className="flex-1 pb-6">
+                        {/* Card Container for Timeline Content */}
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
+                          {/* Title and Date */}
+                          <div className="mb-3">
+                            <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">
+                              {deliveryNumber ? `#${deliveryNumber} ${event.title}` : event.title}
+                            </p>
+                            {event.at && (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                {formatDateTime(event.at)}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {/* Description */}
+                          {event.description && (
+                            <div className="mb-3 bg-gray-50 border-l-4 border-blue-500 rounded p-3">
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                                {event.description}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Message/Reason - Highlighted */}
+                          {event.message && (
+                            <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700 font-medium mb-1">
+                                Message:
+                              </p>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                                {event.message}
+                              </p>
+                            </div>
+                          )}
+                          {/* Withdraw button for Cancellation Requested event (client-initiated) */}
+                          {event.title === "Cancellation Requested" && 
+                           event.id === "cancellation-requested" &&
+                           currentOrder.cancellationRequest?.requestedBy?.toString() === userInfo?.id?.toString() &&
+                           currentOrder.cancellationRequest?.status === "pending" && (
+                            <div className="mt-3">
+                              <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 mb-3 shadow-sm">
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed break-words">
+                                  {currentOrder.professional || "The professional"} has until{" "}
+                                  <span className="font-semibold text-orange-700">
+                                    {currentOrder.cancellationRequest.responseDeadline ? (
+                                      <>
+                                        {(() => {
+                                          const deadline = new Date(currentOrder.cancellationRequest.responseDeadline);
+                                          const day = deadline.getDate();
+                                          const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                                          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                          const month = monthNames[deadline.getMonth()];
+                                          const year = deadline.getFullYear();
+                                          return `${day}${daySuffix} ${month} ${year}`;
+                                        })()}
+                                      </>
+                                    ) : (
+                                      "the deadline"
+                                    )}
+                                  </span>{" "}
+                                  to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to your Wallet.
+                                </p>
+                              </div>
+                              <Button
+                                onClick={() => setIsWithdrawDialogOpen(true)}
+                                variant="outline"
+                                className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[13px] shadow-sm"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Withdraw
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Extension Request Action Card - for pending status */}
+                          {event.title === "Extension Requested" && 
+                           event.id === "extension-requested" &&
+                           currentOrder.extensionRequest?.status === "pending" && (
+                            <div className="mt-3">
+                              <div className="bg-indigo-50 border-l-4 border-indigo-500 rounded-lg p-4 shadow-sm">
+                                <div className="flex items-start gap-3">
+                                  <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-1" />
+                                  <div className="flex-1">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-indigo-700 font-medium mb-2">
+                                      Delivery time extension requested
+                                    </p>
+                                    <div className="bg-white border border-indigo-200 rounded-lg p-3 mb-4">
+                                      <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 mb-1">
+                                        Expected delivery:
+                                      </p>
+                                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                                        {currentOrder.extensionRequest?.newDeliveryDate ? (() => {
+                                          const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                                          const day = d.getDate();
+                                          const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                                          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                          const dayName = dayNames[d.getDay()];
+                                          const month = monthNames[d.getMonth()];
+                                          const year = d.getFullYear();
+                                          const timeStr = d.toLocaleTimeString("en-GB", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          });
+                                          return `${dayName} ${day}${daySuffix} ${month}, ${year} ${timeStr}`;
+                                        })() : 'N/A'}
+                                      </p>
+                                    </div>
+                                    <div className="flex gap-3 flex-wrap">
+                                      <Button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setSelectedOrder(currentOrder.id);
+                                          setIsAcceptExtensionDialogOpen(true);
+                                        }}
+                                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] shadow-sm"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setSelectedOrder(currentOrder.id);
+                                          setIsDeclineExtensionDialogOpen(true);
+                                        }}
+                                        variant="outline"
+                                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] shadow-sm"
+                                      >
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          
+                          {/* Attachments Section */}
+                          {event.files && event.files.length > 0 && (() => {
+                            // For "Work Delivered" events, filter files by deliveryNumber
+                            // For other events (like "Revision Requested"), show all files
+                            let filesToShow = event.files;
+                            
+                            if (event.title === "Work Delivered" && event.id && event.id.startsWith('delivered-')) {
+                              // Extract delivery number from event id (format: "delivered-1", "delivered-2", etc.)
+                              const eventDeliveryNumber = parseInt(event.id.replace('delivered-', ''), 10);
+                              
+                              // Filter files by deliveryNumber
+                              filesToShow = event.files.filter((file: any) => {
+                                const fileDeliveryNumber = file.deliveryNumber || 1;
+                                return fileDeliveryNumber === eventDeliveryNumber;
+                              });
+                            }
+                            
+                            if (filesToShow.length === 0) return null;
+                            
                             return (
-                              <div key={index} className="relative group">
-                                {isImage ? (
-                                  <img
-                                    src={resolvedUrl}
-                                    alt={fileName}
-                                    className="max-w-full max-h-48 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                                    onClick={() => setPreviewAttachment({
-                                      url: resolvedUrl,
-                                      fileName: fileName,
-                                      type: "image"
+                              <div className="mt-3">
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-3 flex items-center gap-2">
+                                    <Paperclip className="w-4 h-4" />
+                                    Attachments ({filesToShow.length})
+                                  </p>
+                                  <div className="space-y-3">
+                                    {filesToShow.map((file: any, index: number) => {
+                                      const fileUrl = file.url || "";
+                                      const fileName = file.fileName || "attachment";
+                                      const isImage =
+                                        file.fileType === "image" ||
+                                        /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
+                                        /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                                      const resolvedUrl = resolveFileUrl(fileUrl);
+                                      return (
+                                        <div key={index} className="relative group">
+                                          {isImage ? (
+                                            <img
+                                              src={resolvedUrl}
+                                              alt={fileName}
+                                              className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                openPreviewAttachment({
+                                                  url: resolvedUrl,
+                                                  fileName: fileName,
+                                                  type: "image"
+                                                });
+                                              }}
+                                            />
+                                          ) : (
+                                            <Button
+                                              type="button"
+                                              variant="outline"
+                                              size="sm"
+                                              className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full hover:bg-blue-50"
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                                openPreviewAttachment({
+                                                  url: resolvedUrl,
+                                                  fileName: fileName,
+                                                  type: isPdf ? "pdf" : "other"
+                                                });
+                                              }}
+                                            >
+                                              <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                              <span className="truncate">{fileName}</span>
+                                            </Button>
+                                          )}
+                                        </div>
+                                      );
                                     })}
-                                  />
-                                ) : (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                    onClick={() => {
-                                      const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
-                                      setPreviewAttachment({
-                                        url: resolvedUrl,
-                                        fileName: fileName,
-                                        type: isPdf ? "pdf" : "other"
-                                      });
-                                    }}
-                                  >
-                                    <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                                    <span className="truncate">{fileName}</span>
-                                  </Button>
-                                )}
+                                  </div>
+                                </div>
                               </div>
                             );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    {event.title === "Work Delivered" && 
-                     isLatestDelivery &&
-                     currentOrder.status === "delivered" && (
-                      <div className="bg-blue-50 border border-blue-300 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4 shadow-sm">
-                        <div className="flex gap-2 mb-3 sm:mb-4">
-                          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-blue-900 break-words">
-                            Your work has been delivered. Please approve the delivery or request a revision. {event.at && (() => {
-                              const deliveryDate = new Date(event.at);
-                              const deadlineDate = new Date(deliveryDate);
-                              deadlineDate.setDate(deadlineDate.getDate() + 1);
-                              return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
-                            })()} If no action is taken by then, the order will be automatically completed.
-                          </p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-center">
-                          <Button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleAcceptDelivery(currentOrder.id);
-                            }}
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedOrder(currentOrder.id);
-                              openModal('revisionRequest');
-                            }}
-                            variant="outline"
-                            className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-4 sm:px-6 w-full sm:w-auto"
-                          >
-                            Request Modification
-                          </Button>
+                          })()}
+                          {/* Work Delivered Action Card */}
+                          {event.title === "Work Delivered" && 
+                           isLatestDelivery &&
+                           currentOrder.status === "delivered" && (
+                            <div className="mt-3">
+                              <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 shadow-sm">
+                                <div className="flex gap-3 mb-4">
+                                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1">
+                                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed break-words">
+                                      Your work has been delivered. Please approve the delivery or request a revision. {event.at && (() => {
+                                        const deliveryDate = new Date(event.at);
+                                        const deadlineDate = new Date(deliveryDate);
+                                        deadlineDate.setDate(deadlineDate.getDate() + 1);
+                                        return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                                      })()} If no action is taken by then, the order will be automatically completed.
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                  <Button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleAcceptDelivery(currentOrder.id);
+                                    }}
+                                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] px-6 shadow-sm"
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setSelectedOrder(currentOrder.id);
+                                      openModal('revisionRequest');
+                                    }}
+                                    variant="outline"
+                                    className="font-['Poppins',sans-serif] text-[13px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6 shadow-sm"
+                                  >
+                                    Request Modification
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
                   );
                 });
               })()}
@@ -2457,7 +2504,7 @@ export default function ClientOrdersSection() {
                 <div className="flex gap-4 mb-6">
                   <div className="flex flex-col items-center pt-1">
                     <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-white" />
+                      <FileText className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                   </div>
@@ -2492,7 +2539,7 @@ export default function ClientOrdersSection() {
                 <div className="flex gap-4 mb-6">
                   <div className="flex flex-col items-center pt-1">
                     <div className="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
-                      <XCircle className="w-5 h-5 text-white" />
+                      <XCircle className="w-5 h-5 text-blue-600" />
                     </div>
                   </div>
                   <div className="flex-1 pb-6">
@@ -2520,16 +2567,10 @@ export default function ClientOrdersSection() {
 
               {/* Extension Request Timeline */}
               {currentOrder.extensionRequest && currentOrder.extensionRequest.status && (
-                <div className="flex gap-4 mb-6">
+                <div className="flex gap-4 mb-0">
                   <div className="flex flex-col items-center pt-1">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      currentOrder.extensionRequest.status === 'pending' 
-                        ? 'bg-yellow-500' 
-                        : currentOrder.extensionRequest.status === 'approved' 
-                          ? 'bg-green-500' 
-                          : 'bg-red-500'
-                    }`}>
-                      <Clock className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                   </div>
@@ -2537,36 +2578,132 @@ export default function ClientOrdersSection() {
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
                       Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
-                      Professional requested new delivery date:{" "}
-                      <span className="text-[#2c353f]">
-                        {currentOrder.extensionRequest.newDeliveryDate 
-                          ? (() => {
-                              const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                              const dateStr = d.toLocaleDateString("en-GB", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              });
-                              const timeStr = d.toLocaleTimeString("en-GB", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              });
-                              return `${dateStr} at ${timeStr}`;
-                            })()
-                          : 'N/A'}
-                      </span>
-                    </p>
-                    {currentOrder.extensionRequest.reason && (
-                      <div className="bg-gray-50 rounded-lg p-3 mt-2">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                          Reason:
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          {currentOrder.extensionRequest.reason}
-                        </p>
+                    {currentOrder.extensionRequest.requestedAt && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
+                        {formatDateTime(currentOrder.extensionRequest.requestedAt)}
+                      </p>
+                    )}
+                    
+                    {/* Show action message card for pending status */}
+                    {currentOrder.extensionRequest.status === 'pending' && (
+                      <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <AlertTriangle className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h6 className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] mb-2">
+                              Delivery time extension requested
+                            </h6>
+                            <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Expected delivery:</p>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  {currentOrder.extensionRequest.newDeliveryDate 
+                                    ? (() => {
+                                        const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                        const dateStr = d.toLocaleDateString("en-GB", {
+                                          weekday: "short",
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                        });
+                                        const timeStr = d.toLocaleTimeString("en-GB", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        });
+                                        return `${dateStr}, ${timeStr}`;
+                                      })()
+                                    : 'N/A'}
+                              </p>
+                            </div>
+                            {currentOrder.scheduledDate && currentOrder.extensionRequest.newDeliveryDate && (
+                              <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Extension duration:</p>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                    +{(() => {
+                                      const original = new Date(currentOrder.scheduledDate);
+                                      const requested = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                      const diffMs = requested.getTime() - original.getTime();
+                                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                      
+                                      if (diffDays > 0 && diffHours > 0) {
+                                        return `${diffDays} day${diffDays > 1 ? 's' : ''} ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+                                      } else if (diffDays > 0) {
+                                        return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+                                      } else if (diffHours > 0) {
+                                        return `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+                                      } else {
+                                        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+                                        return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+                                      }
+                                    })()}
+                                </p>
+                              </div>
+                            )}
+                            {currentOrder.extensionRequest.reason && (
+                              <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Reason:</p>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                    {currentOrder.extensionRequest.reason}
+                                </p>
+                              </div>
+                            )}
+                            <div className="flex gap-3 flex-wrap">
+                              <Button
+                                onClick={() => setIsAcceptExtensionDialogOpen(true)}
+                                className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Accept
+                              </Button>
+                              <Button
+                                onClick={() => setIsDeclineExtensionDialogOpen(true)}
+                                variant="outline"
+                                className="border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Decline
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    )}
+
+                    {/* Show info for approved/rejected status */}
+                    {currentOrder.extensionRequest.status !== 'pending' && (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
+                          {currentOrder.extensionRequest.status === 'approved' 
+                            ? 'New delivery date: ' 
+                            : 'Requested delivery date: '}
+                          <span className="text-[#2c353f]">
+                            {currentOrder.extensionRequest.newDeliveryDate 
+                              ? (() => {
+                                  const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                                  const dateStr = d.toLocaleDateString("en-GB", {
+                                    weekday: "short",
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  });
+                                  const timeStr = d.toLocaleTimeString("en-GB", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  });
+                                  return `${dateStr} at ${timeStr}`;
+                                })()
+                              : 'N/A'}
+                          </span>
+                        </p>
+                        {currentOrder.extensionRequest.reason && (
+                          <div className="bg-gray-50 rounded-lg p-3 mt-2">
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Reason:</p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.extensionRequest.reason}
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -2579,7 +2716,7 @@ export default function ClientOrdersSection() {
                   <div className="flex gap-4">
                     <div className="flex flex-col items-center pt-1">
                       <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Edit className="w-5 h-5 text-white" />
+                        <Edit className="w-5 h-5 text-blue-600" />
                       </div>
                       <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "40px" }} />
                     </div>
@@ -2605,7 +2742,7 @@ export default function ClientOrdersSection() {
                   <div className="flex gap-4">
                     <div className="flex flex-col items-center pt-1">
                       <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Truck className="w-5 h-5 text-white" />
+                        <Truck className="w-5 h-5 text-blue-600" />
                       </div>
                       <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                     </div>
@@ -2621,7 +2758,7 @@ export default function ClientOrdersSection() {
                   <div className="flex gap-4">
                     <div className="flex flex-col items-center pt-1">
                       <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                        <Truck className="w-5 h-5 text-white" />
+                        <Truck className="w-5 h-5 text-blue-600" />
                       </div>
                       <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                     </div>
@@ -2746,7 +2883,7 @@ export default function ClientOrdersSection() {
                 <div className="flex gap-4">
                   <div className="flex flex-col items-center pt-1">
                     <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-5 h-5 text-white" />
+                      <Truck className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "40px" }} />
                   </div>
@@ -3297,7 +3434,7 @@ export default function ClientOrdersSection() {
                         <div key={index} className="flex gap-4">
                           <div className="flex flex-col items-center pt-1">
                             <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center flex-shrink-0">
-                              <Truck className="w-5 h-5 text-white" />
+                              <Truck className="w-5 h-5 text-blue-600" />
                             </div>
                             {index < sortedDeliveries.length - 1 && (
                               <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "40px" }} />
@@ -4910,6 +5047,269 @@ export default function ClientOrdersSection() {
             </div>
           </div>
         )}
+
+        {/* Accept Extension Confirmation Modal - Inline React Modal */}
+        {isAcceptExtensionDialogOpen && (
+          <div
+            className="fixed inset-0 z-[1000000] flex items-center justify-center px-4"
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsAcceptExtensionDialogOpen(false);
+              }
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-black/50"
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            />
+            <div
+              className="relative bg-white rounded-lg shadow-xl w-full max-w-[500px] p-6"
+              style={{ position: "relative", zIndex: 1000001 }}
+            >
+              <button
+                onClick={() => setIsAcceptExtensionDialogOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-4">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                </div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold text-center">
+                  Accept Extension Request?
+                </h2>
+              </div>
+
+              <div className="py-4">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 text-center">
+                  Are you sure you want to accept this delivery extension request? The new delivery date will be applied to the order.
+                </p>
+                {currentOrder?.extensionRequest?.newDeliveryDate && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      <strong>New delivery date:</strong>{" "}
+                      {(() => {
+                        const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
+                        const dateStr = d.toLocaleDateString("en-GB", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        });
+                        const timeStr = d.toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        return `${dateStr} at ${timeStr}`;
+                      })()}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  onClick={() => setIsAcceptExtensionDialogOpen(false)}
+                  variant="outline"
+                  className="font-['Poppins',sans-serif] text-[14px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (selectedOrder) {
+                        await respondToExtension(selectedOrder, 'approve');
+                        setIsAcceptExtensionDialogOpen(false);
+                        toast.success("Extension request accepted");
+                      }
+                    } catch (error: any) {
+                      toast.error(error.message || "Failed to accept extension");
+                    }
+                  }}
+                  className="font-['Poppins',sans-serif] bg-green-600 hover:bg-green-700 text-white text-[14px]"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Yes, Accept
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Decline Extension Confirmation Modal - Inline React Modal */}
+        {isDeclineExtensionDialogOpen && (
+          <div
+            className="fixed inset-0 z-[1000000] flex items-center justify-center px-4"
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsDeclineExtensionDialogOpen(false);
+              }
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-black/50"
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            />
+            <div
+              className="relative bg-white rounded-lg shadow-xl w-full max-w-[500px] p-6"
+              style={{ position: "relative", zIndex: 1000001 }}
+            >
+              <button
+                onClick={() => setIsDeclineExtensionDialogOpen(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                type="button"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                  <XCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold text-center">
+                  Decline Extension Request?
+                </h2>
+              </div>
+
+              <div className="py-4">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 text-center">
+                  Are you sure you want to decline this delivery extension request? The original delivery date will remain in effect.
+                </p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    <strong>Note:</strong> The professional will be required to deliver the work by the original deadline.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  type="button"
+                  onClick={() => setIsDeclineExtensionDialogOpen(false)}
+                  variant="outline"
+                  className="font-['Poppins',sans-serif] text-[14px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      if (selectedOrder) {
+                        await respondToExtension(selectedOrder, 'reject');
+                        setIsDeclineExtensionDialogOpen(false);
+                        toast.success("Extension request declined");
+                      }
+                    } catch (error: any) {
+                      toast.error(error.message || "Failed to decline extension");
+                    }
+                  }}
+                  className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700 text-white text-[14px]"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Yes, Decline
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Attachment Preview Modal - Inline React Modal (not Radix UI) */}
+        {previewAttachment && (
+          <div
+            className="fixed inset-0 z-[1000000] flex items-center justify-center px-4"
+            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setPreviewAttachment(null);
+              }
+            }}
+          >
+            <div
+              className="absolute inset-0 bg-black/50"
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+            />
+            <div
+              className="relative bg-white rounded-lg shadow-xl w-full max-w-[1400px] max-h-[95vh] overflow-hidden"
+              style={{ position: "relative", zIndex: 1000001 }}
+            >
+              <div className="px-6 pt-6 pb-4 border-b flex items-center justify-between gap-4">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
+                  {previewAttachment.fileName}
+                </h3>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = previewAttachment.url;
+                      link.download = previewAttachment.fileName;
+                      link.click();
+                    }}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(previewAttachment.url, "_blank")}
+                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                  <button
+                    onClick={() => setPreviewAttachment(null)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                    type="button"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 overflow-auto max-h-[calc(95vh-120px)] flex items-center justify-center bg-gray-50">
+                {previewAttachment.type === "image" ? (
+                  <img
+                    src={previewAttachment.url}
+                    alt={previewAttachment.fileName}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  />
+                ) : previewAttachment.type === "pdf" ? (
+                  <iframe
+                    src={previewAttachment.url}
+                    className="w-full h-[calc(95vh-180px)] min-h-[600px] border-0 rounded-lg"
+                    title={previewAttachment.fileName}
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                      Preview not available for this file type
+                    </p>
+                    <Button
+                      onClick={() => window.open(previewAttachment.url, "_blank")}
+                      className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Document
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -5766,75 +6166,6 @@ export default function ClientOrdersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Attachment Preview Modal */}
-      {previewAttachment && (
-        <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
-          <DialogContent className="w-[90vw] max-w-[900px] max-h-[90vh] bg-white p-0">
-            <DialogHeader className="px-6 pt-6 pb-4 border-b">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                  {previewAttachment.fileName}
-                </DialogTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = previewAttachment.url;
-                      link.download = previewAttachment.fileName;
-                      link.click();
-                    }}
-                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(previewAttachment.url, "_blank")}
-                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open in New Tab
-                  </Button>
-                </div>
-              </div>
-            </DialogHeader>
-            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
-              {previewAttachment.type === "image" ? (
-                <img
-                  src={previewAttachment.url}
-                  alt={previewAttachment.fileName}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                />
-              ) : previewAttachment.type === "pdf" ? (
-                <iframe
-                  src={previewAttachment.url}
-                  className="w-full h-[calc(90vh-180px)] min-h-[600px] border-0 rounded-lg"
-                  title={previewAttachment.fileName}
-                />
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
-                    Preview not available for this file type
-                  </p>
-                  <Button
-                    onClick={() => window.open(previewAttachment.url, "_blank")}
-                    className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open Document
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
 
     </div>
   );

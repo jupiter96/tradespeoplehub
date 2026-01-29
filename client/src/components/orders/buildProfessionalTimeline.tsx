@@ -30,7 +30,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         label: "Order Placed",
         description: `${order.client || "Client"} placed this order.`,
         colorClass: "bg-gray-800",
-        icon: <ShoppingBag className="w-5 h-5 text-white" />,
+        icon: <ShoppingBag className="w-5 h-5 text-blue-600" />,
       },
       "placed"
     );
@@ -44,7 +44,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         label: "Order Accepted",
         description: "You accepted this order.",
         colorClass: "bg-green-600",
-        icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
       },
       "accepted"
     );
@@ -59,7 +59,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         description:
           "Client has completed payment and is awaiting your service delivery.",
         colorClass: "bg-orange-500",
-        icon: <Clock className="w-5 h-5 text-white" />,
+        icon: <Clock className="w-5 h-5 text-blue-600" />,
       },
       "pending-delivery"
     );
@@ -91,7 +91,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           ? "Client requested a revision. Please review and respond to the revision request."
           : "You are currently working on this service. Make sure to deliver on time.",
         colorClass: "bg-blue-500",
-        icon: <PlayCircle className="w-5 h-5 text-white" />,
+        icon: <PlayCircle className="w-5 h-5 text-blue-600" />,
       },
       "in-progress"
     );
@@ -107,7 +107,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         message: order.additionalInformation.message,
         files: order.additionalInformation.files,
         colorClass: "bg-blue-500",
-        icon: <FileText className="w-5 h-5 text-white" />,
+        icon: <FileText className="w-5 h-5 text-blue-600" />,
       },
       "additional-info"
     );
@@ -143,7 +143,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
             ? `You requested an extension to ${newDeliveryFormatted}.`
             : "You requested an extension to the delivery time.",
         colorClass: "bg-indigo-500",
-        icon: <Clock className="w-5 h-5 text-white" />,
+        icon: <Clock className="w-5 h-5 text-blue-600" />,
       },
       "extension-requested"
     );
@@ -182,9 +182,9 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         colorClass: ext.status === "approved" ? "bg-green-600" : "bg-red-600",
         icon:
           ext.status === "approved" ? (
-            <ThumbsUp className="w-5 h-5 text-white" />
+            <ThumbsUp className="w-5 h-5 text-blue-600" />
           ) : (
-            <ThumbsDown className="w-5 h-5 text-white" />
+            <ThumbsDown className="w-5 h-5 text-blue-600" />
           ),
       },
       "extension-responded"
@@ -283,7 +283,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           message: deliveryMessage || undefined,
           files: files,
           colorClass: "bg-purple-500",
-          icon: <Truck className="w-5 h-5 text-white" />,
+          icon: <Truck className="w-5 h-5 text-blue-600" />,
         },
         `delivered-${deliveryNum}`
       );
@@ -298,7 +298,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         message: order.deliveryMessage,
         files: order.deliveryFiles,
         colorClass: "bg-purple-500",
-        icon: <Truck className="w-5 h-5 text-white" />,
+        icon: <Truck className="w-5 h-5 text-blue-600" />,
       },
       "delivered-1"
     );
@@ -317,7 +317,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           : "A cancellation was requested for this order.",
         files: canc.files && canc.files.length > 0 ? canc.files : undefined,
         colorClass: "bg-red-500",
-        icon: <AlertTriangle className="w-5 h-5 text-white" />,
+        icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
       },
       "cancellation-requested"
     );
@@ -348,9 +348,9 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
             : "bg-gray-500",
         icon:
           canc.status === "approved" ? (
-            <XCircle className="w-5 h-5 text-white" />
+            <XCircle className="w-5 h-5 text-blue-600" />
           ) : (
-            <Check className="w-5 h-5 text-white" />
+            <Check className="w-5 h-5 text-blue-600" />
           ),
       },
       "cancellation-responded"
@@ -373,7 +373,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           message: rev.clientMessage || undefined,
           files: rev.clientFiles && rev.clientFiles.length > 0 ? rev.clientFiles : undefined,
           colorClass: "bg-purple-500",
-          icon: <Edit className="w-5 h-5 text-white" />,
+          icon: <Edit className="w-5 h-5 text-blue-600" />,
         },
         `revision-requested-${rev.index || 0}`
       );
@@ -416,11 +416,11 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
               : "bg-purple-500",
           icon:
             rev.status === "completed" ? (
-              <CheckCircle2 className="w-5 h-5 text-white" />
+              <CheckCircle2 className="w-5 h-5 text-blue-600" />
             ) : rev.status === "rejected" ? (
-              <XCircle className="w-5 h-5 text-white" />
+              <XCircle className="w-5 h-5 text-blue-600" />
             ) : (
-              <FileText className="w-5 h-5 text-white" />
+              <FileText className="w-5 h-5 text-blue-600" />
             ),
         },
         `revision-responded-${rev.index || 0}`
@@ -439,7 +439,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           ? `Client submitted additional information: ${addInfo.message.substring(0, 100)}${addInfo.message.length > 100 ? '...' : ''}`
           : `Client submitted ${addInfo.files?.length || 0} file(s) as additional information.`,
         colorClass: "bg-blue-500",
-        icon: <FileText className="w-5 h-5 text-white" />,
+        icon: <FileText className="w-5 h-5 text-blue-600" />,
       },
       "additional-info"
     );
@@ -454,7 +454,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         description:
           "Order has been completed and funds have been released to your wallet.",
         colorClass: "bg-green-700",
-        icon: <CheckCircle2 className="w-5 h-5 text-white" />,
+        icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
       },
       "completed"
     );
@@ -470,7 +470,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           ? `Order was cancelled. Reason: ${canc.reason}`
           : "Order has been cancelled.",
         colorClass: "bg-red-700",
-        icon: <XCircle className="w-5 h-5 text-white" />,
+        icon: <XCircle className="w-5 h-5 text-blue-600" />,
       },
       "order-cancelled"
     );
@@ -487,7 +487,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           disp.reason ||
           "A dispute was opened for this order. Please review and respond.",
         colorClass: "bg-red-700",
-        icon: <AlertTriangle className="w-5 h-5 text-white" />,
+        icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
       },
       "dispute-opened"
     );
@@ -499,7 +499,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         label: "Dispute Closed",
         description: (disp as any).decisionNotes || "Dispute has been resolved.",
         colorClass: "bg-gray-700",
-        icon: <FileText className="w-5 h-5 text-white" />,
+        icon: <FileText className="w-5 h-5 text-blue-600" />,
       },
       "dispute-closed"
     );

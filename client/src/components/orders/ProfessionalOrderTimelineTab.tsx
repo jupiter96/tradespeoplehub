@@ -15,6 +15,7 @@ import {
   Paperclip,
   Download,
   ExternalLink,
+  X,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
@@ -357,39 +358,34 @@ export default function ProfessionalOrderTimelineTab({
             You are currently working on this service. Expected delivery: <span className="text-[#2c353f]">{currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}</span>. Make sure to deliver the work on time or request an extension if needed.
           </p>
           
-          {/* Extension Request Status */}
+          {/* Extension Request Status - Only show for pending */}
           {currentOrder.extensionRequest && 
-           currentOrder.extensionRequest.status && 
-           ['pending', 'approved', 'rejected'].includes(currentOrder.extensionRequest.status) && (
-            <div className={`mb-4 p-4 rounded-lg border ${
-              currentOrder.extensionRequest.status === 'pending' 
-                ? 'bg-yellow-50 border-yellow-200' 
-                : currentOrder.extensionRequest.status === 'approved'
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-red-50 border-red-200'
-            }`}>
+           currentOrder.extensionRequest.status === 'pending' && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                {currentOrder.extensionRequest.status === 'pending' && (
-                  <Clock className="w-5 h-5 text-yellow-600" />
-                )}
-                {currentOrder.extensionRequest.status === 'approved' && (
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                )}
-                {currentOrder.extensionRequest.status === 'rejected' && (
-                  <XCircle className="w-5 h-5 text-red-600" />
-                )}
-                <h5 className={`font-['Poppins',sans-serif] text-[14px] font-medium ${
-                  currentOrder.extensionRequest.status === 'pending' 
-                    ? 'text-yellow-700' 
-                    : currentOrder.extensionRequest.status === 'approved'
-                      ? 'text-green-700'
-                      : 'text-red-700'
-                }`}>
-                  Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
+                <Clock className="w-5 h-5 text-blue-600" />
+                <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-blue-700">
+                  Your order delivery extension request is pending!
                 </h5>
               </div>
-              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
-                New delivery date & time:{" "}
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Your request to extend the order delivery time has been sent to the client. Please wait for their response. Feel free to discuss any details with the buyer.
+              </p>
+            </div>
+          )}
+
+          {/* Extension Request Approved Status */}
+          {currentOrder.extensionRequest && 
+           currentOrder.extensionRequest.status === 'approved' && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-green-700">
+                  Extension Request Approved
+                </h5>
+              </div>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Your extension request has been approved. New delivery date & time:{" "}
                 {currentOrder.extensionRequest.newDeliveryDate 
                   ? (() => {
                       const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
@@ -406,11 +402,22 @@ export default function ProfessionalOrderTimelineTab({
                     })()
                   : 'N/A'}
               </p>
-              {currentOrder.extensionRequest.reason && (
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                  Reason: {currentOrder.extensionRequest.reason}
-                </p>
-              )}
+            </div>
+          )}
+
+          {/* Extension Request Rejected Status */}
+          {currentOrder.extensionRequest && 
+           currentOrder.extensionRequest.status === 'rejected' && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="w-5 h-5 text-red-600" />
+                <h5 className="font-['Poppins',sans-serif] text-[14px] font-medium text-red-700">
+                  Extension Request Rejected
+                </h5>
+              </div>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                Your extension request has been rejected. Please deliver the work by the original deadline.
+              </p>
             </div>
           )}
 
@@ -521,228 +528,266 @@ export default function ProfessionalOrderTimelineTab({
               : null;
 
             return (
-              <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-5 mb-8 relative">
+              <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-0 relative group">
                 <div className="flex flex-col items-center pt-1 relative">
-                  {/* Icon with enhanced modern styling */}
-                  <div className="w-12 h-12 rounded-xl bg-[#3D78CB] flex items-center justify-center flex-shrink-0 shadow-lg ring-4 ring-white transition-all duration-300 hover:scale-110 hover:shadow-xl relative z-10">
+                  {/* Icon with consistent timeline styling */}
+                  <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0 relative z-10 text-blue-600">
                     {event.icon}
                   </div>
-                  {/* Bold blue dashed connecting line */}
-                  <div className="relative mt-3 flex-1" style={{ minHeight: "40px" }}>
-                    <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0 border-l-[3px] border-dashed border-[#3D78CB]" />
-                  </div>
+                  {/* Connecting line - gray consistent style */}
+                  <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
                 </div>
-                <div className="flex-1 pb-2">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
-                    {deliveryNumber ? `#${deliveryNumber} ${event.label}` : event.label}
-                  </p>
-                  {event.at && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                      {formatDateTime(event.at)}
-                    </p>
-                  )}
-                  {event.description && (
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
-                      {event.description}
-                    </p>
-                  )}
-                  {event.message && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-2 shadow-sm">
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                        {event.message}
+                <div className="flex-1 pb-6">
+                  {/* Card Container for Timeline Content */}
+                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow">
+                    {/* Title and Date */}
+                    <div className="mb-3">
+                      <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">
+                        {deliveryNumber ? `#${deliveryNumber} ${event.label}` : event.label}
                       </p>
+                      {event.at && (
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                          {formatDateTime(event.at)}
+                        </p>
+                      )}
                     </div>
-                  )}
-                  
-                  {/* Withdraw button for Cancellation Requested event (professional-initiated) */}
-                  {event.label === "Cancellation Requested" && 
-                   event.id === "cancellation-requested" &&
-                   (() => {
-                     const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
-                     return cr?.requestedBy?.toString() === userInfo?.id?.toString() && cr?.status === "pending";
-                   })() && (
-                    <div className="mt-3">
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
-                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] break-words">
-                          {(currentOrder as any).client || "The client"} has until{" "}
-                          {(() => {
-                            const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
-                            if (cr?.responseDeadline) {
-                              const deadline = new Date(cr.responseDeadline);
-                              const day = deadline.getDate();
-                              const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                              const month = monthNames[deadline.getMonth()];
-                              const year = deadline.getFullYear();
-                              return `${day}${daySuffix} ${month} ${year}`;
-                            }
-                            return "the deadline";
-                          })()}{" "}
-                          to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
+                    
+                    {/* Description */}
+                    {event.description && (
+                      <div className="mb-3 bg-gray-50 border-l-4 border-blue-500 rounded p-3">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                          {event.description}
                         </p>
                       </div>
-                      <Button
-                        onClick={() => onOpenModal('withdrawCancellation')}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[12px] sm:text-[13px]"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Withdraw Request
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {event.files && event.files.length > 0 && (
-                    <div className="mt-3">
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                        📎 Attachments ({event.files.length})
-                      </p>
-                      <div className="space-y-3">
-                        {event.files.map((file: any, index: number) => {
-                          const fileUrl = file.url || "";
-                          const fileName = file.fileName || "attachment";
-                          const isImage =
-                            file.fileType === "image" ||
-                            /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
-                            /\.(png|jpe?g|gif|webp)$/i.test(fileName);
-                          const resolvedUrl = resolveFileUrl(fileUrl);
-                          return (
-                            <div key={index} className="relative group">
-                              {isImage ? (
-                                <img
-                                  src={resolvedUrl}
-                                  alt={fileName}
-                                  className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() => setPreviewAttachment({
-                                    url: resolvedUrl,
-                                    fileName: fileName,
-                                    type: "image"
-                                  })}
-                                />
-                              ) : (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                  onClick={() => {
-                                    const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
-                                    setPreviewAttachment({
-                                      url: resolvedUrl,
-                                      fileName: fileName,
-                                      type: isPdf ? "pdf" : "other"
-                                    });
-                                  }}
-                                >
-                                  <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                                  <span className="truncate">{fileName}</span>
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })}
+                    )}
+                    
+                    {/* Message/Reason - Highlighted */}
+                    {event.message && (
+                      <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700 font-medium mb-1">
+                          Message:
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                          {event.message}
+                        </p>
                       </div>
-                    </div>
-                  )}
+                    )}
                   
-                  {/* Action Message Card for client-initiated cancellation - Display below "Cancellation Requested" event */}
-                  {event.label === "Cancellation Requested" && 
-                   event.id === "cancellation-requested" &&
-                   (() => {
-                     const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
-                     return cr?.requestedBy && cr.requestedBy.toString() !== userInfo?.id?.toString() && cr?.status === "pending";
-                   })() && (
-                    <div className="mt-4 bg-orange-50 border border-orange-200 rounded-lg p-4 shadow-md">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          {(() => {
-                            const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
-                            return (
-                              <>
-                                {cr?.reason && (
-                                  <div className="mb-3">
-                                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                      {cr.reason}
-                                    </p>
-                                  </div>
-                                )}
-                                {(cr?.files || []).length > 0 && (
-                                  <div className="mb-3">
-                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({cr.files.length})</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {cr.files.map((file: any, idx: number) => {
-                                        const fileUrl = file.url || "";
-                                        const fileName = file.fileName || "Attachment";
-                                        const resolvedUrl = resolveFileUrl(fileUrl);
-                                        const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
-                                        const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
-                                        return (
-                                          <Button
-                                            key={idx}
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                            onClick={() => setPreviewAttachment({
-                                              url: resolvedUrl,
-                                              fileName: fileName,
-                                              type: isImage ? "image" : (isPdf ? "pdf" : "other")
-                                            })}
-                                          >
-                                            <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                                            <span className="truncate">{fileName}</span>
-                                          </Button>
-                                        );
+                    {/* Withdraw button for Cancellation Requested event (professional-initiated) */}
+                    {event.label === "Cancellation Requested" && 
+                     event.id === "cancellation-requested" &&
+                     (() => {
+                       const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                       return cr?.requestedBy?.toString() === userInfo?.id?.toString() && cr?.status === "pending";
+                     })() && (
+                      <div className="mt-3">
+                        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 mb-3 shadow-sm">
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed break-words">
+                            {(currentOrder as any).client || "The client"} has until{" "}
+                            <span className="font-semibold text-orange-700">
+                              {(() => {
+                                const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                                if (cr?.responseDeadline) {
+                                  const deadline = new Date(cr.responseDeadline);
+                                  const day = deadline.getDate();
+                                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                  const month = monthNames[deadline.getMonth()];
+                                  const year = deadline.getFullYear();
+                                  return `${day}${daySuffix} ${month} ${year}`;
+                                }
+                                return "the deadline";
+                              })()}
+                            </span>{" "}
+                            to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => onOpenModal('withdrawCancellation')}
+                          variant="outline"
+                          className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-100 text-[13px] shadow-sm"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Withdraw Request
+                        </Button>
+                      </div>
+                    )}
+                      
+                    {/* Attachments Section */}
+                    {event.files && event.files.length > 0 && (
+                      <div className="mt-3">
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-3 flex items-center gap-2">
+                            <Paperclip className="w-4 h-4" />
+                            Attachments ({event.files.length})
+                          </p>
+                          <div className="space-y-3">
+                            {event.files.map((file: any, index: number) => {
+                              const fileUrl = file.url || "";
+                              const fileName = file.fileName || "attachment";
+                              const isImage =
+                                file.fileType === "image" ||
+                                /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
+                                /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                              const resolvedUrl = resolveFileUrl(fileUrl);
+                              return (
+                                <div key={index} className="relative group">
+                                  {isImage ? (
+                                    <img
+                                      src={resolvedUrl}
+                                      alt={fileName}
+                                      className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                      onClick={() => setPreviewAttachment({
+                                        url: resolvedUrl,
+                                        fileName: fileName,
+                                        type: "image"
                                       })}
-                                    </div>
-                                  </div>
-                                )}
-                                <div className="mb-4">
-                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                                    You have until{" "}
-                                    {cr?.responseDeadline ? (
-                                      <>
-                                        {(() => {
-                                          const deadline = new Date(cr.responseDeadline);
-                                          const day = deadline.getDate();
-                                          const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                                          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                                          const month = monthNames[deadline.getMonth()];
-                                          const year = deadline.getFullYear();
-                                          return `${day}${daySuffix} ${month} ${year}`;
-                                        })()}
-                                      </>
-                                    ) : (
-                                      "the deadline"
-                                    )}{" "}
-                                    to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
-                                  </p>
+                                    />
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full hover:bg-blue-50"
+                                      onClick={() => {
+                                        const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                        setPreviewAttachment({
+                                          url: resolvedUrl,
+                                          fileName: fileName,
+                                          type: isPdf ? "pdf" : "other"
+                                        });
+                                      }}
+                                    >
+                                      <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                      <span className="truncate">{fileName}</span>
+                                    </Button>
+                                  )}
                                 </div>
-                                <div className="flex gap-3 flex-wrap">
-                                  <Button
-                                    onClick={() => onOpenModal('acceptCancellation')}
-                                    className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                                    Accept Request
-                                  </Button>
-                                  <Button
-                                    onClick={() => onOpenModal('rejectCancellation')}
-                                    variant="outline"
-                                    className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px]"
-                                  >
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    Decline
-                                  </Button>
-                                </div>
-                              </>
-                            );
-                          })()}
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {/* Action Message Card for client-initiated cancellation - Display below "Cancellation Requested" event */}
+                    {event.label === "Cancellation Requested" && 
+                     event.id === "cancellation-requested" &&
+                     (() => {
+                       const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                       return cr?.requestedBy && cr.requestedBy.toString() !== userInfo?.id?.toString() && cr?.status === "pending";
+                     })() && (
+                      <div className="mt-3">
+                        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-1" />
+                            <div className="flex-1">
+                              {(() => {
+                                const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                                return (
+                                  <>
+                                    {/* Cancellation Reason - Highlighted */}
+                                    {cr?.reason && (
+                                      <div className="mb-4">
+                                        <p className="font-['Poppins',sans-serif] text-[12px] text-orange-700 font-medium mb-2">
+                                          Cancellation Reason:
+                                        </p>
+                                        <div className="bg-white border border-orange-200 rounded-lg p-3">
+                                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                                            {cr.reason}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Attachments */}
+                                    {(cr?.files || []).length > 0 && (
+                                      <div className="mb-4">
+                                        <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-2 flex items-center gap-2">
+                                          <Paperclip className="w-4 h-4" />
+                                          Attachments ({cr.files.length})
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {cr.files.map((file: any, idx: number) => {
+                                            const fileUrl = file.url || "";
+                                            const fileName = file.fileName || "Attachment";
+                                            const resolvedUrl = resolveFileUrl(fileUrl);
+                                            const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                                            const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                            return (
+                                              <Button
+                                                key={idx}
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full hover:bg-blue-50"
+                                                onClick={() => setPreviewAttachment({
+                                                  url: resolvedUrl,
+                                                  fileName: fileName,
+                                                  type: isImage ? "image" : (isPdf ? "pdf" : "other")
+                                                })}
+                                              >
+                                                <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                                <span className="truncate">{fileName}</span>
+                                              </Button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Deadline Information */}
+                                    <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                                        You have until{" "}
+                                        <span className="font-semibold text-orange-700">
+                                          {cr?.responseDeadline ? (
+                                            <>
+                                              {(() => {
+                                                const deadline = new Date(cr.responseDeadline);
+                                                const day = deadline.getDate();
+                                                const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                                                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                                                const month = monthNames[deadline.getMonth()];
+                                                const year = deadline.getFullYear();
+                                                return `${day}${daySuffix} ${month} ${year}`;
+                                              })()}
+                                            </>
+                                          ) : (
+                                            "the deadline"
+                                          )}
+                                        </span>{" "}
+                                        to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-3 flex-wrap">
+                                      <Button
+                                        onClick={() => onOpenModal('acceptCancellation')}
+                                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] shadow-sm"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                                        Accept Request
+                                      </Button>
+                                      <Button
+                                        onClick={() => onOpenModal('rejectCancellation')}
+                                        variant="outline"
+                                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] shadow-sm"
+                                      >
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -820,43 +865,63 @@ export default function ProfessionalOrderTimelineTab({
         )}
       </div>
 
-      {/* Attachment Preview Modal */}
+      {/* Attachment Preview Modal - Inline React Modal (not Radix UI) */}
       {previewAttachment && (
-        <Dialog open={!!previewAttachment} onOpenChange={() => setPreviewAttachment(null)}>
-          <DialogContent className="w-[90vw] max-w-[900px] max-h-[90vh] bg-white p-0">
-            <DialogHeader className="px-6 pt-6 pb-4 border-b">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                  {previewAttachment.fileName}
-                </DialogTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = previewAttachment.url;
-                      link.download = previewAttachment.fileName;
-                      link.click();
-                    }}
-                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(previewAttachment.url, "_blank")}
-                    className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open in New Tab
-                  </Button>
-                </div>
+        <div
+          className="fixed inset-0 z-[1000000] flex items-center justify-center px-4"
+          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setPreviewAttachment(null);
+            }
+          }}
+        >
+          <div
+            className="absolute inset-0 bg-black/50"
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000000 }}
+          />
+          <div
+            className="relative bg-white rounded-lg shadow-xl w-full max-w-[1400px] max-h-[95vh] overflow-hidden"
+            style={{ position: "relative", zIndex: 1000001 }}
+          >
+            <div className="px-6 pt-6 pb-4 border-b flex items-center justify-between gap-4">
+              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
+                {previewAttachment.fileName}
+              </h3>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = previewAttachment.url;
+                    link.download = previewAttachment.fileName;
+                    link.click();
+                  }}
+                  className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(previewAttachment.url, "_blank")}
+                  className="font-['Poppins',sans-serif] text-[#FE8A0F] border-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open in New Tab
+                </Button>
+                <button
+                  onClick={() => setPreviewAttachment(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors ml-1"
+                  type="button"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            </DialogHeader>
-            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50">
+            </div>
+            <div className="p-6 overflow-auto max-h-[calc(95vh-120px)] flex items-center justify-center bg-gray-50">
               {previewAttachment.type === "image" ? (
                 <img
                   src={previewAttachment.url}
@@ -866,7 +931,7 @@ export default function ProfessionalOrderTimelineTab({
               ) : previewAttachment.type === "pdf" ? (
                 <iframe
                   src={previewAttachment.url}
-                  className="w-full h-[calc(90vh-180px)] min-h-[600px] border-0 rounded-lg"
+                  className="w-full h-[calc(95vh-180px)] min-h-[600px] border-0 rounded-lg"
                   title={previewAttachment.fileName}
                 />
               ) : (
@@ -885,8 +950,8 @@ export default function ProfessionalOrderTimelineTab({
                 </div>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        </div>
       )}
     </div>
   );
