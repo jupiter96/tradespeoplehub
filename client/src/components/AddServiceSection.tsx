@@ -3907,12 +3907,35 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       }
 
       if (packages && packages.length > 0) {
-        // For online services, keep deliveryDays as string; for in-person, convert to number
+        // Convert deliveryDays to number for both online and in-person services
         draftData.packages = packages.map((pkg) => {
-          let deliveryDaysValue: number | string;
+          let deliveryDaysValue: number;
+          
           if (serviceType === "online") {
-            // For online services, keep as string (e.g., "1-2 days", "2-4 days")
-            deliveryDaysValue = typeof pkg.deliveryDays === "string" ? pkg.deliveryDays : "";
+            // For online services, extract the maximum days from string format (e.g., "2-4 days" -> 4)
+            if (typeof pkg.deliveryDays === "string") {
+              if (pkg.deliveryDays === "1-2 days") {
+                deliveryDaysValue = 2;
+              } else if (pkg.deliveryDays === "2-4 days") {
+                deliveryDaysValue = 4;
+              } else if (pkg.deliveryDays === "3-5 days") {
+                deliveryDaysValue = 5;
+              } else if (pkg.deliveryDays === "5-7 days") {
+                deliveryDaysValue = 7;
+              } else if (pkg.deliveryDays === "7-14 days") {
+                deliveryDaysValue = 14;
+              } else if (pkg.deliveryDays === "14-30 days") {
+                deliveryDaysValue = 30;
+              } else if (!isNaN(parseFloat(pkg.deliveryDays))) {
+                deliveryDaysValue = parseFloat(pkg.deliveryDays);
+              } else {
+                deliveryDaysValue = 7; // Default to 7 days
+              }
+            } else if (typeof pkg.deliveryDays === "number") {
+              deliveryDaysValue = pkg.deliveryDays;
+            } else {
+              deliveryDaysValue = 7; // Default to 7 days
+            }
           } else {
             // For in-person services, convert to number
             let deliveryDaysNum = 0;
@@ -4436,12 +4459,6 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setActiveTab("profile");
       return;
     }
-    // Validate Profile Picture (mandatory)
-    if (!profileImage && !userInfo?.avatar) {
-      toast.error("Please upload a profile picture in the Profile step");
-      setActiveTab("profile");
-      return;
-    }
 
     // Keywords already validated above, reuse the keywordArray
     setLoading(true);
@@ -4505,12 +4522,34 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           size: item.size,
         })),
         packages: offerPackages ? packages.map((pkg) => {
-          // For online services, keep deliveryDays as string (e.g., "1-2 days", "2-4 days")
-          // For in-person services, convert to number
-          let deliveryDaysValue: number | string;
+          // Convert deliveryDays to number for both online and in-person services
+          let deliveryDaysValue: number;
+          
           if (serviceType === "online") {
-            // For online services, keep the string format (e.g., "1-2 days", "2-4 days")
-            deliveryDaysValue = pkg.deliveryDays || "";
+            // For online services, extract the maximum days from string format (e.g., "2-4 days" -> 4)
+            if (typeof pkg.deliveryDays === "string") {
+              if (pkg.deliveryDays === "1-2 days") {
+                deliveryDaysValue = 2;
+              } else if (pkg.deliveryDays === "2-4 days") {
+                deliveryDaysValue = 4;
+              } else if (pkg.deliveryDays === "3-5 days") {
+                deliveryDaysValue = 5;
+              } else if (pkg.deliveryDays === "5-7 days") {
+                deliveryDaysValue = 7;
+              } else if (pkg.deliveryDays === "7-14 days") {
+                deliveryDaysValue = 14;
+              } else if (pkg.deliveryDays === "14-30 days") {
+                deliveryDaysValue = 30;
+              } else if (!isNaN(parseFloat(pkg.deliveryDays))) {
+                deliveryDaysValue = parseFloat(pkg.deliveryDays);
+              } else {
+                deliveryDaysValue = 7; // Default to 7 days
+              }
+            } else if (typeof pkg.deliveryDays === "number") {
+              deliveryDaysValue = pkg.deliveryDays;
+            } else {
+              deliveryDaysValue = 7; // Default to 7 days
+            }
           } else {
             // For in-person services, convert to number
             let deliveryDaysNum = 0;
