@@ -1507,12 +1507,6 @@ export default function CartPage() {
   // Removed handleBookingConfirm - booking is now handled directly in handlePlaceOrder
 
   const proceedWithOrder = async (serviceTypeChecks?: Array<{ item: any; isOnline: boolean }>) => {
-    // Check if account balance is 0
-    if (walletBalance === 0 || walletBalance <= 0) {
-      toast.error("Please top up account balance first.");
-      return;
-    }
-
     // Only require address for in-person services
     if (hasInPersonService && !selectedAddress) {
       console.error('[Order] No address selected for in-person service');
@@ -1532,8 +1526,10 @@ export default function CartPage() {
     const walletAmount = Math.min(walletBalance, orderTotal);
     const remainderAmount = Math.max(0, orderTotal - walletBalance);
     
-    // Only require payment method if remainder > 0
-    if (remainderAmount > 0 && !selectedPayment) {
+    // If wallet balance is 0, client must pay full amount with card/paypal
+    // If wallet balance > 0 but not enough, client pays remainder with card/paypal
+    // Only require payment method if wallet doesn't cover the full amount
+    if (walletBalance < orderTotal && !selectedPayment) {
       console.error('[Order] No payment method selected');
       toast.error("Please select a payment method");
       return;
@@ -2933,7 +2929,7 @@ export default function CartPage() {
                         </span>
                       </div>
 
-                      {/* Wallet Balance Deduction */}
+                      {/* Wallet Balance Deduction - Only show if wallet has balance */}
                       {walletBalance > 0 && walletAmount > 0 && (
                         <div className="flex justify-between items-center pt-3 border-t border-gray-300">
                           <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] font-medium flex items-center gap-1.5">
@@ -2946,8 +2942,8 @@ export default function CartPage() {
                         </div>
                       )}
 
-                      {/* Remaining Amount to Pay */}
-                      {remainderAmount > 0 && (
+                      {/* Remaining Amount to Pay - Only show if wallet has balance but doesn't cover full amount */}
+                      {walletBalance > 0 && remainderAmount > 0 && (
                         <div className="flex justify-between items-center pt-3 border-t-2 border-[#3B82F6] bg-blue-50/50 -mx-2 px-2 py-2 rounded">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#3B82F6] font-semibold">
                             Remaining to Pay
@@ -2958,7 +2954,7 @@ export default function CartPage() {
                         </div>
                       )}
                       
-                      {/* Full Payment by Wallet */}
+                      {/* Full Payment by Wallet - Only show if wallet covers full amount */}
                       {walletAmount > 0 && remainderAmount === 0 && (
                         <div className="flex justify-between items-center pt-3 border-t-2 border-[#10B981] bg-green-50/50 -mx-2 px-2 py-2 rounded">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#10B981] font-semibold">
