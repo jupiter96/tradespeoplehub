@@ -41,7 +41,7 @@ interface ProfessionalOrderTimelineTabProps {
   appointmentDeadline: Date | null;
   showDisputeSection: boolean;
   getOrderDisputeById: (disputeId: string) => any;
-  onOpenModal: (modalName: 'delivery' | 'extension' | 'completion' | 'dispute' | 'disputeResponse' | 'revisionResponse' | 'withdrawCancellation' | 'rejectCancellation' | 'professionalReview') => void;
+  onOpenModal: (modalName: 'delivery' | 'extension' | 'completion' | 'dispute' | 'disputeResponse' | 'revisionResponse' | 'withdrawCancellation' | 'acceptCancellation' | 'rejectCancellation' | 'professionalReview') => void;
   onStartConversation: (params: {
     id: string;
     name: string;
@@ -721,14 +721,14 @@ export default function ProfessionalOrderTimelineTab({
                                 </div>
                                 <div className="flex gap-3 flex-wrap">
                                   <Button
-                                    onClick={() => handleRespondToCancellation('approve')}
+                                    onClick={() => onOpenModal('acceptCancellation')}
                                     className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
                                   >
                                     <CheckCircle2 className="w-4 h-4 mr-2" />
                                     Accept Request
                                   </Button>
                                   <Button
-                                    onClick={() => handleRespondToCancellation('reject')}
+                                    onClick={() => onOpenModal('rejectCancellation')}
                                     variant="outline"
                                     className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px]"
                                   >

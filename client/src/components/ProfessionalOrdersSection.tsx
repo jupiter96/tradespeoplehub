@@ -156,6 +156,7 @@ function ProfessionalOrdersSection() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [isWithdrawCancellationDialogOpen, setIsWithdrawCancellationDialogOpen] = useState(false);
   const [withdrawCancellationReason, setWithdrawCancellationReason] = useState("");
+  const [isAcceptCancellationDialogOpen, setIsAcceptCancellationDialogOpen] = useState(false);
   const [isRejectCancellationDialogOpen, setIsRejectCancellationDialogOpen] = useState(false);
   const [rejectCancellationReason, setRejectCancellationReason] = useState("");
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
@@ -183,6 +184,7 @@ function ProfessionalOrdersSection() {
     setIsExtensionDialogOpen(false);
     setIsCancellationRequestDialogOpen(false);
     setIsWithdrawCancellationDialogOpen(false);
+    setIsAcceptCancellationDialogOpen(false);
     setIsRejectCancellationDialogOpen(false);
     setIsRevisionResponseDialogOpen(false);
     setIsCompletionDialogOpen(false);
@@ -204,7 +206,7 @@ function ProfessionalOrdersSection() {
   };
 
   // Function to open a specific modal and close all others
-  const openModal = (modalName: 'view' | 'cancel' | 'dispute' | 'delivery' | 'disputeResponse' | 'extension' | 'cancellationRequest' | 'withdrawCancellation' | 'rejectCancellation' | 'revisionResponse' | 'completion' | 'professionalReview') => {
+  const openModal = (modalName: 'view' | 'cancel' | 'dispute' | 'delivery' | 'disputeResponse' | 'extension' | 'cancellationRequest' | 'withdrawCancellation' | 'acceptCancellation' | 'rejectCancellation' | 'revisionResponse' | 'completion' | 'professionalReview') => {
     closeAllModals();
     switch (modalName) {
       case 'view':
@@ -230,6 +232,9 @@ function ProfessionalOrdersSection() {
         break;
       case 'withdrawCancellation':
         setIsWithdrawCancellationDialogOpen(true);
+        break;
+      case 'acceptCancellation':
+        setIsAcceptCancellationDialogOpen(true);
         break;
       case 'rejectCancellation':
         setIsRejectCancellationDialogOpen(true);
@@ -868,6 +873,16 @@ function ProfessionalOrdersSection() {
       toast.success(`Cancellation request ${action}d successfully`);
     } catch (error: any) {
       toast.error(error.message || `Failed to ${action} cancellation request`);
+    }
+  };
+
+  const handleAcceptCancellation = async () => {
+    if (!selectedOrder) return;
+    try {
+      await handleRespondToCancellation('approve');
+      closeAllModals();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to accept cancellation request");
     }
   };
 
@@ -2212,6 +2227,43 @@ function ProfessionalOrdersSection() {
             setWithdrawCancellationReason("");
           }}
         />
+
+        {/* Accept Cancellation Request Confirmation Dialog */}
+        <Dialog
+          open={isAcceptCancellationDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) closeAllModals();
+          }}
+        >
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <div className="flex flex-col items-center text-center py-4">
+              <div className="w-10 h-10 rounded-full border-4 border-[#16a34a] flex items-center justify-center mb-6">
+                <CheckCircle2 className="w-5 h-5 text-[#16a34a]" />
+              </div>
+              <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] font-semibold mb-3">
+                Accept Cancellation Request?
+              </h2>
+              <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mb-6">
+                This will cancel the order and refund the client.
+              </p>
+              <div className="flex gap-3 w-full justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => closeAllModals()}
+                  className="font-['Poppins',sans-serif] text-[14px] px-6 border-[#16a34a] text-[#16a34a] hover:bg-green-50"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAcceptCancellation}
+                  className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[14px] px-6"
+                >
+                  Yes, Accept
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Reject Cancellation Request Dialog (Professional rejecting client's request) */}
         <RejectCancellationDialog
