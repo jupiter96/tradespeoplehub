@@ -2656,7 +2656,7 @@ export default function ClientOrdersSection() {
                                     <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
                                   )}
                                   <AvatarFallback className="bg-[#3D78CB] text-white">
-                                    {msg.userName.charAt(0)}
+                                    {getTwoLetterInitials(msg.userName, "U")}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
@@ -3633,7 +3633,9 @@ export default function ClientOrdersSection() {
                       {resolveAvatarUrl(currentOrder.professionalAvatar) && (
                         <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
                       )}
-                      <AvatarFallback>{currentOrder.professional?.charAt(0)}</AvatarFallback>
+                      <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[12px]">
+                        {getTwoLetterInitials(currentOrder.professional, "P")}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
@@ -3792,7 +3794,7 @@ export default function ClientOrdersSection() {
                                   <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
                                 )}
                                 <AvatarFallback className="bg-[#3D78CB] text-white">
-                                  {msg.userName.charAt(0)}
+                                  {getTwoLetterInitials(msg.userName, "U")}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
@@ -3993,7 +3995,7 @@ export default function ClientOrdersSection() {
                           <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
                         )}
                         <AvatarFallback className="bg-blue-100 text-blue-600">
-                          {currentOrder.professional?.charAt(0) || "P"}
+                          {getTwoLetterInitials(currentOrder.professional, "P")}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -4078,7 +4080,7 @@ export default function ClientOrdersSection() {
                       <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
                     )}
                     <AvatarFallback className="bg-blue-100 text-blue-600">
-                      {currentOrder.professional?.charAt(0) || "P"}
+                      {getTwoLetterInitials(currentOrder.professional, "P")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
