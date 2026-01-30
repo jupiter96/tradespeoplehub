@@ -132,87 +132,58 @@ router.get('/public', async (req, res) => {
       .sort(sortObj)
       .lean();
 
-    // Calculate professional ratings and review counts
-    const professionalIds = [...new Set(services.map(s => s.professional?._id).filter(Boolean))];
-    const professionalStats = {};
-    
-    if (professionalIds.length > 0) {
-      const reviewStats = await Review.aggregate([
-        {
-          $match: {
-            professional: { $in: professionalIds },
-            isHidden: false
-          }
-        },
-        {
-          $group: {
-            _id: '$professional',
-            avgRating: { $avg: '$rating' },
-            reviewCount: { $sum: 1 }
-          }
-        }
-      ]);
-      
-      reviewStats.forEach(stat => {
-        professionalStats[stat._id.toString()] = {
-          rating: stat.avgRating || 0,
-          reviewCount: stat.reviewCount || 0
-        };
-      });
-    }
-    
-    // Add stats and verification status to services
+    // Use each service's own rating and reviewCount (from Review data for this service)
     const servicesWithStats = services.map(service => {
+      const serviceRating = service.rating != null ? Number(service.rating) : 0;
+      const serviceReviewCount = service.reviewCount != null ? Number(service.reviewCount) : 0;
+      const cardStats = { rating: serviceRating, reviewCount: serviceReviewCount };
+
       if (service.professional && service.professional._id) {
-        const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
-        
         // Check if verification object exists
         if (!service.professional.verification) {
           return {
             ...service,
+            rating: cardStats.rating,
+            reviewCount: cardStats.reviewCount,
             professional: {
               ...service.professional,
-              rating: stats.rating,
-              reviewCount: stats.reviewCount,
+              rating: cardStats.rating,
+              reviewCount: cardStats.reviewCount,
               isVerified: false,
-              // Explicitly preserve townCity
               townCity: service.professional.townCity || ""
             }
           };
         }
-        
-        // Get each verification step status
+
         const emailStatus = service.professional.verification.email?.status;
         const phoneStatus = service.professional.verification.phone?.status;
         const addressStatus = service.professional.verification.address?.status;
         const idCardStatus = service.professional.verification.idCard?.status;
         const paymentMethodStatus = service.professional.verification.paymentMethod?.status;
         const publicLiabilityInsuranceStatus = service.professional.verification.publicLiabilityInsurance?.status;
-        
-        // Check individual conditions
+
         const emailVerified = emailStatus === 'verified';
         const phoneVerified = phoneStatus === 'verified';
         const addressVerified = addressStatus === 'verified';
         const idCardVerified = idCardStatus === 'verified';
         const paymentMethodVerified = paymentMethodStatus === 'verified';
         const publicLiabilityInsuranceVerified = publicLiabilityInsuranceStatus === 'verified';
-        
-        // Final check - ALL 6 steps must be verified
         const isVerified = emailVerified && phoneVerified && addressVerified && idCardVerified && paymentMethodVerified && publicLiabilityInsuranceVerified;
-        
+
         return {
           ...service,
+          rating: cardStats.rating,
+          reviewCount: cardStats.reviewCount,
           professional: {
             ...service.professional,
-            rating: stats.rating,
-            reviewCount: stats.reviewCount,
-            isVerified: isVerified,
-            // Explicitly preserve townCity
+            rating: cardStats.rating,
+            reviewCount: cardStats.reviewCount,
+            isVerified,
             townCity: service.professional.townCity || ""
           }
         };
       }
-      return service;
+      return { ...service, rating: cardStats.rating, reviewCount: cardStats.reviewCount };
     });
 
     return res.json({
@@ -360,87 +331,57 @@ router.get('/', async (req, res) => {
     //   });
     // }
 
-    // Calculate professional ratings and review counts
-    const professionalIds = [...new Set(services.map(s => s.professional?._id).filter(Boolean))];
-    const professionalStats = {};
-    
-    if (professionalIds.length > 0) {
-      const reviewStats = await Review.aggregate([
-        {
-          $match: {
-            professional: { $in: professionalIds },
-            isHidden: false
-          }
-        },
-        {
-          $group: {
-            _id: '$professional',
-            avgRating: { $avg: '$rating' },
-            reviewCount: { $sum: 1 }
-          }
-        }
-      ]);
-      
-      reviewStats.forEach(stat => {
-        professionalStats[stat._id.toString()] = {
-          rating: stat.avgRating || 0,
-          reviewCount: stat.reviewCount || 0
-        };
-      });
-    }
-    
-    // Add stats to services
+    // Use each service's own rating and reviewCount (from Review data for this service)
     const servicesWithStats = services.map(service => {
+      const serviceRating = service.rating != null ? Number(service.rating) : 0;
+      const serviceReviewCount = service.reviewCount != null ? Number(service.reviewCount) : 0;
+      const cardStats = { rating: serviceRating, reviewCount: serviceReviewCount };
+
       if (service.professional && service.professional._id) {
-        const stats = professionalStats[service.professional._id.toString()] || { rating: 0, reviewCount: 0 };
-        
-        // Check if verification object exists
         if (!service.professional.verification) {
           return {
             ...service,
+            rating: cardStats.rating,
+            reviewCount: cardStats.reviewCount,
             professional: {
               ...service.professional,
-              rating: stats.rating,
-              reviewCount: stats.reviewCount,
+              rating: cardStats.rating,
+              reviewCount: cardStats.reviewCount,
               isVerified: false,
-              // Explicitly preserve townCity
               townCity: service.professional.townCity || ""
             }
           };
         }
-        
-        // Get each verification step status
+
         const emailStatus = service.professional.verification.email?.status;
         const phoneStatus = service.professional.verification.phone?.status;
         const addressStatus = service.professional.verification.address?.status;
         const idCardStatus = service.professional.verification.idCard?.status;
         const paymentMethodStatus = service.professional.verification.paymentMethod?.status;
         const publicLiabilityInsuranceStatus = service.professional.verification.publicLiabilityInsurance?.status;
-        
-        // Check individual conditions
+
         const emailVerified = emailStatus === 'verified';
         const phoneVerified = phoneStatus === 'verified';
         const addressVerified = addressStatus === 'verified';
         const idCardVerified = idCardStatus === 'verified';
         const paymentMethodVerified = paymentMethodStatus === 'verified';
         const publicLiabilityInsuranceVerified = publicLiabilityInsuranceStatus === 'verified';
-        
-        // Final check - ALL 6 steps must be verified
         const isVerified = emailVerified && phoneVerified && addressVerified && idCardVerified && paymentMethodVerified && publicLiabilityInsuranceVerified;
-        
+
         return {
           ...service,
+          rating: cardStats.rating,
+          reviewCount: cardStats.reviewCount,
           professional: {
             ...service.professional,
-            rating: stats.rating,
-            reviewCount: stats.reviewCount,
-            isVerified: isVerified,
-            // Explicitly preserve townCity
+            rating: cardStats.rating,
+            reviewCount: cardStats.reviewCount,
+            isVerified,
             townCity: service.professional.townCity || ""
           }
         };
       }
-      return service;
+      return { ...service, rating: cardStats.rating, reviewCount: cardStats.reviewCount };
     });
 
     return res.json({
@@ -1553,27 +1494,26 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get reviews for a specific service
+// Get reviews for a specific service (only reviews for this service, not professional's all)
 router.get('/:serviceId/reviews', async (req, res) => {
   try {
     const { serviceId } = req.params;
 
-    // First, get the service to find the professional
-    // Support both MongoDB ObjectId and slug
+    // Resolve service by id or slug
     let service;
     if (serviceId.match(/^[0-9a-fA-F]{24}$/)) {
-      service = await Service.findById(serviceId).select('professional').lean();
+      service = await Service.findById(serviceId).select('_id professional').lean();
     } else {
-      service = await Service.findOne({ slug: serviceId }).select('professional').lean();
+      service = await Service.findOne({ slug: serviceId }).select('_id professional').lean();
     }
-    
+
     if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    // Get all reviews for this professional that are not hidden
+    // Get only reviews for this service (not all reviews for the professional)
     const reviews = await Review.find({
-      professional: service.professional,
+      service: service._id,
       isHidden: false
     })
       .populate('reviewer', 'firstName lastName avatar')
@@ -1584,10 +1524,7 @@ router.get('/:serviceId/reviews', async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // For service detail page, show all reviews for this professional
-    // Reviews are tied to professionals and orders, so all of them are relevant
-    // to show the professional's reputation for this service
-    let serviceReviews = reviews;
+    const serviceReviews = reviews;
 
     // Calculate average rating and total count for this service's reviews
     const totalRating = serviceReviews.reduce((sum, r) => sum + (r.rating || 0), 0);

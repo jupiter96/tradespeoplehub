@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
@@ -11,6 +12,7 @@ import Wallet from '../models/Wallet.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import PromoCode from '../models/PromoCode.js';
 import Review from '../models/Review.js';
+import { updateServiceReviewStats } from '../utils/reviewService.js';
 import Dispute from '../models/Dispute.js';
 import Notification from '../models/Notification.js';
 import Stripe from 'stripe';
@@ -231,6 +233,560 @@ async function sendExtensionResponseNotifications({ order, clientUser, professio
     }
   } catch (error) {
     console.error('[Orders] Failed to send extension response notifications/emails:', error);
+  }
+}
+
+function getOrderServiceName(order) {
+  return (order.items && order.items[0] && order.items[0].title) ? order.items[0].title : 'Your order';
+}
+
+async function sendCancellationRequestNotifications({ order, clientUser, professionalUser, requestedByUserId }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const requestedByClient = order.client._id.toString() === requestedByUserId.toString();
+    const requestedByRole = requestedByClient ? 'client' : 'professional';
+    const responseDeadline = order.cancellationRequest?.responseDeadline
+      ? new Date(order.cancellationRequest.responseDeadline).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    if (clientUser) {
+      const isRequester = clientUser._id.toString() === requestedByUserId.toString();
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'cancellation_requested',
+        title: isRequester ? 'Cancellation request submitted' : 'Cancellation requested',
+        message: isRequester
+          ? `Your cancellation request for order ${orderNumber} was submitted.`
+          : `The ${requestedByRole} has requested to cancel order ${orderNumber}. Please accept or reject.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(
+          clientUser.email,
+          isRequester ? 'cancellation-requested-requester' : 'cancellation-requested-responder',
+          {
+            firstName: clientUser.firstName || 'there',
+            orderNumber,
+            serviceName,
+            ...(isRequester ? {} : { requestedByRole, responseDeadline }),
+            orderLink: link,
+          },
+          'orders'
+        );
+      }
+    }
+
+    if (professionalUser) {
+      const isRequester = professionalUser._id.toString() === requestedByUserId.toString();
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'cancellation_requested',
+        title: isRequester ? 'Cancellation request submitted' : 'Cancellation requested',
+        message: isRequester
+          ? `Your cancellation request for order ${orderNumber} was submitted.`
+          : `The ${requestedByRole} has requested to cancel order ${orderNumber}. Please accept or reject.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(
+          professionalUser.email,
+          isRequester ? 'cancellation-requested-requester' : 'cancellation-requested-responder',
+          {
+            firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+            orderNumber,
+            serviceName,
+            ...(isRequester ? {} : { requestedByRole, responseDeadline }),
+            orderLink: link,
+          },
+          'orders'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send cancellation request notifications/emails:', error);
+  }
+}
+
+async function sendCancellationResponseNotifications({ order, clientUser, professionalUser, action }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const isApproved = action === 'approve';
+    const type = isApproved ? 'cancellation_accepted' : 'cancellation_rejected';
+    const title = isApproved ? 'Cancellation accepted' : 'Cancellation rejected';
+    const message = isApproved
+      ? `The cancellation request for order ${orderNumber} has been accepted.`
+      : `The cancellation request for order ${orderNumber} has been rejected.`;
+
+    const emailTemplate = isApproved ? 'cancellation-accepted' : 'cancellation-rejected';
+    const emailVars = (user) => ({
+      firstName: user.firstName || user.tradingName || 'there',
+      orderNumber,
+      serviceName,
+      orderLink: link,
+    });
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type,
+        title,
+        message,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, emailTemplate, emailVars(clientUser), 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type,
+        title,
+        message,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, emailTemplate, emailVars(professionalUser), 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send cancellation response notifications/emails:', error);
+  }
+}
+
+async function sendCancellationWithdrawnNotifications({ order, clientUser, professionalUser, withdrawnByUserId }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const withdrawnByClient = order.client._id.toString() === withdrawnByUserId.toString();
+    const withdrawnByRole = withdrawnByClient ? 'client' : 'professional';
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'cancellation_withdrawn',
+        title: 'Cancellation request withdrawn',
+        message: `The ${withdrawnByRole} has withdrawn the cancellation request for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, 'cancellation-withdrawn', {
+          firstName: clientUser.firstName || 'there',
+          orderNumber,
+          serviceName,
+          withdrawnByRole,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'cancellation_withdrawn',
+        title: 'Cancellation request withdrawn',
+        message: `The ${withdrawnByRole} has withdrawn the cancellation request for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, 'cancellation-withdrawn', {
+          firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+          orderNumber,
+          serviceName,
+          withdrawnByRole,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send cancellation withdrawn notifications/emails:', error);
+  }
+}
+
+async function sendOrderDeliveredNotifications({ order, clientUser, professionalUser }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'order_delivered',
+        title: 'Order delivered',
+        message: `Order ${orderNumber} has been delivered. Please review and approve or request a revision.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, 'order-delivered-client', {
+          firstName: clientUser.firstName || 'there',
+          orderNumber,
+          serviceName,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'order_delivered',
+        title: 'Order marked as delivered',
+        message: `You marked order ${orderNumber} as delivered. The client will be notified to review.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, 'order-delivered-professional', {
+          firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+          orderNumber,
+          serviceName,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send order delivered notifications/emails:', error);
+  }
+}
+
+async function sendOrderDeliveryRejectedNotifications({ order, clientUser, professionalUser, reason }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const reasonText = reason || 'No reason provided';
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'order_delivery_rejected',
+        title: 'Revision requested',
+        message: `You requested a revision (rejected delivery) for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, 'order-delivery-rejected-client', {
+          firstName: clientUser.firstName || 'there',
+          orderNumber,
+          serviceName,
+          reason: reasonText,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'order_delivery_rejected',
+        title: 'Client requested revision',
+        message: `The client requested a revision (rejected delivery) for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, 'order-delivery-rejected-professional', {
+          firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+          orderNumber,
+          serviceName,
+          reason: reasonText,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send order delivery rejected notifications/emails:', error);
+  }
+}
+
+async function sendOrderDeliveryApprovedNotifications({ order, clientUser, professionalUser }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'order_delivery_approved',
+        title: 'Order completed',
+        message: `You approved the delivery for order ${orderNumber}. The order is now completed.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, 'order-delivery-approved', {
+          firstName: clientUser.firstName || 'there',
+          orderNumber,
+          serviceName,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'order_delivery_approved',
+        title: 'Delivery approved',
+        message: `The client approved the delivery for order ${orderNumber}. The order is completed.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, 'order-delivery-approved', {
+          firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+          orderNumber,
+          serviceName,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send order delivery approved notifications/emails:', error);
+  }
+}
+
+async function sendDisputeInitiatedNotifications({ order, clientUser, professionalUser, claimantId, responseDeadline }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const responseDeadlineStr = responseDeadline
+      ? new Date(responseDeadline).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    const emailVars = { orderNumber, serviceName, responseDeadline: responseDeadlineStr, orderLink: link };
+
+    if (clientUser) {
+      const isClaimant = clientUser._id.toString() === claimantId.toString();
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'dispute_initiated',
+        title: isClaimant ? 'Dispute opened' : 'Dispute opened – please respond',
+        message: isClaimant
+          ? `You opened a dispute for order ${orderNumber}. The other party can respond by the deadline.`
+          : `A dispute was opened for order ${orderNumber}. Please respond by the deadline.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(
+          clientUser.email,
+          isClaimant ? 'dispute-initiated-claimant' : 'dispute-initiated-respondent',
+          { firstName: clientUser.firstName || 'there', ...emailVars },
+          'orders'
+        );
+      }
+    }
+
+    if (professionalUser) {
+      const isClaimant = professionalUser._id.toString() === claimantId.toString();
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'dispute_initiated',
+        title: isClaimant ? 'Dispute opened' : 'Dispute opened – please respond',
+        message: isClaimant
+          ? `You opened a dispute for order ${orderNumber}. The other party can respond by the deadline.`
+          : `A dispute was opened for order ${orderNumber}. Please respond by the deadline.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(
+          professionalUser.email,
+          isClaimant ? 'dispute-initiated-claimant' : 'dispute-initiated-respondent',
+          { firstName: professionalUser.firstName || professionalUser.tradingName || 'there', ...emailVars },
+          'orders'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send dispute initiated notifications/emails:', error);
+  }
+}
+
+async function sendDisputeRespondedNotifications({ order, clientUser, professionalUser, respondentId }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+
+    if (clientUser) {
+      const isRespondent = clientUser._id.toString() === respondentId.toString();
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'dispute_responded',
+        title: isRespondent ? 'Dispute response submitted' : 'Dispute response received',
+        message: isRespondent
+          ? `Your response to the dispute for order ${orderNumber} was submitted. The dispute is now in negotiation.`
+          : `The other party responded to the dispute for order ${orderNumber}. The dispute is now in negotiation.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(
+          clientUser.email,
+          isRespondent ? 'dispute-responded-respondent' : 'dispute-responded-claimant',
+          {
+            firstName: clientUser.firstName || 'there',
+            orderNumber,
+            serviceName,
+            orderLink: link,
+          },
+          'orders'
+        );
+      }
+    }
+
+    if (professionalUser) {
+      const isRespondent = professionalUser._id.toString() === respondentId.toString();
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'dispute_responded',
+        title: isRespondent ? 'Dispute response submitted' : 'Dispute response received',
+        message: isRespondent
+          ? `Your response to the dispute for order ${orderNumber} was submitted. The dispute is now in negotiation.`
+          : `The other party responded to the dispute for order ${orderNumber}. The dispute is now in negotiation.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(
+          professionalUser.email,
+          isRespondent ? 'dispute-responded-respondent' : 'dispute-responded-claimant',
+          {
+            firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+            orderNumber,
+            serviceName,
+            orderLink: link,
+          },
+          'orders'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send dispute responded notifications/emails:', error);
+  }
+}
+
+async function sendDisputeResolvedNotifications({ order, clientUser, professionalUser, agreedAmount }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const agreedAmountStr = (agreedAmount != null && agreedAmount !== '') ? Number(agreedAmount).toFixed(2) : '0.00';
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'dispute_resolved',
+        title: 'Dispute resolved',
+        message: `The dispute for order ${orderNumber} has been resolved. Agreed amount: £${agreedAmountStr}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, 'dispute-resolved', {
+          firstName: clientUser.firstName || 'there',
+          orderNumber,
+          serviceName,
+          agreedAmount: agreedAmountStr,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'dispute_resolved',
+        title: 'Dispute resolved',
+        message: `The dispute for order ${orderNumber} has been resolved. Agreed amount: £${agreedAmountStr}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, 'dispute-resolved', {
+          firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+          orderNumber,
+          serviceName,
+          agreedAmount: agreedAmountStr,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send dispute resolved notifications/emails:', error);
   }
 }
 
@@ -1735,17 +2291,26 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       .sort({ createdAt: -1 })
       .lean();
 
-    // Fetch reviews for all orders
+    // Fetch reviews for all orders (may be multiple per order when order has multiple services)
     const orderIds = orders.map(o => o._id);
     const reviews = await Review.find({ order: { $in: orderIds } })
       .populate('reviewer', 'firstName lastName tradingName avatar')
       .populate('responseBy', 'firstName lastName tradingName avatar')
       .lean();
-    
-    // Create a map of orderId to review
+
+    // Map orderId -> review: prefer the review for the order's primary service (first item)
     const reviewMap = {};
+    orders.forEach(order => {
+      const primaryServiceId = order.items?.[0]?.serviceId?.toString?.();
+      const match = reviews.find(
+        r => r.order.toString() === order._id.toString() &&
+          (!primaryServiceId ? !r.service : r.service && r.service.toString() === primaryServiceId)
+      );
+      if (match) reviewMap[order._id.toString()] = match;
+    });
     reviews.forEach(review => {
-      reviewMap[review.order.toString()] = review;
+      const oid = review.order.toString();
+      if (!reviewMap[oid]) reviewMap[oid] = review;
     });
 
     // Fetch disputes for all orders
@@ -2253,6 +2818,13 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
 
     await order.save();
 
+    await sendCancellationRequestNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      requestedByUserId: req.user.id,
+    });
+
     const cr = order.cancellationRequest.toObject ? order.cancellationRequest.toObject() : order.cancellationRequest;
     res.json({ 
       message: 'Cancellation request submitted successfully',
@@ -2324,6 +2896,13 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
 
     await order.save();
 
+    await sendCancellationResponseNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      action,
+    });
+
     res.json({ 
       message: `Cancellation request ${action}d successfully`,
       cancellationRequest: {
@@ -2343,7 +2922,7 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne(await buildOrderQuery(orderId));
+    const order = await Order.findOne(await buildOrderQuery(orderId)).populate('client professional');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -2366,6 +2945,13 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
     order.status = previousStatus;
 
     await order.save();
+
+    await sendCancellationWithdrawnNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      withdrawnByUserId: req.user.id,
+    });
 
     res.json({ 
       message: 'Cancellation request withdrawn successfully',
@@ -2474,7 +3060,7 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
     const { orderId } = req.params;
     const { deliveryMessage } = req.body;
 
-    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id })).populate('client professional');
 
     if (!order) {
       // Clean up uploaded files if order not found
@@ -2577,6 +3163,12 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
 
     await order.save();
 
+    await sendOrderDeliveredNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+    });
+
     res.json({ 
       message: 'Order marked as delivered successfully',
       order: {
@@ -2672,7 +3264,7 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       return res.status(400).json({ error: 'Revision reason is required' });
     }
 
-    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id }));
+    const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id })).populate('client professional');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -2745,6 +3337,13 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     order.deliveryStatus = 'revision';
 
     await order.save();
+
+    await sendOrderDeliveryRejectedNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      reason: reason.trim(),
+    });
 
     res.json({ 
       message: 'Revision request submitted successfully',
@@ -3138,23 +3737,24 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
 
     await order.save();
 
-    // Create review if rating and/or review is provided
+    // Create review if rating and/or review is provided (saved per service)
+    const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
     let reviewDoc = null;
     if (rating !== undefined || (review && review.trim())) {
-      // Check if review already exists for this order
-      reviewDoc = await Review.findOne({ order: order._id });
-      
+      const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
+      reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });
+
       if (reviewDoc) {
-        // Update existing review
         if (rating !== undefined) reviewDoc.rating = rating;
         if (review !== undefined) reviewDoc.comment = review.trim() || '';
         reviewDoc.reviewer = client._id;
         reviewDoc.reviewerName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous';
+        if (serviceObjId) reviewDoc.service = serviceObjId;
       } else {
-        // Create new review
         reviewDoc = new Review({
           professional: professional._id,
           order: order._id,
+          service: serviceObjId,
           reviewer: client._id,
           reviewerName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous',
           rating: rating || 0,
@@ -3162,9 +3762,16 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
         });
       }
       await reviewDoc.save();
+      if (primaryServiceId) await updateServiceReviewStats(primaryServiceId);
     }
 
     await order.save();
+
+    await sendOrderDeliveryApprovedNotifications({
+      order,
+      clientUser: client,
+      professionalUser: professional,
+    });
 
     res.json({ 
       message: 'Order completed successfully. Funds have been released to the professional.',
@@ -3262,29 +3869,34 @@ router.post('/:orderId/review', authenticateToken, requireRole(['client']), asyn
       return res.status(404).json({ error: 'Client not found' });
     }
 
-    // Check if review already exists
-    let reviewDoc = await Review.findOne({ order: order._id });
-    
+    // Primary service for this order (review is stored per service)
+    const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
+    const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
+
+    // Check if review already exists for this order + service
+    let reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });
+
     if (reviewDoc) {
-      // Update existing review
       reviewDoc.rating = rating;
       reviewDoc.comment = comment?.trim() || '';
       reviewDoc.reviewer = client._id;
       reviewDoc.reviewerName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous';
+      if (serviceObjId) reviewDoc.service = serviceObjId;
     } else {
-      // Create new review
       const professionalId = order.professional?._id || order.professional;
       reviewDoc = new Review({
         professional: professionalId,
         order: order._id,
+        service: serviceObjId,
         reviewer: client._id,
         reviewerName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous',
         rating: rating,
         comment: comment?.trim() || '',
       });
     }
-    
+
     await reviewDoc.save();
+    if (primaryServiceId) await updateServiceReviewStats(primaryServiceId);
 
     // Update order with rating
     order.rating = rating;
@@ -3421,9 +4033,18 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    const review = await Review.findOne({ order: order._id })
+    const primaryServiceId = order.items?.[0]?.serviceId;
+    const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId.toString()) : null;
+    let review = await Review.findOne(
+      serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null }
+    )
       .populate('reviewer', 'firstName lastName tradingName avatar')
       .populate('responseBy', 'firstName lastName tradingName avatar');
+    if (!review && serviceObjId) {
+      review = await Review.findOne({ order: order._id, service: null })
+        .populate('reviewer', 'firstName lastName tradingName avatar')
+        .populate('responseBy', 'firstName lastName tradingName avatar');
+    }
 
     if (!review) {
       return res.json({ 
@@ -3489,16 +4110,17 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     }
 
     const order = await Order.findOne(await buildOrderQuery(orderId))
-      .populate('client', 'firstName lastName tradingName')
-      .populate('professional', 'firstName lastName tradingName');
+      .populate('client', 'firstName lastName tradingName email')
+      .populate('professional', 'firstName lastName tradingName email');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
     // Validate offer amount does not exceed order amount
-    if (parsedOfferAmount > order.totalAmount) {
-      return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${order.totalAmount.toFixed(2)})` });
+    const orderTotal = order.total != null ? order.total : (order.totalAmount || 0);
+    if (parsedOfferAmount > orderTotal) {
+      return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${orderTotal.toFixed(2)})` });
     }
 
     // Check if order has been delivered or is in revision
@@ -3610,6 +4232,14 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     order.disputeId = disputeId;
     await order.save();
 
+    await sendDisputeInitiatedNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      claimantId: req.user.id,
+      responseDeadline,
+    });
+
     res.json({ 
       message: 'Dispute created successfully',
       disputeId: disputeId,
@@ -3637,7 +4267,7 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     const { orderId } = req.params;
     const { message } = req.body; // Optional message/response
 
-    const order = await Order.findOne(await buildOrderQuery(orderId));
+    const order = await Order.findOne(await buildOrderQuery(orderId)).populate('client', 'firstName lastName tradingName email').populate('professional', 'firstName lastName tradingName email');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -3705,6 +4335,13 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     dispute.negotiationDeadline = negotiationDeadline;
 
     await dispute.save();
+
+    await sendDisputeRespondedNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      respondentId: req.user.id,
+    });
 
     res.json({ 
       message: 'Dispute response submitted successfully',
@@ -3910,8 +4547,8 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
     const { orderId } = req.params;
 
     const order = await Order.findOne(await buildOrderQuery(orderId))
-      .populate('client', 'walletBalance')
-      .populate('professional', 'walletBalance');
+      .populate('client', 'firstName lastName tradingName email walletBalance')
+      .populate('professional', 'firstName lastName tradingName email walletBalance');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -3936,7 +4573,7 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You are not authorized to accept this dispute offer' });
     }
 
-    // Determine if user is client or professional
+    // Determine if user is client or professional (handle populated or id)
     const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
 
     // Get the other party's offer
@@ -3983,6 +4620,13 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
 
     await dispute.save();
     await order.save();
+
+    await sendDisputeResolvedNotifications({
+      order,
+      clientUser: order.client,
+      professionalUser: order.professional,
+      agreedAmount,
+    });
 
     res.json({ 
       message: 'Dispute resolved successfully',

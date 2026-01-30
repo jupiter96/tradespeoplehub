@@ -8,12 +8,17 @@ const reviewSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    service: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Service',
+      default: null,
+      index: true,
+    },
     order: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
       required: true,
       index: true,
-      unique: true, // One review per order
     },
     reviewer: {
       type: mongoose.Schema.Types.ObjectId,
@@ -65,6 +70,9 @@ const reviewSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// One review per (order, service). Legacy reviews may have service=null (one per order).
+reviewSchema.index({ order: 1, service: 1 }, { unique: true });
 
 export default mongoose.model('Review', reviewSchema);
 

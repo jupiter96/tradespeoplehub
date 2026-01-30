@@ -1689,8 +1689,16 @@ function ProfessionalOrdersSection() {
                 {(currentOrder.professionalReview?.comment || buyerReview) && (
                   <div>
                     <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">Your Review</h4>
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
+                    <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                      <Avatar className="w-10 h-10 flex-shrink-0">
+                        {resolveAvatarUrl(currentOrder.professionalAvatar) && (
+                          <AvatarImage src={resolveAvatarUrl(currentOrder.professionalAvatar)} />
+                        )}
+                        <AvatarFallback className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[14px]">
+                          {getTwoLetterInitials(currentOrder.professional, "P")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap flex-1 min-w-0 mt-2">
                         {currentOrder.professionalReview?.comment || buyerReview}
                       </p>
                     </div>
@@ -1786,8 +1794,19 @@ function ProfessionalOrdersSection() {
 
                 <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
                   {currentOrder?.serviceImage && (
-                    <div className="rounded-lg overflow-hidden">
-                      <img src={resolveFileUrl(currentOrder.serviceImage)} alt={currentOrder.service} className="w-full h-36 object-cover" />
+                    <div className="rounded-lg overflow-hidden bg-gray-900">
+                      {isVideoFile(currentOrder.serviceImage) ? (
+                        <video
+                          src={resolveFileUrl(currentOrder.serviceImage)}
+                          className="w-full h-36 object-cover"
+                          controls
+                          playsInline
+                          muted
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img src={resolveFileUrl(currentOrder.serviceImage)} alt={currentOrder.service} className="w-full h-36 object-cover" />
+                      )}
                     </div>
                   )}
                   <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>
@@ -2006,8 +2025,19 @@ function ProfessionalOrdersSection() {
                 <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
                   <div className="flex gap-4 items-center">
                     {currentOrder?.items?.[0]?.image && (
-                      <div className="rounded-lg overflow-hidden w-[50px] h-[50px]">
-                        <img src={resolveFileUrl(currentOrder.items[0].image)} alt={currentOrder.service} className="w-50 h-50 object-cover" />
+                      <div className="rounded-lg overflow-hidden w-[50px] h-[50px] flex-shrink-0 bg-gray-900">
+                        {isVideoFile(currentOrder.items[0].image) ? (
+                          <video
+                            src={resolveFileUrl(currentOrder.items[0].image)}
+                            className="w-full h-full object-cover"
+                            controls
+                            playsInline
+                            muted
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img src={resolveFileUrl(currentOrder.items[0].image)} alt={currentOrder.service} className="w-full h-full object-cover" />
+                        )}
                       </div>
                     )}
                     <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>

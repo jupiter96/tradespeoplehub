@@ -3,7 +3,6 @@ import {
   ShoppingBag,
   CheckCircle2,
   Clock,
-  PlayCircle,
   FileText,
   AlertTriangle,
   ThumbsUp,
@@ -62,38 +61,6 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         icon: <Clock className="w-5 h-5 text-blue-600" />,
       },
       "pending-delivery"
-    );
-  }
-
-  // Service in progress
-  // Show when order is created and in progress
-  // This should appear right after order is placed if status is "In Progress" and not completed/delivered/cancelled/disputed
-  // Also show when revision request is pending (order status is "In Progress" after revision request)
-  const isInProgress = order.status === "In Progress" && 
-      order.status !== "disputed" &&
-      order.deliveryStatus !== "delivered" &&
-      order.deliveryStatus !== "completed" &&
-      order.deliveryStatus !== "cancelled" &&
-      order.deliveryStatus !== "dispute";
-  
-  // Check if there's any pending revision request
-  const revisionRequests = order.revisionRequest 
-    ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
-    : [];
-  const hasPendingRevision = revisionRequests.some(rr => rr && rr.status === 'pending');
-  
-  if (isInProgress || hasPendingRevision) {
-    push(
-      {
-        at: order.expectedDelivery || (order as any).scheduledDate || (order as any).createdAt || order.date,
-        label: "Service In Progress",
-        description: hasPendingRevision
-          ? "Client requested a revision. Please review and respond to the revision request."
-          : "You are currently working on this service. Make sure to deliver on time.",
-        colorClass: "bg-blue-500",
-        icon: <PlayCircle className="w-5 h-5 text-blue-600" />,
-      },
-      "in-progress"
     );
   }
 
@@ -358,7 +325,10 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   }
 
   // Revision events - handle as array
-  revisionRequests.forEach((rev) => {
+  const revisionRequests = (order as any).revisionRequest
+    ? (Array.isArray((order as any).revisionRequest) ? (order as any).revisionRequest : [(order as any).revisionRequest])
+    : [];
+  revisionRequests.forEach((rev: any) => {
     if (!rev || !rev.status) return;
     
     // Revision Requested event

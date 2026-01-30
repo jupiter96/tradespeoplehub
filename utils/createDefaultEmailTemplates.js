@@ -1343,6 +1343,650 @@ const defaultTemplates = [
     `,
     variables: ['firstName', 'orderNumber', 'orderLink', 'logoUrl'],
   },
+  {
+    type: 'cancellation-requested-requester',
+    category: 'orders',
+    subject: 'Your cancellation request for order {{orderNumber}} was submitted',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancellation Request Submitted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your cancellation request for order <strong>{{orderNumber}}</strong> has been submitted successfully.</p>
+    <div style="background-color: #e3f2fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">The other party will be notified and can accept or reject your request. You will receive an email once they respond.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'cancellation-requested-responder',
+    category: 'orders',
+    subject: 'Cancellation requested for order {{orderNumber}} – please accept or reject',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancellation Requested</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The {{requestedByRole}} has requested to cancel order <strong>{{orderNumber}}</strong>.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Please accept or reject this cancellation request in your order details. If you do not respond by {{responseDeadline}}, the order may be cancelled automatically.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order & Respond</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'requestedByRole', 'responseDeadline', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'cancellation-accepted',
+    category: 'orders',
+    subject: 'Cancellation accepted for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancellation Accepted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The cancellation request for order <strong>{{orderNumber}}</strong> has been accepted. The order is now cancelled.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'cancellation-rejected',
+    category: 'orders',
+    subject: 'Cancellation rejected for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancellation Rejected</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The cancellation request for order <strong>{{orderNumber}}</strong> has been rejected. The order will continue as normal.</p>
+    <div style="background-color: #f8d7da; border-left: 4px solid #e74c3c; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'cancellation-withdrawn',
+    category: 'orders',
+    subject: 'Cancellation request withdrawn for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancellation Request Withdrawn</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The {{withdrawnByRole}} has withdrawn the cancellation request for order <strong>{{orderNumber}}</strong>. The order will continue as normal.</p>
+    <div style="background-color: #e3f2fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'withdrawnByRole', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'cancellation-reminder',
+    category: 'orders',
+    subject: 'Reminder: Accept or reject cancellation for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancellation Reminder</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #e67e22; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>This is a reminder that a cancellation request for order <strong>{{orderNumber}}</strong> is still pending your response.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Please accept or reject the cancellation request. If you do not respond by {{responseDeadline}}, the order may be cancelled automatically.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order & Respond</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'responseDeadline', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-delivered-client',
+    category: 'orders',
+    subject: 'Order {{orderNumber}} has been delivered – please review',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Delivered</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The professional has marked order <strong>{{orderNumber}}</strong> as delivered.</p>
+    <div style="background-color: #e3f2fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Please review the delivery and either approve it (mark as complete) or request a revision if needed.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order & Respond</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-delivered-professional',
+    category: 'orders',
+    subject: 'You marked order {{orderNumber}} as delivered',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Delivered</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have marked order <strong>{{orderNumber}}</strong> as delivered. The client will be notified and can approve the delivery or request a revision.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-delivery-rejected-client',
+    category: 'orders',
+    subject: 'You requested a revision for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Revision Requested</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have requested a revision (rejected the current delivery) for order <strong>{{orderNumber}}</strong>. The professional will be notified and can respond with updates.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Reason:</strong> {{reason}}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'reason', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-delivery-rejected-professional',
+    category: 'orders',
+    subject: 'Client requested a revision for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Revision Requested</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The client has requested a revision (rejected the current delivery) for order <strong>{{orderNumber}}</strong>.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Reason:</strong> {{reason}}</p>
+    </div>
+    <p>Please review the revision request and respond with updated work or message the client.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order & Respond</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'reason', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-delivery-approved',
+    category: 'orders',
+    subject: 'Order {{orderNumber}} completed – delivery approved',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Completed</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The delivery for order <strong>{{orderNumber}}</strong> has been approved and the order is now completed.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-delivery-reminder',
+    category: 'orders',
+    subject: 'Reminder: Please review delivery for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Review Reminder</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #e67e22; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>This is a reminder that order <strong>{{orderNumber}}</strong> has been delivered and is waiting for your review.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Please approve the delivery (mark as complete) or request a revision if you need changes.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order & Respond</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-review-reminder',
+    category: 'orders',
+    subject: 'Leave a review for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review Reminder</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your order <strong>{{orderNumber}}</strong> is complete. How was your experience?</p>
+    <div style="background-color: #e8f5e9; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Your rating and review help other clients and support professionals on Sortars.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Leave a Review</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'dispute-initiated-claimant',
+    category: 'orders',
+    subject: 'Dispute opened for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dispute Initiated</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have opened a dispute for order <strong>{{orderNumber}}</strong>. The other party will be notified and can respond by {{responseDeadline}}.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">You can view the dispute and add messages or offers from your account.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Dispute</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'responseDeadline', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'dispute-initiated-respondent',
+    category: 'orders',
+    subject: 'Dispute opened for order {{orderNumber}} – please respond',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dispute Initiated</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #e67e22; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>A dispute has been opened for order <strong>{{orderNumber}}</strong> by the other party.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Please respond by <strong>{{responseDeadline}}</strong>. You can view the dispute details and submit your response from your account.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Dispute & Respond</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'responseDeadline', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'dispute-responded-claimant',
+    category: 'orders',
+    subject: 'Response received on dispute for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dispute Response</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The other party has responded to the dispute for order <strong>{{orderNumber}}</strong>. The dispute is now in negotiation.</p>
+    <div style="background-color: #e3f2fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">You can continue the discussion, make or accept offers to resolve the dispute.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Dispute</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'dispute-responded-respondent',
+    category: 'orders',
+    subject: 'Your dispute response was submitted for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dispute Response</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your response to the dispute for order <strong>{{orderNumber}}</strong> has been submitted. The dispute is now in negotiation.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">The other party will be notified. You can continue the discussion or make/accept offers.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Dispute</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'dispute-resolved',
+    category: 'orders',
+    subject: 'Dispute resolved for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dispute Resolved</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The dispute for order <strong>{{orderNumber}}</strong> has been resolved.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;">Agreed amount: £{{agreedAmount}}. The order is now completed.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'agreedAmount', 'orderLink', 'logoUrl'],
+  },
 ];
 
 async function createDefaultTemplates() {

@@ -1901,8 +1901,8 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Status Alert Box - Service In Progress, Under Revision, or Extension Request */}
-            {currentOrder.status === "Revision" && (() => {
+            {/* Status Alert Box - Service In Progress, Under Revision, or Extension Request (show when In Progress or Revision) */}
+            {(currentOrder.status === "In Progress" || currentOrder.status === "Revision") && (() => {
               // Check if there's a pending extension request
               if (currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending') {
                 return (
@@ -1922,37 +1922,63 @@ export default function ClientOrdersSection() {
                 );
               }
 
-              // Check if there's an active revision request
-              const revisionRequests = currentOrder.revisionRequest
-                ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
-                : [];
-              const hasActiveRevision = revisionRequests.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress' || rr.status === 'Revision'));
+              // Check if there's an active revision request (only when status is Revision)
+              if (currentOrder.status === "Revision") {
+                const revisionRequests = (currentOrder as any).revisionRequest
+                  ? (Array.isArray((currentOrder as any).revisionRequest) ? (currentOrder as any).revisionRequest : [(currentOrder as any).revisionRequest])
+                  : [];
+                const hasActiveRevision = revisionRequests.some((rr: any) => rr && (rr.status === 'pending' || rr.status === 'in_progress' || rr.status === 'Revision'));
 
-              if (hasActiveRevision) {
-                // Show "Under Revision" message
-                return (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                      Your order is now under revision.
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
-                      Your order is currently in revision. The requested changes or updates are being made, and you will be notified once the revisions are complete. Please feel free to chat with the PRO if you have any additional feedback or questions.
-                    </p>
-                  </div>
-                );
-              } else {
-                // Show normal "Service In Progress" message
-                return (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                      Service In Progress
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
-                      The professional is currently working on your service.
-                    </p>
-                  </div>
-                );
+                if (hasActiveRevision) {
+                  return (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
+                      <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                        Your order is now under revision.
+                      </h4>
+                      <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
+                        Your order is currently in revision. The requested changes or updates are being made, and you will be notified once the revisions are complete. Please feel free to chat with the PRO if you have any additional feedback or questions.
+                      </p>
+                    </div>
+                  );
+                }
               }
+
+              // Show "Work is now in progress" when In Progress (or Revision with no active revision)
+              const deliverySource = currentOrder.scheduledDate || currentOrder.expectedDelivery || (currentOrder as any).booking?.date;
+              const timeSource = (currentOrder as any).booking?.starttime || (currentOrder as any).booking?.timeSlot;
+              let deliveryByStr = "";
+              if (deliverySource) {
+                const d = new Date(deliverySource);
+                const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const day = d.getDate();
+                const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                deliveryByStr = `${dayNames[d.getDay()]} ${day}${daySuffix} ${monthNames[d.getMonth()]}, ${d.getFullYear()}`;
+                const hasTimeInDate = typeof deliverySource === "string" && /T\d{2}:\d{2}/.test(deliverySource);
+                if (hasTimeInDate) {
+                  const hours = d.getHours().toString().padStart(2, "0");
+                  const minutes = d.getMinutes().toString().padStart(2, "0");
+                  deliveryByStr += ` ${hours}:${minutes}`;
+                } else if (timeSource) {
+                  const t = typeof timeSource === "string" && /^\d{1,2}:\d{2}$/.test(timeSource) ? timeSource : String((currentOrder as any).booking?.starttime || "10:00");
+                  deliveryByStr += ` ${t}`;
+                } else {
+                  deliveryByStr += " 10:00";
+                }
+              } else {
+                deliveryByStr = "the scheduled date";
+              }
+              const proName = currentOrder.professional || "The PRO";
+              return (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
+                  <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                    Work is now in progress
+                  </h4>
+                  <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-4 break-words">
+                    {proName} has been notified about your order and will get it delivered by {deliveryByStr}. If you have any requirements or information needed to complete the job, please add them in the &quot;Additional Info&quot; tab. For any questions, feel free to contact the PRO using the chat button.
+                  </p>
+                </div>
+              );
             })()}
 
             {/* Service In Progress / Work Delivered - Show based on status */}
@@ -2087,7 +2113,133 @@ export default function ClientOrdersSection() {
 
             {timelineTimer}
 
+            {/* Timeline first (newest at top), then Order Placed/Created/Started - use flex order so dynamic events appear above static block */}
+            <div className="flex flex-col" style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ order: 2 }}>
+            {/* Order Placed / Order Created / Order Started - order: Placed (top), Created, Started (bottom) */}
+            <div className="space-y-0">
+              {/* Order Placed - top */}
+              {(currentOrder.date || currentOrder.createdAt) && (
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                      <ShoppingBag className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Order Placed
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      Your order has been placed successfully.
+                    </p>
+                    {(currentOrder.date || currentOrder.createdAt) && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                        {formatDate(currentOrder.date || currentOrder.createdAt)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Order Created - middle */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center pt-1">
+                  <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                </div>
+                <div className="flex-1 pb-6">
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full group">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        Order Created
+                      </p>
+                      <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3">
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3 shadow-sm">
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                            Order Date
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            {formatDate(currentOrder.date)}
+                          </p>
+                        </div>
+                        {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
+                          <div>
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Appointment Date
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}
+                            </p>
+                          </div>
+                        )}
+                        {(currentOrder.booking?.starttime || currentOrder.booking?.timeSlot) && (
+                          <div>
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Appointment Time
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || "TBD"}
+                              {currentOrder.booking?.timeSlot && currentOrder.booking?.starttime && ` (${currentOrder.booking.timeSlot})`}
+                            </p>
+                          </div>
+                        )}
+                        {!currentOrder.booking?.date && currentOrder.scheduledDate && (
+                          <div>
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Expected Delivery
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                              {formatDate(currentOrder.scheduledDate)}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                            Order Amount
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
+                            {currentOrder.amount}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                            Professional
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            {currentOrder.professional}
+                          </p>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              </div>
+              {/* Order Started - bottom */}
+              {(currentOrder.status === "In Progress" || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                      <Send className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+                  </div>
+                  <div className="flex-1 pb-6">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Order Started
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            </div>
 
+            <div style={{ order: 1 }}>
             {/* {currentOrder.status === "completed" && currentOrder.rating && (
               <div className="bg-white rounded-lg p-6 shadow-md">
                 <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
@@ -2179,12 +2331,14 @@ export default function ClientOrdersSection() {
                   deliveryNumberMap.set(key, idx + 1);
                 });
 
-                // Sort timeline events by date (newest first for display)
-                const sortedTimelineEvents = [...timelineEvents].sort((a, b) => {
-                  const aTime = a.at ? new Date(a.at).getTime() : 0;
-                  const bTime = b.at ? new Date(b.at).getTime() : 0;
-                  return bTime - aTime; // Newest first
-                });
+                // Sort timeline events by date (newest first for display); exclude Order Placed (shown in static block above)
+                const sortedTimelineEvents = [...timelineEvents]
+                  .filter(e => e.title !== "Order Placed")
+                  .sort((a, b) => {
+                    const aTime = a.at ? new Date(a.at).getTime() : 0;
+                    const bTime = b.at ? new Date(b.at).getTime() : 0;
+                    return bTime - aTime; // Newest first
+                  });
 
                 // Find the latest delivery event (newest first, so first "Work Delivered" event)
                 const latestDeliveryEvent = sortedTimelineEvents.find(e => e.title === "Work Delivered");
@@ -2486,6 +2640,8 @@ export default function ClientOrdersSection() {
                   );
                 });
               })()}
+            </div>
+            </div>
             </div>
             <div className="hidden">
               {/* Additional Information Submitted Timeline */}
@@ -2998,24 +3154,6 @@ export default function ClientOrdersSection() {
                 </div>
               )}
 
-
-              {/* Order Started */}
-              {(currentOrder.status === "In Progress" || (currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0)) && (
-                <div className="flex gap-4">
-                  <div className="flex flex-col items-center pt-1">
-                    <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
-                      <Send className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
-                  </div>
-                  <div className="flex-1 pb-6">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Order Started
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* Additional Information - Collapsible */}
               <div className="flex gap-4">
                 <div className="flex flex-col items-center pt-1">
@@ -3057,86 +3195,6 @@ export default function ClientOrdersSection() {
                             </p>
                           </div>
                         )}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              </div>
-
-              {/* Order Created - Collapsible */}
-              <div className="flex gap-4">
-                <div className="flex flex-col items-center pt-1">
-                  <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                  </div>
-                </div>
-                <div className="flex-1 pb-6">
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full group">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        Order Created
-                      </p>
-                      <ChevronDown className="w-4 h-4 text-[#6b6b6b] transition-transform group-data-[state=open]:rotate-180" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3">
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-3 shadow-sm">
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                            Order Date
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                            {formatDate(currentOrder.date)}
-                          </p>
-                        </div>
-                        {/* Appointment Date and Time - Priority display */}
-                        {(currentOrder.booking?.date || currentOrder.scheduledDate) && (
-                          <div>
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Appointment Date
-                            </p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                              {formatDate(currentOrder.booking?.date || currentOrder.scheduledDate)}
-                            </p>
-                          </div>
-                        )}
-                        {(currentOrder.booking?.starttime || currentOrder.booking?.timeSlot) && (
-                          <div>
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Appointment Time
-                            </p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                              {currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || 'TBD'}
-                              {currentOrder.booking?.timeSlot && currentOrder.booking?.starttime && ` (${currentOrder.booking.timeSlot})`}
-                            </p>
-                          </div>
-                        )}
-                        {/* Fallback to scheduledDate if no booking info */}
-                        {!currentOrder.booking?.date && currentOrder.scheduledDate && (
-                          <div>
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Expected Delivery
-                            </p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                              {formatDate(currentOrder.scheduledDate)}
-                            </p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                            Order Amount
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
-                            {currentOrder.amount}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                            Professional
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                            {currentOrder.professional}
-                          </p>
-                        </div>
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
@@ -4234,12 +4292,19 @@ export default function ClientOrdersSection() {
                 {/* Order Summary - single column */}
                 <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
                   {currentOrder?.serviceImage && (
-                    <div className="rounded-lg overflow-hidden">
-                      <img
-                        src={resolveFileUrl(currentOrder.serviceImage)}
-                        alt={currentOrder.service}
-                        className="w-full h-36 object-cover"
-                      />
+                    <div className="rounded-lg overflow-hidden bg-gray-900">
+                      {isVideoFile(currentOrder.serviceImage) ? (
+                        <VideoThumbnail
+                          videoUrl={resolveFileUrl(currentOrder.serviceImage)}
+                          className="w-full h-36 object-cover"
+                        />
+                      ) : (
+                        <img
+                          src={resolveFileUrl(currentOrder.serviceImage)}
+                          alt={currentOrder.service}
+                          className="w-full h-36 object-cover"
+                        />
+                      )}
                     </div>
                   )}
                   <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">
@@ -4375,8 +4440,19 @@ export default function ClientOrdersSection() {
                 <div className="mt-4 pt-6 border-t border-gray-200 space-y-4">
                   <div className="flex gap-4 items-center">
                     {currentOrder?.items?.[0]?.image && (
-                      <div className="rounded-lg overflow-hidden w-[50px] h-[50px]">
-                        <img src={resolveFileUrl(currentOrder.items[0].image)} alt={currentOrder.service} className="w-50 h-50 object-cover" />
+                      <div className="rounded-lg overflow-hidden w-[50px] h-[50px] flex-shrink-0 bg-gray-900">
+                        {isVideoFile(currentOrder.items[0].image) ? (
+                          <video
+                            src={resolveFileUrl(currentOrder.items[0].image)}
+                            className="w-full h-full object-cover"
+                            controls
+                            playsInline
+                            muted
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img src={resolveFileUrl(currentOrder.items[0].image)} alt={currentOrder.service} className="w-full h-full object-cover" />
+                        )}
                       </div>
                     )}
                     <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium italic">{currentOrder?.service || "Service"}</h3>

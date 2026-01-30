@@ -300,6 +300,10 @@ const orderSchema = new mongoose.Schema(
         ref: 'User',
         default: null,
       },
+      reminderSentAt: {
+        type: Date,
+        default: null,
+      },
     },
     // Additional information submitted by client
     additionalInformation: {

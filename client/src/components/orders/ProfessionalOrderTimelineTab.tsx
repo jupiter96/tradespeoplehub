@@ -16,6 +16,7 @@ import {
   Download,
   ExternalLink,
   X,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
@@ -337,26 +338,53 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
-      {/* Service In Progress - Only show if status is In Progress and not under revision */}
+      {/* Service Delivery Pending - Show above countdown when order is In Progress and not delivered */}
       {currentOrder.status === "In Progress" &&
-        (currentOrder.deliveryStatus === "active" || workElapsedTime.started) &&
+        (currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending" || workElapsedTime.started) &&
         currentOrder.deliveryStatus !== "delivered" &&
-        currentOrder.deliveryStatus !== "pending" &&
-        !(currentOrder.cancellationRequest && 
-          currentOrder.cancellationRequest.status === 'pending' && 
-          currentOrder.cancellationRequest.requestedBy && 
-          currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString()) && (
+        currentOrder.deliveryStatus !== "completed" &&
+        !((currentOrder as any).cancellationRequest?.status === "pending" &&
+          (currentOrder as any).cancellationRequest?.requestedBy &&
+          (currentOrder as any).cancellationRequest?.requestedBy.toString() !== userInfo?.id?.toString()) && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-md">
           <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-            Service In Progress
+            Service Delivery Pending
           </h4>
           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-            You are currently working on this service. Expected delivery: <span className="text-[#2c353f]">{currentOrder.scheduledDate ? formatDate(currentOrder.scheduledDate) : "TBD"}</span>. Make sure to deliver the work on time or request an extension if needed.
+            {(() => {
+              const deliverySource = currentOrder.scheduledDate || currentOrder.expectedDelivery || (currentOrder as any).booking?.date;
+              const startTime = (currentOrder as any).booking?.starttime || (currentOrder as any).booking?.timeSlot;
+              const endTime = (currentOrder as any).booking?.endtime;
+              let expectedStr = "TBD";
+              if (deliverySource) {
+                const d = new Date(deliverySource);
+                const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                const day = d.getDate();
+                const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                expectedStr = `${dayNames[d.getDay()]} ${day}${daySuffix} ${monthNames[d.getMonth()]}, ${d.getFullYear()}`;
+                const hasTimeInDate = typeof deliverySource === "string" && /T\d{2}:\d{2}/.test(deliverySource);
+                if (hasTimeInDate) {
+                  const hours = d.getHours().toString().padStart(2, "0");
+                  const minutes = d.getMinutes().toString().padStart(2, "0");
+                  expectedStr += ` ${hours}:${minutes}`;
+                  if (endTime) expectedStr += `-${endTime}`;
+                } else if (startTime) {
+                  expectedStr += ` ${startTime}`;
+                  if (endTime) expectedStr += `-${endTime}`;
+                  else expectedStr += "-12:00";
+                } else {
+                  expectedStr += " 10:00-12:00";
+                }
+              }
+              return (
+                <>
+                  Your client has completed payment and is awaiting your service delivery. Expected delivery: <span className="text-[#2c353f]">{expectedStr}</span> Feel free to reach out if you have any questions using the chat button.
+                </>
+              );
+            })()}
           </p>
-          
-          {/* Extension Request Status - Only show for pending */}
-          {currentOrder.extensionRequest && 
-           currentOrder.extensionRequest.status === 'pending' && (
+          {(currentOrder as any).extensionRequest?.status === "pending" && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="w-5 h-5 text-blue-600" />
@@ -365,14 +393,11 @@ export default function ProfessionalOrderTimelineTab({
                 </h5>
               </div>
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                Your request to extend the order delivery time has been sent to the client. Please wait for their response. Feel free to discuss any details with the buyer.
+                Your request to extend the order delivery time has been sent to the client. Please wait for their response.
               </p>
             </div>
           )}
-
-          {/* Extension Request Approved Status */}
-          {currentOrder.extensionRequest && 
-           currentOrder.extensionRequest.status === 'approved' && (
+          {(currentOrder as any).extensionRequest?.status === "approved" && (
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -381,29 +406,18 @@ export default function ProfessionalOrderTimelineTab({
                 </h5>
               </div>
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                Your extension request has been approved. New delivery date & time:{" "}
-                {currentOrder.extensionRequest.newDeliveryDate 
+                New delivery date & time:{" "}
+                {(currentOrder as any).extensionRequest?.newDeliveryDate
                   ? (() => {
-                      const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                      const dateStr = d.toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      });
-                      const timeStr = d.toLocaleTimeString("en-GB", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      return `${dateStr} at ${timeStr}`;
+                      const d = new Date((currentOrder as any).extensionRequest.newDeliveryDate);
+                      return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + " at " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
                     })()
-                  : 'N/A'}
+                  : "N/A"}
               </p>
             </div>
           )}
-
           {currentOrder.deliveryStatus !== "delivered" && (
             <div className="flex gap-3 flex-wrap">
-              {/* Deliver Work Button */}
               <Button
                 onClick={() => {
                   onOpenModal('delivery');
@@ -415,19 +429,15 @@ export default function ProfessionalOrderTimelineTab({
                 <Truck className="w-4 h-4 mr-2" />
                 Deliver Work
               </Button>
-              
-              {/* Request Extension Button */}
-              {(!currentOrder.extensionRequest || currentOrder.extensionRequest.status !== 'pending') && isWithin24HoursOfDelivery() && (
+              {(!(currentOrder as any).extensionRequest || (currentOrder as any).extensionRequest?.status !== "pending") && isWithin24HoursOfDelivery() && (
                 <Button
                   onClick={() => {
-                    const currentDate = currentOrder.scheduledDate
-                      ? new Date(currentOrder.scheduledDate)
-                      : new Date();
+                    const currentDate = currentOrder.scheduledDate ? new Date(currentOrder.scheduledDate) : new Date();
                     currentDate.setDate(currentDate.getDate() + 7);
-                    onSetExtensionNewDate(currentDate.toISOString().split('T')[0]);
+                    onSetExtensionNewDate(currentDate.toISOString().split("T")[0]);
                     onSetExtensionNewTime("09:00");
                     onSetExtensionReason("");
-                    onOpenModal('extension');
+                    onOpenModal("extension");
                   }}
                   variant="outline"
                   className="border-blue-500 text-blue-600 hover:bg-blue-50 font-['Poppins',sans-serif]"
@@ -475,15 +485,13 @@ export default function ProfessionalOrderTimelineTab({
           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
             This order has been completed successfully. {currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}
           </p>
-          {currentOrder.rating && (
-            <Button
-              onClick={() => onOpenModal('professionalReview')}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              View Review
-            </Button>
-          )}
+          <Button
+            onClick={() => onOpenModal('professionalReview')}
+            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+          >
+            <CheckCircle2 className="w-4 h-4 mr-2" />
+            View Review
+          </Button>
         </div>
       )}
 
@@ -544,7 +552,9 @@ export default function ProfessionalOrderTimelineTab({
             deliveryNumberMap.set(key, idx + 1);
           });
 
-          return timelineEvents.map((event, index) => {
+          return timelineEvents
+            .filter(e => e.label !== "Order Placed")
+            .map((event, index) => {
             // Get delivery number if this is a "Work Delivered" event
             const deliveryNumber = event.label === "Work Delivered" 
               ? deliveryNumberMap.get(event.at || 'no-date')
@@ -818,8 +828,34 @@ export default function ProfessionalOrderTimelineTab({
         })()}
       </div>
 
-      {/* Order Created Timeline */}
+      {/* Order Placed / Order Created / Order Started - order from top: Placed, Created, Started (bottom) */}
       <div className="space-y-0">
+        {/* Order Placed - top */}
+        {currentOrder.date && (
+          <div className="flex gap-4">
+            <div className="flex flex-col items-center pt-1">
+              <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
+                <ShoppingBag className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
+            </div>
+            <div className="flex-1 pb-6">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                Order Placed
+              </p>
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                {(currentOrder as any).client || "Client"} placed this order.
+              </p>
+              {currentOrder.date && (
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+                  {formatDate(currentOrder.date)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Order Created - middle */}
         <div className="flex gap-4">
           <div className="flex flex-col items-center pt-1">
             <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
@@ -867,7 +903,7 @@ export default function ProfessionalOrderTimelineTab({
           </div>
         </div>
 
-        {/* Order Started */}
+        {/* Order Started - bottom */}
         {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "delivered") && (
           <div className="flex gap-4">
             <div className="flex flex-col items-center pt-1">
