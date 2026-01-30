@@ -622,6 +622,19 @@ export default function ProfilePage() {
     });
   }, [profile?.reviews]);
 
+  const getTwoLetterInitials = (name: string | undefined): string => {
+    const raw = (name || "").trim();
+    if (!raw) return "A";
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] || "A";
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
+    return (first + (last || first)).toUpperCase().slice(0, 2);
+  };
+
+  const [reviewAvatarErrors, setReviewAvatarErrors] = useState<Set<string>>(new Set());
+  const showReviewAvatarImage = (reviewId: string, avatarUrl: string | undefined) =>
+    Boolean(avatarUrl && !reviewAvatarErrors.has(reviewId));
+
   // homeServiceCards is now fetched from API above
 
   if (loading) {
@@ -703,11 +716,12 @@ export default function ProfilePage() {
   // TODO: wire to real presence when backend supports it.
   const isOnline = true;
 
-  // Generate SEO metadata
+  // Generate SEO metadata (use ratingAverage and publicProfile.bio from API)
   const seoTitle = `Hire ${tradingName || displayName} - Verified ${topCategory || 'Professional'} | Sortars`;
-  const seoDescription = profile.bio
-    ? `${profile.bio.substring(0, 120)}... ${profile.rating ? `★ ${profile.rating}/5` : ''} ${profile.completedJobs ? `| ${profile.completedJobs}+ jobs completed` : ''} ${displayLocation ? `| ${displayLocation}` : ''}`
-    : `Book ${tradingName || displayName}, a trusted ${topCategory || 'professional'}${displayLocation ? ` in ${displayLocation}` : ''} on Sortars. ${profile.rating ? `Rated ${profile.rating}/5 stars.` : ''} ${profile.completedJobs ? `${profile.completedJobs}+ successful projects.` : ''} View services, read reviews, and hire online.`;
+  const bioForSeo = (profile.publicProfile as { bio?: string })?.bio || (profile as { bio?: string }).bio || "";
+  const seoDescription = bioForSeo
+    ? `${bioForSeo.substring(0, 120)}... ${rating > 0 ? `★ ${rating}/5` : ""} ${completedJobs ? `| ${completedJobs}+ jobs completed` : ""} ${displayLocation ? `| ${displayLocation}` : ""}`
+    : `Book ${tradingName || displayName}, a trusted ${topCategory || "professional"}${displayLocation ? ` in ${displayLocation}` : ""} on Sortars. ${rating > 0 ? `Rated ${rating}/5 stars.` : ""} ${completedJobs ? `${completedJobs}+ successful projects.` : ""} View services, read reviews, and hire online.`;
 
   return (
     <div className="prolancer-profile min-h-screen">
@@ -1138,7 +1152,22 @@ export default function ProfilePage() {
                 ) : (
                   reviews.map((r) => (
                     <div key={r.id} className="review-row">
-                      {r.avatar ? <img className="review-avatar" src={r.avatar} alt={r.name} /> : <div className="review-avatar" />}
+                      <div
+                        className="review-avatar-wrap"
+                        data-has-image={showReviewAvatarImage(r.id, (r as { avatar?: string }).avatar)}
+                      >
+                        {showReviewAvatarImage(r.id, (r as { avatar?: string }).avatar) ? (
+                          <img
+                            className="review-avatar"
+                            src={resolveMediaUrl((r as { avatar?: string }).avatar)}
+                            alt={r.name}
+                            onError={() => setReviewAvatarErrors((prev) => new Set(prev).add(r.id))}
+                          />
+                        ) : null}
+                        <div className="review-avatar review-avatar-initials">
+                          {getTwoLetterInitials(r.name)}
+                        </div>
+                      </div>
                       <div>
                         <div className="review-head">
                           <div className="review-name">{r.name}</div>

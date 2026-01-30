@@ -903,12 +903,40 @@
   border-bottom: 0;
 }
 
+.prolancer-profile .review-avatar-wrap {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.prolancer-profile .review-avatar-wrap[data-has-image="true"] .review-avatar-initials {
+  display: none;
+}
+
 .prolancer-profile .review-avatar {
   width: 56px;
   height: 56px;
   border-radius: 14px;
   object-fit: cover;
   background: #e9edf7;
+}
+
+.prolancer-profile .review-avatar-initials {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #3d78cb;
+  color: #fff;
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .prolancer-profile .review-head {

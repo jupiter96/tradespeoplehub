@@ -404,12 +404,56 @@ export default function ProfileSection() {
         return `${months[date.getMonth()]}, ${date.getFullYear()}`;
       })()
     : "Jan, 2024";
-  const reviewCount = 0;
-  const rating = 0.0;
-  const reviewText = reviewCount === 0 
-    ? "(0 review)" 
-    : reviewCount === 1 
-    ? "(1 review)" 
+
+  // Profile stats for preview (reviews + rating from service and job reviews)
+  type ProfileStats = {
+    ratingAverage: number;
+    ratingCount: number;
+    reviews: Array<{ id: string; name: string; stars: number; text: string; createdAt?: string | Date }>;
+  };
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+  const [profileStatsLoading, setProfileStatsLoading] = useState(false);
+
+  useEffect(() => {
+    const userId = (userInfo as any)?.id ?? (userInfo as any)?._id;
+    if (!userId) {
+      setProfileStats(null);
+      return;
+    }
+    let cancelled = false;
+    setProfileStatsLoading(true);
+    fetch(resolveApiUrl(`/api/auth/profile/${userId}`), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const profile = data?.profile;
+        if (profile) {
+          setProfileStats({
+            ratingAverage: typeof profile.ratingAverage === "number" ? profile.ratingAverage : 0,
+            ratingCount: typeof profile.ratingCount === "number" ? profile.ratingCount : 0,
+            reviews: Array.isArray(profile.reviews) ? profile.reviews : [],
+          });
+        } else {
+          setProfileStats({ ratingAverage: 0, ratingCount: 0, reviews: [] });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setProfileStats({ ratingAverage: 0, ratingCount: 0, reviews: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setProfileStatsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [userInfo?.id ?? (userInfo as any)?._id]);
+
+  const reviewCount = profileStats?.ratingCount ?? 0;
+  const rating = profileStats?.ratingAverage ?? 0;
+  const reviewText = profileStatsLoading
+    ? "..."
+    : reviewCount === 0
+    ? "(0 reviews)"
+    : reviewCount === 1
+    ? "(1 review)"
     : `(${reviewCount} reviews)`;
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
@@ -2026,7 +2070,7 @@ export default function ProfileSection() {
                     </Card>
                   </TabsContent>
 
-                  {/* Reviews Tab */}
+                  {/* Reviews Tab - dynamic data (service + job reviews) */}
                   <TabsContent value="reviews">
                     <Card className="w-full max-w-full overflow-x-hidden">
                       <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
@@ -2034,7 +2078,41 @@ export default function ProfileSection() {
                           Reviews ({reviewCount})
                         </h3>
                         <div className="space-y-4 md:space-y-6">
-                          <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">No reviews yet.</p>
+                          {profileStatsLoading ? (
+                            <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">Loading reviews...</p>
+                          ) : !profileStats?.reviews?.length ? (
+                            <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">No reviews yet.</p>
+                          ) : (
+                            profileStats.reviews.map((r) => {
+                              const createdAt = r.createdAt ? new Date(r.createdAt) : null;
+                              const time = createdAt && !Number.isNaN(createdAt.getTime())
+                                ? createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                                : "";
+                              const stars = typeof r.stars === "number" ? Math.max(0, Math.min(5, Math.round(r.stars))) : 0;
+                              return (
+                                <div key={r.id} className="flex gap-3 p-3 md:p-4 border border-gray-200 rounded-xl">
+                                  <div className="w-10 h-10 rounded-full bg-[#E6F0FF] flex items-center justify-center flex-shrink-0 font-['Poppins',sans-serif] text-[14px] font-semibold text-[#003D82]">
+                                    {(r.name || "A").charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                      <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">{r.name || "Anonymous"}</span>
+                                      {time && <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{time}</span>}
+                                    </div>
+                                    <div className="flex gap-0.5 mb-2">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                          key={star}
+                                          className={`w-4 h-4 ${star <= stars ? "fill-[#FE8A0F] text-[#FE8A0F]" : "fill-[#E5E5E5] text-[#E5E5E5]"}`}
+                                        />
+                                      ))}
+                                    </div>
+                                    {r.text && <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">{r.text}</p>}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
                       </CardContent>
                     </Card>
