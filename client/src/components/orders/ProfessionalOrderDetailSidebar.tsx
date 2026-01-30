@@ -125,7 +125,7 @@ export default function ProfessionalOrderDetailSidebar({
           </h3>
           {/* Three Dots Menu */}
           {order.status !== "Cancelled" && order.status !== "Cancellation Pending" && order.status !== "Completed" &&
-           (order.deliveryStatus === "pending" || order.deliveryStatus === "active") && 
+           (order.deliveryStatus === "pending" || order.deliveryStatus === "active" || order.status === "Revision") && 
            (!cancellationRequest?.status || cancellationRequest.status !== "pending") && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -138,7 +138,7 @@ export default function ProfessionalOrderDetailSidebar({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                {order.deliveryFiles && order.deliveryFiles.length > 0 ? (
+                {(order.deliveryFiles && order.deliveryFiles.length > 0) || order.status === "Revision" ? (
                   <DropdownMenuItem
                     onClick={onOpenDisputeModal}
                     className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
@@ -294,7 +294,7 @@ export default function ProfessionalOrderDetailSidebar({
           </>
         )}
 
-        {order.deliveryStatus === "delivered" && order.status !== "Completed" && (
+        {(order.deliveryStatus === "delivered" || order.status === "Revision") && order.status !== "Completed" && (
           <>
             <Separator className="mb-6" />
             <div className="space-y-2">

@@ -3243,9 +3243,25 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${order.totalAmount.toFixed(2)})` });
     }
 
-    // Check if order has been delivered
-    if (order.deliveryStatus !== 'delivered' && order.status !== 'In Progress') {
-      return res.status(400).json({ error: 'Disputes can only be opened for delivered orders' });
+    // Check if order has been delivered or is in revision
+    // Disputes can be opened when deliveryStatus is 'delivered' or status is 'Revision' or 'delivered'
+    console.log('[Dispute Check] Order status:', order.status, 'deliveryStatus:', order.deliveryStatus);
+    
+    const statusLower = (order.status || '').toLowerCase();
+    const deliveryStatusLower = (order.deliveryStatus || '').toLowerCase();
+    
+    const canOpenDispute = deliveryStatusLower === 'delivered' || 
+                          statusLower === 'delivered' ||
+                          statusLower === 'revision' || 
+                          statusLower === 'in progress';
+    
+    console.log('[Dispute Check] canOpenDispute:', canOpenDispute);
+    
+    if (!canOpenDispute) {
+      return res.status(400).json({ 
+        error: 'Disputes can only be opened for delivered orders or orders in revision',
+        debug: { status: order.status, deliveryStatus: order.deliveryStatus }
+      });
     }
 
     // Check if user is either the client or professional for this order

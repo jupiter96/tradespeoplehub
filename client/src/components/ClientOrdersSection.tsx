@@ -3673,10 +3673,11 @@ export default function ClientOrdersSection() {
 	                      (currentOrder as any).metadata?.cancellationRequest?.status === "pending";
 	
 	                    const canCancel = (statusNormalized === "in progress" || statusNormalized === "active") && !isPendingCancellation;
-	                    // Dispute is available once work is delivered (but not after completion)
+	                    // Dispute is available once work is delivered or in revision (but not after completion)
 	                    const canDispute =
 	                      (hasDeliveredSignals ||
-	                      statusNormalized === "delivered") &&
+	                      statusNormalized === "delivered" ||
+	                      statusNormalized === "revision") &&
 	                      statusNormalized !== "completed";
 	
 	                    const isCancelled = statusNormalized === "cancelled";
@@ -3886,7 +3887,7 @@ export default function ClientOrdersSection() {
 
                 {/* Action Buttons - Cancel Order moved to three dots menu in header */}
 
-                {(currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && currentOrder.status !== "Completed" && (
+                {((currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) || currentOrder.status === "Revision") && currentOrder.status !== "Completed" && (
                   <>
                     <Separator className="mb-6" />
                     <div className="space-y-2">

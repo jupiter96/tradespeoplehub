@@ -20,7 +20,8 @@ import {
   Trash2,
   ArrowRight,
   ArrowLeft,
-  Package
+  Package,
+  Loader2
 } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -29,6 +30,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner@2.0.3";
+import { resolveApiUrl } from "../config/api";
+import { useEffect } from "react";
 
 interface CustomOfferModalProps {
   isOpen: boolean;
@@ -37,51 +40,13 @@ interface CustomOfferModalProps {
   clientName: string;
 }
 
-// Mock professional services data (would come from AccountContext/database)
-const mockProfessionalOwnServices = [
-  { 
-    id: "service-1", 
-    name: "Emergency Plumbing Repair", 
-    basePrice: 150, 
-    category: "Plumbing",
-    deliveryDays: 1
-  },
-  { 
-    id: "service-2", 
-    name: "Pipe Installation", 
-    basePrice: 250, 
-    category: "Plumbing",
-    deliveryDays: 3
-  },
-  { 
-    id: "service-3", 
-    name: "Bathroom Fitting", 
-    basePrice: 500, 
-    category: "Plumbing",
-    deliveryDays: 7
-  },
-  { 
-    id: "service-4", 
-    name: "Boiler Service", 
-    basePrice: 120, 
-    category: "Plumbing",
-    deliveryDays: 2
-  },
-  { 
-    id: "service-5", 
-    name: "Kitchen Sink Installation", 
-    basePrice: 180, 
-    category: "Plumbing",
-    deliveryDays: 2
-  },
-  { 
-    id: "service-6", 
-    name: "Radiator Installation", 
-    basePrice: 200, 
-    category: "Plumbing",
-    deliveryDays: 3
-  },
-];
+interface ProfessionalService {
+  id: string;
+  name: string;
+  basePrice: number;
+  category: string;
+  deliveryDays: number;
+}
 
 interface Milestone {
   id: string;
@@ -109,8 +74,48 @@ export default function CustomOfferModal({
   const [milestones, setMilestones] = useState<Milestone[]>([
     { id: "1", name: "", description: "", amount: 0, dueInDays: 1 }
   ]);
+  const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
 
-  const selectedService = mockProfessionalOwnServices.find(s => s.id === selectedServiceId);
+  const selectedService = professionalServices.find(s => s.id === selectedServiceId);
+
+  // Fetch professional's services
+  useEffect(() => {
+    if (isOpen && userInfo?.id) {
+      fetchProfessionalServices();
+    }
+  }, [isOpen, userInfo?.id]);
+
+  const fetchProfessionalServices = async () => {
+    setIsLoadingServices(true);
+    try {
+      const response = await fetch(resolveApiUrl(`/api/services/professional/${userInfo?.id}`), {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch services');
+      }
+
+      const data = await response.json();
+      
+      // Transform services to match our interface
+      const transformedServices: ProfessionalService[] = data.services.map((service: any) => ({
+        id: service._id || service.id,
+        name: service.title || service.name,
+        basePrice: service.packages?.[0]?.price || service.price || 0,
+        category: service.category?.name || service.category || 'Service',
+        deliveryDays: service.packages?.[0]?.deliveryDays || 1,
+      }));
+
+      setProfessionalServices(transformedServices);
+    } catch (error: any) {
+      console.error('Error fetching services:', error);
+      toast.error('Failed to load your services');
+    } finally {
+      setIsLoadingServices(false);
+    }
+  };
 
   const handleClose = () => {
     setStep("select");
@@ -124,7 +129,7 @@ export default function CustomOfferModal({
   };
 
   const handleServiceSelect = (serviceId: string) => {
-    const service = mockProfessionalOwnServices.find(s => s.id === serviceId);
+    const service = professionalServices.find(s => s.id === serviceId);
     if (service) {
       setSelectedServiceId(serviceId);
       setCustomPrice(service.basePrice.toString());
@@ -260,37 +265,50 @@ export default function CustomOfferModal({
         {step === "select" ? (
           <ScrollArea className="flex-1 overflow-auto px-6">
             <div className="space-y-3 py-4">
-              {mockProfessionalOwnServices.map((service) => (
-                <button
-                  key={service.id}
-                  onClick={() => handleServiceSelect(service.id)}
-                  className="w-full p-5 bg-white border-2 border-gray-200 rounded-xl hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/30 transition-all duration-200 text-left group"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
-                          {service.name}
-                        </h3>
-                        <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
-                          {service.category}
-                        </Badge>
+              {isLoadingServices ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#FE8A0F]" />
+                </div>
+              ) : professionalServices.length === 0 ? (
+                <div className="text-center py-12">
+                  <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    No services found. Please create a service first.
+                  </p>
+                </div>
+              ) : (
+                professionalServices.map((service) => (
+                  <button
+                    key={service.id}
+                    onClick={() => handleServiceSelect(service.id)}
+                    className="w-full p-5 bg-white border-2 border-gray-200 rounded-xl hover:border-[#FE8A0F] hover:bg-[#FFF5EB]/30 transition-all duration-200 text-left group"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
+                            {service.name}
+                          </h3>
+                          <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                            {service.category}
+                          </Badge>
+                        </div>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
+                          Base delivery: {service.deliveryDays} {service.deliveryDays === 1 ? 'day' : 'days'}
+                        </p>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-                        Base delivery: {service.deliveryDays} {service.deliveryDays === 1 ? 'day' : 'days'}
-                      </p>
+                      <div className="text-right">
+                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
+                          £{service.basePrice}
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                          Base price
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                        £{service.basePrice}
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
-                        Base price
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))
+              )}
             </div>
           </ScrollArea>
         ) : step === "payment" ? (
