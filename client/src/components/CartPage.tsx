@@ -2274,16 +2274,26 @@ export default function CartPage() {
                     ) : paymentMethods.length === 0 ? (
                       <div className="text-center py-4">
                         <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-3">
-                          No payment methods available. Please add a payment method.
+                          No payment methods yet. Add a card to pay at checkout.
                         </p>
-                        <Button 
-                          variant="outline" 
-                          className="border-2 border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px]"
-                          onClick={() => navigate('/account?tab=billing&section=fund')}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Payment Method
-                        </Button>
+                        {publishableKey ? (
+                          <Button
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] md:text-[14px]"
+                            onClick={() => setShowAddCardModal(true)}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add new card
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="border-2 border-[#3B82F6] text-[#3B82F6] hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px]"
+                            onClick={() => navigate('/account?tab=billing&section=fund')}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Payment Method
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
