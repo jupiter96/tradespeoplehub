@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 
 // Import separated order components
-import { getStatusLabel, getStatusLabelForTable } from "./orders";
+import { getStatusLabel, getStatusLabelForTable, AddInfoDialog } from "./orders";
 import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -4952,121 +4952,16 @@ export default function ClientOrdersSection() {
 	        </DialogContent>
 	      </Dialog>
 
-        {/* Additional Info Modal - Inline React Modal (not Radix UI) */}
-        {isAddInfoDialogOpen && currentOrder && (
-          <div
-            className="fixed inset-0 z-[99999] flex items-center justify-center px-4"
-            style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setIsAddInfoDialogOpen(false);
-              }
-            }}
-          >
-            <div
-              className="absolute inset-0 bg-black/50"
-              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-            <div
-              className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6"
-              style={{ position: "relative", zIndex: 100000 }}
-            >
-              <button
-                onClick={() => setIsAddInfoDialogOpen(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-                type="button"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-4">
-                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
-                  Add Remarks
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
-                  Add any special requirements or remarks for the service
-                </p>
-              </div>
-
-              <div className="space-y-6">
-                <div className="border border-gray-200 rounded-lg p-4 space-y-4">
-                  <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] mb-3">
-                    {currentOrder.service || "Service"}
-                  </h3>
-
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Message
-                    </Label>
-                    <Textarea
-                      placeholder="Enter any special requirements, instructions, or additional information..."
-                      rows={4}
-                      className="font-['Poppins',sans-serif] text-[13px]"
-                      id="add-info-message"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Attachments (Optional) - Max 10 files
-                    </Label>
-                    <div className="border-2 border-dashed border-[#3D78CB] rounded-lg p-4 text-center hover:bg-blue-50 transition-colors cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*,video/*,.pdf,.doc,.docx,.txt"
-                        multiple
-                        className="hidden"
-                        id="add-info-files"
-                      />
-                      <label htmlFor="add-info-files" className="cursor-pointer flex flex-col items-center gap-2">
-                        <Upload className="w-6 h-6 text-[#3D78CB]" />
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] font-medium">
-                          Click to upload files
-                        </span>
-                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                          Images, videos, PDF, DOC, DOCX, or TXT files
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsAddInfoDialogOpen(false)}
-                    className="font-['Poppins',sans-serif]"
-                  >
-                    Clear & Close
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={async () => {
-                      const messageEl = document.getElementById("add-info-message") as HTMLTextAreaElement;
-                      const message = messageEl?.value || "";
-                      if (!message.trim()) {
-                        toast.error("Please add a message");
-                        return;
-                      }
-                      try {
-                        await addAdditionalInfo(currentOrder.id, message);
-                        toast.success("Additional information submitted successfully!");
-                        setIsAddInfoDialogOpen(false);
-                        await refreshOrders();
-                      } catch (error: any) {
-                        toast.error(error.message || "Failed to submit additional information");
-                      }
-                    }}
-                    className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif]"
-                  >
-                    Done
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Additional Info Modal - uses AddInfoDialog so message and attachments are sent and stored correctly */}
+        <AddInfoDialog
+          open={isAddInfoDialogOpen}
+          onOpenChange={setIsAddInfoDialogOpen}
+          order={currentOrder ? { id: currentOrder.id, service: currentOrder.service } : null}
+          onSubmit={async (orderId, message, files) => {
+            await addAdditionalInfo(orderId, message, files);
+            await refreshOrders();
+          }}
+        />
 
         {/* Withdraw Cancellation Confirmation Modal - Inline React Modal (not Radix UI) */}
         {isWithdrawDialogOpen && (

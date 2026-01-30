@@ -1516,13 +1516,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Add additional information to an order
+  // Add additional information to an order (message and/or files; at least one required)
   const addAdditionalInfo = async (orderId: string, message?: string, files?: File[]): Promise<void> => {
     try {
       const formData = new FormData();
-      if (message && message.trim()) {
-        formData.append('message', message.trim());
-      }
+      formData.append('message', (message || '').trim());
 
       if (files && files.length > 0) {
         files.forEach((file) => {
