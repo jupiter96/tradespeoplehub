@@ -2199,21 +2199,26 @@ export default function ServiceDetailPage() {
                               const origPriceVal = parseMoney(pkg.originalPrice);
                               const pkgPrice = priceVal > 0 ? priceVal : origPriceVal;
                               
-                              // Get delivery text
+                              // Get delivery text from package deliveryDays (never "standard" for package service)
                               const deliveryDays = pkg.deliveryDays;
-                              let deliveryText = "standard";
+                              let deliveryText: string;
                               if (deliveryDays === 0 || deliveryDays === "0") {
-                                deliveryText = "same day";
-                              } else if (deliveryDays === 7 || deliveryDays === "7") {
-                                deliveryText = "standard";
+                                deliveryText = "Same day";
                               } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
-                                deliveryText = "same day";
-                              } else if (deliveryDays === undefined || deliveryDays === null) {
+                                deliveryText = "Same day";
+                              } else if (typeof deliveryDays === "number" && deliveryDays > 0) {
+                                deliveryText = `${deliveryDays} ${deliveryDays === 1 ? "day" : "days"}`;
+                              } else if (deliveryDays === 7 || deliveryDays === "7") {
+                                deliveryText = "7 days";
+                              } else if (deliveryDays !== undefined && deliveryDays !== null && String(deliveryDays).trim() !== "") {
+                                const n = Number(deliveryDays);
+                                deliveryText = Number.isNaN(n) ? "7 days" : (n === 0 ? "Same day" : `${n} ${n === 1 ? "day" : "days"}`);
+                              } else {
                                 const deliveryType = pkg.deliveryType;
                                 if (deliveryType === "same-day" || deliveryType === "same day") {
-                                  deliveryText = "same day";
+                                  deliveryText = "Same day";
                                 } else {
-                                  deliveryText = "standard";
+                                  deliveryText = "7 days";
                                 }
                               }
                               
@@ -2275,7 +2280,7 @@ export default function ServiceDetailPage() {
                                   {/* Delivery Days - Fixed to bottom */}
                                   <div className="p-3 border-t border-gray-200 mt-auto">
                                     <div className="font-['Poppins',sans-serif] text-[12px] text-[#5b5b5b] text-center">
-                                      {deliveryText === "same day" ? "Delivers in 2 days" : "Standard delivery"}
+                                      {deliveryText === "Same day" ? "Same day delivery" : `${deliveryText} delivery`}
                                     </div>
                                   </div>
                                 </div>
@@ -3211,41 +3216,32 @@ export default function ServiceDetailPage() {
                   
                   <div className="space-y-3 mb-6">
                     {selectedPackage && (() => {
-                      // Calculate delivery time from deliveryDays - 7 means standard, 0 means same day
+                      // Package service: display deliveryDays from package, never "standard"
                       const deliveryDays = selectedPackage.deliveryDays;
-                      
                       let deliveryTimeText: string | null = null;
-                      
-                      // IMPORTANT: Check for 0 first, as 0 is falsy in JavaScript
-                      // deliveryDays: 0 = same day, 7 = standard
-                      if (deliveryDays === 0 || deliveryDays === "0") {
-                        deliveryTimeText = "same day";
-                      } else if (deliveryDays === 7 || deliveryDays === "7") {
-                        deliveryTimeText = "standard";
-                      } else if (typeof deliveryDays === "number") {
-                        // For other numbers, default to standard
-                        deliveryTimeText = "standard";
-                      } 
-                      // If deliveryDays is a string, check for same-day patterns
-                      else if (deliveryDays === "same-day" || deliveryDays === "same day") {
-                        deliveryTimeText = "same day";
-                      } else if (deliveryDays === "standard") {
-                        deliveryTimeText = "standard";
-                      }
-                      // Fallback to deliveryType if deliveryDays is not set
-                      else if (deliveryDays === undefined || deliveryDays === null) {
-                        const deliveryType = selectedPackage.deliveryType;
-                        if (deliveryType === "same-day" || deliveryType === "same day") {
-                          deliveryTimeText = "same day";
-                        } else {
-                          deliveryTimeText = "standard";
-                        }
-                      } else {
-                        // Default to standard if deliveryDays has an unexpected value
-                        deliveryTimeText = "standard";
-                      }
 
-                      if (!deliveryTimeText) return null;
+                      if (deliveryDays === 0 || deliveryDays === "0") {
+                        deliveryTimeText = "Same day";
+                      } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
+                        deliveryTimeText = "Same day";
+                      } else if (typeof deliveryDays === "number" && deliveryDays > 0) {
+                        deliveryTimeText = `${deliveryDays} ${deliveryDays === 1 ? "day" : "days"}`;
+                      } else if (deliveryDays === 7 || deliveryDays === "7") {
+                        deliveryTimeText = "7 days";
+                      } else if (deliveryDays !== undefined && deliveryDays !== null && String(deliveryDays).trim() !== "") {
+                        const n = Number(deliveryDays);
+                        if (!Number.isNaN(n) && n >= 0) {
+                          deliveryTimeText = n === 0 ? "Same day" : `${n} ${n === 1 ? "day" : "days"}`;
+                        }
+                      }
+                      if (deliveryTimeText === null && selectedPackage.deliveryType) {
+                        if (selectedPackage.deliveryType === "same-day" || selectedPackage.deliveryType === "same day") {
+                          deliveryTimeText = "Same day";
+                        } else if (typeof selectedPackage.deliveryType === "number") {
+                          deliveryTimeText = `${selectedPackage.deliveryType} ${selectedPackage.deliveryType === 1 ? "day" : "days"}`;
+                        }
+                      }
+                      if (deliveryTimeText === null) deliveryTimeText = "7 days"; // fallback for package
 
                       return (
                         <div className="flex items-center justify-between">
@@ -3694,17 +3690,44 @@ export default function ServiceDetailPage() {
                     })()}
                     
                     <div className="space-y-3 mb-6">
-                      {selectedPackage && selectedPackage.deliveryTime && (
-                        <div className="flex items-center justify-between">
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            <Clock className="w-4 h-4 inline mr-1.5" />
-                            Delivery Time
-                          </span>
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            {selectedPackage.deliveryTime}
-                          </span>
-                        </div>
-                      )}
+                      {selectedPackage && (() => {
+                        // Package service: display deliveryDays from package, never "standard"
+                        const deliveryDays = selectedPackage.deliveryDays;
+                        let deliveryTimeText: string | null = null;
+                        if (deliveryDays === 0 || deliveryDays === "0") {
+                          deliveryTimeText = "Same day";
+                        } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
+                          deliveryTimeText = "Same day";
+                        } else if (typeof deliveryDays === "number" && deliveryDays > 0) {
+                          deliveryTimeText = `${deliveryDays} ${deliveryDays === 1 ? "day" : "days"}`;
+                        } else if (deliveryDays === 7 || deliveryDays === "7") {
+                          deliveryTimeText = "7 days";
+                        } else if (deliveryDays !== undefined && deliveryDays !== null && String(deliveryDays).trim() !== "") {
+                          const n = Number(deliveryDays);
+                          if (!Number.isNaN(n) && n >= 0) {
+                            deliveryTimeText = n === 0 ? "Same day" : `${n} ${n === 1 ? "day" : "days"}`;
+                          }
+                        }
+                        if (deliveryTimeText === null && selectedPackage.deliveryType) {
+                          if (selectedPackage.deliveryType === "same-day" || selectedPackage.deliveryType === "same day") {
+                            deliveryTimeText = "Same day";
+                          } else if (typeof selectedPackage.deliveryType === "number") {
+                            deliveryTimeText = `${selectedPackage.deliveryType} ${selectedPackage.deliveryType === 1 ? "day" : "days"}`;
+                          }
+                        }
+                        if (deliveryTimeText === null) deliveryTimeText = "7 days";
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              <Clock className="w-4 h-4 inline mr-1.5" />
+                              Delivery Time
+                            </span>
+                            <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                              {deliveryTimeText}
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {selectedPackage && selectedPackage.revisions && (
                         <div className="flex items-center justify-between">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">

@@ -6190,6 +6190,8 @@ function MessengerSection() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showOfferPaymentModal, setShowOfferPaymentModal] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<{ id: string; price: number; serviceFee: number; total: number } | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<any>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
@@ -6453,8 +6455,8 @@ function MessengerSection() {
                   </div>
                 </div>
 
-                {/* Custom Order Button - Below Header (Only for Professionals) */}
-                {userRole === "professional" && (
+                {/* Custom Order Button - Below Header (Always for Professionals, use account role) */}
+                {accountUserRole === "professional" && (
                   <div className="px-4 py-3 border-b-2 border-gray-200 bg-gradient-to-r from-[#FFF5EB] to-white">
                     <Button
                       onClick={() => setShowOrderModal(true)}

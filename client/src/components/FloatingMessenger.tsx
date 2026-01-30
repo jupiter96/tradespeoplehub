@@ -58,7 +58,7 @@ export default function FloatingMessenger() {
     markMessagesAsRead,
   } = useMessenger();
   
-  const { userInfo } = useAccount();
+  const { userInfo, userRole: accountUserRole } = useAccount();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; avatar?: string }>>([]);
@@ -545,8 +545,8 @@ export default function FloatingMessenger() {
                     </div>
                   </div>
 
-                  {/* Custom Order Button - Below Header (Only for Professionals) */}
-                  {userRole === "professional" && (
+                  {/* Custom Order Button - Below Header (Always for Professionals, use account role) */}
+                  {accountUserRole === "professional" && (
                     <div className="px-4 py-3 border-b-2 border-gray-200 bg-gradient-to-r from-[#FFF5EB] to-white flex-shrink-0">
                       <Button
                         onClick={() => setShowOrderModal(true)}
