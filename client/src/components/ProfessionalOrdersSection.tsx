@@ -114,7 +114,7 @@ import {
 function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, refreshOrders } = useOrders();
+  const { orders, cancelOrder, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -173,6 +173,8 @@ function ProfessionalOrdersSection() {
   const [isSubmittingBuyerReview, setIsSubmittingBuyerReview] = useState(false);
   const [hasSubmittedBuyerReview, setHasSubmittedBuyerReview] = useState(false);
   const [clientReviewData, setClientReviewData] = useState<any>(null);
+  const [reviewResponse, setReviewResponse] = useState("");
+  const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
 
   // Function to close all modals and reset related states
   const closeAllModals = () => {
@@ -203,6 +205,24 @@ function ProfessionalOrdersSection() {
     setCompletionFiles([]);
     setRevisionAdditionalNotes("");
     setDisputeResponseMessage("");
+    setReviewResponse("");
+  };
+
+  // Handle submit response to client review
+  const handleSubmitReviewResponse = async () => {
+    if (!reviewResponse.trim() || !currentOrder) return;
+    
+    setIsSubmittingResponse(true);
+    try {
+      await respondToClientReview(currentOrder.id, reviewResponse.trim());
+      toast.success("Response submitted successfully");
+      setReviewResponse("");
+      await refreshOrders();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit response");
+    } finally {
+      setIsSubmittingResponse(false);
+    }
   };
 
   // Function to open a specific modal and close all others
@@ -1711,6 +1731,51 @@ function ProfessionalOrdersSection() {
                           </p>
                         )}
                       </div>
+                    </div>
+
+                    {/* Professional's Response Section */}
+                    <div className="mt-4 pt-4 border-t border-green-300">
+                      {currentOrder.professionalResponse ? (
+                        <div>
+                          <h5 className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold mb-2">
+                            {currentOrder.professional || "MatJohn LTD"}&apos;s Response
+                          </h5>
+                          <div className="bg-white border border-green-200 rounded-lg p-3">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-pre-wrap">
+                              {currentOrder.professionalResponse}
+                            </p>
+                            {currentOrder.professionalResponseDate && (
+                              <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2">
+                                {new Date(currentOrder.professionalResponseDate).toLocaleDateString('en-GB', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2 block">
+                            Respond to the Feedback (Public)
+                          </label>
+                          <textarea
+                            value={reviewResponse}
+                            onChange={(e) => setReviewResponse(e.target.value)}
+                            placeholder="Your respond..."
+                            className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg font-['Poppins',sans-serif] text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            rows={4}
+                          />
+                          <Button
+                            onClick={handleSubmitReviewResponse}
+                            disabled={!reviewResponse.trim() || isSubmittingResponse}
+                            className="mt-3 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
+                          >
+                            {isSubmittingResponse ? "Submitting..." : "Submit Response"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

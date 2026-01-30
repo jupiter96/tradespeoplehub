@@ -124,7 +124,7 @@ export default function ProfessionalOrderDetailSidebar({
             Order Details
           </h3>
           {/* Three Dots Menu */}
-          {order.status !== "Cancelled" && order.status !== "Cancellation Pending" &&
+          {order.status !== "Cancelled" && order.status !== "Cancellation Pending" && order.status !== "Completed" &&
            (order.deliveryStatus === "pending" || order.deliveryStatus === "active") && 
            (!cancellationRequest?.status || cancellationRequest.status !== "pending") && (
             <DropdownMenu>
@@ -294,7 +294,7 @@ export default function ProfessionalOrderDetailSidebar({
           </>
         )}
 
-        {(order.deliveryStatus === "delivered" || order.deliveryStatus === "completed") && (
+        {order.deliveryStatus === "delivered" && order.status !== "Completed" && (
           <>
             <Separator className="mb-6" />
             <div className="space-y-2">

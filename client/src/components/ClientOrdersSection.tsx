@@ -3673,11 +3673,11 @@ export default function ClientOrdersSection() {
 	                      (currentOrder as any).metadata?.cancellationRequest?.status === "pending";
 	
 	                    const canCancel = (statusNormalized === "in progress" || statusNormalized === "active") && !isPendingCancellation;
-	                    // Dispute is available once work is delivered (or after completion)
+	                    // Dispute is available once work is delivered (but not after completion)
 	                    const canDispute =
-	                      hasDeliveredSignals ||
-	                      statusNormalized === "delivered" ||
-	                      statusNormalized === "completed";
+	                      (hasDeliveredSignals ||
+	                      statusNormalized === "delivered") &&
+	                      statusNormalized !== "completed";
 	
 	                    const isCancelled = statusNormalized === "cancelled";
 	                    const isCancellationPending = statusNormalized === "cancellation pending";
@@ -3886,7 +3886,7 @@ export default function ClientOrdersSection() {
 
                 {/* Action Buttons - Cancel Order moved to three dots menu in header */}
 
-                {((currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) || currentOrder.status === "Completed") && (
+                {(currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) && currentOrder.status !== "Completed" && (
                   <>
                     <Separator className="mb-6" />
                     <div className="space-y-2">
@@ -4164,6 +4164,27 @@ export default function ClientOrdersSection() {
                         {currentOrder.review}
                       </p>
                     </div>
+
+                    {/* Professional's Response to Client Review */}
+                    {currentOrder.professionalResponse && (
+                      <div className="mt-3 ml-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h5 className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold mb-2">
+                          {currentOrder.professional || "Professional"}&apos;s Response
+                        </h5>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-pre-wrap">
+                          {currentOrder.professionalResponse}
+                        </p>
+                        {currentOrder.professionalResponseDate && (
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2">
+                            {new Date(currentOrder.professionalResponseDate).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

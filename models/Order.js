@@ -160,6 +160,8 @@ const orderSchema = new mongoose.Schema(
     },
     rating: { type: Number, min: 0, max: 5, default: null },
     review: { type: String, trim: true, default: '' },
+    professionalResponse: { type: String, trim: true, default: '' }, // Professional's response to client review
+    professionalResponseDate: { type: Date, default: null },
     // Order acceptance by professional
     acceptedByProfessional: {
       type: Boolean,

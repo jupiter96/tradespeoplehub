@@ -1611,6 +1611,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           scheduledDate: order.metadata?.scheduledDate,
         },
         review: order.review || undefined,
+        professionalResponse: order.professionalResponse || undefined,
+        professionalResponseDate: order.professionalResponseDate ? new Date(order.professionalResponseDate).toISOString() : undefined,
         professionalReview: order.metadata?.buyerReview ? {
           rating: order.metadata.buyerReview.rating,
           comment: order.metadata.buyerReview.comment || undefined,
@@ -3097,6 +3099,54 @@ router.post('/:orderId/buyer-review', authenticateToken, requireRole(['professio
   } catch (error) {
     console.error('Submit buyer review error:', error);
     res.status(500).json({ error: error.message || 'Failed to submit buyer review' });
+  }
+});
+
+// Professional: Respond to client review (one-time only)
+router.post('/:orderId/respond-to-review', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { response } = req.body;
+
+    if (!response || !response.trim()) {
+      return res.status(400).json({ error: 'Response is required' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id }));
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Check if order is completed
+    if (order.status !== 'Completed' && order.status !== 'completed') {
+      return res.status(400).json({ error: 'Can only respond to reviews for completed orders' });
+    }
+
+    // Check if client has left a review
+    if (!order.rating && !order.review) {
+      return res.status(400).json({ error: 'No client review found for this order' });
+    }
+
+    // Check if professional has already responded
+    if (order.professionalResponse) {
+      return res.status(400).json({ error: 'You have already responded to this review' });
+    }
+
+    // Save professional's response
+    order.professionalResponse = response.trim();
+    order.professionalResponseDate = new Date();
+    
+    await order.save();
+
+    res.json({ 
+      message: 'Response submitted successfully',
+      professionalResponse: order.professionalResponse,
+      professionalResponseDate: order.professionalResponseDate,
+    });
+  } catch (error) {
+    console.error('Respond to review error:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit response' });
   }
 });
 

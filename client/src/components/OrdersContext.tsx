@@ -110,6 +110,8 @@ export interface Order {
   deliveredDate?: string;
   rating?: number | null;
   review?: string;
+  professionalResponse?: string; // Professional's response to client review
+  professionalResponseDate?: string;
 	  // Professional's review of the buyer/client (comes from backend as `professionalReview`)
 	  professionalReview?: { rating: number; comment?: string; reviewedAt?: string };
   deliveryStatus?: "active" | "delivered" | "completed" | "cancelled" | "dispute";
@@ -260,6 +262,7 @@ interface OrdersContextType {
   completeRevision: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
   respondToReview: (reviewId: string, response: string) => Promise<void>;
   fetchReviewForOrder: (orderId: string) => Promise<any>;
+  respondToClientReview: (orderId: string, response: string) => Promise<void>;
   respondToDispute: (orderId: string, message?: string) => Promise<void>;
   requestArbitration: (orderId: string) => Promise<void>;
   cancelDispute: (orderId: string) => Promise<void>;
@@ -1275,6 +1278,30 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const respondToClientReview = async (orderId: string, response: string): Promise<void> => {
+    try {
+      const response_data = await fetch(resolveApiUrl(`/api/orders/${orderId}/respond-to-review`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ response }),
+      });
+
+      if (!response_data.ok) {
+        const error = await response_data.json();
+        throw new Error(error.error || 'Failed to respond to review');
+      }
+
+      // Refresh orders to get latest data
+      await refreshOrders();
+    } catch (error: any) {
+      console.error('Respond to client review error:', error);
+      throw error;
+    }
+  };
+
   // Dispute Response
   const respondToDispute = async (orderId: string, message?: string): Promise<void> => {
     try {
@@ -1549,6 +1576,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         completeRevision,
         respondToReview,
         fetchReviewForOrder,
+        respondToClientReview,
         respondToDispute,
         requestArbitration,
         cancelDispute,
