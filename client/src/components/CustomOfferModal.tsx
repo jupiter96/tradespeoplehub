@@ -87,9 +87,11 @@ export default function CustomOfferModal({
   }, [isOpen, userInfo?.id]);
 
   const fetchProfessionalServices = async () => {
+    if (!userInfo?.id) return;
     setIsLoadingServices(true);
     try {
-      const response = await fetch(resolveApiUrl(`/api/services/professional/${userInfo?.id}`), {
+      const url = resolveApiUrl(`/api/services?professionalId=${encodeURIComponent(userInfo.id)}`);
+      const response = await fetch(url, {
         credentials: 'include',
       });
 
@@ -98,14 +100,13 @@ export default function CustomOfferModal({
       }
 
       const data = await response.json();
-      
-      // Transform services to match our interface
-      const transformedServices: ProfessionalService[] = data.services.map((service: any) => ({
+      const list = Array.isArray(data.services) ? data.services : [];
+      const transformedServices: ProfessionalService[] = list.map((service: any) => ({
         id: service._id || service.id,
         name: service.title || service.name,
-        basePrice: service.packages?.[0]?.price || service.price || 0,
-        category: service.category?.name || service.category || 'Service',
-        deliveryDays: service.packages?.[0]?.deliveryDays || 1,
+        basePrice: service.packages?.[0]?.price ?? service.price ?? 0,
+        category: service.serviceCategory?.name || service.category?.name || service.category || 'Service',
+        deliveryDays: service.packages?.[0]?.deliveryDays ?? service.deliveryDays ?? 1,
       }));
 
       setProfessionalServices(transformedServices);
@@ -349,9 +350,12 @@ export default function CustomOfferModal({
                   </h4>
                   
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Single Payment */}
+                    {/* Single Payment - selecting goes straight to customize form */}
                     <button
-                      onClick={() => setPaymentType("single")}
+                      onClick={() => {
+                        setPaymentType("single");
+                        setStep("customize");
+                      }}
                       className={`p-5 border-2 rounded-xl transition-all duration-200 text-left ${
                         paymentType === "single"
                           ? "border-[#FE8A0F] bg-[#FFF5EB]/50"
@@ -373,7 +377,7 @@ export default function CustomOfferModal({
                       </div>
                     </button>
 
-                    {/* Milestone Payment */}
+                    {/* Milestone Payment - stay on step to configure milestones, then Continue */}
                     <button
                       onClick={() => setPaymentType("milestone")}
                       className={`p-5 border-2 rounded-xl transition-all duration-200 text-left ${
@@ -523,7 +527,7 @@ export default function CustomOfferModal({
               </div>
             </ScrollArea>
 
-            {/* Action Buttons */}
+            {/* Action Buttons - Continue only for milestone (single goes to customize on card click) */}
             <div className="flex gap-3 px-6 py-4 border-t border-gray-200 flex-shrink-0 bg-white">
               <Button
                 onClick={() => setStep("select")}
@@ -533,13 +537,15 @@ export default function CustomOfferModal({
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
-              <Button
-                onClick={handleContinueToCustomize}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+              {paymentType === "milestone" && (
+                <Button
+                  onClick={handleContinueToCustomize}
+                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
+                >
+                  Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
             </div>
           </div>
         ) : (

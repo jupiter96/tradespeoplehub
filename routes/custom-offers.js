@@ -101,14 +101,38 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const responseDeadline = new Date();
     responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
 
-    // Create custom offer first (to get the ID)
     const offerNumber = generateOfferNumber();
+
+    // Create message first (CustomOffer schema requires message ref)
+    const message = new Message({
+      conversation: conversationId,
+      sender: req.user.id,
+      text: `Custom offer: ${serviceName} - £${price.toFixed(2)}`,
+      type: 'custom_offer',
+      orderDetails: {
+        serviceName,
+        service: serviceName,
+        amount: `£${price.toFixed(2)}`,
+        price,
+        deliveryDays,
+        description: description || '',
+        paymentType: paymentType || 'single',
+        milestones: paymentType === 'milestone' ? milestones : undefined,
+        status: 'pending',
+        offerNumber,
+        responseDeadline: responseDeadline.toISOString(),
+      },
+      read: false,
+    });
+    await message.save();
+
+    // Create custom offer with message ID (required by schema)
     const customOffer = new CustomOffer({
       offerNumber,
       conversation: conversationId,
       professional: req.user.id,
       client: clientId,
-      message: null, // Will be set after message creation
+      message: message._id,
       serviceName,
       price,
       deliveryDays,
@@ -118,35 +142,12 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       status: 'pending',
       responseDeadline,
     });
-    await customOffer.save(); // Save to get _id
-    
-    // Create message for the offer (with offer ID reference)
-    const message = new Message({
-      conversation: conversationId,
-      sender: req.user.id,
-      text: `Custom offer: ${serviceName} - £${price.toFixed(2)}`,
-      type: 'custom_offer',
-      orderDetails: {
-        serviceName,
-        service: serviceName, // For compatibility
-        amount: `£${price.toFixed(2)}`, // For compatibility
-        price,
-        deliveryDays,
-        description,
-        paymentType: paymentType || 'single',
-        milestones: paymentType === 'milestone' ? milestones : undefined,
-        status: 'pending',
-        offerId: customOffer._id.toString(),
-        offerNumber: offerNumber,
-        responseDeadline: responseDeadline.toISOString(),
-      },
-      read: false,
-    });
-    await message.save();
-    
-    // Update offer with message ID
-    customOffer.message = message._id;
     await customOffer.save();
+
+    // Attach offerId to message orderDetails for client display
+    message.orderDetails = message.orderDetails || {};
+    message.orderDetails.offerId = customOffer._id.toString();
+    await message.save();
 
     // Update conversation
     conversation.lastMessage = message._id;

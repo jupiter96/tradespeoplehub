@@ -36,6 +36,65 @@ import { resolveApiUrl } from "../config/api";
 import { useCountdown } from "../hooks/useCountdown";
 import { resolveAvatarUrl } from "./orders/utils";
 
+/** Renders countdown + Accept/Decline for a single custom offer. useCountdown must run at top level. */
+function CustomOfferPendingActions({
+  responseDeadline,
+  offerId,
+  price,
+  onAccept,
+  onDecline,
+}: {
+  responseDeadline: string | Date | null | undefined;
+  offerId: string | undefined;
+  price: number;
+  onAccept: () => void;
+  onDecline: () => void;
+}) {
+  const countdown = useCountdown(responseDeadline);
+  return (
+    <div className="space-y-2 mt-3">
+      {responseDeadline && (
+        <div className="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg">
+          <p className="font-['Poppins',sans-serif] text-[10px] text-[#8d8d8d] mb-1">
+            {countdown.expired ? "Offer Expired" : "Time Remaining:"}
+          </p>
+          {countdown.expired ? (
+            <p className="font-['Poppins',sans-serif] text-[11px] text-red-600 font-medium">
+              Expired
+            </p>
+          ) : (
+            <p className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F] font-semibold">
+              {countdown.days > 0 && `${countdown.days}d `}
+              {countdown.hours.toString().padStart(2, '0')}:
+              {countdown.minutes.toString().padStart(2, '0')}:
+              {countdown.seconds.toString().padStart(2, '0')}
+            </p>
+          )}
+        </div>
+      )}
+      {!countdown.expired && (
+        <div className="flex gap-2">
+          <Button
+            onClick={onAccept}
+            size="sm"
+            className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+          >
+            Accept Offer
+          </Button>
+          <Button
+            onClick={onDecline}
+            variant="outline"
+            size="sm"
+            className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
+          >
+            Decline
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FloatingMessenger() {
   const {
     contacts,
@@ -701,95 +760,45 @@ export default function FloatingMessenger() {
                                     )}
                                   </div>
                                 </div>
-                                {message.type === "custom_offer" && message.orderDetails.status === "pending" && (() => {
-                                  const countdown = useCountdown(message.orderDetails.responseDeadline);
-                                  const offerId = message.orderId || message.orderDetails?.offerId;
-                                  
-                                  return (
-                                    <div className="space-y-2 mt-3">
-                                      {message.orderDetails.responseDeadline && (
-                                        <div className="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                                          <p className="font-['Poppins',sans-serif] text-[10px] text-[#8d8d8d] mb-1">
-                                            {countdown.expired ? "Offer Expired" : "Time Remaining:"}
-                                          </p>
-                                          {countdown.expired ? (
-                                            <p className="font-['Poppins',sans-serif] text-[11px] text-red-600 font-medium">
-                                              Expired
-                                            </p>
-                                          ) : (
-                                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F] font-semibold">
-                                              {countdown.days > 0 && `${countdown.days}d `}
-                                              {countdown.hours.toString().padStart(2, '0')}:
-                                              {countdown.minutes.toString().padStart(2, '0')}:
-                                              {countdown.seconds.toString().padStart(2, '0')}
-                                            </p>
-                                          )}
-                                        </div>
-                                      )}
-                                      {!countdown.expired && (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => {
-                                              if (!offerId) {
-                                                toast.error("Offer ID not found");
-                                                return;
-                                              }
-                                              
-                                              // Get price from message
-                                              const price = message.orderDetails?.price || parseFloat(message.orderDetails?.amount?.replace('£', '') || '0');
-                                              const serviceFee = 0; // Will be calculated on backend
-                                              const total = price + serviceFee;
-                                              
-                                              setSelectedOffer({
-                                                id: offerId,
-                                                price,
-                                                serviceFee,
-                                                total,
-                                              });
-                                              setShowOfferPaymentModal(true);
-                                      }}
-                                      size="sm"
-                                      className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
-                                    >
-                                      Accept Offer
-                                    </Button>
-                                    <Button
-                                            onClick={async () => {
-                                              try {
-                                                if (!offerId) {
-                                                  toast.error("Offer ID not found");
-                                                  return;
-                                                }
-
-                                                const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
-                                                  method: 'POST',
-                                                  headers: {
-                                                    'Content-Type': 'application/json',
-                                                  },
-                                                  credentials: 'include',
-                                                });
-
-                                                if (!response.ok) {
-                                                  const error = await response.json();
-                                                  throw new Error(error.error || 'Failed to reject offer');
-                                                }
-
-                                                toast.success("Offer declined");
-                                              } catch (error: any) {
-                                                toast.error(error.message || "Failed to reject offer");
-                                              }
-                                      }}
-                                      variant="outline"
-                                      size="sm"
-                                      className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
-                                    >
-                                      Decline
-                                    </Button>
-                                  </div>
+                                {message.type === "custom_offer" && message.orderDetails.status === "pending" && (
+                                  <CustomOfferPendingActions
+                                    responseDeadline={message.orderDetails.responseDeadline}
+                                    offerId={message.orderId || message.orderDetails?.offerId}
+                                    price={message.orderDetails?.price ?? (parseFloat(String(message.orderDetails?.amount || "0").replace(/£/g, "")) || 0)}
+                                    onAccept={() => {
+                                      const offerId = message.orderId || message.orderDetails?.offerId;
+                                      if (!offerId) {
+                                        toast.error("Offer ID not found");
+                                        return;
+                                      }
+                                      const price = message.orderDetails?.price ?? (parseFloat(String(message.orderDetails?.amount || "0").replace(/£/g, "")) || 0);
+                                      const serviceFee = 0;
+                                      setSelectedOffer({ id: offerId, price, serviceFee, total: price + serviceFee });
+                                      setShowOfferPaymentModal(true);
+                                    }}
+                                    onDecline={async () => {
+                                      try {
+                                        const offerId = message.orderId || message.orderDetails?.offerId;
+                                        if (!offerId) {
+                                          toast.error("Offer ID not found");
+                                          return;
+                                        }
+                                        const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          credentials: 'include',
+                                        });
+                                        if (!response.ok) {
+                                          const error = await response.json();
+                                          throw new Error(error.error || 'Failed to reject offer');
+                                        }
+                                        toast.success("Offer declined");
+                                      } catch (error: any) {
+                                        toast.error(error.message || "Failed to reject offer");
+                                      }
+                                    }}
+                                  />
                                 )}
-                                    </div>
-                                  );
-                                })()}
                                 {message.type === "order" && (
                                   <Button
                                     onClick={() => {
