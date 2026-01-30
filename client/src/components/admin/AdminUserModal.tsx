@@ -35,6 +35,7 @@ interface User {
   sector?: string;
   tradingName?: string;
   referralCode?: string;
+  stripeCustomerId?: string;
   [key: string]: any;
 }
 
@@ -68,6 +69,7 @@ export default function AdminUserModal({
     sector: "",
     tradingName: "",
     referralCode: "",
+    stripeCustomerId: "",
     role: role,
   });
 
@@ -87,6 +89,7 @@ export default function AdminUserModal({
         sector: user.sector || "",
         tradingName: user.tradingName || "",
         referralCode: user.referralCode || "",
+        stripeCustomerId: user.stripeCustomerId || "",
         role: user.role || role,
       });
       // Mark user as viewed by admin when modal opens
@@ -108,6 +111,7 @@ export default function AdminUserModal({
         sector: "",
         tradingName: "",
         referralCode: "",
+        stripeCustomerId: "",
         role: role,
       });
     }
@@ -189,6 +193,11 @@ export default function AdminUserModal({
         role: formData.role,
         ...(formData.referralCode && { referralCode: formData.referralCode.trim() }),
       };
+
+      // Client-only: Stripe Customer ID (display + update)
+      if (formData.role === "client") {
+        payload.stripeCustomerId = formData.stripeCustomerId?.trim() || null;
+      }
 
       // Add professional-specific fields only if role is professional
       if (formData.role === "professional") {
@@ -473,6 +482,25 @@ export default function AdminUserModal({
                 className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
+
+            {/* Client-only: Stripe Customer ID */}
+            {formData.role === "client" && (
+              <div className="md:col-span-2">
+                <Label htmlFor="stripeCustomerId" className="text-black dark:text-white">
+                  Stripe Customer ID
+                </Label>
+                <Input
+                  id="stripeCustomerId"
+                  value={formData.stripeCustomerId}
+                  onChange={(e) => setFormData({ ...formData, stripeCustomerId: e.target.value })}
+                  placeholder="e.g. cus_xxxxxxxxxxxxx"
+                  className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow font-mono text-sm"
+                />
+                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  Stripe customer ID for this client (used for payments). Leave empty to clear.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
