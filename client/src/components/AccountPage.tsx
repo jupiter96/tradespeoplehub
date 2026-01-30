@@ -4556,13 +4556,18 @@ function WithdrawSection() {
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
+  const [historySortField, setHistorySortField] = useState<"date" | "amount" | "type" | "status">("date");
+  const [historySortOrder, setHistorySortOrder] = useState<"asc" | "desc">("desc");
 
   // Fetch wallet balance
   useEffect(() => {
     if (withdrawTab === "balance" || withdrawTab === "withdraw") {
       fetchWalletBalance();
     }
-    if (withdrawTab === "history") {
+    if (withdrawTab === "history" || withdrawTab === "balance") {
       fetchTransactions();
     }
     if (withdrawTab === "accounts") {
@@ -4590,7 +4595,7 @@ function WithdrawSection() {
   const fetchTransactions = async () => {
     setLoadingTransactions(true);
     try {
-      const response = await fetch(resolveApiUrl("/api/wallet/transactions?limit=50&type=withdrawal"), {
+      const response = await fetch(resolveApiUrl("/api/wallet/transactions?limit=200"), {
         credentials: "include",
       });
       if (response.ok) {
@@ -4621,23 +4626,135 @@ function WithdrawSection() {
     }
   };
 
-  // Calculate pending amount (from orders in progress)
-  const pendingAmount = 0; // TODO: Calculate from orders in progress
-  const totalEarnings = walletBalance + pendingAmount; // TODO: Calculate total earnings from all completed orders
+  const creditTypes = ["payment", "deposit", "manual_transfer"];
+  const debitTypes = ["withdrawal", "refund"];
+
+  const pendingAmount = useMemo(() => {
+    return transactions
+      .filter(tx => creditTypes.includes(tx.type) && tx.status === "pending")
+      .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  }, [transactions]);
+
+  const totalEarnings = useMemo(() => {
+    return transactions
+      .filter(tx => creditTypes.includes(tx.type) && tx.status === "completed")
+      .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+  }, [transactions]);
 
   // Filter bank accounts and PayPal from payment methods
   const bankAccounts = paymentMethods.filter(method => method.type === 'bank');
   const paypalMethods = paymentMethods.filter(method => method.type === 'paypal');
 
-  // Format withdraw history from transactions
-  const withdrawHistory = transactions.map(tx => ({
-    id: tx._id || tx.id,
-    date: tx.createdAt ? new Date(tx.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    amount: tx.amount || 0,
-    method: tx.paymentMethod === 'paypal' ? 'PayPal' : tx.metadata?.bankName ? `${tx.metadata.bankName} ${tx.metadata.accountNumber ? `****${tx.metadata.accountNumber.slice(-4)}` : ''}` : 'Bank Transfer',
-    status: tx.status === 'completed' ? 'Completed' : tx.status === 'pending' ? 'Pending' : tx.status === 'failed' ? 'Failed' : 'Pending',
-    processingTime: tx.paymentMethod === 'paypal' ? '1 business day' : '2-3 business days',
-  }));
+  const formatMethodLabel = (tx: any) => {
+    const method = tx.paymentMethod || tx.method;
+    if (method === "paypal") return "PayPal";
+    if (method === "stripe" || method === "card") return "Card";
+    if (method === "manual_transfer") {
+      if (tx.metadata?.bankName) {
+        const masked = tx.metadata?.accountNumber
+          ? `****${String(tx.metadata.accountNumber).slice(-4)}`
+          : "";
+        return `${tx.metadata.bankName}${masked ? ` ${masked}` : ""}`;
+      }
+      return "Bank Transfer";
+    }
+    if (method === "wallet") return "Wallet";
+    return method ? method.toString().replace(/_/g, " ") : "Unknown";
+  };
+
+  const formatTypeLabel = (type: string) => {
+    if (!type) return "Unknown";
+    const map: Record<string, string> = {
+      deposit: "Deposit",
+      withdrawal: "Withdrawal",
+      payment: "Payment",
+      refund: "Refund",
+      manual_transfer: "Bank Transfer",
+    };
+    return map[type] || type.replace(/_/g, " ");
+  };
+
+  const formatStatusLabel = (status: string) => {
+    if (!status) return "Pending";
+    const map: Record<string, string> = {
+      completed: "Completed",
+      pending: "Pending",
+      failed: "Failed",
+      cancelled: "Cancelled",
+      rejected: "Rejected",
+    };
+    return map[status] || status;
+  };
+
+  const transactionRows = useMemo(() => {
+    const rows = transactions.map((tx, index) => {
+      const createdAt = tx.createdAt || tx.date || tx.timestamp;
+      const dateValue = createdAt ? new Date(createdAt).getTime() : 0;
+      const reference = tx.orderId
+        ? (typeof tx.orderId === "object" ? tx.orderId._id || tx.orderId : tx.orderId)
+        : tx.metadata?.orderNumber || tx.metadata?.orderId;
+      return {
+        id: tx._id || tx.id || `tx-${index}`,
+        dateValue,
+        dateLabel: createdAt ? new Date(createdAt).toISOString().split("T")[0] : "",
+        amount: tx.amount || 0,
+        type: tx.type || "unknown",
+        typeLabel: formatTypeLabel(tx.type),
+        methodLabel: formatMethodLabel(tx),
+        status: tx.status || "pending",
+        statusLabel: formatStatusLabel(tx.status),
+        description: tx.description || tx.metadata?.description || "",
+        reference: reference ? reference.toString() : "",
+      };
+    });
+
+    const query = historySearch.trim().toLowerCase();
+    const filtered = rows.filter(row => {
+      if (historyTypeFilter !== "all" && row.type !== historyTypeFilter) return false;
+      if (historyStatusFilter !== "all" && row.status !== historyStatusFilter) return false;
+      if (!query) return true;
+      const haystack = [
+        row.id,
+        row.typeLabel,
+        row.methodLabel,
+        row.statusLabel,
+        row.reference,
+        row.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      const direction = historySortOrder === "asc" ? 1 : -1;
+      if (historySortField === "amount") return (a.amount - b.amount) * direction;
+      if (historySortField === "type") return a.typeLabel.localeCompare(b.typeLabel) * direction;
+      if (historySortField === "status") return a.statusLabel.localeCompare(b.statusLabel) * direction;
+      return (a.dateValue - b.dateValue) * direction;
+    });
+
+    return sorted;
+  }, [
+    transactions,
+    historySearch,
+    historyTypeFilter,
+    historyStatusFilter,
+    historySortField,
+    historySortOrder,
+  ]);
+
+  const withdrawalSummary = useMemo(() => {
+    const withdrawals = transactions.filter(tx => tx.type === "withdrawal");
+    return {
+      total: withdrawals
+        .filter(tx => tx.status === "completed")
+        .reduce((sum, tx) => sum + (tx.amount || 0), 0),
+      completed: withdrawals.filter(tx => tx.status === "completed").length,
+      pending: withdrawals.filter(tx => tx.status === "pending").length,
+    };
+  }, [transactions]);
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
@@ -5114,6 +5231,45 @@ function WithdrawSection() {
       {/* Withdrawal History Tab */}
       {withdrawTab === "history" && (
         <div>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+            <div className="relative w-[70%] md:max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Search by ID, order, method, status..."
+                className="w-full h-10 pl-9 pr-3 border border-gray-200 rounded-lg font-['Poppins',sans-serif] text-[13px] focus:border-[#FE8A0F] outline-none"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
+                <SelectTrigger className="w-[160px] h-10">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="payment">Payment</SelectItem>
+                  <SelectItem value="deposit">Deposit</SelectItem>
+                  <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                  <SelectItem value="refund">Refund</SelectItem>
+                  <SelectItem value="manual_transfer">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+                <SelectTrigger className="w-[150px] h-10">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -5126,6 +5282,9 @@ function WithdrawSection() {
                       Date
                     </th>
                     <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Amount
                     </th>
                     <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
@@ -5134,45 +5293,64 @@ function WithdrawSection() {
                     <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Status
                     </th>
-                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Processing Time
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {withdrawHistory.map((transaction) => (
+                  {loadingTransactions && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        Loading transactions...
+                      </td>
+                    </tr>
+                  )}
+                  {!loadingTransactions && transactionRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        No transactions found
+                      </td>
+                    </tr>
+                  )}
+                  {!loadingTransactions && transactionRows.map((transaction) => {
+                    const isDebit = debitTypes.includes(transaction.type);
+                    return (
                     <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#3D78CB]">
                         {transaction.id}
                       </td>
                       <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        {new Date(transaction.date).toLocaleDateString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
+                        {transaction.dateValue
+                          ? new Date(transaction.dateValue).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "—"}
                       </td>
                       <td className="px-6 py-4 font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
-                        £{transaction.amount.toFixed(2)}
+                        {transaction.typeLabel}
                       </td>
                       <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        {transaction.method}
+                        <span className={isDebit ? "text-red-600" : "text-green-600"}>
+                          {isDebit ? "-" : "+"}£{transaction.amount.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {transaction.methodLabel}
                       </td>
                       <td className="px-6 py-4">
                         <Badge className={`
                           font-['Poppins',sans-serif] text-[12px]
-                          ${transaction.status === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}
-                          ${transaction.status === "Pending" ? "bg-orange-100 text-orange-700 border-orange-200" : ""}
-                          ${transaction.status === "Failed" ? "bg-red-100 text-red-700 border-red-200" : ""}
+                          ${transaction.statusLabel === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}
+                          ${transaction.statusLabel === "Pending" ? "bg-orange-100 text-orange-700 border-orange-200" : ""}
+                          ${transaction.statusLabel === "Failed" ? "bg-red-100 text-red-700 border-red-200" : ""}
+                          ${transaction.statusLabel === "Cancelled" ? "bg-gray-100 text-gray-700 border-gray-200" : ""}
+                          ${transaction.statusLabel === "Rejected" ? "bg-red-100 text-red-700 border-red-200" : ""}
                         `}>
-                          {transaction.status}
+                          {transaction.statusLabel}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-                        {transaction.processingTime}
-                      </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -5182,15 +5360,15 @@ function WithdrawSection() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl p-5">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total Withdrawn</p>
-              <p className="font-['Poppins',sans-serif] text-[28px] text-[#3B82F6]">£4,350</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-[#3B82F6]">£{withdrawalSummary.total.toFixed(2)}</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-white border border-green-200 rounded-xl p-5">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Completed</p>
-              <p className="font-['Poppins',sans-serif] text-[28px] text-green-600">8</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-green-600">{withdrawalSummary.completed}</p>
             </div>
             <div className="bg-gradient-to-br from-orange-50 to-white border border-orange-200 rounded-xl p-5">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Pending</p>
-              <p className="font-['Poppins',sans-serif] text-[28px] text-orange-600">1</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-orange-600">{withdrawalSummary.pending}</p>
             </div>
           </div>
         </div>
@@ -5658,9 +5836,14 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
       'bank_transfer_approved': 'payment',
       'bank_transfer_rejected': 'warning',
       'order_received': 'booking',
+      'order_created': 'booking',
       'order_completed': 'service',
+      'extension_request_sent': 'info',
+      'extension_request_approved': 'success',
+      'extension_request_rejected': 'warning',
       'review_received': 'review',
       'payment_received': 'payment',
+      'abandoned_cart': 'info',
       'system': 'info',
     };
     return typeMap[type] || 'info';

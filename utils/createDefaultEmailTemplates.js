@@ -996,6 +996,353 @@ const defaultTemplates = [
     `,
     variables: ['firstName', 'lastName', 'depositAmount', 'fee', 'totalAmount', 'referenceNumber', 'requestDate', 'logoUrl'],
   },
+  {
+    type: 'abandoned-cart',
+    category: 'notification',
+    subject: '🧺 You left items in your cart',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abandoned Cart</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    
+    <p>It looks like you left some items in your cart. Ready to complete your booking?</p>
+    
+    <div style="background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0 0 10px 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Your Cart</p>
+      {{cartItems}}
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{cartLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Return to Cart</a>
+    </div>
+    
+    <p style="color: #7f8c8d; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:<br>
+    <a href="{{cartLink}}" style="color: #3498db;">{{cartLink}}</a></p>
+    
+    <p>If you have any questions, our support team is here to help.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'cartItems', 'cartLink', 'logoUrl'],
+  },
+  {
+    type: 'order-created-client',
+    category: 'orders',
+    subject: '✅ Your order {{orderNumber}} has been created',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Created</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    
+    <p>Your order has been created successfully. Here are the details:</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Order Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Order Number:</strong> {{orderNumber}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total:</strong> £{{orderTotal}}</p>
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    
+    <p style="color: #7f8c8d; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:<br>
+    <a href="{{orderLink}}" style="color: #3498db;">{{orderLink}}</a></p>
+    
+    <p>Thank you for choosing Sortars!</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderTotal', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'order-received-professional',
+    category: 'orders',
+    subject: '📥 New order received: {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Order Received</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    
+    <p>You just received a new order. Here are the details:</p>
+    
+    <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Order Details</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px; color: #333;"><strong>Order Number:</strong> {{orderNumber}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0; font-size: 16px; color: #333;"><strong>Total:</strong> £{{orderTotal}}</p>
+    </div>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    
+    <p style="color: #7f8c8d; font-size: 14px;">If the button doesn't work, copy and paste this link into your browser:<br>
+    <a href="{{orderLink}}" style="color: #3498db;">{{orderLink}}</a></p>
+    
+    <p>Please review the order and proceed with the next steps.</p>
+    
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'serviceName', 'orderTotal', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'extension-request-sent-client',
+    category: 'orders',
+    subject: '⏱️ Time extension requested for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Request</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The professional has requested a time extension for order <strong>{{orderNumber}}</strong>.</p>
+    <div style="background-color: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; font-weight: bold;"><strong>Requested new delivery date:</strong> {{newDeliveryDate}}</p>
+      <p style="margin: 5px 0 0 0;">Reason: {{reason}}</p>
+    </div>
+    <p>Please review and approve or reject this request in your order details.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'newDeliveryDate', 'reason', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'extension-request-sent-professional',
+    category: 'orders',
+    subject: '✅ Your time extension request was submitted',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Request Submitted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your time extension request for order <strong>{{orderNumber}}</strong> has been submitted successfully.</p>
+    <div style="background-color: #e8f5e9; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Requested new delivery date:</strong> {{newDeliveryDate}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Reason:</strong> {{reason}}</p>
+    </div>
+    <p>The client will be notified and can approve or reject your request. You will receive an email once they respond.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'newDeliveryDate', 'reason', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'extension-request-approved-client',
+    category: 'orders',
+    subject: '✅ You approved the time extension for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Approved</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have approved the time extension request for order <strong>{{orderNumber}}</strong>. The new delivery date has been updated.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'extension-request-approved-professional',
+    category: 'orders',
+    subject: '✅ Client approved your time extension for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Approved</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Good news! The client has approved your time extension request for order <strong>{{orderNumber}}</strong>. The new delivery date is now in effect.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'extension-request-rejected-client',
+    category: 'orders',
+    subject: 'Extension request rejected for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Rejected</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have rejected the time extension request for order <strong>{{orderNumber}}</strong>. The original delivery date remains in place.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'extension-request-rejected-professional',
+    category: 'orders',
+    subject: 'Extension request was rejected for order {{orderNumber}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extension Rejected</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The client has rejected your time extension request for order <strong>{{orderNumber}}</strong>. The original delivery date remains in place. Please deliver by the original deadline.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'orderNumber', 'orderLink', 'logoUrl'],
+  },
 ];
 
 async function createDefaultTemplates() {

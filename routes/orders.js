@@ -12,13 +12,227 @@ import PaymentSettings from '../models/PaymentSettings.js';
 import PromoCode from '../models/PromoCode.js';
 import Review from '../models/Review.js';
 import Dispute from '../models/Dispute.js';
+import Notification from '../models/Notification.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
+import { sendTemplatedEmail } from '../services/notifier.js';
+import { getIO } from '../services/socket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+// Helper function to emit notification to user via Socket.io
+async function emitNotificationToUser(userId, notification) {
+  try {
+    const io = getIO();
+    if (!io) return;
+    const userIdStr = userId.toString();
+    const unreadCount = await Notification.getUnreadCount(userId);
+    io.to(`user:${userIdStr}`).emit('notification:new', {
+      notification: {
+        _id: notification._id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        isRead: notification.isRead,
+        link: notification.link,
+        createdAt: notification.createdAt,
+      },
+      unreadCount,
+    });
+  } catch (error) {
+    console.error('[Orders] Error emitting notification:', error);
+  }
+}
+
+async function sendOrderNotifications({ order, clientUser, professionalUser }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = order.items?.[0]?.title || 'Service Order';
+    const orderTotal = typeof order.total === 'number' ? order.total : Number(order.total || 0);
+    const orderLink = `${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}/account?tab=orders`;
+
+    if (clientUser) {
+      const clientNotification = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'order_created',
+        title: 'Order created',
+        message: `Your order ${orderNumber} has been created successfully.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber, serviceName },
+      });
+      await emitNotificationToUser(clientUser._id, clientNotification);
+      if (clientUser.email) {
+        await sendTemplatedEmail(
+          clientUser.email,
+          'order-created-client',
+          {
+            firstName: clientUser.firstName || 'there',
+            orderNumber,
+            serviceName,
+            orderTotal: orderTotal.toFixed(2),
+            orderLink,
+          },
+          'orders'
+        );
+      }
+    }
+
+    if (professionalUser) {
+      const professionalNotification = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'order_received',
+        title: 'New order received',
+        message: `You received a new order (${orderNumber}) for "${serviceName}".`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber, serviceName },
+      });
+      await emitNotificationToUser(professionalUser._id, professionalNotification);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(
+          professionalUser.email,
+          'order-received-professional',
+          {
+            firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+            orderNumber,
+            serviceName,
+            orderTotal: orderTotal.toFixed(2),
+            orderLink,
+          },
+          'orders'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send order notifications/emails:', error);
+  }
+}
+
+const orderLinkBase = () => `${process.env.CLIENT_ORIGIN || 'http://localhost:3000'}/account?tab=orders`;
+
+async function sendExtensionRequestNotifications({ order, clientUser, professionalUser }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const ext = order.extensionRequest || {};
+    const newDeliveryDate = ext.newDeliveryDate
+      ? new Date(ext.newDeliveryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '—';
+    const reason = ext.reason || 'No reason provided';
+    const link = orderLinkBase();
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: 'extension_request_sent',
+        title: 'Time extension requested',
+        message: `The professional requested a time extension for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(clientUser.email, 'extension-request-sent-client', {
+          firstName: clientUser.firstName || 'there',
+          orderNumber,
+          newDeliveryDate,
+          reason,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: 'extension_request_sent',
+        title: 'Extension request submitted',
+        message: `Your time extension request for order ${orderNumber} was submitted.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(professionalUser.email, 'extension-request-sent-professional', {
+          firstName: professionalUser.firstName || professionalUser.tradingName || 'there',
+          orderNumber,
+          newDeliveryDate,
+          reason,
+          orderLink: link,
+        }, 'orders');
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send extension request notifications/emails:', error);
+  }
+}
+
+async function sendExtensionResponseNotifications({ order, clientUser, professionalUser, action }) {
+  try {
+    const orderNumber = order.orderNumber;
+    const link = orderLinkBase();
+    const isApproved = action === 'approve';
+
+    if (clientUser) {
+      const n = await Notification.createNotification({
+        userId: clientUser._id,
+        type: isApproved ? 'extension_request_approved' : 'extension_request_rejected',
+        title: isApproved ? 'Extension approved' : 'Extension rejected',
+        message: isApproved
+          ? `You approved the time extension for order ${orderNumber}.`
+          : `You rejected the time extension for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(clientUser._id, n);
+      if (clientUser.email) {
+        await sendTemplatedEmail(
+          clientUser.email,
+          isApproved ? 'extension-request-approved-client' : 'extension-request-rejected-client',
+          { firstName: clientUser.firstName || 'there', orderNumber, orderLink: link },
+          'orders'
+        );
+      }
+    }
+
+    if (professionalUser) {
+      const n = await Notification.createNotification({
+        userId: professionalUser._id,
+        type: isApproved ? 'extension_request_approved' : 'extension_request_rejected',
+        title: isApproved ? 'Extension approved' : 'Extension rejected',
+        message: isApproved
+          ? `The client approved your time extension for order ${orderNumber}.`
+          : `The client rejected your time extension for order ${orderNumber}.`,
+        relatedId: order._id,
+        relatedModel: 'Order',
+        link: '/account?tab=orders',
+        metadata: { orderNumber },
+      });
+      await emitNotificationToUser(professionalUser._id, n);
+      if (professionalUser.email) {
+        await sendTemplatedEmail(
+          professionalUser.email,
+          isApproved ? 'extension-request-approved-professional' : 'extension-request-rejected-professional',
+          { firstName: professionalUser.firstName || professionalUser.tradingName || 'there', orderNumber, orderLink: link },
+          'orders'
+        );
+      }
+    }
+  } catch (error) {
+    console.error('[Orders] Failed to send extension response notifications/emails:', error);
+  }
+}
 
 // Helper function to build order query that handles both orderNumber and _id
 async function buildOrderQuery(orderId, additionalFilters = {}) {
@@ -736,6 +950,14 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       { path: 'professional', select: 'firstName lastName tradingName email phone' },
     ]);
 
+    // Notifications + emails (client + professional)
+    const professionalUser = await User.findById(professionalId);
+    await sendOrderNotifications({
+      order,
+      clientUser: user,
+      professionalUser,
+    });
+
     const responseData = {
       orderId: order.orderNumber,
       order: order.toObject(),
@@ -1321,6 +1543,13 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
         { path: 'professional', select: 'firstName lastName tradingName email phone' },
       ]);
 
+      const professionalUser = await User.findById(professionalId);
+      await sendOrderNotifications({
+        order,
+        clientUser: user,
+        professionalUser,
+      });
+
       createdOrders.push(order.toObject());
     }
 
@@ -1409,6 +1638,12 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
         order.paymentStatus = 'completed';
         order.paypalCaptureId = captureId;
         await order.save();
+        const professionalUser = await User.findById(order.professional);
+        await sendOrderNotifications({
+          order,
+          clientUser: user,
+          professionalUser,
+        });
       }
 
       return res.json({
@@ -1458,6 +1693,12 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       order.paymentStatus = 'completed';
       order.paypalCaptureId = captureId;
       await order.save();
+      const professionalUser = await User.findById(order.professional);
+      await sendOrderNotifications({
+        order,
+        clientUser: user,
+        professionalUser,
+      });
     }
 
     return res.json({
@@ -1710,8 +1951,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           requirements: dispute.requirements || undefined,
           unmetRequirements: dispute.unmetRequirements || undefined,
           evidenceFiles: dispute.evidenceFiles || [],
-          claimantId: dispute.claimantId ? dispute.claimantId.toString() : undefined,
-          respondentId: dispute.respondentId ? dispute.respondentId.toString() : undefined,
+          claimantId: dispute.claimantId ? (dispute.claimantId._id || dispute.claimantId).toString() : undefined,
+          respondentId: dispute.respondentId ? (dispute.respondentId._id || dispute.respondentId).toString() : undefined,
           claimantName: dispute.claimantId ? (
             dispute.claimantId._id ? (
               dispute.claimantId._id.toString() === client?._id?.toString() ? 
@@ -1843,6 +2084,14 @@ router.post('/:orderId/extension-request', authenticateToken, requireRole(['prof
 
     await order.save();
 
+    const clientUser = await User.findById(order.client).select('firstName lastName email').lean();
+    const professionalUser = await User.findById(order.professional).select('firstName lastName tradingName email').lean();
+    await sendExtensionRequestNotifications({
+      order,
+      clientUser: clientUser ? { _id: order.client, ...clientUser } : null,
+      professionalUser: professionalUser ? { _id: order.professional, ...professionalUser } : null,
+    });
+
     res.json({ 
       message: 'Extension request submitted successfully',
       extensionRequest: order.extensionRequest
@@ -1891,6 +2140,15 @@ router.put('/:orderId/extension-request', authenticateToken, requireRole(['clien
     order.extensionRequest.respondedAt = new Date();
 
     await order.save();
+
+    const clientUser = await User.findById(order.client).select('firstName lastName email').lean();
+    const professionalUser = await User.findById(order.professional).select('firstName lastName tradingName email').lean();
+    await sendExtensionResponseNotifications({
+      order,
+      clientUser: clientUser ? { _id: order.client, ...clientUser } : null,
+      professionalUser: professionalUser ? { _id: order.professional, ...professionalUser } : null,
+      action,
+    });
 
     res.json({ 
       message: `Extension request ${action}d successfully`,

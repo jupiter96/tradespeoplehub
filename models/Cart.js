@@ -110,6 +110,16 @@ const cartSchema = new mongoose.Schema(
       type: [cartItemSchema],
       default: [],
     },
+    abandonedCart: {
+      lastNotifiedAt: {
+        type: Date,
+        default: null,
+      },
+      lastNotifiedCartUpdatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,

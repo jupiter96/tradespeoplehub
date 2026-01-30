@@ -143,6 +143,11 @@ router.post('/items', authenticateToken, requireRole(['client']), async (req, re
       });
     }
 
+    cart.abandonedCart = {
+      lastNotifiedAt: null,
+      lastNotifiedCartUpdatedAt: null,
+    };
+
     await cart.save();
 
     // Map cart items to frontend format
@@ -211,6 +216,11 @@ router.put('/items/:itemKey', authenticateToken, requireRole(['client']), async 
       Object.assign(cart.items[itemIndex], restUpdates);
     }
 
+    cart.abandonedCart = {
+      lastNotifiedAt: null,
+      lastNotifiedCartUpdatedAt: null,
+    };
+
     await cart.save();
 
     // Map cart items to frontend format
@@ -249,6 +259,10 @@ router.delete('/items/:itemKey', authenticateToken, requireRole(['client']), asy
     }
 
     cart.items = cart.items.filter(i => i.itemKey !== itemKey);
+    cart.abandonedCart = {
+      lastNotifiedAt: null,
+      lastNotifiedCartUpdatedAt: null,
+    };
     await cart.save();
 
     // Map cart items to frontend format
@@ -285,6 +299,10 @@ router.delete('/', authenticateToken, requireRole(['client']), async (req, res) 
     }
 
     cart.items = [];
+    cart.abandonedCart = {
+      lastNotifiedAt: null,
+      lastNotifiedCartUpdatedAt: null,
+    };
     await cart.save();
 
     return res.json({ items: [], message: 'Cart cleared' });

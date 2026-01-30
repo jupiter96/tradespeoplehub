@@ -835,12 +835,20 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     // If not found, search in orders' disputeInfo
     for (const order of orders) {
       if (order.disputeId === disputeId && order.disputeInfo) {
+        const getIdString = (value: any) => {
+          if (!value) return '';
+          if (typeof value === 'string') return value;
+          if (value._id) return value._id.toString?.() || String(value._id);
+          if (typeof value.toString === 'function') return value.toString();
+          return '';
+        };
+
         // Convert disputeInfo to OrderDispute format
         return {
           id: disputeId,
           orderId: order.id,
-          claimantId: order.disputeInfo.claimantId || '',
-          respondentId: order.disputeInfo.respondentId || '',
+          claimantId: getIdString(order.disputeInfo.claimantId),
+          respondentId: getIdString(order.disputeInfo.respondentId),
           claimantName: order.disputeInfo.claimantName || '',
           respondentName: order.disputeInfo.respondentName || '',
           claimantAvatar: order.disputeInfo.claimantAvatar || '',

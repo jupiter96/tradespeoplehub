@@ -10,7 +10,8 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
-import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X, XCircle } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
@@ -20,7 +21,7 @@ export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
   const navigate = useNavigate();
   const { getDisputeById, getJobById, addDisputeMessage, makeDisputeOffer } = useJobs();
-  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, orders } = useOrders();
+  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, orders } = useOrders();
   const { currentUser } = useAccount();
   
   // Try to get dispute from both contexts
@@ -33,6 +34,7 @@ export default function DisputeDiscussionPage() {
   const [timeLeft, setTimeLeft] = useState("");
   const [hasReplied, setHasReplied] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   
   // Determine if this is an order dispute or job dispute
   const isOrderDispute = dispute && "orderId" in dispute;
@@ -180,10 +182,6 @@ export default function DisputeDiscussionPage() {
 
   const handleMakeOffer = async () => {
     if (!newOffer || !disputeId || !dispute) return;
-    if (!hasReplied && dispute.messages && dispute.messages.length > 0) {
-      toast.error("Please reply before submitting offer");
-      return;
-    }
     const amount = parseFloat(newOffer);
     if (isNaN(amount) || amount < 0) {
       toast.error("Please enter a valid amount");
@@ -243,6 +241,18 @@ export default function DisputeDiscussionPage() {
     }
   };
 
+  const handleCancelDispute = async () => {
+    if (!disputeId || !order) return;
+    try {
+      await cancelDispute(order.id);
+      toast.success("Dispute cancelled successfully");
+      setIsCancelConfirmOpen(false);
+      navigate(isOrderDispute ? "/account?tab=orders" : "/account?tab=jobs");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to cancel dispute");
+    }
+  };
+
   if (!dispute || (!job && !order)) {
     return (
       <>
@@ -274,8 +284,20 @@ export default function DisputeDiscussionPage() {
   }
 
   // Determine if current user is client or professional
-  const isClaimant = currentUser?.id === dispute.claimantId;
-  const isCurrentUserClient = order ? (currentUser?.id === order.client) : (currentUser?.id === dispute.claimantId);
+  // Convert to string to handle both ObjectId and string types
+  const claimantIdStr = typeof dispute.claimantId === 'object'
+    ? (dispute.claimantId as any)?._id?.toString() || dispute.claimantId?.toString()
+    : dispute.claimantId;
+  const isClaimant = currentUser?.id === claimantIdStr;
+  // For order disputes, check order.clientId, for job disputes use claimantId
+  let isCurrentUserClient = false;
+  if (order) {
+    // Order dispute: check if current user is the client
+    isCurrentUserClient = currentUser?.id === order.clientId || currentUser?.id === order.client;
+  } else if (job) {
+    // Job dispute: client is the one who posted the job (claimant)
+    isCurrentUserClient = currentUser?.id === dispute.claimantId;
+  }
   
   const userRole = isCurrentUserClient ? "Client (you)" : "Professional (you)";
   const otherRole = isCurrentUserClient ? `Professional (${dispute.respondentName || dispute.claimantName})` : `Client (${dispute.claimantName || dispute.respondentName})`;
@@ -601,14 +623,6 @@ export default function DisputeDiscussionPage() {
               <p className="font-['Poppins',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
                 £ {dispute.amount.toFixed(0)}
               </p>
-              {isOrderDispute && (
-                <button
-                  onClick={() => setShowMilestones(!showMilestones)}
-                  className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] hover:underline"
-                >
-                  Show Milestones
-                </button>
-              )}
 
               {!isOrderDispute && showMilestones && milestone && (
                 <div className="mt-4 p-3 bg-[#f8f9fa] rounded-lg text-left">
@@ -632,7 +646,7 @@ export default function DisputeDiscussionPage() {
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                      {isCurrentUserClient ? "Homeowner (you)" : "Tradesman (you)"}<br />{isCurrentUserClient ? "wants to pay:" : "want to receive:"}
+                      {isCurrentUserClient ? "Client (you)" : "Professional (you)"}<br />{isCurrentUserClient ? "wants to pay:" : "want to receive:"}
                     </p>
                     {hasUserMadeOffer && userOffer !== undefined ? (
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
@@ -649,7 +663,7 @@ export default function DisputeDiscussionPage() {
                   </div>
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                      {isCurrentUserClient ? `Tradesman (${dispute.respondentName})` : `Homeowner`}<br />{isCurrentUserClient ? "want to receive:" : "wants to pay:"}
+                      {isCurrentUserClient ? "Professional" : "Client"}<br />{isCurrentUserClient ? "want to receive:" : "wants to pay:"}
                     </p>
                     {hasOtherMadeOffer && otherOffer !== undefined ? (
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
@@ -730,12 +744,6 @@ export default function DisputeDiscussionPage() {
                   </Button>
                 </div>
                 
-                {!hasReplied && dispute.messages && dispute.messages.length > 0 && (
-                  <p className="font-['Poppins',sans-serif] text-[11px] text-red-600 mt-2 text-center">
-                    Please reply before submitting offer
-                  </p>
-                )}
-                
                 {hasUserMadeOffer && (
                   <p className="font-['Poppins',sans-serif] text-[11px] text-green-600 mt-2 text-center">
                     Your current offer: £{userOffer?.toFixed(2)}
@@ -745,11 +753,55 @@ export default function DisputeDiscussionPage() {
                 <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2 text-center">
                   Enter an amount between £0 and £{dispute.amount.toFixed(2)} GBP
                 </p>
+
+                {/* Cancel Dispute Button - Only for claimant (dispute creator) */}
+                {isClaimant && isOrderDispute && (dispute.status === "open" || dispute.status === "negotiation") && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <Button
+                      onClick={() => setIsCancelConfirmOpen(true)}
+                      variant="outline"
+                      className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancel Dispute
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
             </div>
           </div>
         </div>
+
+        {/* Cancel Dispute Confirmation Dialog */}
+        <Dialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
+          <DialogContent className="w-[90vw] max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Cancel Dispute?
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Are you sure you want to cancel this dispute? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-4">
+              <Button
+                onClick={() => setIsCancelConfirmOpen(false)}
+                variant="outline"
+                className="flex-1 font-['Poppins',sans-serif]"
+              >
+                No, Keep It
+              </Button>
+              <Button
+                onClick={handleCancelDispute}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif]"
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                Yes, Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Footer />
       </div>

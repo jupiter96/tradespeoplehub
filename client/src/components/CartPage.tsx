@@ -235,8 +235,11 @@ const resolveMediaUrl = (url: string | undefined): string => {
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateQuantity, updateCartItem, cartTotal, clearCart } = useCart();
-  const { isLoggedIn, authReady } = useAccount();
+  const { isLoggedIn, authReady, userInfo } = useAccount();
   const { refreshOrders } = useOrders();
+
+  // Profile address id: when addresses array is empty, we show account registration address with this id
+  const PROFILE_ADDRESS_ID = "__profile__";
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -321,6 +324,20 @@ export default function CartPage() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+
+  // When addresses is empty, show account registration address; when addresses has data, show only addresses
+  const profileAddress: Address | null = addresses.length === 0 && userInfo && (userInfo.address || userInfo.postcode || userInfo.phone)
+    ? {
+        id: PROFILE_ADDRESS_ID,
+        postcode: userInfo.postcode || "",
+        address: userInfo.address || "",
+        city: userInfo.townCity || "",
+        county: userInfo.county || "",
+        phone: userInfo.phone || "",
+        isDefault: false,
+      }
+    : null;
+  const displayAddresses: Address[] = addresses.length > 0 ? addresses : (profileAddress ? [profileAddress] : []);
   
   // Service type state - determines if address section should be shown
   const [hasInPersonService, setHasInPersonService] = useState(true); // Default to true (show address)
@@ -559,12 +576,14 @@ export default function CartPage() {
           }));
           setAddresses(fetchedAddresses);
           
-          // Set default address as selected if available
-          const defaultAddress = fetchedAddresses.find(addr => addr.isDefault);
-          if (defaultAddress) {
-            setSelectedAddress(defaultAddress.id);
-          } else if (fetchedAddresses.length > 0) {
-            setSelectedAddress(fetchedAddresses[0].id);
+          // When addresses is empty we will show profile address and select it in the effect below
+          if (fetchedAddresses.length > 0) {
+            const defaultAddress = fetchedAddresses.find(addr => addr.isDefault);
+            if (defaultAddress) {
+              setSelectedAddress(defaultAddress.id);
+            } else {
+              setSelectedAddress(fetchedAddresses[0].id);
+            }
           }
         }
       } catch (error) {
@@ -576,6 +595,13 @@ export default function CartPage() {
     
     fetchAddresses();
   }, [isLoggedIn]);
+
+  // When we have no saved addresses but have profile address, select it
+  useEffect(() => {
+    if (addresses.length === 0 && profileAddress && !selectedAddress) {
+      setSelectedAddress(PROFILE_ADDRESS_ID);
+    }
+  }, [addresses.length, profileAddress?.id, selectedAddress]);
 
   // Check service types to determine if address is needed
   useEffect(() => {
@@ -957,7 +983,9 @@ export default function CartPage() {
   };
 
   const handleOpenChangeAddress = (addressId: string) => {
-    const address = addresses.find(addr => addr.id === addressId);
+    const address = addressId === PROFILE_ADDRESS_ID
+      ? profileAddress
+      : addresses.find(addr => addr.id === addressId);
     if (address) {
       setEditingAddressId(addressId);
       setNewAddress({
@@ -978,8 +1006,8 @@ export default function CartPage() {
     }
 
     try {
-      if (editingAddressId) {
-        // Update existing address
+      if (editingAddressId && editingAddressId !== PROFILE_ADDRESS_ID) {
+        // Update existing address (only for addresses from addresses field)
         const addressToUpdate = addresses.find(addr => addr.id === editingAddressId);
         const updateData = {
           postcode: newAddress.postcode,
@@ -1514,9 +1542,9 @@ export default function CartPage() {
       return;
     }
 
-    // Get selected address details (only for in-person services)
-    const addressDetails = hasInPersonService 
-      ? addresses.find(addr => addr.id === selectedAddress)
+    // Get selected address details (only for in-person services). Use profile address when selected, else from addresses.
+    const addressDetails = hasInPersonService
+      ? (selectedAddress === PROFILE_ADDRESS_ID ? profileAddress : addresses.find(addr => addr.id === selectedAddress))
       : undefined;
 
     const subtotal = cartTotal;
@@ -1943,7 +1971,7 @@ export default function CartPage() {
           <div className="md:hidden">
             <CartPageMobileMinimalist
               cartItems={cartItems}
-              addresses={addresses}
+              addresses={displayAddresses.map((a) => ({ ...a, addressLine1: a.address, type: "home" as const, name: "" }))}
               paymentMethods={paymentMethods}
               selectedAddress={selectedAddress}
               setSelectedAddress={setSelectedAddress}
@@ -2109,7 +2137,7 @@ export default function CartPage() {
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Loading addresses...</p>
                             </div>
                           </div>
-                        ) : addresses.length === 0 ? (
+                        ) : displayAddresses.length === 0 ? (
                           <div className="text-center py-6">
                             <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                               <MapPin className="w-6 h-6 text-gray-400" />
@@ -2137,7 +2165,7 @@ export default function CartPage() {
                           </div>
                         ) : (
                           <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
-                            {addresses.map((address) => (
+                            {displayAddresses.map((address) => (
                             <div key={address.id} className="mb-2 md:mb-3">
                               <div className={`relative border-2 rounded-lg md:rounded-xl p-3 md:p-4 transition-all ${
                                 selectedAddress === address.id 
@@ -2184,7 +2212,7 @@ export default function CartPage() {
                                         <span>Change</span>
                                       </button>
                                     )}
-                                    {!address.isDefault && (
+                                    {!address.isDefault && address.id !== PROFILE_ADDRESS_ID && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
