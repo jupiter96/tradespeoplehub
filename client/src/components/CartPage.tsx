@@ -2278,11 +2278,12 @@ export default function CartPage() {
                         </p>
                         {publishableKey ? (
                           <Button
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] md:text-[14px]"
+                            variant="outline"
+                            className="border-2 border-dashed border-[#3B82F6] text-[#3B82F6] bg-blue-50/50 hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] inline-flex items-center"
                             onClick={() => setShowAddCardModal(true)}
                           >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add new card
+                            <CreditCard className="w-[1em] h-[1em] shrink-0 mr-2" aria-hidden />
+                            Add new credit/debit card
                           </Button>
                         ) : (
                           <Button
@@ -2296,6 +2297,20 @@ export default function CartPage() {
                         )}
                       </div>
                     ) : (
+                      <>
+                      {/* When there are payment methods but no cards, show Add card button at the top */}
+                      {!paymentMethods.some((m) => m.type === "card") && publishableKey && (
+                        <div className="mb-3 md:mb-4">
+                          <Button
+                            variant="outline"
+                            className="w-full border-2 border-dashed border-[#3B82F6] text-[#3B82F6] bg-blue-50/50 hover:bg-blue-50 font-['Poppins',sans-serif] text-[13px] md:text-[14px] justify-start py-3 md:py-4 h-auto inline-flex items-center"
+                            onClick={() => setShowAddCardModal(true)}
+                          >
+                            <CreditCard className="w-[1em] h-[1em] shrink-0 mr-2 md:mr-3" aria-hidden />
+                            Add new credit/debit card
+                          </Button>
+                        </div>
+                      )}
                       <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
                         {paymentMethods.map((method) => (
                         <div key={method.id} className="mb-3 md:mb-4">
@@ -2377,6 +2392,7 @@ export default function CartPage() {
                         </div>
                       ))}
                       </RadioGroup>
+                      </>
                     )}
 
 
