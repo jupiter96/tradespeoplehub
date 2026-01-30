@@ -2581,40 +2581,40 @@ export default function SectorPage() {
                               {service.description}
                           </h3>
 
-                      {/* Professional's average score, star score, (reviews count) */}
-                            <div className="flex items-center gap-1 mb-2 md:mb-2.5">
-                              {(() => {
-                                const avgScore = (service as any).providerRating ?? service.rating;
-                                const reviewsCount = (service as any).providerReviewCount ?? service.reviewCount;
-                                const hasScore = typeof avgScore === 'number' && !Number.isNaN(avgScore);
-                                if (!hasScore && reviewsCount <= 0) return null;
-                                const score = hasScore ? Number(avgScore) : 0;
-                                return (
-                                  <>
-                                    <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
-                                      {score.toFixed(1)}
-                                    </span>
-                                    <div className="flex items-center gap-0.5">
-                                      {[1, 2, 3, 4, 5].map((star) => (
-                                        <Star
-                                          key={star}
-                                          className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
-                                            star <= Math.floor(score)
-                                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                              : star - 0.5 <= score
-                                              ? "fill-[#FE8A0F] text-[#FE8A0F] opacity-50"
-                                              : "fill-[#E5E5E5] text-[#E5E5E5]"
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-                                    <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
-                                      ({reviewsCount})
-                                    </span>
-                                  </>
-                                );
-                              })()}
-                            </div>
+                      {/* Professional's average score, star score, (reviews count) - only when there is at least one review or score */}
+                            {(() => {
+                              const avgScore = (service as any).providerRating ?? service.rating;
+                              const reviewsCount = (service as any).providerReviewCount ?? service.reviewCount;
+                              const hasScore = typeof avgScore === 'number' && !Number.isNaN(avgScore);
+                              const count = reviewsCount ?? 0;
+                              const scoreVal = hasScore ? Number(avgScore) : 0;
+                              if (count <= 0 && scoreVal <= 0) return null;
+                              const score = scoreVal;
+                              return (
+                                <div className="flex items-center gap-1 mb-2 md:mb-2.5">
+                                  <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
+                                    {score.toFixed(1)}
+                                  </span>
+                                  <div className="flex items-center gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star
+                                        key={star}
+                                        className={`w-3.5 h-3.5 md:w-4 md:h-4 ${
+                                          star <= Math.floor(score)
+                                            ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                            : star - 0.5 <= score
+                                            ? "fill-[#FE8A0F] text-[#FE8A0F] opacity-50"
+                                            : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="font-['Poppins',sans-serif] text-[11px] md:text-[13px] text-[#666]">
+                                    ({reviewsCount})
+                                  </span>
+                                </div>
+                              );
+                            })()}
 
                         {/* Price Section */}
                             <div className="mb-2 md:mb-2.5">
@@ -2996,15 +2996,17 @@ export default function SectorPage() {
                                 {service.description.length > 55 ? `${service.description.slice(0, 55)}...` : service.description}
                               </p>
 
-                              {/* Professional's average score, star score, (reviews count) */}
-                              <div className="flex items-center gap-2">
-                                {(() => {
-                                  const avgScore = (service as any).providerRating ?? service.rating;
-                                  const reviewsCount = (service as any).providerReviewCount ?? service.reviewCount;
-                                  const hasScore = typeof avgScore === 'number' && !Number.isNaN(avgScore);
-                                  if (!hasScore && reviewsCount <= 0) return <div />;
-                                  const score = hasScore ? Number(avgScore) : 0;
-                                  return (
+                              {/* Professional's average score, star score, (reviews count) - only when there is at least one review or score */}
+                              {(() => {
+                                const avgScore = (service as any).providerRating ?? service.rating;
+                                const reviewsCount = (service as any).providerReviewCount ?? service.reviewCount;
+                                const hasScore = typeof avgScore === 'number' && !Number.isNaN(avgScore);
+                                const count = reviewsCount ?? 0;
+                                const scoreVal = hasScore ? Number(avgScore) : 0;
+                                if (count <= 0 && scoreVal <= 0) return null;
+                                const score = scoreVal;
+                                return (
+                                  <div className="flex items-center gap-2">
                                     <div className="flex items-center gap-1">
                                       <div className="flex items-center gap-0.5">
                                         {[1, 2, 3, 4, 5].map((star) => (
@@ -3027,9 +3029,9 @@ export default function SectorPage() {
                                         ({reviewsCount})
                                       </span>
                                     </div>
-                                  );
-                                })()}
-                              </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
 

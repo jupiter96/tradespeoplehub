@@ -981,25 +981,27 @@ export default function ProfilePage() {
                         {service.description}
                       </p>
 
-                      {/* Star Rating */}
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-4 h-4 ${
-                              star <= Math.floor(service.rating || 0)
-                                ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                : "fill-[#E5E5E5] text-[#E5E5E5]"
-                            }`}
-                          />
-                        ))}
-                        <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] ml-1">
-                          {service.rating || 0}
-                        </span>
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#999999]">
-                          ({service.reviewCount || 0})
-                        </span>
-                      </div>
+                      {/* Star Rating - only when there is at least one review or score */}
+                      {((service.rating ?? 0) > 0 || (service.reviewCount ?? 0) > 0) && (
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= Math.floor(service.rating || 0)
+                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                  : "fill-[#E5E5E5] text-[#E5E5E5]"
+                              }`}
+                            />
+                          ))}
+                          <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] ml-1">
+                            {service.rating || 0}
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#999999]">
+                            ({service.reviewCount || 0})
+                          </span>
+                        </div>
+                      )}
 
                       {/* Price and Delivery Badge */}
                       <div className="flex items-start justify-between gap-2">
