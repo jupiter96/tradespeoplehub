@@ -83,7 +83,7 @@ export default function AdminCostGuidePage() {
     return (
       <AdminPageLayout title="Cost Guide Content Management">
         <div className="flex items-center justify-center py-12">
-          <p className="text-black dark:text-white">Loading...</p>
+          <p className="text-black">Loading...</p>
         </div>
       </AdminPageLayout>
     );
@@ -92,73 +92,73 @@ export default function AdminCostGuidePage() {
   return (
     <AdminPageLayout title="Cost Guide Content Management">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             COST GUIDES
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="title" className="text-black dark:text-white">
+              <Label htmlFor="title" className="text-black">
                 Title
               </Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter cost guide title"
               />
             </div>
 
             <div>
-              <Label htmlFor="description" className="text-black dark:text-white">
+              <Label htmlFor="description" className="text-black">
                 Description
               </Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter cost guide description"
               />
             </div>
 
             <div>
-              <Label htmlFor="metaTitle" className="text-black dark:text-white">
+              <Label htmlFor="metaTitle" className="text-black">
                 Meta Title
               </Label>
               <Input
                 id="metaTitle"
                 value={formData.metaTitle}
                 onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta title"
               />
             </div>
 
             <div>
-              <Label htmlFor="metaKey" className="text-black dark:text-white">
+              <Label htmlFor="metaKey" className="text-black">
                 Meta Key
               </Label>
               <Input
                 id="metaKey"
                 value={formData.metaKey}
                 onChange={(e) => setFormData({ ...formData, metaKey: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta keywords (comma separated)"
               />
             </div>
 
             <div>
-              <Label htmlFor="metaDescription" className="text-black dark:text-white">
+              <Label htmlFor="metaDescription" className="text-black">
                 Meta Description
               </Label>
               <Textarea
                 id="metaDescription"
                 value={formData.metaDescription}
                 onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta description"
               />
             </div>

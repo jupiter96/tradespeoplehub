@@ -90,7 +90,7 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
       style={style}
       className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
     >
-      <TableCell className="text-black dark:text-white font-medium w-12">
+      <TableCell className="text-black font-medium w-12">
         <div className="flex items-center gap-2">
           <button
             {...attributes}
@@ -102,14 +102,14 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
           <span>{sector.order}</span>
         </div>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         <div className="font-medium truncate" title={sector.name}>
           {sector.name && sector.name.length > 25 ? sector.name.substring(0, 25) + "..." : sector.name}
         </div>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         {sector.icon ? (
-          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 ">
             {sector.icon.startsWith('http') || sector.icon.startsWith('/') ? (
               <img
                 src={sector.icon}
@@ -121,7 +121,7 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
                 }}
               />
             ) : (
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={sector.icon}>
+              <span className="text-xs text-gray-500  truncate px-2" title={sector.icon}>
                 {sector.icon.length > 10 ? sector.icon.substring(0, 10) + "..." : sector.icon}
               </span>
             )}
@@ -130,9 +130,9 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
           <span className="text-xs text-gray-400">No icon</span>
         )}
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         {sector.bannerImage ? (
-          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 ">
             <img
               src={sector.bannerImage}
               alt={`${sector.name} banner`}
@@ -153,12 +153,12 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+              className="h-8 w-8 text-black hover:bg-[#FE8A0F]/10"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+          <DropdownMenuContent align="end" className="bg-white border-0 shadow-xl shadow-gray-300 ">
             <DropdownMenuItem
               onClick={() => {
                 if (sector.slug) {
@@ -167,21 +167,21 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
                   toast.error("Sector slug not available");
                 }
               }}
-              className="text-blue-600 dark:text-blue-400 cursor-pointer"
+              className="text-blue-600  cursor-pointer"
             >
               <Eye className="w-4 h-4 mr-2" />
               View Sector
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onEdit(sector)}
-              className="text-blue-600 dark:text-blue-400 cursor-pointer"
+              className="text-blue-600  cursor-pointer"
             >
               <Edit2 className="w-4 h-4 mr-2" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onToggleActive(sector._id!, sector.isActive)}
-              className={sector.isActive ? "text-red-600 dark:text-red-400 cursor-pointer" : "text-green-600 dark:text-green-400 cursor-pointer"}
+              className={sector.isActive ? "text-red-600  cursor-pointer" : "text-green-600  cursor-pointer"}
             >
               {sector.isActive ? (
                 <>
@@ -201,7 +201,7 @@ function SortableRow({ sector, onEdit, onDelete, onToggleActive }: {
                   onDelete(sector._id!);
                 }
               }}
-              className="text-red-600 dark:text-red-400 cursor-pointer"
+              className="text-red-600  cursor-pointer"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete
@@ -864,32 +864,32 @@ export default function AdminSectorsPage() {
           {/* Search and Controls - All in one row */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <p className="text-sm text-black dark:text-white whitespace-nowrap">
+              <p className="text-sm text-black whitespace-nowrap">
                 Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> sectors
               </p>
             </div>
             <div className="relative flex-shrink-0" style={{ width: '200px' }}>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50" />
               <Input
                 type="text"
                 placeholder="Search sectors..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="pl-10 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
             <div className="flex items-center gap-2">
-              <Label htmlFor="rows-per-page" className="text-sm text-black dark:text-white whitespace-nowrap">
+              <Label htmlFor="rows-per-page" className="text-sm text-black whitespace-nowrap">
                 Rows per page:
               </Label>
               <Select value={limit.toString()} onValueChange={(value) => {
                 setLimit(parseInt(value));
                 setPage(1);
               }}>
-                <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                <SelectTrigger id="rows-per-page" className="w-20 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                   <SelectItem value="10">10</SelectItem>
                   <SelectItem value="20">20</SelectItem>
                   <SelectItem value="50">50</SelectItem>
@@ -909,14 +909,14 @@ export default function AdminSectorsPage() {
           </div>
 
           {/* Table */}
-          <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20 relative">
+          <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20 relative">
             {loading ? (
               <div className="text-center py-12">
-                <p className="text-black dark:text-white">Loading...</p>
+                <p className="text-black">Loading...</p>
               </div>
             ) : sectors.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-black dark:text-white">No sectors found</p>
+                <p className="text-black">No sectors found</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -954,10 +954,10 @@ export default function AdminSectorsPage() {
                   </Table>
                 </DndContext>
                 {isUpdatingOrder && (
-                  <div className="absolute inset-0 bg-black/10 dark:bg-white/10 flex items-center justify-center rounded-3xl z-10">
-                    <div className="bg-white dark:bg-black p-4 rounded-lg shadow-lg flex items-center gap-3">
+                  <div className="absolute inset-0 bg-black/10  flex items-center justify-center rounded-3xl z-10">
+                    <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
                       <Loader2 className="w-5 h-5 animate-spin text-[#FE8A0F]" />
-                      <span className="text-black dark:text-white">Updating order...</span>
+                      <span className="text-black">Updating order...</span>
                     </div>
                   </div>
                 )}
@@ -967,7 +967,7 @@ export default function AdminSectorsPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-0 shadow-sm">
-                <p className="text-sm text-black dark:text-white">
+                <p className="text-sm text-black">
                   Page <span className="text-[#FE8A0F] font-semibold">{page}</span> of <span className="text-[#FE8A0F] font-semibold">{totalPages}</span>
                 </p>
                 <div className="flex gap-2">
@@ -976,7 +976,7 @@ export default function AdminSectorsPage() {
                     size="sm"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                    className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
@@ -986,7 +986,7 @@ export default function AdminSectorsPage() {
                     size="sm"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                    className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />
@@ -1000,7 +1000,7 @@ export default function AdminSectorsPage() {
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl shadow-gray-400 ">
           <DialogHeader>
             <DialogTitle className="text-[#FE8A0F] text-2xl">
               {editingSector ? "Edit Sector" : "Create New Sector"}
@@ -1011,7 +1011,7 @@ export default function AdminSectorsPage() {
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name" className="text-black dark:text-white">
+                <Label htmlFor="name" className="text-black">
                   Sector Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -1019,24 +1019,24 @@ export default function AdminSectorsPage() {
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Home & Garden"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
               <div>
-                <Label htmlFor="slug" className="text-black dark:text-white">
+                <Label htmlFor="slug" className="text-black">
                   Slug <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
+                  <span className="text-xs text-gray-500  ml-2">(Auto-generated from name)</span>
                 </Label>
                 <Input
                   id="slug"
                   value={formData.slug}
                   disabled
                   placeholder="home-garden"
-                  className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  className="mt-1 bg-gray-100  border-0 text-gray-500  cursor-not-allowed"
                 />
               </div>
               <div className="flex items-center gap-4">
-                <Label htmlFor="isActive" className="text-black dark:text-white">
+                <Label htmlFor="isActive" className="text-black">
                   Status
                 </Label>
                 <div className="flex items-center gap-2">
@@ -1047,7 +1047,7 @@ export default function AdminSectorsPage() {
                     onChange={(e) => handleInputChange("isActive", e.target.checked)}
                     className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                   />
-                  <span className="text-sm text-black dark:text-white">
+                  <span className="text-sm text-black">
                     {formData.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
@@ -1056,7 +1056,7 @@ export default function AdminSectorsPage() {
 
             {/* Description */}
             <div>
-              <Label htmlFor="description" className="text-black dark:text-white">
+              <Label htmlFor="description" className="text-black">
                 Description
               </Label>
               <Textarea
@@ -1064,14 +1064,14 @@ export default function AdminSectorsPage() {
                 value={formData.description || ""}
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="Describe this sector..."
-                className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* SEO Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="metaTitle" className="text-black dark:text-white">
+                <Label htmlFor="metaTitle" className="text-black">
                   Meta Title
                 </Label>
                 <Input
@@ -1079,11 +1079,11 @@ export default function AdminSectorsPage() {
                   value={formData.metaTitle || ""}
                   onChange={(e) => handleInputChange("metaTitle", e.target.value)}
                   placeholder="SEO meta title"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
               <div>
-                <Label htmlFor="metaDescription" className="text-black dark:text-white">
+                <Label htmlFor="metaDescription" className="text-black">
                   Meta Description
                 </Label>
                 <Textarea
@@ -1091,7 +1091,7 @@ export default function AdminSectorsPage() {
                   value={formData.metaDescription || ""}
                   onChange={(e) => handleInputChange("metaDescription", e.target.value)}
                   placeholder="SEO meta description"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
             </div>
@@ -1099,7 +1099,7 @@ export default function AdminSectorsPage() {
             {/* Images */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="icon" className="text-black dark:text-white">
+                <Label htmlFor="icon" className="text-black">
                   Icon
                 </Label>
                 <div className="mt-1 flex gap-2">
@@ -1111,7 +1111,7 @@ export default function AdminSectorsPage() {
                       setIconPreview(e.target.value || null);
                     }}
                     placeholder="Icon URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
                     type="file"
@@ -1128,7 +1128,7 @@ export default function AdminSectorsPage() {
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
                     title="Upload icon"
                   >
                     {uploadingImage.type === "icon" && uploadingImage.loading ? (
@@ -1152,7 +1152,7 @@ export default function AdminSectorsPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="bannerImage" className="text-black dark:text-white">
+                <Label htmlFor="bannerImage" className="text-black">
                   Banner Image
                 </Label>
                 <div className="mt-1 flex gap-2">
@@ -1164,7 +1164,7 @@ export default function AdminSectorsPage() {
                       setBannerPreview(e.target.value || null);
                     }}
                     placeholder="Banner image URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
                     type="file"
@@ -1181,7 +1181,7 @@ export default function AdminSectorsPage() {
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
                     disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
                     title="Upload banner"
                   >
                     {uploadingImage.type === "banner" && uploadingImage.loading ? (
@@ -1212,7 +1212,7 @@ export default function AdminSectorsPage() {
               variant="outline"
               onClick={() => setIsModalOpen(false)}
               disabled={isSaving}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>
@@ -1239,14 +1239,14 @@ export default function AdminSectorsPage() {
 
       {/* Confirmation Modal */}
       <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
-        <DialogContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+        <DialogContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
           <DialogHeader>
-            <DialogTitle className="text-black dark:text-white">
+            <DialogTitle className="text-black">
               {confirmModal.title}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-700 dark:text-gray-300 text-sm">
+            <p className="text-gray-700  text-sm">
               {confirmModal.message}
             </p>
           </div>
@@ -1254,7 +1254,7 @@ export default function AdminSectorsPage() {
             <Button
               variant="outline"
               onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>

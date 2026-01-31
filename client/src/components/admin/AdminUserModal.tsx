@@ -269,7 +269,7 @@ export default function AdminUserModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl shadow-gray-400 ">
         <DialogHeader>
           <DialogTitle className="text-[#FE8A0F] text-2xl">
             {isEditMode ? "Edit User" : "Create New User"}
@@ -280,7 +280,7 @@ export default function AdminUserModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* First Name */}
             <div>
-              <Label htmlFor="firstName" className="text-black dark:text-white">
+              <Label htmlFor="firstName" className="text-black">
                 First Name <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -288,13 +288,13 @@ export default function AdminUserModal({
                 value={formData.firstName}
                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                 required
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* Last Name */}
             <div>
-              <Label htmlFor="lastName" className="text-black dark:text-white">
+              <Label htmlFor="lastName" className="text-black">
                 Last Name <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -302,13 +302,13 @@ export default function AdminUserModal({
                 value={formData.lastName}
                 onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                 required
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* Email */}
             <div>
-              <Label htmlFor="email" className="text-black dark:text-white">
+              <Label htmlFor="email" className="text-black">
                 Email <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -318,13 +318,13 @@ export default function AdminUserModal({
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 disabled={isEditMode}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* Phone */}
             <div>
-              <Label htmlFor="phone" className="text-black dark:text-white">
+              <Label htmlFor="phone" className="text-black">
                 Phone <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -332,15 +332,15 @@ export default function AdminUserModal({
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* Password */}
             <div>
-              <Label htmlFor="password" className="text-black dark:text-white">
+              <Label htmlFor="password" className="text-black">
                 Password {!isEditMode && <span className="text-red-500">*</span>}
-                {isEditMode && <span className="text-xs text-black/60 dark:text-white/60">(leave blank to keep current)</span>}
+                {isEditMode && <span className="text-xs text-black/60">(leave blank to keep current)</span>}
               </Label>
               <Input
                 id="password"
@@ -349,15 +349,15 @@ export default function AdminUserModal({
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required={!isEditMode}
                 placeholder="Must include uppercase, lowercase, and numbers"
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
               {formData.password && (
-                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-[11px] text-gray-500 ">
                   {getPasswordHint(formData.password)}
                 </p>
               )}
               {!formData.password && !isEditMode && (
-                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-[11px] text-gray-500 ">
                   Password must include uppercase, lowercase, and numbers
                 </p>
               )}
@@ -365,7 +365,7 @@ export default function AdminUserModal({
 
             {/* Role */}
             <div>
-              <Label htmlFor="role" className="text-black dark:text-white">
+              <Label htmlFor="role" className="text-black">
                 Role <span className="text-red-500">*</span>
               </Label>
               <Select
@@ -373,20 +373,20 @@ export default function AdminUserModal({
                 onValueChange={(value) => setFormData({ ...formData, role: value })}
                 disabled={isEditMode && formData.role === "admin" || (!isEditMode && role !== undefined)}
               >
-                <SelectTrigger className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                <SelectTrigger className="bg-white border-0 shadow-md shadow-gray-200  text-black disabled:opacity-50 disabled:cursor-not-allowed focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
-                  <SelectItem value="client" className="text-black dark:text-white hover:bg-[#FE8A0F]/10">
+                <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
+                  <SelectItem value="client" className="text-black hover:bg-[#FE8A0F]/10">
                     Client
                   </SelectItem>
-                  <SelectItem value="professional" className="text-black dark:text-white hover:bg-[#FE8A0F]/10">
+                  <SelectItem value="professional" className="text-black hover:bg-[#FE8A0F]/10">
                     Professional
                   </SelectItem>
                 </SelectContent>
               </Select>
               {!isEditMode && role !== undefined && (
-                <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                <p className="mt-1 text-xs text-black/60">
                   Role is pre-selected based on the page you're creating from
                 </p>
               )}
@@ -426,7 +426,7 @@ export default function AdminUserModal({
               <>
                 {/* Trading Name */}
                 <div>
-                  <Label htmlFor="tradingName" className="text-black dark:text-white">
+                  <Label htmlFor="tradingName" className="text-black">
                     Trading Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -434,14 +434,14 @@ export default function AdminUserModal({
                     value={formData.tradingName}
                     onChange={(e) => setFormData({ ...formData, tradingName: e.target.value })}
                     required
-                    className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Your business/trading name"
                   />
                 </div>
 
                 {/* Travel Distance */}
                 <div>
-                  <Label htmlFor="travelDistance" className="text-black dark:text-white">
+                  <Label htmlFor="travelDistance" className="text-black">
                     Travel Distance <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -450,20 +450,20 @@ export default function AdminUserModal({
                     onChange={(e) => setFormData({ ...formData, travelDistance: e.target.value })}
                     required
                     placeholder="e.g., 15 miles"
-                    className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                 </div>
 
                 {/* Sector */}
                 <div>
-                  <Label htmlFor="sector" className="text-black dark:text-white">
+                  <Label htmlFor="sector" className="text-black">
                     Sector
                   </Label>
                   <Input
                     id="sector"
                     value={formData.sector}
                     onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                    className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="e.g., Home & Garden"
                   />
                 </div>
@@ -472,21 +472,21 @@ export default function AdminUserModal({
 
             {/* Referral Code */}
             <div>
-              <Label htmlFor="referralCode" className="text-black dark:text-white">
+              <Label htmlFor="referralCode" className="text-black">
                 Referral Code
               </Label>
               <Input
                 id="referralCode"
                 value={formData.referralCode}
                 onChange={(e) => setFormData({ ...formData, referralCode: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* Client-only: Stripe Customer ID */}
             {formData.role === "client" && (
               <div className="md:col-span-2">
-                <Label htmlFor="stripeCustomerId" className="text-black dark:text-white">
+                <Label htmlFor="stripeCustomerId" className="text-black">
                   Stripe Customer ID
                 </Label>
                 <Input
@@ -494,9 +494,9 @@ export default function AdminUserModal({
                   value={formData.stripeCustomerId}
                   onChange={(e) => setFormData({ ...formData, stripeCustomerId: e.target.value })}
                   placeholder="e.g. cus_xxxxxxxxxxxxx"
-                  className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow font-mono text-sm"
+                  className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow font-mono text-sm"
                 />
-                <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-[11px] text-gray-500 ">
                   Stripe customer ID for this client (used for payments). Leave empty to clear.
                 </p>
               </div>
@@ -510,7 +510,7 @@ export default function AdminUserModal({
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>

@@ -610,36 +610,69 @@ export default function AccountPage() {
   );
 }
 
-// Overview Section
+// Overview Section - fetches real data from API
 function OverviewSection({ userRole }: { userRole: "client" | "professional" | null }) {
-  // Mock data for charts
-  const monthlyExpenses = [
-    { month: "Jun", amount: 450 },
-    { month: "Jul", amount: 680 },
-    { month: "Aug", amount: 520 },
-    { month: "Sep", amount: 890 },
-    { month: "Oct", amount: 750 },
-    { month: "Nov", amount: 1240 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [clientData, setClientData] = useState<{
+    totalOrders: number;
+    totalExpense: number;
+    walletBalance: number;
+    monthlyExpenses: { month: string; amount: number }[];
+    monthlyOrders: { month: string; orders: number }[];
+    categorySpending: { name: string; value: number; color: string }[];
+    expenseChangePercent?: number;
+    ordersChangePercent?: number;
+  } | null>(null);
+  const [professionalData, setProfessionalData] = useState<{
+    activeJobs: number;
+    completedJobs: number;
+    totalEarnings: number;
+    walletBalance: number;
+    monthlyEarnings: { month: string; amount: number }[];
+    monthlyJobs: { month: string; jobs: number }[];
+    categoryEarnings: { name: string; value: number; color: string }[];
+    activeJobsThisWeek?: number;
+    earningsChangePercent?: number;
+    jobsChangePercent?: number;
+  } | null>(null);
 
-  const monthlyOrders = [
-    { month: "Jun", orders: 2 },
-    { month: "Jul", orders: 3 },
-    { month: "Aug", orders: 2 },
-    { month: "Sep", orders: 4 },
-    { month: "Oct", orders: 3 },
-    { month: "Nov", orders: 5 },
-  ];
-
-  const categorySpending = [
-    { name: "Plumbing", value: 1250, color: "#FE8A0F" },
-    { name: "Electrical", value: 980, color: "#3D78CB" },
-    { name: "Painting", value: 750, color: "#22c55e" },
-    { name: "Carpentry", value: 620, color: "#f59e0b" },
-    { name: "Other", value: 930, color: "#8b5cf6" },
-  ];
+  useEffect(() => {
+    if (!userRole) return;
+    const fetchOverview = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(resolveApiUrl("/api/auth/account/overview"), { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (userRole === "client") setClientData(data);
+          else setProfessionalData(data);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOverview();
+  }, [userRole]);
 
   if (userRole === "client") {
+    const cd = clientData;
+    const monthlyExpenses = cd?.monthlyExpenses || [];
+    const monthlyOrders = cd?.monthlyOrders || [];
+    const categorySpending = cd?.categorySpending || [];
+
+    if (loading) {
+      return (
+        <div>
+          <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">Account Overview</h2>
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-[#FE8A0F]" />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div>
         <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">
@@ -661,29 +694,43 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-4 md:p-6 rounded-xl border border-[#FE8A0F]/20 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#FE8A0F]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <ShoppingBag className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] mb-2 md:mb-3" />
-            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">19</h3>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{cd?.totalOrders ?? 0}</h3>
             <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Orders</p>
             <div className="flex items-center gap-1 text-green-600">
-              <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+15% this month</span>
+              {cd?.ordersChangePercent != null && cd.ordersChangePercent !== 0 && (
+                <>
+                  {cd.ordersChangePercent >= 0 ? <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                  <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">{cd.ordersChangePercent >= 0 ? '+' : ''}{cd.ordersChangePercent}% this month</span>
+                </>
+              )}
+              {(!cd?.ordersChangePercent || cd.ordersChangePercent === 0) && (
+                <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">From your orders</span>
+              )}
             </div>
           </div>
           
           <div className="bg-gradient-to-br from-[#E8F4FD] to-white p-4 md:p-6 rounded-xl border border-[#3D78CB]/20 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#3D78CB]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-[#3D78CB] mb-2 md:mb-3" />
-            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£4,530</h3>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(cd?.totalExpense ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
             <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Expense</p>
             <div className="flex items-center gap-1 text-[#3D78CB]">
-              <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+8% from last month</span>
+              {cd?.expenseChangePercent != null && cd.expenseChangePercent !== 0 && (
+                <>
+                  {cd.expenseChangePercent >= 0 ? <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                  <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">{cd.expenseChangePercent >= 0 ? '+' : ''}{cd.expenseChangePercent}% from last month</span>
+                </>
+              )}
+              {(!cd?.expenseChangePercent || cd.expenseChangePercent === 0) && (
+                <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">Completed orders total</span>
+              )}
             </div>
           </div>
           
           <div className="bg-gradient-to-br from-[#F0FDF4] to-white p-4 md:p-6 rounded-xl border border-green-200 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <Wallet className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-2 md:mb-3" />
-            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£2,450</h3>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(cd?.walletBalance ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
             <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">My Balance</p>
             <div className="flex items-center gap-1 text-green-600">
               <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">Available to spend</span>
@@ -704,10 +751,12 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                   Last 6 months spending trend
                 </p>
               </div>
-              <div className="flex items-center gap-1 text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
-                <TrendingUp className="w-4 h-4" />
-                <span className="font-['Poppins',sans-serif] text-[12px]">+22%</span>
-              </div>
+              {cd?.expenseChangePercent != null && cd.expenseChangePercent !== 0 && (
+                <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${cd.expenseChangePercent >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                  {cd.expenseChangePercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  <span className="font-['Poppins',sans-serif] text-[12px]">{cd.expenseChangePercent >= 0 ? '+' : ''}{cd.expenseChangePercent}%</span>
+                </div>
+              )}
             </div>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={monthlyExpenses}>
@@ -752,10 +801,12 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                   Number of orders per month
                 </p>
               </div>
-              <div className="flex items-center gap-1 text-[#FE8A0F] bg-[#FFF5EB] px-3 py-1.5 rounded-lg">
-                <TrendingUp className="w-4 h-4" />
-                <span className="font-['Poppins',sans-serif] text-[12px]">+67%</span>
-              </div>
+              {cd?.ordersChangePercent != null && cd.ordersChangePercent !== 0 && (
+                <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${cd.ordersChangePercent >= 0 ? 'text-[#FE8A0F] bg-[#FFF5EB]' : 'text-red-600 bg-red-50'}`}>
+                  {cd.ordersChangePercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  <span className="font-['Poppins',sans-serif] text-[12px]">{cd.ordersChangePercent >= 0 ? '+' : ''}{cd.ordersChangePercent}%</span>
+                </div>
+              )}
             </div>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={monthlyOrders}>
@@ -793,7 +844,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                 Spending by Category
               </h3>
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-                Total: £4,530 across all categories
+                Total: £{(cd?.totalExpense ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })} across all categories
               </p>
             </div>
             <div className="flex lg:grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">
@@ -899,32 +950,31 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
     );
   }
 
-  // Professional overview with enhanced stats and charts
-  const monthlyEarnings = [
-    { month: "Jun", amount: 2850 },
-    { month: "Jul", amount: 3200 },
-    { month: "Aug", amount: 2950 },
-    { month: "Sep", amount: 4100 },
-    { month: "Oct", amount: 3800 },
-    { month: "Nov", amount: 5250 },
-  ];
+  // Professional overview
+  const pd = professionalData;
+  const monthlyEarnings = pd?.monthlyEarnings || [];
+  const monthlyJobs = pd?.monthlyJobs || [];
+  const categoryEarnings = pd?.categoryEarnings || [];
 
-  const monthlyJobs = [
-    { month: "Jun", jobs: 8 },
-    { month: "Jul", jobs: 10 },
-    { month: "Aug", jobs: 9 },
-    { month: "Sep", jobs: 13 },
-    { month: "Oct", jobs: 12 },
-    { month: "Nov", jobs: 16 },
-  ];
+  if (userRole === "professional" && loading) {
+    return (
+      <div>
+        <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">Account Overview</h2>
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-10 h-10 animate-spin text-[#FE8A0F]" />
+        </div>
+      </div>
+    );
+  }
 
-  const categoryEarnings = [
-    { name: "Emergency Repairs", value: 8500, color: "#FE8A0F" },
-    { name: "Installations", value: 6200, color: "#3B82F6" },
-    { name: "Maintenance", value: 4800, color: "#22c55e" },
-    { name: "Consultations", value: 2100, color: "#f59e0b" },
-    { name: "Other", value: 650, color: "#8b5cf6" },
-  ];
+  if (!userRole) {
+    return (
+      <div>
+        <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-6">Account Overview</h2>
+        <div className="text-center py-12 text-[#6b6b6b]">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -947,40 +997,61 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         <div className="bg-gradient-to-br from-[#FFF5EB] to-white p-4 md:p-6 rounded-xl border border-[#FE8A0F]/20 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#FE8A0F]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <Briefcase className="w-6 h-6 md:w-8 md:h-8 text-[#FE8A0F] mb-2 md:mb-3" />
-          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">12</h3>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{pd?.activeJobs ?? 0}</h3>
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Active Jobs</p>
           <div className="flex items-center gap-1 text-green-600">
-            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+3 this week</span>
+            {pd?.activeJobsThisWeek != null && pd.activeJobsThisWeek > 0 && (
+              <>
+                <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+{pd.activeJobsThisWeek} this week</span>
+              </>
+            )}
+            {(!pd?.activeJobsThisWeek || pd.activeJobsThisWeek === 0) && (
+              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">In progress</span>
+            )}
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-[#EFF6FF] to-white p-4 md:p-6 rounded-xl border border-[#3B82F6]/20 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#3B82F6]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-[#3B82F6] mb-2 md:mb-3" />
-          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">68</h3>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{pd?.completedJobs ?? 0}</h3>
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Completed Jobs</p>
           <div className="flex items-center gap-1 text-[#3B82F6]">
-            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+16 this month</span>
+            {pd?.jobsChangePercent != null && pd.jobsChangePercent !== 0 && (
+              <>
+                {pd.jobsChangePercent >= 0 ? <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">{pd.jobsChangePercent >= 0 ? '+' : ''}{pd.jobsChangePercent}% this month</span>
+              </>
+            )}
+            {(!pd?.jobsChangePercent || pd.jobsChangePercent === 0) && (
+              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">Completed orders</span>
+            )}
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-[#F0FDF4] to-white p-4 md:p-6 rounded-xl border border-green-200 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-2 md:mb-3" />
-          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£22,250</h3>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(pd?.totalEarnings ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Earnings</p>
           <div className="flex items-center gap-1 text-green-600">
-            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">+18% from last month</span>
+            {pd?.earningsChangePercent != null && pd.earningsChangePercent !== 0 && (
+              <>
+                {pd.earningsChangePercent >= 0 ? <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+                <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">{pd.earningsChangePercent >= 0 ? '+' : ''}{pd.earningsChangePercent}% from last month</span>
+              </>
+            )}
+            {(!pd?.earningsChangePercent || pd.earningsChangePercent === 0) && (
+              <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">From completed orders</span>
+            )}
           </div>
         </div>
         
         <div className="bg-gradient-to-br from-[#FEF3C7] to-white p-4 md:p-6 rounded-xl border border-amber-200 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-amber-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <Wallet className="w-6 h-6 md:w-8 md:h-8 text-amber-600 mb-2 md:mb-3" />
-          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£5,250</h3>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(pd?.walletBalance ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Available Balance</p>
           <div className="flex items-center gap-1 text-amber-600">
             <Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -1079,7 +1150,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
               Earnings by Service Category
             </h3>
             <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-              Total: £22,250 across all categories
+              Total: £{(pd?.totalEarnings ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })} across all categories
             </p>
           </div>
           <div className="flex lg:grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">

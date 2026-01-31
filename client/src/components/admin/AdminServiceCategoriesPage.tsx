@@ -159,7 +159,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
       style={style}
       className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
     >
-      <TableCell className="text-black dark:text-white font-medium w-12">
+      <TableCell className="text-black font-medium w-12">
         <div className="flex items-center gap-2">
           <button
             {...attributes}
@@ -171,28 +171,28 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
           <span>{serviceCategory.order}</span>
         </div>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         <div className="font-medium truncate" title={serviceCategory.name}>
           {serviceCategory.name && serviceCategory.name.length > 25 ? serviceCategory.name.substring(0, 25) + "..." : serviceCategory.name}
         </div>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         <span className="font-medium">
           {serviceCategory.subCategories?.length || 0}
         </span>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         {serviceCategory.slug ? (
-          <span className="text-sm text-gray-600 dark:text-gray-400 truncate" title={serviceCategory.slug}>
+          <span className="text-sm text-gray-600  truncate" title={serviceCategory.slug}>
             {serviceCategory.slug.length > 20 ? serviceCategory.slug.substring(0, 20) + "..." : serviceCategory.slug}
           </span>
         ) : (
           <span className="text-xs text-gray-400">-</span>
         )}
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         {serviceCategory.icon ? (
-          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <div className="flex items-center justify-center w-12 h-12 rounded-lg overflow-hidden bg-gray-100 ">
             {serviceCategory.icon.startsWith('http') || serviceCategory.icon.startsWith('/') ? (
               <img
                 src={serviceCategory.icon}
@@ -204,7 +204,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
                 }}
               />
             ) : (
-              <span className="text-xs text-gray-500 dark:text-gray-400 truncate px-2" title={serviceCategory.icon}>
+              <span className="text-xs text-gray-500  truncate px-2" title={serviceCategory.icon}>
                 {serviceCategory.icon.length > 10 ? serviceCategory.icon.substring(0, 10) + "..." : serviceCategory.icon}
               </span>
             )}
@@ -213,9 +213,9 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
           <span className="text-xs text-gray-400">No icon</span>
         )}
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         {serviceCategory.bannerImage ? (
-          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <div className="flex items-center justify-center w-20 h-12 rounded-lg overflow-hidden bg-gray-100 ">
             <img
               src={serviceCategory.bannerImage}
               alt={`${serviceCategory.name} banner`}
@@ -236,12 +236,12 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+              className="h-8 w-8 text-black hover:bg-[#FE8A0F]/10"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+          <DropdownMenuContent align="end" className="bg-white border-0 shadow-xl shadow-gray-300 ">
             <DropdownMenuItem
               onClick={() => {
                 let sectorSlug: string | undefined;
@@ -267,49 +267,49 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
                   toast.error("Sector or service category slug not available");
                 }
               }}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <Eye className="h-4 w-4 mr-2" />
               View Service Category
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onViewSubCategories(serviceCategory)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <FolderTree className="h-4 w-4 mr-2" />
               Child Category
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onManageTitles(serviceCategory)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <Type className="h-4 w-4 mr-2" />
               Titles
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onManageAttributes(serviceCategory)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <List className="h-4 w-4 mr-2" />
               Attributes
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onManageIdealFor(serviceCategory)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <Target className="h-4 w-4 mr-2" />
               Service Ideal For
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onEdit(serviceCategory)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <Edit2 className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onToggleActive(serviceCategory)}
-              className={serviceCategory.isActive ? "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer" : "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"}
+              className={serviceCategory.isActive ? "text-red-600  hover:bg-red-500/10 cursor-pointer" : "text-green-600  hover:bg-green-500/10 cursor-pointer"}
             >
               {serviceCategory.isActive ? (
                 <>
@@ -325,7 +325,7 @@ function SortableServiceCategoryRow({ serviceCategory, onEdit, onDelete, onToggl
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(serviceCategory)}
-              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+              className="text-red-600  hover:bg-red-500/10 cursor-pointer"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -2225,13 +2225,13 @@ export default function AdminServiceCategoriesPage() {
                     </div>
                   )}
                   <div className="ml-auto">
-                    <h2 className="text-xl font-bold text-black dark:text-white">
+                    <h2 className="text-xl font-bold text-black">
                       {selectedParentSubCategory 
                         ? `Child Categories of ${selectedParentSubCategory.name}`
                         : `Child Categories - ${selectedServiceCategory.name}`
                       }
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-gray-500 ">
                       {selectedParentSubCategory 
                         ? `Manage nested child categories (Level ${(selectedParentSubCategory.level || 1) + 1})`
                         : "Manage child categories for this service category"
@@ -2242,7 +2242,7 @@ export default function AdminServiceCategoriesPage() {
 
                 {/* Tabs for Child Categories (Level 2-6, only when no parent subcategory) */}
                 {!selectedParentSubCategory && selectedServiceCategory && (
-                  <div className="border-b border-gray-200 dark:border-gray-700">
+                  <div className="border-b border-gray-200 ">
                     <div className="flex gap-2 overflow-x-auto">
                       {/* Level 2 Tab - Sub Category (First Tab) */}
                       {selectedServiceCategory.level && selectedServiceCategory.level >= 2 && (
@@ -2257,7 +2257,7 @@ export default function AdminServiceCategoriesPage() {
                           className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                             selectedAttributeType === null
                               ? 'border-[#FE8A0F] text-[#FE8A0F]'
-                              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-[#FE8A0F] hover:border-gray-300 dark:hover:border-gray-600'
+                              : 'border-transparent text-gray-500  hover:text-[#FE8A0F] hover:border-gray-300'
                           }`}
                         >
                           Sub Category
@@ -2291,7 +2291,7 @@ export default function AdminServiceCategoriesPage() {
                               className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                                 selectedAttributeType === mapping.attributeType
                                   ? 'border-[#FE8A0F] text-[#FE8A0F]'
-                                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-[#FE8A0F] hover:border-gray-300 dark:hover:border-gray-600'
+                                  : 'border-transparent text-gray-500  hover:text-[#FE8A0F] hover:border-gray-300'
                               }`}
                             >
                               {label}
@@ -2305,32 +2305,32 @@ export default function AdminServiceCategoriesPage() {
                 {/* Search and Controls */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-black dark:text-white whitespace-nowrap">
+                    <p className="text-sm text-black whitespace-nowrap">
                       Total: <span className="text-[#FE8A0F] font-semibold">{subCategoryTotal}</span> subcategories
                     </p>
                   </div>
                   <div className="relative flex-shrink-0" style={{ width: '200px' }}>
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50" />
                     <Input
                       type="text"
                       placeholder="Search"
                       value={subCategorySearchTerm}
                       onChange={(e) => setSubCategorySearchTerm(e.target.value)}
-                      className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                      className="pl-10 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="subCategoryRowsPerPage" className="text-sm text-black dark:text-white whitespace-nowrap">
+                    <Label htmlFor="subCategoryRowsPerPage" className="text-sm text-black whitespace-nowrap">
                       Rows per page:
                     </Label>
                     <Select value={limit.toString()} onValueChange={(value) => {
                       setLimit(parseInt(value));
                       setSubCategoryPage(1);
                     }}>
-                      <SelectTrigger id="subCategoryRowsPerPage" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                      <SelectTrigger id="subCategoryRowsPerPage" className="w-20 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                      <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                         <SelectItem value="10">10</SelectItem>
                         <SelectItem value="20">20</SelectItem>
                         <SelectItem value="50">50</SelectItem>
@@ -2350,10 +2350,10 @@ export default function AdminServiceCategoriesPage() {
                 </div>
 
                 {/* Child Categories Table */}
-                <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+                <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
                   {serviceSubCategories.length === 0 ? (
                     <div className="text-center py-12">
-                      <p className="text-black dark:text-white">No child categories found</p>
+                      <p className="text-black">No child categories found</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -2404,19 +2404,19 @@ export default function AdminServiceCategoriesPage() {
                             })();
 
                             return (
-                            <TableRow key={subCategory._id} className="border-0 hover:bg-gray-50 dark:hover:bg-gray-900">
-                              <TableCell className="text-black dark:text-white">{subCategory.order || 0}</TableCell>
-                              <TableCell className="text-black dark:text-white font-medium">{subCategory.name}</TableCell>
-                              <TableCell className="text-black dark:text-white">
+                            <TableRow key={subCategory._id} className="border-0 hover:bg-gray-50">
+                              <TableCell className="text-black">{subCategory.order || 0}</TableCell>
+                              <TableCell className="text-black font-medium">{subCategory.name}</TableCell>
+                              <TableCell className="text-black">
                                 {parentName ? (
-                                  <span className="text-sm text-gray-600 dark:text-gray-400" title={parentName}>
+                                  <span className="text-sm text-gray-600 " title={parentName}>
                                     {parentName.length > 30 ? parentName.substring(0, 30) + "..." : parentName}
                                   </span>
                                 ) : (
                                   <span className="text-sm text-gray-400">-</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-black dark:text-white">
+                              <TableCell className="text-black">
                                 {subCategory.slug ? (
                                   <span className="truncate" title={subCategory.slug}>
                                     {subCategory.slug.length > 20 ? subCategory.slug.substring(0, 20) + "..." : subCategory.slug}
@@ -2425,14 +2425,14 @@ export default function AdminServiceCategoriesPage() {
                                   "-"
                                 )}
                               </TableCell>
-                              <TableCell className="text-black dark:text-white">
+                              <TableCell className="text-black">
                                 {subCategory.icon ? (
                                   <img src={subCategory.icon} alt="Icon" className="w-8 h-8 object-cover rounded" />
                                 ) : (
                                   <span className="text-gray-400 text-sm">No icon</span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-black dark:text-white">
+                              <TableCell className="text-black">
                                 {subCategory.bannerImage ? (
                                   <img src={subCategory.bannerImage} alt="Banner" className="w-16 h-8 object-cover rounded" />
                                 ) : (
@@ -2445,12 +2445,12 @@ export default function AdminServiceCategoriesPage() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+                                      className="h-8 w-8 text-black hover:bg-[#FE8A0F]/10"
                                     >
                                       <MoreVertical className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                                  <DropdownMenuContent align="end" className="bg-white border-0 shadow-xl shadow-gray-300 ">
                                     {/* View Category menu for all subcategory levels */}
                                     {selectedServiceCategory && subCategory.slug && (() => {
                                       // Get sector slug from selectedServiceCategory
@@ -2479,7 +2479,7 @@ export default function AdminServiceCategoriesPage() {
                                         return (
                                           <DropdownMenuItem
                                             onClick={() => window.open(urlPath, '_blank', 'noopener,noreferrer')}
-                                            className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                            className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
                                           >
                                             <Eye className="h-4 w-4 mr-2" />
                                             View Category
@@ -2491,7 +2491,7 @@ export default function AdminServiceCategoriesPage() {
                                     {(subCategory.level || 1) < 7 && (
                                       <DropdownMenuItem
                                         onClick={() => handleViewNestedSubCategories(subCategory)}
-                                        className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                        className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
                                       >
                                         <FolderTree className="h-4 w-4 mr-2" />
                                         Child Categories
@@ -2499,7 +2499,7 @@ export default function AdminServiceCategoriesPage() {
                                     )}
                                     <DropdownMenuItem
                                       onClick={() => handleEditSubCategory(subCategory)}
-                                      className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                      className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
                                     >
                                       <Edit2 className="h-4 w-4 mr-2" />
                                       Edit
@@ -2551,7 +2551,7 @@ export default function AdminServiceCategoriesPage() {
                                           itemName: subCategory.name,
                                         });
                                       }}
-                                      className={subCategory.isActive ? "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer" : "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"}
+                                      className={subCategory.isActive ? "text-red-600  hover:bg-red-500/10 cursor-pointer" : "text-green-600  hover:bg-green-500/10 cursor-pointer"}
                                     >
                                       {subCategory.isActive ? (
                                         <>
@@ -2610,7 +2610,7 @@ export default function AdminServiceCategoriesPage() {
                                           itemName: subCategory.name,
                                         });
                                       }}
-                                      className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                                      className="text-red-600  hover:bg-red-500/10 cursor-pointer"
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Delete
@@ -2628,8 +2628,8 @@ export default function AdminServiceCategoriesPage() {
 
                   {/* Pagination */}
                   {subCategoryTotalPages > 1 && (
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <p className="text-sm text-black dark:text-white">
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 ">
+                      <p className="text-sm text-black">
                         Page <span className="text-[#FE8A0F] font-semibold">{subCategoryPage}</span> of <span className="text-[#FE8A0F] font-semibold">{subCategoryTotalPages}</span>
                       </p>
                       <div className="flex gap-2">
@@ -2638,7 +2638,7 @@ export default function AdminServiceCategoriesPage() {
                           size="sm"
                           onClick={() => setSubCategoryPage((p) => Math.max(1, p - 1))}
                           disabled={subCategoryPage === 1}
-                          className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                          className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
                           Previous
@@ -2648,7 +2648,7 @@ export default function AdminServiceCategoriesPage() {
                           size="sm"
                           onClick={() => setSubCategoryPage((p) => Math.min(subCategoryTotalPages, p + 1))}
                           disabled={subCategoryPage === subCategoryTotalPages}
-                          className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
+                          className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
                         >
                           Next
                           <ChevronRight className="h-4 w-4 ml-1" />
@@ -2668,32 +2668,32 @@ export default function AdminServiceCategoriesPage() {
               {/* Search and Controls - All in one row */}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-black dark:text-white whitespace-nowrap">
+                  <p className="text-sm text-black whitespace-nowrap">
                     Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> service categories
                   </p>
                 </div>
                 <div className="relative flex-shrink-0" style={{ width: '200px' }}>
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50" />
                   <Input
                     type="text"
                     placeholder="Search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="pl-10 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="rows-per-page" className="text-sm text-black dark:text-white whitespace-nowrap">
+                  <Label htmlFor="rows-per-page" className="text-sm text-black whitespace-nowrap">
                     Rows per page:
                   </Label>
                   <Select value={limit.toString()} onValueChange={(value) => {
                     setLimit(parseInt(value));
                     setPage(1);
                   }}>
-                    <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                    <SelectTrigger id="rows-per-page" className="w-20 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                    <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                       <SelectItem value="10">10</SelectItem>
                       <SelectItem value="20">20</SelectItem>
                       <SelectItem value="50">50</SelectItem>
@@ -2713,10 +2713,10 @@ export default function AdminServiceCategoriesPage() {
               </div>
 
               {/* Table */}
-              <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+              <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
                 {currentServiceCategories.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-black dark:text-white">No service categories found</p>
+                    <p className="text-black">No service categories found</p>
                   </div>
                 ) : (
                   <DndContext
@@ -2766,7 +2766,7 @@ export default function AdminServiceCategoriesPage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-6 pt-4 border-0 shadow-sm">
-                    <p className="text-sm text-black dark:text-white">
+                    <p className="text-sm text-black">
                       Page <span className="text-[#FE8A0F] font-semibold">{page}</span> of <span className="text-[#FE8A0F] font-semibold">{totalPages}</span>
                     </p>
                     <div className="flex gap-2">
@@ -2775,7 +2775,7 @@ export default function AdminServiceCategoriesPage() {
                         size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                        className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                       >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
@@ -2785,7 +2785,7 @@ export default function AdminServiceCategoriesPage() {
                         size="sm"
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
-                        className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                        className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                       >
                         Next
                         <ChevronRight className="h-4 w-4 ml-1" />
@@ -2801,7 +2801,7 @@ export default function AdminServiceCategoriesPage() {
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl shadow-gray-400 ">
           <DialogHeader>
             <DialogTitle className="text-[#FE8A0F] text-2xl">
               {editingServiceCategory ? "Edit Service Category" : "Create New Service Category"}
@@ -2812,17 +2812,17 @@ export default function AdminServiceCategoriesPage() {
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="sector" className="text-black dark:text-white">
+                <Label htmlFor="sector" className="text-black">
                   Sector <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.sector}
                   onValueChange={(value) => handleInputChange("sector", value)}
                 >
-                  <SelectTrigger className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                  <SelectTrigger className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                     <SelectValue placeholder="Select a sector" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                  <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                     {sectors.map((sector) => (
                       <SelectItem key={sector._id} value={sector._id}>
                         {sector.name}
@@ -2832,7 +2832,7 @@ export default function AdminServiceCategoriesPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="name" className="text-black dark:text-white">
+                <Label htmlFor="name" className="text-black">
                   Service Category Name <span className="text-red-500">*</span>
                 </Label>
                   <Input
@@ -2840,24 +2840,24 @@ export default function AdminServiceCategoriesPage() {
                     value={formData.name || ""}
                     onChange={(e) => handleInputChange("name", e.target.value)}
                     placeholder="Plumbing"
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
               </div>
               <div>
-                <Label htmlFor="slug" className="text-black dark:text-white">
+                <Label htmlFor="slug" className="text-black">
                   Slug <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
+                  <span className="text-xs text-gray-500  ml-2">(Auto-generated from name)</span>
                 </Label>
                   <Input
                     id="slug"
                     value={formData.slug || ""}
                     disabled
                     placeholder="plumbing"
-                    className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    className="mt-1 bg-gray-100  border-0 text-gray-500  cursor-not-allowed"
                   />
               </div>
               <div className="flex items-center gap-4">
-                <Label htmlFor="isActive" className="text-black dark:text-white">
+                <Label htmlFor="isActive" className="text-black">
                   Status
                 </Label>
                 <div className="flex items-center gap-2">
@@ -2868,7 +2868,7 @@ export default function AdminServiceCategoriesPage() {
                     onChange={(e) => handleInputChange("isActive", e.target.checked)}
                     className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                   />
-                  <span className="text-sm text-black dark:text-white">
+                  <span className="text-sm text-black">
                     {formData.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
@@ -2877,31 +2877,31 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Category Level Mapping */}
             <div>
-              <Label className="text-black dark:text-white mb-2 block">
+              <Label className="text-black mb-2 block">
                 Category Level Mapping <span className="text-red-500">*</span>
               </Label>
-              <div className="space-y-2 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-2 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {/* Level 1 - Fixed: Main Category */}
-                <div className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
-                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                <div className="flex items-center gap-3 p-2 bg-white rounded-lg border-2 border-gray-200 ">
+                  <Label className="text-black font-semibold w-40 flex-shrink-0">
                     Category Level 1:
                   </Label>
                   <Input
                     value="Main Category"
                     disabled
-                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400"
+                    className="flex-1 bg-gray-100  border-0 text-gray-500 "
                   />
                 </div>
 
                 {/* Level 2 - Fixed: Sub Category */}
-                <div className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
-                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                <div className="flex items-center gap-3 p-2 bg-white rounded-lg border-2 border-gray-200 ">
+                  <Label className="text-black font-semibold w-40 flex-shrink-0">
                     Category Level 2:
                   </Label>
                   <Input
                     value="Sub Category"
                     disabled
-                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400"
+                    className="flex-1 bg-gray-100  border-0 text-gray-500 "
                   />
                 </div>
 
@@ -2918,8 +2918,8 @@ export default function AdminServiceCategoriesPage() {
                   if (!shouldShow) return null;
 
                   return (
-                    <div key={level} className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
-                      <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                    <div key={level} className="flex items-center gap-3 p-2 bg-white rounded-lg border-2 border-gray-200 ">
+                      <Label className="text-black font-semibold w-40 flex-shrink-0">
                         Category Level {level}:
                       </Label>
                       <Select
@@ -2948,10 +2948,10 @@ export default function AdminServiceCategoriesPage() {
                           });
                         }}
                       >
-                        <SelectTrigger className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                        <SelectTrigger className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                           <SelectValue placeholder="Select attribute type" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                        <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                           {ATTRIBUTE_TYPES.map((type) => (
                             <SelectItem
                               key={type.value}
@@ -2970,7 +2970,7 @@ export default function AdminServiceCategoriesPage() {
 
                 {/* Level Selection */}
                 <div className="flex items-center gap-3 p-2 pt-3">
-                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                  <Label className="text-black font-semibold w-40 flex-shrink-0">
                     Number of Levels <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -3003,10 +3003,10 @@ export default function AdminServiceCategoriesPage() {
                       });
                     }}
                   >
-                    <SelectTrigger className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                    <SelectTrigger className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                       <SelectValue placeholder="Select number of levels" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                    <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                       {[3, 4, 5, 6, 7].map((level) => (
                         <SelectItem key={level} value={level.toString()}>
                           {level} Levels
@@ -3020,7 +3020,7 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Description */}
             <div>
-              <Label htmlFor="description" className="text-black dark:text-white">
+              <Label htmlFor="description" className="text-black">
                 Description
               </Label>
                 <Textarea
@@ -3028,14 +3028,14 @@ export default function AdminServiceCategoriesPage() {
                   value={formData.description || ""}
                   onChange={(e) => handleInputChange("description", e.target.value)}
                   placeholder="Describe this service category..."
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
             </div>
 
             {/* Meta Title and Meta Description */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="metaTitle" className="text-black dark:text-white">
+                <Label htmlFor="metaTitle" className="text-black">
                   Meta Title
                 </Label>
                 <Input
@@ -3043,11 +3043,11 @@ export default function AdminServiceCategoriesPage() {
                   value={formData.metaTitle || ""}
                   onChange={(e) => handleInputChange("metaTitle", e.target.value)}
                   placeholder="SEO meta title"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
               <div>
-                <Label htmlFor="metaDescription" className="text-black dark:text-white">
+                <Label htmlFor="metaDescription" className="text-black">
                   Meta Description
                 </Label>
                 <Textarea
@@ -3055,7 +3055,7 @@ export default function AdminServiceCategoriesPage() {
                   value={formData.metaDescription || ""}
                   onChange={(e) => handleInputChange("metaDescription", e.target.value)}
                   placeholder="SEO meta description"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
             </div>
@@ -3063,7 +3063,7 @@ export default function AdminServiceCategoriesPage() {
             {/* Images */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="icon" className="text-black dark:text-white">
+                <Label htmlFor="icon" className="text-black">
                   Icon
                 </Label>
                 <div className="mt-1 flex gap-2">
@@ -3075,7 +3075,7 @@ export default function AdminServiceCategoriesPage() {
                       setIconPreview(e.target.value || null);
                     }}
                     placeholder="Icon URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
                     type="file"
@@ -3092,7 +3092,7 @@ export default function AdminServiceCategoriesPage() {
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
                     title="Upload icon"
                   >
                     {uploadingImage.type === "icon" && uploadingImage.loading ? (
@@ -3116,7 +3116,7 @@ export default function AdminServiceCategoriesPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="bannerImage" className="text-black dark:text-white">
+                <Label htmlFor="bannerImage" className="text-black">
                   Banner Image
                 </Label>
                 <div className="mt-1 flex gap-2">
@@ -3128,7 +3128,7 @@ export default function AdminServiceCategoriesPage() {
                       setBannerPreview(e.target.value || null);
                     }}
                     placeholder="Banner image URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
                     type="file"
@@ -3145,7 +3145,7 @@ export default function AdminServiceCategoriesPage() {
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
                     disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
                     title="Upload banner"
                   >
                     {uploadingImage.type === "banner" && uploadingImage.loading ? (
@@ -3173,7 +3173,7 @@ export default function AdminServiceCategoriesPage() {
             {/* Service Ideal For */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Service Ideal For</Label>
+                <Label className="text-black">Service Ideal For</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -3187,20 +3187,20 @@ export default function AdminServiceCategoriesPage() {
                       ],
                     }));
                   }}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   Add Option
                 </Button>
               </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {(!formData.serviceIdealFor || formData.serviceIdealFor.length === 0) ? (
-                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                  <p className="text-sm text-black/50 text-center py-4">
                     No options. Click "Add Option" to add one.
                   </p>
                 ) : (
                   (formData.serviceIdealFor || []).map((option, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
                       <Input
                         value={option.name || ""}
                         onChange={(e) => {
@@ -3211,7 +3211,7 @@ export default function AdminServiceCategoriesPage() {
                           });
                         }}
                         placeholder="e.g., Homeowners, Small businesses, Landlords"
-                        className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                        className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                       />
                       <Button
                         type="button"
@@ -3223,7 +3223,7 @@ export default function AdminServiceCategoriesPage() {
                             serviceIdealFor: prev.serviceIdealFor.filter((_, i) => i !== index),
                           }));
                         }}
-                        className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                        className="h-8 w-8 p-0 text-red-600  hover:bg-red-500/10"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -3236,7 +3236,7 @@ export default function AdminServiceCategoriesPage() {
             {/* Add Extra Services */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Extra Services</Label>
+                <Label className="text-black">Extra Services</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -3250,23 +3250,23 @@ export default function AdminServiceCategoriesPage() {
                       ],
                     }));
                   }}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   Add Extra Service
                 </Button>
               </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {(!formData.extraServices || formData.extraServices.length === 0) ? (
-                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                  <p className="text-sm text-black/50 text-center py-4">
                     No extra services. Click "Add Extra Service" to add one.
                   </p>
                 ) : (
                   (formData.extraServices || []).map((service, index) => (
-                    <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm space-y-3">
+                    <div key={index} className="p-3 bg-white rounded-lg shadow-sm space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <Label className="text-black dark:text-white text-sm">Name</Label>
+                          <Label className="text-black text-sm">Name</Label>
                           <Input
                             value={service.name || ""}
                             onChange={(e) => {
@@ -3277,11 +3277,11 @@ export default function AdminServiceCategoriesPage() {
                               });
                             }}
                             placeholder="Service name"
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                         <div>
-                          <Label className="text-black dark:text-white text-sm">Price</Label>
+                          <Label className="text-black text-sm">Price</Label>
                           <Input
                             type="number"
                             value={service.price || 0}
@@ -3293,11 +3293,11 @@ export default function AdminServiceCategoriesPage() {
                               });
                             }}
                             placeholder="0.00"
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                         <div>
-                          <Label className="text-black dark:text-white text-sm">Days</Label>
+                          <Label className="text-black text-sm">Days</Label>
                           <Input
                             type="number"
                             value={service.days || 0}
@@ -3309,7 +3309,7 @@ export default function AdminServiceCategoriesPage() {
                               });
                             }}
                             placeholder="0"
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                       </div>
@@ -3324,7 +3324,7 @@ export default function AdminServiceCategoriesPage() {
                               extraServices: prev.extraServices.filter((_, i) => i !== index),
                             }));
                           }}
-                          className="h-8 px-3 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                          className="h-8 px-3 text-red-600  hover:bg-red-500/10"
                         >
                           <X className="w-4 h-4 mr-1" />
                           Remove
@@ -3354,12 +3354,12 @@ export default function AdminServiceCategoriesPage() {
                   }}
                   className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                 />
-                <Label htmlFor="pricePerUnit" className="text-black dark:text-white">
+                <Label htmlFor="pricePerUnit" className="text-black">
                   Price Per Unit
                 </Label>
               </div>
               {(formData.pricePerUnit?.enabled || false) && (
-                <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+                <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                   <div className="flex justify-end">
                     <Button
                       type="button"
@@ -3377,22 +3377,22 @@ export default function AdminServiceCategoriesPage() {
                           },
                         }));
                       }}
-                      className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                      className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                     >
                       <Plus className="w-4 h-4" />
                       Add Price Unit
                     </Button>
                   </div>
                   {(!formData.pricePerUnit?.units || formData.pricePerUnit.units.length === 0) ? (
-                    <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                    <p className="text-sm text-black/50 text-center py-4">
                       No price units. Click "Add Price Unit" to add one.
                     </p>
                   ) : (
                     (formData.pricePerUnit?.units || []).map((unit, index) => (
-                      <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                      <div key={index} className="p-3 bg-white rounded-lg shadow-sm">
                         <div className="flex items-end gap-2">
                           <div className="flex-1">
-                            <Label className="text-black dark:text-white text-sm">Unit Name</Label>
+                            <Label className="text-black text-sm">Unit Name</Label>
                             <Input
                               value={unit.name || ""}
                               onChange={(e) => {
@@ -3409,7 +3409,7 @@ export default function AdminServiceCategoriesPage() {
                                 });
                               }}
                               placeholder="e.g., Per hour, Per square meter"
-                              className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                              className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                             />
                           </div>
                           <Button
@@ -3425,7 +3425,7 @@ export default function AdminServiceCategoriesPage() {
                                 },
                               }));
                             }}
-                            className="h-10 w-10 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-1"
+                            className="h-10 w-10 p-0 text-red-600  hover:bg-red-500/10 mt-1"
                             title="Remove unit"
                           >
                             <X className="w-4 h-4" />
@@ -3444,7 +3444,7 @@ export default function AdminServiceCategoriesPage() {
               variant="outline"
               onClick={() => setIsModalOpen(false)}
               disabled={isSaving}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>
@@ -3471,14 +3471,14 @@ export default function AdminServiceCategoriesPage() {
 
       {/* Confirmation Modal */}
       <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
-        <DialogContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+        <DialogContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
           <DialogHeader>
-            <DialogTitle className="text-black dark:text-white">
+            <DialogTitle className="text-black">
               {confirmModal.title}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-700 dark:text-gray-300 text-sm">
+            <p className="text-gray-700  text-sm">
               {confirmModal.message}
             </p>
           </div>
@@ -3486,7 +3486,7 @@ export default function AdminServiceCategoriesPage() {
             <Button
               variant="outline"
               onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>
@@ -3512,9 +3512,9 @@ export default function AdminServiceCategoriesPage() {
 
       {/* Sub Category Create/Edit Modal */}
       <Dialog open={isSubCategoryModalOpen} onOpenChange={setIsSubCategoryModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-black dark:text-white">
+            <DialogTitle className="text-2xl font-bold text-black">
               {editingServiceSubCategory 
                 ? "Edit Child Category" 
                 : (() => {
@@ -3552,13 +3552,13 @@ export default function AdminServiceCategoriesPage() {
           <div className="space-y-6 mt-4">
             {/* Service Category (Read-only) */}
             <div>
-              <Label className="text-black dark:text-white">
+              <Label className="text-black">
                 Main Category <span className="text-red-500">*</span>
               </Label>
               <Input
                 value={selectedServiceCategory?.name || ""}
                 disabled
-                className="mt-1 bg-gray-100 dark:bg-gray-800"
+                className="mt-1 bg-gray-100 "
               />
             </div>
 
@@ -3597,7 +3597,7 @@ export default function AdminServiceCategoriesPage() {
                 
                 return (
               <div>
-                    <Label className="text-black dark:text-white">
+                    <Label className="text-black">
                       Parent Category {subCategoryFormData.level >= 3 && subCategoryFormData.level <= 7 && <span className="text-red-500">*</span>}
                     </Label>
                     <Select
@@ -3616,15 +3616,15 @@ export default function AdminServiceCategoriesPage() {
                             <div className="flex flex-col gap-0.5">
                               {subCat.breadcrumbPath ? (
                                 <>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
+                                  <span className="text-xs text-gray-500  leading-tight">
                                     {subCat.breadcrumbPath}
                                   </span>
-                                  <span className="text-sm font-medium text-black dark:text-white leading-tight">
+                                  <span className="text-sm font-medium text-black leading-tight">
                             {subCat.name}
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-sm font-medium text-black dark:text-white leading-tight">
+                                <span className="text-sm font-medium text-black leading-tight">
                                   {subCat.name}
                                 </span>
                               )}
@@ -3641,11 +3641,11 @@ export default function AdminServiceCategoriesPage() {
               if (selectedParentSubCategory) {
                 return (
                   <div>
-                    <Label className="text-black dark:text-white">Parent Category</Label>
+                    <Label className="text-black">Parent Category</Label>
                 <Input
                   value={selectedParentSubCategory.name}
                   disabled
-                  className="mt-1 bg-gray-100 dark:bg-gray-800"
+                  className="mt-1 bg-gray-100 "
                 />
               </div>
                 );
@@ -3656,17 +3656,17 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Level (Read-only) */}
             <div>
-              <Label className="text-black dark:text-white">Level</Label>
+              <Label className="text-black">Level</Label>
               <Input
                 value={`Level ${subCategoryFormData.level || 1}`}
                 disabled
-                className="mt-1 bg-gray-100 dark:bg-gray-800"
+                className="mt-1 bg-gray-100 "
               />
             </div>
 
             {/* Name */}
             <div>
-              <Label htmlFor="subCategoryName" className="text-black dark:text-white">
+              <Label htmlFor="subCategoryName" className="text-black">
                 Sub Category Name <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -3685,22 +3685,22 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Slug */}
             <div>
-              <Label htmlFor="subCategorySlug" className="text-black dark:text-white">
+              <Label htmlFor="subCategorySlug" className="text-black">
                 Slug <span className="text-red-500">*</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
+                <span className="text-xs text-gray-500  ml-2">(Auto-generated from name)</span>
               </Label>
               <Input
                 id="subCategorySlug"
                 value={subCategoryFormData.slug}
                 disabled
                 placeholder="Enter slug"
-                className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                className="mt-1 bg-gray-100  border-0 text-gray-500  cursor-not-allowed"
               />
             </div>
 
             {/* Description */}
             <div>
-              <Label htmlFor="subCategoryDescription" className="text-black dark:text-white">
+              <Label htmlFor="subCategoryDescription" className="text-black">
                 Description
               </Label>
               <Textarea
@@ -3715,7 +3715,7 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Meta Title */}
             <div>
-              <Label htmlFor="subCategoryMetaTitle" className="text-black dark:text-white">
+              <Label htmlFor="subCategoryMetaTitle" className="text-black">
                 Meta Title
               </Label>
               <Input
@@ -3729,7 +3729,7 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Meta Description */}
             <div>
-              <Label htmlFor="subCategoryMetaDescription" className="text-black dark:text-white">
+              <Label htmlFor="subCategoryMetaDescription" className="text-black">
                 Meta Description
               </Label>
               <Textarea
@@ -3744,7 +3744,7 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Icon Upload */}
             <div>
-              <Label className="text-black dark:text-white">Category Icon</Label>
+              <Label className="text-black">Category Icon</Label>
               <div className="mt-2 space-y-2">
                 <Input
                   type="url"
@@ -3791,7 +3791,7 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Banner Image Upload */}
             <div>
-              <Label className="text-black dark:text-white">Banner Image</Label>
+              <Label className="text-black">Banner Image</Label>
               <div className="mt-2 space-y-2">
                 <Input
                   type="url"
@@ -3838,9 +3838,9 @@ export default function AdminServiceCategoriesPage() {
 
             {/* Service Title Suggestions */}
             <div>
-              <Label htmlFor="serviceTitleSuggestions" className="text-black dark:text-white">
+              <Label htmlFor="serviceTitleSuggestions" className="text-black">
                 Service Title Suggestions
-                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                <span className="text-xs text-gray-500  ml-2">
                   (Enter titles separated by commas)
                 </span>
               </Label>
@@ -3861,7 +3861,7 @@ export default function AdminServiceCategoriesPage() {
                 className="mt-1"
                 rows={3}
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-500  mt-1">
                 These suggestions will appear when users create services in this subcategory
               </p>
             </div>
@@ -3898,9 +3898,9 @@ export default function AdminServiceCategoriesPage() {
 
       {/* View Sub Categories Modal */}
       <Dialog open={isSubCategoriesModalOpen} onOpenChange={setIsSubCategoriesModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white dark:bg-black border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-white border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
+            <DialogTitle className="text-2xl font-bold text-black flex items-center gap-2">
               <FolderTree className="w-6 h-6 text-[#FE8A0F]" />
               Child Categories - {viewingSubCategories?.name}
             </DialogTitle>
@@ -3908,7 +3908,7 @@ export default function AdminServiceCategoriesPage() {
           <div className="space-y-4 mt-4">
             {viewingSubCategories?.subCategories && viewingSubCategories.subCategories.length > 0 ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-4 gap-4 font-semibold text-[#FE8A0F] pb-2 border-b border-gray-200 dark:border-gray-700">
+                <div className="grid grid-cols-4 gap-4 font-semibold text-[#FE8A0F] pb-2 border-b border-gray-200 ">
                   <div>Order</div>
                   <div>Name</div>
                   <div>Titles</div>
@@ -3919,15 +3919,15 @@ export default function AdminServiceCategoriesPage() {
                   .map((subCategory) => (
                     <div
                       key={subCategory._id}
-                      className="grid grid-cols-4 gap-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700"
+                      className="grid grid-cols-4 gap-4 p-3 bg-gray-50  rounded-lg border border-gray-200 "
                     >
-                      <div className="text-black dark:text-white font-medium">
+                      <div className="text-black font-medium">
                         {subCategory.order || 0}
                       </div>
-                      <div className="text-black dark:text-white font-medium">
+                      <div className="text-black font-medium">
                         {subCategory.name}
                       </div>
-                      <div className="text-black dark:text-white">
+                      <div className="text-black">
                         {subCategory.titles && subCategory.titles.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {subCategory.titles.map((title, idx) => (
@@ -3940,7 +3940,7 @@ export default function AdminServiceCategoriesPage() {
                           <span className="text-gray-400 text-sm">No titles</span>
                         )}
                       </div>
-                      <div className="text-black dark:text-white">
+                      <div className="text-black">
                         {subCategory.attributes && subCategory.attributes.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {subCategory.attributes.map((attr, idx) => (
@@ -3959,7 +3959,7 @@ export default function AdminServiceCategoriesPage() {
             ) : (
               <div className="text-center py-12">
                 <FolderTree className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
+                <p className="text-gray-500  text-lg">
                   No child categories found for this service category.
                 </p>
               </div>
@@ -3979,13 +3979,13 @@ export default function AdminServiceCategoriesPage() {
 
       {/* Manage Titles Modal */}
       <Dialog open={isTitlesModalOpen} onOpenChange={setIsTitlesModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white border-2 border-[#FE8A0F] shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
+            <DialogTitle className="text-2xl font-bold text-black flex items-center gap-2">
               <Type className="w-6 h-6 text-[#FE8A0F]" />
               {managingServiceCategory?.name} - Service Title Suggestions
             </DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-sm text-gray-600  mt-2">
               Manage service title suggestions that will appear when users create services in each subcategory
             </p>
           </DialogHeader>
@@ -4056,7 +4056,7 @@ export default function AdminServiceCategoriesPage() {
                                 <ChevronRight className="w-4 h-4" />
                               )}
                             </Button>
-                            <span className="font-semibold text-black dark:text-white">
+                            <span className="font-semibold text-black">
                               {subCategory.name}
                             </span>
                           </div>
@@ -4112,7 +4112,7 @@ export default function AdminServiceCategoriesPage() {
                               </div>
                             ))
                           ) : (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-gray-500 ">
                               No title suggestions yet
                             </p>
                           )}
@@ -4120,7 +4120,7 @@ export default function AdminServiceCategoriesPage() {
 
                         {/* Child subcategories (if expanded) */}
                         {expandedSubCategories.has(subCategory._id) && (
-                          <div className="ml-8 mt-3 space-y-2 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                          <div className="ml-8 mt-3 space-y-2 border-l-2 border-gray-200  pl-4">
                             {loadingSubCategories[parseInt(selectedCategoryLevel) + 1] ? (
                               <div className="flex items-center justify-center py-4">
                                 <Loader2 className="w-4 h-4 animate-spin text-[#FE8A0F]" />
@@ -4134,9 +4134,9 @@ export default function AdminServiceCategoriesPage() {
                                   return parentId === subCategory._id;
                                 })
                                 .map((childSubCategory: any) => (
-                                  <div key={childSubCategory._id} className="border rounded p-3 space-y-2 bg-gray-50 dark:bg-gray-900">
+                                  <div key={childSubCategory._id} className="border rounded p-3 space-y-2 bg-gray-50 ">
                                     <div className="flex items-center justify-between">
-                                      <span className="text-sm font-medium text-black dark:text-white">
+                                      <span className="text-sm font-medium text-black">
                                         {childSubCategory.name}
                                       </span>
                                       <Button
@@ -4189,7 +4189,7 @@ export default function AdminServiceCategoriesPage() {
                                           </div>
                                         ))
                                       ) : (
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        <p className="text-xs text-gray-500 ">
                                           No title suggestions yet
                                         </p>
                                       )}

@@ -909,7 +909,7 @@ export default function ProfileSection() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-semibold text-[#FE8A0F]">Public Profile</h2>
-          <p className="text-sm text-black dark:text-white mt-1">
+          <p className="text-sm text-black mt-1">
             Manage your public profile that clients can view
           </p>
         </div>
@@ -997,13 +997,13 @@ export default function ProfileSection() {
       </div>
 
       {/* Profile Link Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-4 md:p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-4 md:p-6 shadow-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1 min-w-0 w-full sm:w-auto">
             <Label className="text-[#FE8A0F] font-semibold mb-2 block">Public Profile Link</Label>
-            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700 min-w-0">
+            <div className="flex items-center gap-2 bg-gray-50  rounded-lg p-3 border border-gray-200  min-w-0">
               <LinkIcon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate min-w-0 overflow-hidden">
+              <span className="text-sm text-gray-700  flex-1 truncate min-w-0 overflow-hidden">
                 {fullProfileUrl}
               </span>
             </div>
@@ -1038,9 +1038,9 @@ export default function ProfileSection() {
       </div>
 
       {/* Cover Image Section */}
-      <div className="bg-white dark:bg-black rounded-XL border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,0,0,0.1)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-4 block">Profile Cover Image</Label>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+        <p className="text-sm text-gray-600  mb-4">
           This image appears as a large banner at the top of your public profile. Recommended size: 1600×400px.
         </p>
         <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-gradient-to-r from-[#FFE5C4] via-[#FFF5EB] to-[#E0F7FA] flex items-center justify-center">
@@ -1112,7 +1112,7 @@ export default function ProfileSection() {
       </div>
 
       {/* Avatar Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-4 block">Profile Picture</Label>
         <div className="flex items-center gap-6">
           <Avatar className="w-24 h-24 border-4 border-[#FE8A0F]/20 flex-shrink-0 shadow-lg">
@@ -1149,7 +1149,7 @@ export default function ProfileSection() {
       </div>
 
       {/* Skills Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Skills</Label>
         {isEditing ? (
           <div className="space-y-3">
@@ -1176,7 +1176,7 @@ export default function ProfileSection() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full justify-start text-left font-normal border-[#FE8A0F] text-black dark:text-white bg-white dark:bg-black"
+                  className="w-full justify-start text-left font-normal border-[#FE8A0F] text-black bg-white"
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add skill...
@@ -1237,7 +1237,7 @@ export default function ProfileSection() {
       </div>
 
       {/* Qualifications Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Qualifications</Label>
         {isEditing ? (
           <div className="space-y-3 mt-2">
@@ -1251,7 +1251,7 @@ export default function ProfileSection() {
                     setQualifications(newQualifications);
                   }}
                   placeholder="e.g., NVQ Level 3 in Plumbing (Registration: PL123456)"
-                  className="flex-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+                  className="flex-1 bg-white border-[#FE8A0F] text-black placeholder:text-black/50 "
                 />
                 {qualifications.length > 1 && (
                   <Button
@@ -1283,17 +1283,17 @@ export default function ProfileSection() {
             </Button>
           </div>
         ) : (
-          <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
             {qualifications.length > 0 && qualifications.some(q => q.trim()) ? (
               <div className="space-y-2">
                 {qualifications.filter(q => q.trim()).map((qual, index) => (
-                  <p key={index} className="text-black dark:text-white">
+                  <p key={index} className="text-black">
                     {qual.trim()}
                   </p>
                 ))}
               </div>
             ) : (
-              <p className="text-black dark:text-white">
+              <p className="text-black">
                 No qualifications added yet. Click 'Edit Profile' to add qualifications.
               </p>
             )}
@@ -1302,40 +1302,40 @@ export default function ProfileSection() {
       </div>
 
       {/* Insurance Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Public Liability Insurance</Label>
         {isEditing ? (
           <div className="space-y-4 mt-2">
             <div>
-              <Label className="text-black dark:text-white mb-1 block">Professional Indemnity Insurance Amount (£)</Label>
+              <Label className="text-black mb-1 block">Professional Indemnity Insurance Amount (£)</Label>
               <Input
                 type="number"
                 value={professionalIndemnityAmount || ""}
                 onChange={(e) => setProfessionalIndemnityAmount(e.target.value ? Number(e.target.value) : null)}
                 placeholder="e.g., 1200000"
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white border-[#FE8A0F] text-black"
               />
             </div>
             <div>
-              <Label className="text-black dark:text-white mb-1 block">Insurance Expiry Date</Label>
+              <Label className="text-black mb-1 block">Insurance Expiry Date</Label>
               <Input
                 type="date"
                 value={insuranceExpiryDate}
                 onChange={(e) => setInsuranceExpiryDate(e.target.value)}
-                className="bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                className="bg-white border-[#FE8A0F] text-black"
               />
             </div>
           </div>
         ) : (
-          <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
             <div className="space-y-2">
               {professionalIndemnityAmount && (
-                <p className="text-black dark:text-white">
+                <p className="text-black">
                   <span className="font-semibold">Limit of indemnity:</span> £{professionalIndemnityAmount.toLocaleString()}
                 </p>
               )}
               {insuranceExpiryDate && (
-                <p className="text-black dark:text-white">
+                <p className="text-black">
                   <span className="font-semibold">Valid until:</span> {new Date(insuranceExpiryDate).toLocaleDateString()}
                 </p>
               )}
@@ -1348,7 +1348,7 @@ export default function ProfileSection() {
       </div>
 
       {/* Certifications Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Certifications</Label>
         {isEditing ? (
           <div className="space-y-3 mt-2">
@@ -1362,7 +1362,7 @@ export default function ProfileSection() {
                     setCertifications(newCertifications);
                   }}
                   placeholder="e.g., Gas Safe Registered (ID: 123456)"
-                  className="flex-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50"
+                  className="flex-1 bg-white border-[#FE8A0F] text-black placeholder:text-black/50 "
                 />
                 {certifications.length > 1 && (
                   <Button
@@ -1373,7 +1373,7 @@ export default function ProfileSection() {
                       const newCertifications = certifications.filter((_, i) => i !== index);
                       setCertifications(newCertifications.length > 0 ? newCertifications : [""]);
                     }}
-                    className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                    className="h-10 w-10 text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -1387,18 +1387,18 @@ export default function ProfileSection() {
               onClick={() => {
                 setCertifications([...certifications, ""]);
               }}
-              className="w-full border-2 border-dashed border-[#FE8A0F] hover:border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F] bg-white dark:bg-black hover:bg-orange-50 dark:hover:bg-orange-950"
+              className="w-full border-2 border-dashed border-[#FE8A0F] hover:border-[#FE8A0F] text-[#FE8A0F] hover:text-[#FE8A0F] bg-white hover:bg-orange-50"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Another Certification
             </Button>
           </div>
         ) : (
-          <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
             {certifications.filter(c => c.trim()).length > 0 ? (
               <ul className="space-y-2">
                 {certifications.filter(c => c.trim()).map((cert, index) => (
-                  <li key={index} className="text-black dark:text-white flex items-start">
+                  <li key={index} className="text-black flex items-start">
                     <span className="text-[#FE8A0F] mr-2">•</span>
                     <span>{cert}</span>
                   </li>
@@ -1412,18 +1412,18 @@ export default function ProfileSection() {
       </div>
 
       {/* Company Details Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xlp-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Company Details</Label>
         {isEditing ? (
           <Textarea
             value={companyDetails}
             onChange={(e) => setCompanyDetails(e.target.value)}
             placeholder="Enter your company details..."
-            className="mt-2 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px]"
+            className="mt-2 bg-white border-[#FE8A0F] text-black placeholder:text-black/50  min-h-[100px]"
           />
         ) : (
-          <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            <p className="text-black dark:text-white whitespace-pre-wrap">
+          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
+            <p className="text-black whitespace-pre-wrap">
               {companyDetails || "No company details added yet. Click 'Edit Profile' to add company details."}
             </p>
           </div>
@@ -1431,19 +1431,19 @@ export default function ProfileSection() {
       </div>
 
       {/* Bio Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <Label className="text-[#FE8A0F] font-semibold mb-2 block">Bio / About Me</Label>
         {isEditing ? (
           <Textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="Tell clients about yourself, your experience, and what makes you unique..."
-            className="mt-2 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[150px]"
+            className="mt-2 bg-white border-[#FE8A0F] text-black placeholder:text-black/50  min-h-[150px]"
             maxLength={1000}
           />
         ) : (
-          <div className="mt-2 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            <p className="text-black dark:text-white whitespace-pre-wrap">
+          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
+            <p className="text-black whitespace-pre-wrap">
               {bio || "No bio added yet. Click 'Edit Profile' to add your bio."}
             </p>
           </div>
@@ -1454,7 +1454,7 @@ export default function ProfileSection() {
       </div>
 
       {/* Portfolio Section */}
-      <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+      <div className="bg-white rounded-2xl p-6 shadow-md">
         <div className="flex justify-between items-center mb-4">
           <Label className="text-[#FE8A0F] font-semibold">Portfolio</Label>
           {isEditing && (
@@ -1475,11 +1475,11 @@ export default function ProfileSection() {
         </div>
 
         {isAddingPortfolio && (
-          <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="mb-4 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
             <div className="space-y-4">
               {/* Media Type Selection */}
               <div>
-                <Label className="text-black dark:text-white mb-2 block">Media Type</Label>
+                <Label className="text-black mb-2 block">Media Type</Label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1493,7 +1493,7 @@ export default function ProfileSection() {
                       className="w-4 h-4 text-[#FE8A0F]"
                     />
                     <ImageIcon className="w-4 h-4 text-[#FE8A0F]" />
-                    <span className="text-black dark:text-white">Image</span>
+                    <span className="text-black">Image</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1507,14 +1507,14 @@ export default function ProfileSection() {
                       className="w-4 h-4 text-[#FE8A0F]"
                     />
                     <Upload className="w-4 h-4 text-[#FE8A0F]" />
-                    <span className="text-black dark:text-white">Video</span>
+                    <span className="text-black">Video</span>
                   </label>
                 </div>
               </div>
 
               {/* Media Source Tabs */}
               <div>
-                <Label className="text-black dark:text-white mb-2 block">
+                <Label className="text-black mb-2 block">
                   {newPortfolioItem.type === 'video' ? 'Video' : 'Image'} Source
                 </Label>
                 <Tabs value={portfolioInputType} onValueChange={(value) => {
@@ -1523,7 +1523,7 @@ export default function ProfileSection() {
                   setPortfolioImageFile(null);
                   setPortfolioImagePreview(null);
                 }}>
-                  <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
+                  <TabsList className="grid w-full grid-cols-2 bg-gray-100 ">
                     <TabsTrigger 
                       value="file" 
                       className="data-[state=active]:bg-[#FE8A0F] data-[state=active]:text-white"
@@ -1543,7 +1543,7 @@ export default function ProfileSection() {
                   {/* File Upload Tab */}
                   <TabsContent value="file" className="mt-4">
                     <div>
-                      <Label className="text-black dark:text-white">
+                      <Label className="text-black">
                         Upload {newPortfolioItem.type === 'video' ? 'Video' : 'Image'}
                       </Label>
                       <div className="mt-1">
@@ -1608,7 +1608,7 @@ export default function ProfileSection() {
                           ) : (
                             <>
                               <Upload className="w-8 h-8 text-[#FE8A0F] mb-2" />
-                              <span className="text-sm text-black dark:text-white">
+                              <span className="text-sm text-black">
                                 Click to upload {newPortfolioItem.type === 'video' ? 'video' : 'image'}
                               </span>
                               <span className="text-xs text-gray-500 mt-1">
@@ -1627,14 +1627,14 @@ export default function ProfileSection() {
                   {/* Media URL Tab */}
                   <TabsContent value="link" className="mt-4">
                     <div>
-                      <Label className="text-black dark:text-white">
+                      <Label className="text-black">
                         {newPortfolioItem.type === 'video' ? 'Video' : 'Image'} URL
                       </Label>
                       <Input
                         value={newPortfolioItem.url || newPortfolioItem.image}
                         onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, url: e.target.value, image: e.target.value })}
                         placeholder={newPortfolioItem.type === 'video' ? 'https://example.com/video.mp4' : 'https://example.com/image.jpg'}
-                        className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                        className="mt-1 bg-white border-[#FE8A0F] text-black"
                       />
                       {(newPortfolioItem.url || newPortfolioItem.image) && (
                         <div className="mt-2">
@@ -1665,21 +1665,21 @@ export default function ProfileSection() {
               </div>
 
               <div>
-                <Label className="text-black dark:text-white">Title *</Label>
+                <Label className="text-black">Title *</Label>
                 <Input
                   value={newPortfolioItem.title}
                   onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, title: e.target.value })}
                   placeholder="Project title"
-                  className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                  className="mt-1 bg-white border-[#FE8A0F] text-black"
                 />
               </div>
               <div>
-                <Label className="text-black dark:text-white">Description</Label>
+                <Label className="text-black">Description</Label>
                 <Textarea
                   value={newPortfolioItem.description}
                   onChange={(e) => setNewPortfolioItem({ ...newPortfolioItem, description: e.target.value })}
                   placeholder="Describe this project..."
-                  className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+                  className="mt-1 bg-white border-[#FE8A0F] text-black"
                 />
               </div>
               <div className="flex gap-2">
@@ -1728,7 +1728,7 @@ export default function ProfileSection() {
               return (
               <div
                 key={item.id || `portfolio-item-${index}`}
-                className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                className="bg-gray-50  rounded-lg border border-gray-200  overflow-hidden"
               >
                 {isVideo ? (
                   <div className="relative w-full h-48 bg-black">
@@ -1750,8 +1750,8 @@ export default function ProfileSection() {
                   />
                 )}
                 <div className="p-4">
-                  <h4 className="font-semibold text-black dark:text-white mb-1">{item.title}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  <h4 className="font-semibold text-black mb-1">{item.title}</h4>
+                  <p className="text-sm text-gray-600  line-clamp-2">
                     {item.description}
                   </p>
                   {isEditing && (
@@ -1785,11 +1785,11 @@ export default function ProfileSection() {
 
       {/* Public/Private Toggle */}
       {isEditing && (
-        <div className="bg-white dark:bg-black rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <div className="bg-white rounded-2xl border-2 border-[#FE8A0F] p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-[#FE8A0F] font-semibold">Profile Visibility</Label>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-600  mt-1">
                 {isPublic ? "Your profile is visible to everyone" : "Your profile is private"}
               </p>
             </div>
@@ -1806,7 +1806,7 @@ export default function ProfileSection() {
 
       {/* Preview Modal - Full Profile Preview */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="w-[80vw] max-w-[80vw] max-h-[90vh] overflow-y-auto overflow-x-hidden bg-[#f0f0f0] dark:bg-black p-0">
+        <DialogContent className="w-[80vw] max-w-[80vw] max-h-[90vh] overflow-y-auto overflow-x-hidden bg-[#f0f0f0] p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="text-[#FE8A0F] text-2xl">Profile Preview</DialogTitle>
             <DialogDescription>
@@ -1815,7 +1815,7 @@ export default function ProfileSection() {
           </DialogHeader>
           <div className="p-4 md:p-6 space-y-4 w-full max-w-full overflow-x-hidden">
             {/* Profile Header - Matching ProfilePage style */}
-            <div className="bg-white dark:bg-black rounded-2xl shadow-sm p-3 md:p-6 mb-4 w-full max-w-full overflow-x-hidden">
+            <div className="bg-white rounded-2xl shadow-sm p-3 md:p-6 mb-4 w-full max-w-full overflow-x-hidden">
               <div className="flex gap-4 md:gap-6 w-full max-w-full overflow-x-hidden">
                 <div className="flex-shrink-0 relative">
                   <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-gray-100 relative">
@@ -1887,7 +1887,7 @@ export default function ProfileSection() {
               {/* Tabs Content - Full Width */}
               <div className="w-full max-w-full overflow-x-hidden">
                 <Tabs value={previewActiveTab} onValueChange={setPreviewActiveTab} className="w-full">
-                  <TabsList className="w-full max-w-full bg-white dark:bg-black rounded-xl p-1 shadow-sm mb-4 overflow-x-hidden">
+                  <TabsList className="w-full max-w-full bg-white rounded-xl p-1 shadow-sm mb-4 overflow-x-hidden">
                     <TabsTrigger 
                       value="about" 
                       className="flex-1 text-[11px] md:text-[13px] data-[state=active]:bg-[#003D82] data-[state=active]:text-white"
@@ -1921,7 +1921,7 @@ export default function ProfileSection() {
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           About Me
                         </h3>
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[13px] md:text-[14px] mb-4 md:mb-6 whitespace-pre-wrap break-words text-justify">
+                        <p className="text-gray-700  leading-relaxed text-[13px] md:text-[14px] mb-4 md:mb-6 whitespace-pre-wrap break-words text-justify">
                           {displayBio}
                         </p>
 
@@ -1930,7 +1930,7 @@ export default function ProfileSection() {
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Qualifications</h5>
                               <div className="space-y-2">
                                 {qualifications.filter(q => q.trim()).map((qual, index) => (
-                                  <p key={index} className="text-gray-700 dark:text-gray-300 break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
+                                  <p key={index} className="text-gray-700  break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
                                     {qual.trim()}
                                   </p>
                                 ))}
@@ -1942,7 +1942,7 @@ export default function ProfileSection() {
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Certifications</h5>
                               <div className="space-y-2">
                                 {certifications.filter(c => c.trim()).map((cert, index) => (
-                                  <p key={index} className="text-gray-700 dark:text-gray-300 break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
+                                  <p key={index} className="text-gray-700  break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
                                     {cert.trim()}
                                   </p>
                                 ))}
@@ -1952,7 +1952,7 @@ export default function ProfileSection() {
                           {companyDetails && (
                             <div className="mt-3 md:mt-4">
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Company Details</h5>
-                              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
+                              <p className="text-gray-700  whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
                                 {companyDetails}
                               </p>
                             </div>
@@ -1962,12 +1962,12 @@ export default function ProfileSection() {
                               <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Public Insurance</h5>
                               <div className="space-y-1 md:space-y-2">
                                 {professionalIndemnityAmount && (
-                                  <p className="text-gray-700 dark:text-gray-300 text-[12px] md:text-[14px]">
+                                  <p className="text-gray-700  text-[12px] md:text-[14px]">
                                     <span className="font-semibold">Limit of indemnity:</span> £{professionalIndemnityAmount.toLocaleString()}
                                   </p>
                                 )}
                                 {insuranceExpiryDate && (
-                                  <p className="text-gray-700 dark:text-gray-300 text-[12px] md:text-[14px]">
+                                  <p className="text-gray-700  text-[12px] md:text-[14px]">
                                     <span className="font-semibold">Valid until:</span> {new Date(insuranceExpiryDate).toLocaleDateString()}
                                   </p>
                                 )}
@@ -2164,7 +2164,7 @@ export default function ProfileSection() {
                       Verifications
                     </h3>
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50  rounded-lg">
                         <div className="flex items-center gap-2 md:gap-3">
                           <Phone className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
                           <span className="text-[12px] md:text-[14px]">Phone</span>
@@ -2175,7 +2175,7 @@ export default function ProfileSection() {
                           <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-500 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50  rounded-lg">
                         <div className="flex items-center gap-2 md:gap-3">
                           <User className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
                           <span className="text-[12px] md:text-[14px]">Identity</span>
@@ -2186,7 +2186,7 @@ export default function ProfileSection() {
                           <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-500 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50  rounded-lg">
                         <div className="flex items-center gap-2 md:gap-3">
                           <Home className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
                           <span className="text-[12px] md:text-[14px]">Address</span>
@@ -2197,7 +2197,7 @@ export default function ProfileSection() {
                           <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-500 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <div className="flex items-center justify-between p-2 md:p-3 bg-gray-50  rounded-lg">
                         <div className="flex items-center gap-2 md:gap-3">
                           <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
                           <span className="text-[12px] md:text-[14px]">Insurance</span>

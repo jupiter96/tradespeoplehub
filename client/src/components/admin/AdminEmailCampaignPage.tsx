@@ -466,14 +466,14 @@ export default function AdminEmailCampaignPage() {
     >
       <div className="space-y-6">
         {/* Global SMTP Configuration */}
-        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-bold text-black dark:text-white flex items-center gap-2">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2">
                 <Mail className="w-5 h-5 text-[#FE8A0F]" />
                 Global SMTP Configuration
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-500  mt-1">
                 Configure the default SMTP server settings (from .env file). These settings are used as fallback when category-specific SMTP is not configured.
               </p>
             </div>
@@ -493,7 +493,7 @@ export default function AdminEmailCampaignPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="smtpHost" className="text-black dark:text-white">
+                  <Label htmlFor="smtpHost" className="text-black">
                     SMTP Host <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -507,7 +507,7 @@ export default function AdminEmailCampaignPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="smtpPort" className="text-black dark:text-white">
+                  <Label htmlFor="smtpPort" className="text-black">
                     SMTP Port <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -551,16 +551,16 @@ export default function AdminEmailCampaignPage() {
               {globalSmtpConfig.smtpHost ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <span className="text-sm font-medium text-black dark:text-white">Host:</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpHost}</span>
+                      <span className="text-sm font-medium text-black">Host:</span>
+                      <span className="text-sm text-gray-600  ml-2">{globalSmtpConfig.smtpHost}</span>
                     </div>
                     <div>
-                      <span className="text-sm font-medium text-black dark:text-white">Port:</span>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 ml-2">{globalSmtpConfig.smtpPort}</span>
+                      <span className="text-sm font-medium text-black">Port:</span>
+                      <span className="text-sm text-gray-600  ml-2">{globalSmtpConfig.smtpPort}</span>
                     </div>
                     </div>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500 ">
                   No global SMTP configuration. Click "Configure" to set up.
                 </p>
               )}
@@ -569,7 +569,7 @@ export default function AdminEmailCampaignPage() {
         </div>
 
         {/* Tab Bar */}
-        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-2 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white p-2 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => {
               const categoryCount = getTemplatesForCategory(category.value).length;
@@ -580,7 +580,7 @@ export default function AdminEmailCampaignPage() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all ${
                     activeTab === category.value
                       ? "bg-[#FE8A0F] text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-black dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+                      : "bg-gray-100  text-black hover:bg-gray-200"
                   }`}
                 >
                   <span className="text-lg">{category.icon}</span>
@@ -590,7 +590,7 @@ export default function AdminEmailCampaignPage() {
                       className={`px-2 py-0.5 rounded-full text-xs ${
                         activeTab === category.value
                           ? "bg-white/20 text-white"
-                          : "bg-gray-300 dark:bg-gray-600"
+                          : "bg-gray-300 "
                       }`}
                     >
                       {categoryCount}
@@ -603,14 +603,14 @@ export default function AdminEmailCampaignPage() {
         </div>
 
         {/* SMTP Settings Section */}
-        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+        <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-bold text-black dark:text-white flex items-center gap-2">
+              <h3 className="text-lg font-bold text-black flex items-center gap-2">
                 <Mail className="w-5 h-5 text-[#FE8A0F]" />
                 SMTP Settings for {categories.find((c) => c.value === activeTab)?.label}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-gray-500  mt-1">
                 Configure the email account and password used to send emails for this category
               </p>
             </div>
@@ -629,7 +629,7 @@ export default function AdminEmailCampaignPage() {
           {isEditingSmtp ? (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="smtpUser" className="text-black dark:text-white">
+                <Label htmlFor="smtpUser" className="text-black">
                   SMTP User (Email Address) <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -642,12 +642,12 @@ export default function AdminEmailCampaignPage() {
                   placeholder={`e.g., ${activeTab}@example.com`}
                   className="mt-1"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500  mt-1">
                   This email address will be used as the "from" address for emails in this category
                 </p>
               </div>
               <div>
-                <Label htmlFor="smtpPass" className="text-black dark:text-white">
+                <Label htmlFor="smtpPass" className="text-black">
                   SMTP Password <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -660,7 +660,7 @@ export default function AdminEmailCampaignPage() {
                   placeholder="Enter SMTP password"
                   className="mt-1"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500  mt-1">
                   Leave empty to keep existing password (if already configured)
                 </p>
               </div>
@@ -691,16 +691,16 @@ export default function AdminEmailCampaignPage() {
               {smtpSettings.smtpUser ? (
                 <>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-black dark:text-white">SMTP User:</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{smtpSettings.smtpUser}</span>
+                  <span className="text-sm font-medium text-black">SMTP User:</span>
+                  <span className="text-sm text-gray-600 ">{smtpSettings.smtpUser}</span>
                 </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-black dark:text-white">SMTP Password:</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">••••••••</span>
+                    <span className="text-sm font-medium text-black">SMTP Password:</span>
+                    <span className="text-sm text-gray-600 ">••••••••</span>
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500 ">
                   No SMTP user configured. Click "Configure" to set up.
                 </p>
               )}
@@ -711,9 +711,9 @@ export default function AdminEmailCampaignPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Template List */}
           <div className="lg:col-span-1">
-            <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+            <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-black dark:text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-black flex items-center gap-2">
                   <Mail className="w-5 h-5 text-[#FE8A0F]" />
                   Templates
                 </h2>
@@ -728,7 +728,7 @@ export default function AdminEmailCampaignPage() {
               </div>
               <div className="space-y-2 max-h-[600px] overflow-y-auto">
                 {categoryTemplates.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <div className="text-center py-8 text-gray-500 ">
                     <Mail className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No templates yet</p>
                     <p className="text-sm">Click "New" to create one</p>
@@ -740,7 +740,7 @@ export default function AdminEmailCampaignPage() {
                       className={`p-3 rounded-lg border-2 transition-all ${
                         selectedTemplate?._id === template._id
                           ? "border-[#FE8A0F] bg-[#FE8A0F]/10"
-                          : "border-gray-200 dark:border-gray-800 hover:border-[#FE8A0F]/50"
+                          : "border-gray-200  hover:border-[#FE8A0F]/50"
                       }`}
                     >
                       <div className="flex items-start justify-between">
@@ -748,10 +748,10 @@ export default function AdminEmailCampaignPage() {
                           onClick={() => handleSelectTemplate(template)}
                           className="flex-1 text-left"
                         >
-                          <p className="font-semibold text-black dark:text-white">
+                          <p className="font-semibold text-black">
                             {template.type}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                          <p className="text-xs text-gray-500  mt-1 line-clamp-2">
                             {template.subject}
                           </p>
                         </button>
@@ -763,7 +763,7 @@ export default function AdminEmailCampaignPage() {
                           )}
                           <button
                             onClick={() => handleDelete(template)}
-                            className="p-1 hover:bg-red-100 dark:hover:bg-red-900 rounded"
+                            className="p-1 hover:bg-red-100 rounded"
                           >
                             <Trash2 className="w-4 h-4 text-red-500" />
                           </button>
@@ -779,13 +779,13 @@ export default function AdminEmailCampaignPage() {
           {/* Template Editor */}
           <div className="lg:col-span-2">
             {isCreating || selectedTemplate ? (
-              <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+              <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-black dark:text-white">
+                    <h2 className="text-xl font-bold text-black">
                       {isCreating ? "Create New Template" : `Edit: ${selectedTemplate?.type}`}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500  mt-1">
                       Category: {categories.find((c) => c.value === activeTab)?.label}
                     </p>
                   </div>
@@ -819,7 +819,7 @@ export default function AdminEmailCampaignPage() {
 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="type" className="text-black dark:text-white">
+                    <Label htmlFor="type" className="text-black">
                       Template Type <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -832,13 +832,13 @@ export default function AdminEmailCampaignPage() {
                       className="mt-1"
                       disabled={!isCreating}
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500  mt-1">
                       Unique identifier for this template
                     </p>
                   </div>
 
                   <div>
-                    <Label htmlFor="emailFrom" className="text-black dark:text-white">
+                    <Label htmlFor="emailFrom" className="text-black">
                       From Email Address
                     </Label>
                     <Input
@@ -850,13 +850,13 @@ export default function AdminEmailCampaignPage() {
                       placeholder="e.g., orders@example.com"
                       className="mt-1"
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500  mt-1">
                       Leave empty to use default SMTP user for this category
                     </p>
                   </div>
 
                   <div>
-                    <Label htmlFor="logoUrl" className="text-black dark:text-white">
+                    <Label htmlFor="logoUrl" className="text-black">
                       Logo URL
                     </Label>
                     <Input
@@ -871,7 +871,7 @@ export default function AdminEmailCampaignPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="subject" className="text-black dark:text-white">
+                    <Label htmlFor="subject" className="text-black">
                       Subject <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -886,7 +886,7 @@ export default function AdminEmailCampaignPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="body" className="text-black dark:text-white">
+                    <Label htmlFor="body" className="text-black">
                       Email Body (HTML) <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
@@ -899,7 +899,7 @@ export default function AdminEmailCampaignPage() {
                       className="mt-1 font-mono text-sm"
                       rows={15}
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500  mt-1">
                       Use variables like {"{{firstName}}"}, {"{{code}}"}, {"{{logoUrl}}"}, etc.
                     </p>
                   </div>
@@ -912,17 +912,17 @@ export default function AdminEmailCampaignPage() {
                         setFormData({ ...formData, isActive: checked })
                       }
                     />
-                    <Label htmlFor="isActive" className="text-black dark:text-white">
+                    <Label htmlFor="isActive" className="text-black">
                       Active
                     </Label>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white dark:bg-black p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
+              <div className="rounded-3xl border-2 border-[#FE8A0F] bg-white p-6 shadow-[0_0_20px_rgba(254,138,15,0.2)]">
                 <div className="text-center py-12">
                   <Mail className="w-16 h-16 text-[#FE8A0F] mx-auto mb-4" />
-                  <p className="text-black dark:text-white mb-4">
+                  <p className="text-black mb-4">
                     {categoryTemplates.length === 0
                       ? "No templates in this category yet"
                       : "Select a template to view or edit"}
@@ -953,12 +953,12 @@ export default function AdminEmailCampaignPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
-            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Subject:</p>
-              <p className="font-semibold text-black dark:text-white">{formData.subject}</p>
+            <div className="mb-4 p-3 bg-gray-50  rounded-lg">
+              <p className="text-sm text-gray-600 ">Subject:</p>
+              <p className="font-semibold text-black">{formData.subject}</p>
             </div>
             <div
-              className="border-2 border-gray-200 dark:border-gray-800 rounded-lg p-4 bg-white dark:bg-black"
+              className="border-2 border-gray-200  rounded-lg p-4 bg-white"
               dangerouslySetInnerHTML={{ __html: renderPreview() }}
             />
           </div>

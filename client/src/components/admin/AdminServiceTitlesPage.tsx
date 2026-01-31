@@ -515,7 +515,7 @@ export default function AdminServiceTitlesPage() {
           <TabsContent value={activeTab} className="space-y-6 mt-0">
         {/* Cascading Level Selection - Only for Single Service Tab */}
         {activeTab === 'single' && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+        <div className="bg-white  rounded-lg border-2 border-[#FE8A0F] p-6">
           <Label className="text-sm font-semibold text-[#FE8A0F] mb-4 block">
             Select Subcategory Path
           </Label>
@@ -542,7 +542,7 @@ export default function AdminServiceTitlesPage() {
                 // All levels use radio buttons
                 levels.push(
                   <div key={level} className="space-y-3">
-                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Label className="text-sm font-medium text-gray-700 ">
                       Level {level} - {levelName}
                     </Label>
                     {loadingSubCategories[level] ? (
@@ -551,7 +551,7 @@ export default function AdminServiceTitlesPage() {
                         <span className="text-sm text-gray-500">Loading...</span>
                       </div>
                     ) : subCategories.length === 0 ? (
-                      <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <div className="p-3 border rounded-lg bg-gray-50 ">
                         <span className="text-sm text-gray-500">No subcategories available</span>
                       </div>
                     ) : (
@@ -565,15 +565,15 @@ export default function AdminServiceTitlesPage() {
                             key={subCat._id}
                             className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
                               selectedId === subCat._id
-                                ? 'border-[#FE8A0F] bg-[#FFF5EB] dark:bg-[#FE8A0F]/10'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-[#FE8A0F]/50'
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                                : 'border-gray-200  hover:border-[#FE8A0F]/50'
                             }`}
                             onClick={() => handleSubCategorySelect(level, subCat._id)}
                           >
                             <RadioGroupItem value={subCat._id} id={`${level}-${subCat._id}`} />
                             <Label
                               htmlFor={`${level}-${subCat._id}`}
-                              className="flex-1 cursor-pointer text-sm font-medium text-black dark:text-white"
+                              className="flex-1 cursor-pointer text-sm font-medium text-black"
                             >
                               {subCat.name}
                             </Label>
@@ -594,20 +594,20 @@ export default function AdminServiceTitlesPage() {
         {/* Title Management - Package Service at Category Level, Single Service at Subcategory Level */}
         {activeTab === 'package' ? (
           /* Package Service Title Management at Category Level */
-          <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+          <div className="bg-white  rounded-lg border-2 border-[#FE8A0F] p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <Label className="text-sm font-semibold text-[#FE8A0F]">
                     Package Service Title Suggestions
                   </Label>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-xs text-gray-500 ">
                     ({categoryPackageTitles.length} title{categoryPackageTitles.length !== 1 ? 's' : ''})
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Managing package service titles for: <span className="font-medium text-black dark:text-white">{serviceCategory.name}</span>
-                  <span className="block mt-2 text-xs text-orange-600 dark:text-orange-400">
+                <p className="text-sm text-gray-600  mt-1">
+                  Managing package service titles for: <span className="font-medium text-black">{serviceCategory.name}</span>
+                  <span className="block mt-2 text-xs text-orange-600 ">
                     Note: Each title must be at least 50 characters long.
                   </span>
                 </p>
@@ -652,7 +652,7 @@ export default function AdminServiceTitlesPage() {
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                <p className="text-sm text-gray-500  text-center py-8">
                   No title suggestions yet. Click "Add Title" to create one.
                 </p>
               )}
@@ -718,25 +718,25 @@ export default function AdminServiceTitlesPage() {
           }
 
           return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+            <div className="bg-white  rounded-lg border-2 border-[#FE8A0F] p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <Label className="text-sm font-semibold text-[#FE8A0F]">
                         {activeTab === 'package' ? 'Package Service' : 'Single Service'} Title Suggestions - Level {deepestLevel} ({levelName})
                     </Label>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-gray-500 ">
                       ({titles.length} title{titles.length !== 1 ? 's' : ''})
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Managing titles for: <span className="font-medium text-black dark:text-white">{selectedSubCategory.name}</span>
+                  <p className="text-sm text-gray-600  mt-1">
+                    Managing titles for: <span className="font-medium text-black">{selectedSubCategory.name}</span>
                     {breadcrumb.length > 1 && (
                       <span className="ml-2 text-gray-500">
                         (Path: {breadcrumb.join(' > ')})
                       </span>
                     )}
-                    <span className="block mt-2 text-xs text-orange-600 dark:text-orange-400">
+                    <span className="block mt-2 text-xs text-orange-600 ">
                       Note: Each title must be at least 50 characters long.
                     </span>
                   </p>
@@ -781,7 +781,7 @@ export default function AdminServiceTitlesPage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                  <p className="text-sm text-gray-500  text-center py-8">
                     No title suggestions yet. Click "Add Title" to create one.
                   </p>
                 )}

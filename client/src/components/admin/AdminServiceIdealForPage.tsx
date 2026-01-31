@@ -320,8 +320,8 @@ export default function AdminServiceIdealForPage() {
         </div>
 
         {/* Info Box */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
+        <div className="bg-blue-50 border border-blue-200  rounded-lg p-4">
+          <p className="text-sm text-blue-800 ">
             <strong>Note:</strong> These options will be displayed in the "What is the service ideal for" section when professionals create services.
             Select subcategories from each level to manage their specific "Ideal For" options.
             For package services, all selected ideals from the belonging category will be displayed.
@@ -329,7 +329,7 @@ export default function AdminServiceIdealForPage() {
         </div>
 
         {/* Cascading Level Selection */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+        <div className="bg-white  rounded-lg border-2 border-[#FE8A0F] p-6">
           <Label className="text-sm font-semibold text-[#FE8A0F] mb-4 block">
             Select Subcategory Path
           </Label>
@@ -352,7 +352,7 @@ export default function AdminServiceIdealForPage() {
 
                 levels.push(
                   <div key={level} className="space-y-3">
-                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Label className="text-sm font-medium text-gray-700 ">
                       Level {level} - {levelName}
                     </Label>
                     {loadingSubCategories[level] ? (
@@ -361,7 +361,7 @@ export default function AdminServiceIdealForPage() {
                         <span className="text-sm text-gray-500">Loading...</span>
                       </div>
                     ) : subCategories.length === 0 ? (
-                      <div className="p-3 border rounded-lg bg-gray-50 dark:bg-gray-900">
+                      <div className="p-3 border rounded-lg bg-gray-50 ">
                         <span className="text-sm text-gray-500">No subcategories available</span>
                       </div>
                     ) : (
@@ -375,15 +375,15 @@ export default function AdminServiceIdealForPage() {
                             key={subCat._id}
                             className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
                               selectedId === subCat._id
-                                ? 'border-[#FE8A0F] bg-[#FFF5EB] dark:bg-[#FE8A0F]/10'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-[#FE8A0F]/50'
+                                ? 'border-[#FE8A0F] bg-[#FFF5EB]'
+                                : 'border-gray-200  hover:border-[#FE8A0F]/50'
                             }`}
                             onClick={() => handleSubCategorySelect(level, subCat._id)}
                           >
                             <RadioGroupItem value={subCat._id} id={`${level}-${subCat._id}`} />
                             <Label
                               htmlFor={`${level}-${subCat._id}`}
-                              className="flex-1 cursor-pointer text-sm font-medium text-black dark:text-white"
+                              className="flex-1 cursor-pointer text-sm font-medium text-black"
                             >
                               {subCat.name}
                             </Label>
@@ -448,7 +448,7 @@ export default function AdminServiceIdealForPage() {
           }
 
           return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-[#FE8A0F] p-6">
+            <div className="bg-white  rounded-lg border-2 border-[#FE8A0F] p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
@@ -456,12 +456,12 @@ export default function AdminServiceIdealForPage() {
                     <Label className="text-sm font-semibold text-[#FE8A0F]">
                       Service Ideal For - Level {deepestLevel} ({levelName})
                     </Label>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-gray-500 ">
                       ({idealForOptions.length} option{idealForOptions.length !== 1 ? 's' : ''})
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Managing "Ideal For" options for: <span className="font-medium text-black dark:text-white">{selectedSubCategory.name}</span>
+                  <p className="text-sm text-gray-600  mt-1">
+                    Managing "Ideal For" options for: <span className="font-medium text-black">{selectedSubCategory.name}</span>
                     {breadcrumb.length > 1 && (
                       <span className="ml-2 text-gray-500">
                         (Path: {breadcrumb.join(' > ')})
@@ -500,7 +500,7 @@ export default function AdminServiceIdealForPage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                  <p className="text-sm text-gray-500  text-center py-8">
                     No "Ideal For" options yet. Click "Add Option" to create one.
                   </p>
                 )}

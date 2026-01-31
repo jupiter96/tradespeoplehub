@@ -719,11 +719,11 @@ export default function AddressAutocomplete({
     <div ref={wrapperRef} className={`relative ${className}`}>
       {/* Postcode Input */}
       <div>
-        <Label htmlFor="postcode" className="text-black dark:text-white">
+        <Label htmlFor="postcode" className="text-black mb-2">
           {label} {required && <span className="text-red-500">*</span>}
         </Label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50/50" />
           <Input
             id="postcode"
             type="text"
@@ -752,7 +752,7 @@ export default function AddressAutocomplete({
             }}
             placeholder="e.g., SW1A 1AA"
             required={required}
-            className={`pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white ${
+            className={`pl-10 bg-white border-[#222] text-black ${
               error ? "border-red-500" : ""
             }`}
           />
@@ -764,7 +764,7 @@ export default function AddressAutocomplete({
           <p className="mt-1 text-xs text-red-500">{error}</p>
         )}
         {!error && !isLoading && !address?.trim() && !showManualEntry && (
-          <p className="mt-1 text-[10px] text-black/60 dark:text-white/60">
+          <p className="mt-1 text-[14px] text-black/60">
             No addresses found.{" "}
             <button
               type="button"
@@ -786,7 +786,7 @@ export default function AddressAutocomplete({
       {/* Address Suggestions Dropdown */}
       {showSuggestions && suggestions.length > 0 && !postcodeJustSelected && !isAddressFilled && (
         <div 
-          className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto"
+          className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#222] bg-white shadow-lg max-h-[400px] overflow-y-auto"
           onMouseEnter={() => setIsHoveringSuggestions(true)}
           onMouseLeave={() => setIsHoveringSuggestions(false)}
           onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking on dropdown
@@ -805,7 +805,7 @@ export default function AddressAutocomplete({
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 text-[#FE8A0F] mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-black dark:text-white">
+                  <p className="text-sm font-medium text-black">
                     {formatAddressDisplay(suggestion)}
                   </p>
                 </div>
@@ -818,11 +818,11 @@ export default function AddressAutocomplete({
       {/* Address and Town/City Fields (if enabled) */}
       {showAddressField && !showManualEntry && (
         <div ref={addressWrapperRef} className="mt-4 relative">
-          <Label htmlFor="address" className="text-black dark:text-white">
+          <Label htmlFor="address" className="text-black mb-2">
             {addressLabel} {required && <span className="text-red-500">*</span>}
           </Label>
           <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50/50" />
             <Input
               id="address"
               type="text"
@@ -899,21 +899,21 @@ export default function AddressAutocomplete({
                 }
               }}
               placeholder={combinedAddressMode ? "Street address, Town/City" : "Street address"}
-              className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="pl-10 bg-white border-[#222] text-black"
             />
             {isAddressLoading && (
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[#FE8A0F]" />
             )}
           </div>
           {!postcode && address && address.trim().length >= 1 && (
-            <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+            <p className="mt-1 text-xs text-black/60">
               Enter a postcode first for address suggestions
             </p>
           )}
           
           {/* Message when no address suggestions found */}
           {postcode && postcode.trim().length >= 5 && !isAddressLoading && address && address.trim().length >= 1 && showAddressSuggestions && addressSuggestions.length === 0 && (
-            <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+            <p className="mt-1 text-xs text-black/60">
               No addresses found.{" "}
               <button
                 type="button"
@@ -934,7 +934,7 @@ export default function AddressAutocomplete({
           {/* Address Suggestions Dropdown - Same style as postcode suggestions */}
           {showAddressSuggestions && addressSuggestions.length > 0 && !addressJustSelected && !isAddressFilled && (
             <div 
-              className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto"
+              className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#222] bg-white shadow-lg max-h-[400px] overflow-y-auto"
               onMouseEnter={() => setIsHoveringAddressSuggestions(true)}
               onMouseLeave={() => setIsHoveringAddressSuggestions(false)}
               onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking on dropdown
@@ -953,7 +953,7 @@ export default function AddressAutocomplete({
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 text-[#FE8A0F] mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-black dark:text-white">
+                      <p className="text-sm font-medium text-black">
                         {formatAddressDisplay(suggestion)}
                       </p>
                     </div>
@@ -967,11 +967,11 @@ export default function AddressAutocomplete({
 
       {showTownCityField && !showManualEntry && (
         <div ref={cityWrapperRef} className="mt-4 relative">
-          <Label htmlFor="townCity" className="text-black dark:text-white">
+          <Label htmlFor="townCity" className="text-black mb-2">
             Town/City {required && <span className="text-red-500">*</span>}
           </Label>
           <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50/50" />
             <Input
               id="townCity"
               type="text"
@@ -1025,7 +1025,7 @@ export default function AddressAutocomplete({
                 }
               }}
               placeholder="Town or city"
-              className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="pl-10 bg-white border-[#222] text-black"
             />
             {isCityLoading && (
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[#FE8A0F]" />
@@ -1035,7 +1035,7 @@ export default function AddressAutocomplete({
           {/* City Suggestions Dropdown */}
           {showCitySuggestions && citySuggestions.length > 0 && (
             <div 
-              className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#FE8A0F] bg-white dark:bg-black shadow-lg max-h-[400px] overflow-y-auto"
+              className="absolute z-50 mt-1 w-full rounded-lg border-2 border-[#222] bg-white shadow-lg max-h-[400px] overflow-y-auto"
               onMouseEnter={() => setIsHoveringCitySuggestions(true)}
               onMouseLeave={() => setIsHoveringCitySuggestions(false)}
               onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking on dropdown
@@ -1056,7 +1056,7 @@ export default function AddressAutocomplete({
                 >
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-[#FE8A0F] flex-shrink-0" />
-                    <p className="text-sm font-medium text-black dark:text-white">
+                    <p className="text-sm font-medium text-black">
                       {city}
                     </p>
                   </div>
@@ -1070,11 +1070,11 @@ export default function AddressAutocomplete({
       {/* Borough/Council Field (optional) */}
       {showCountyField && !showManualEntry && (
         <div className="mt-4 relative">
-          <Label htmlFor="county" className="text-black dark:text-white">
+          <Label htmlFor="county" className="text-black mb-2">
             Borough/Council
           </Label>
           <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50 dark:text-white/50" />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50/50" />
             <Input
               id="county"
               type="text"
@@ -1083,7 +1083,7 @@ export default function AddressAutocomplete({
                 onCountyChange?.(e.target.value);
               }}
               placeholder="Borough/Council (optional)"
-              className="pl-10 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="pl-10 bg-white border-[#222] text-black"
             />
           </div>
         </div>
@@ -1091,9 +1091,9 @@ export default function AddressAutocomplete({
 
       {/* Manual Address Entry Form */}
       {showManualEntry && (
-        <div className="mt-4 space-y-4 p-4 border-2 border-[#FE8A0F] rounded-lg bg-white/50 dark:bg-black/50">
+        <div className="mt-4 space-y-4 p-4 border-2 border-[#222] rounded-lg bg-white/50">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-black dark:text-white">Enter Address Manually</h3>
+            <h3 className="text-sm font-semibold text-black">Enter Address Manually</h3>
             <button
               type="button"
               onClick={() => {
@@ -1106,14 +1106,14 @@ export default function AddressAutocomplete({
                   postcode: '',
                 });
               }}
-              className="text-xs text-black/60 dark:text-white/60 hover:text-[#FE8A0F]"
+              className="text-xs text-black/60 hover:text-[#FE8A0F]"
             >
-              Close
+              X Close
             </button>
           </div>
           
           <div>
-            <Label htmlFor="manual-line1" className="text-black dark:text-white">
+            <Label htmlFor="manual-line1" className="text-black">
               Address line 1 <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -1129,12 +1129,12 @@ export default function AddressAutocomplete({
               }}
               placeholder="Street address"
               required
-              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="mt-1 bg-white border-[#222] text-black"
             />
           </div>
           
           <div>
-            <Label htmlFor="manual-line2" className="text-black dark:text-white">
+            <Label htmlFor="manual-line2" className="text-black">
               Address line 2
             </Label>
             <Input
@@ -1149,12 +1149,12 @@ export default function AddressAutocomplete({
                 }
               }}
               placeholder="Apartment, suite, etc. (optional)"
-              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="mt-1 bg-white border-[#222] text-black"
             />
           </div>
           
           <div>
-            <Label htmlFor="manual-townCity" className="text-black dark:text-white">
+            <Label htmlFor="manual-townCity" className="text-black">
               Town / City <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -1170,12 +1170,12 @@ export default function AddressAutocomplete({
               }}
               placeholder="Town or city"
               required
-              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="mt-1 bg-white border-[#222] text-black"
             />
           </div>
           
           <div>
-            <Label htmlFor="manual-county" className="text-black dark:text-white">
+            <Label htmlFor="manual-county" className="text-black">
               Borough/Council
             </Label>
             <Input
@@ -1190,12 +1190,12 @@ export default function AddressAutocomplete({
                 }
               }}
               placeholder="Borough/Council (optional)"
-              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="mt-1 bg-white border-[#222] text-black"
             />
           </div>
           
           <div>
-            <Label htmlFor="manual-postcode" className="text-black dark:text-white">
+            <Label htmlFor="manual-postcode" className="text-black">
               Postcode <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -1211,7 +1211,7 @@ export default function AddressAutocomplete({
               }}
               placeholder="e.g., SW1A 1AA"
               required
-              className="mt-1 bg-white dark:bg-black border-[#FE8A0F] text-black dark:text-white"
+              className="mt-1 bg-white border-[#222] text-black"
             />
           </div>
         </div>

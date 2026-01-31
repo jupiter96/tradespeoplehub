@@ -258,9 +258,9 @@ export default function AdminVerificationModal({
   return (
     <>
     <Dialog open={open && !viewingDocument} onOpenChange={onClose}>
-      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black p-4">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white p-4">
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-base font-semibold text-black dark:text-white">
+          <DialogTitle className="text-base font-semibold text-black">
             Verification - {userName}
           </DialogTitle>
         </DialogHeader>
@@ -269,7 +269,7 @@ export default function AdminVerificationModal({
           <div className="flex items-center justify-center py-8">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-2"></div>
-              <p className="text-sm text-black dark:text-white">Loading...</p>
+              <p className="text-sm text-black">Loading...</p>
             </div>
           </div>
         ) : (
@@ -284,21 +284,21 @@ export default function AdminVerificationModal({
                 return (
                   <div
                     key={type.id}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-lg p-3"
+                    className="border-0 shadow-md shadow-gray-200  rounded-lg p-3"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-[#FE8A0F]" />
-                        <span className="text-sm font-medium text-black dark:text-white">{type.label}</span>
+                        <span className="text-sm font-medium text-black">{type.label}</span>
                       </div>
                       {getStatusBadge(info.status)}
                     </div>
                     
                     {info.documentName && info.documentUrl && (
                       <div className="mt-2 mb-2 space-y-1.5">
-                        <div className="flex items-center gap-1.5 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-xs">
+                        <div className="flex items-center gap-1.5 p-1.5 bg-gray-50  rounded text-xs">
                           <FileText className="w-3 h-3 text-[#FE8A0F] flex-shrink-0" />
-                          <span className="text-gray-700 dark:text-gray-300 flex-1 truncate">
+                          <span className="text-gray-700  flex-1 truncate">
                             {info.documentName}
                           </span>
                         </div>
@@ -335,26 +335,26 @@ export default function AdminVerificationModal({
 
                     {/* Payment Method Account Details */}
                     {type.id === "paymentMethod" && info.firstName && (
-                      <div className="mt-2 mb-2 space-y-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                        <div className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1.5">
+                      <div className="mt-2 mb-2 space-y-2 p-2 bg-blue-50 rounded border border-blue-200 ">
+                        <div className="text-xs font-semibold text-blue-900  mb-1.5">
                           Bank Account Details
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-600 dark:text-gray-400">First Name:</span>
-                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">{info.firstName}</span>
+                            <span className="text-gray-600 ">First Name:</span>
+                            <span className="ml-1 text-gray-900  font-medium">{info.firstName}</span>
                           </div>
                           <div>
-                            <span className="text-gray-600 dark:text-gray-400">Last Name:</span>
-                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">{info.lastName}</span>
+                            <span className="text-gray-600 ">Last Name:</span>
+                            <span className="ml-1 text-gray-900  font-medium">{info.lastName}</span>
                           </div>
                           <div className="col-span-2">
-                            <span className="text-gray-600 dark:text-gray-400">Address:</span>
-                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">{info.address}</span>
+                            <span className="text-gray-600 ">Address:</span>
+                            <span className="ml-1 text-gray-900  font-medium">{info.address}</span>
                           </div>
                           <div>
-                            <span className="text-gray-600 dark:text-gray-400">Sort Code:</span>
-                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                            <span className="text-gray-600 ">Sort Code:</span>
+                            <span className="ml-1 text-gray-900  font-medium">
                               {info.sortCode ? (info.sortCode.length === 6 
                                 ? `${info.sortCode.slice(0, 2)}-${info.sortCode.slice(2, 4)}-${info.sortCode.slice(4, 6)}`
                                 : info.sortCode) 
@@ -362,15 +362,15 @@ export default function AdminVerificationModal({
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-600 dark:text-gray-400">Account Number:</span>
-                            <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                            <span className="text-gray-600 ">Account Number:</span>
+                            <span className="ml-1 text-gray-900  font-medium">
                               {info.accountNumber ? `****${info.accountNumber.slice(-4)}` : "N/A"}
                             </span>
                           </div>
                           {info.bankStatementDate && (
                             <div className="col-span-2">
-                              <span className="text-gray-600 dark:text-gray-400">Statement Date:</span>
-                              <span className="ml-1 text-gray-900 dark:text-gray-100 font-medium">
+                              <span className="text-gray-600 ">Statement Date:</span>
+                              <span className="ml-1 text-gray-900  font-medium">
                                 {new Date(info.bankStatementDate).toLocaleDateString('en-GB', {
                                   day: '2-digit',
                                   month: '2-digit',
@@ -384,7 +384,7 @@ export default function AdminVerificationModal({
                     )}
                     
                     {info.rejectionReason && (
-                      <p className="text-xs text-red-600 dark:text-red-400 mb-2 mt-1">
+                      <p className="text-xs text-red-600  mb-2 mt-1">
                         <span className="font-medium">Rejection:</span> {info.rejectionReason}
                       </p>
                     )}
@@ -392,7 +392,7 @@ export default function AdminVerificationModal({
                     {/* Status Changer Box - Aligned to each section */}
                     <div className="border-0 shadow-sm pt-2 mt-2 space-y-2">
                       <div>
-                        <Label className="text-black dark:text-white text-xs font-medium">Status</Label>
+                        <Label className="text-black text-xs font-medium">Status</Label>
                         <Select 
                           value={currentStatus} 
                           onValueChange={(value) => {
@@ -407,20 +407,20 @@ export default function AdminVerificationModal({
                             }
                           }}
                         >
-                          <SelectTrigger className="bg-white dark:bg-black text-black dark:text-white h-8 text-xs mt-0.5">
+                          <SelectTrigger className="bg-white text-black h-8 text-xs mt-0.5">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
-                          <SelectContent className="bg-white dark:bg-black">
-                            <SelectItem value="verified" className="text-black dark:text-white text-xs">
+                          <SelectContent className="bg-white">
+                            <SelectItem value="verified" className="text-black text-xs">
                               Verified
                             </SelectItem>
-                            <SelectItem value="pending" className="text-black dark:text-white text-xs">
+                            <SelectItem value="pending" className="text-black text-xs">
                               Pending
                             </SelectItem>
-                            <SelectItem value="rejected" className="text-black dark:text-white text-xs">
+                            <SelectItem value="rejected" className="text-black text-xs">
                               Rejected
                             </SelectItem>
-                            <SelectItem value="not-started" className="text-black dark:text-white text-xs">
+                            <SelectItem value="not-started" className="text-black text-xs">
                               Not Started
                             </SelectItem>
                           </SelectContent>
@@ -429,14 +429,14 @@ export default function AdminVerificationModal({
 
                       {currentStatus === "rejected" && (
                         <div>
-                          <Label className="text-black dark:text-white text-xs font-medium">
+                          <Label className="text-black text-xs font-medium">
                             Reason <span className="text-red-500">*</span>
                           </Label>
                           <Textarea
                             value={currentRejectionReason}
                             onChange={(e) => setRejectionReason(prev => ({ ...prev, [type.id]: e.target.value }))}
                             placeholder="Enter rejection reason..."
-                            className="bg-white dark:bg-black text-black dark:text-white mt-0.5 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 focus:shadow-lg focus:shadow-red-500/30 text-xs h-16 transition-shadow"
+                            className="bg-white text-black mt-0.5 border-0 shadow-md shadow-gray-200  focus:shadow-lg focus:shadow-red-500/30 text-xs h-16 transition-shadow"
                             rows={2}
                             required
                           />
@@ -469,10 +469,10 @@ export default function AdminVerificationModal({
     {/* Document Viewer Modal */}
     {viewingDocument && (
       <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
-        <DialogContent className="w-[70vw] max-h-[90vh] bg-white dark:bg-black p-0">
+        <DialogContent className="w-[70vw] max-h-[90vh] bg-white p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-0 shadow-sm">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-black dark:text-white">
+              <DialogTitle className="text-black">
                 {viewingDocument.name}
               </DialogTitle>
               <div className="flex gap-2">
@@ -480,7 +480,7 @@ export default function AdminVerificationModal({
                   variant="outline"
                   size="sm"
                   onClick={() => handleDownloadDocument(viewingDocument.url, viewingDocument.name)}
-                  className="text-[#FE8A0F] border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="text-[#FE8A0F] border-0 shadow-md shadow-gray-200  hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download
@@ -489,7 +489,7 @@ export default function AdminVerificationModal({
                   variant="outline"
                   size="sm"
                   onClick={() => window.open(viewingDocument.url, "_blank")}
-                  className="text-[#FE8A0F] border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="text-[#FE8A0F] border-0 shadow-md shadow-gray-200  hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   Open in New Tab
@@ -497,7 +497,7 @@ export default function AdminVerificationModal({
               </div>
             </div>
           </DialogHeader>
-          <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="p-6 overflow-auto max-h-[calc(90vh-120px)] flex items-center justify-center bg-gray-50 ">
             {viewingDocument.type === "image" ? (
               <img
                 src={viewingDocument.url}
@@ -513,7 +513,7 @@ export default function AdminVerificationModal({
             ) : (
               <div className="text-center py-12">
                 <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-black dark:text-white mb-4">Preview not available for this file type</p>
+                <p className="text-black mb-4">Preview not available for this file type</p>
                 <Button
                   onClick={() => window.open(viewingDocument.url, "_blank")}
                   className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"

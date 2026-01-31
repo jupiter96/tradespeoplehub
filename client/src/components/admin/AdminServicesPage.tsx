@@ -545,15 +545,15 @@ export default function AdminServicesPage({
           </div>
 
             {/* Services Table */}
-            <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+            <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-[#FE8A0F] mr-2" />
-                  <span className="text-black dark:text-white">Loading services...</span>
+                  <span className="text-black">Loading services...</span>
                 </div>
               ) : services.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-black dark:text-white">No services found</p>
+                  <p className="text-black">No services found</p>
                 </div>
               ) : (
                 <>
@@ -595,36 +595,36 @@ export default function AdminServicesPage({
                             key={service._id}
                             className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
                           >
-                            <TableCell className="text-black dark:text-white">
+                            <TableCell className="text-black">
                               <div>
                                 <p className="font-medium">{service.title}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-black dark:text-white">
+                            <TableCell className="text-black">
                               {service.serviceCategory ? (
                                 <div>
                                   <p className="text-sm font-medium">{service.serviceCategory.name}</p>
                                   {service.serviceCategory.sector && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{service.serviceCategory.sector.name}</p>
+                                    <p className="text-xs text-gray-500 ">{service.serviceCategory.sector.name}</p>
                                   )}
                                 </div>
                               ) : (
                                 <span className="text-gray-400">N/A</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-black dark:text-white">
+                            <TableCell className="text-black">
                               {service.professional ? (
                                 <div>
                                   <p className="text-sm font-medium">
                                     {service.professional.tradingName || `${service.professional.firstName} ${service.professional.lastName}`}
                                   </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">{service.professional.email}</p>
+                                  <p className="text-xs text-gray-500 ">{service.professional.email}</p>
                                 </div>
                               ) : (
                                 <span className="text-gray-400">N/A</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-black dark:text-white">
+                            <TableCell className="text-black">
                               <div>
                                 {(() => {
                                   // Check if service has packages (package service)
@@ -652,7 +652,7 @@ export default function AdminServicesPage({
                                         <>
                                           <p className="font-medium">£{minPrice.toFixed(2)}</p>
                                           {service.priceUnit && service.priceUnit !== "fixed" && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                            <p className="text-xs text-gray-500 ">/{service.priceUnit.replace("per ", "")}</p>
                                           )}
                                         </>
                                       );
@@ -662,7 +662,7 @@ export default function AdminServicesPage({
                                       <>
                                         <p className="font-medium">£{minPrice.toFixed(2)} to £{maxPrice.toFixed(2)}</p>
                                         {service.priceUnit && service.priceUnit !== "fixed" && (
-                                          <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                          <p className="text-xs text-gray-500 ">/{service.priceUnit.replace("per ", "")}</p>
                                         )}
                                       </>
                                     );
@@ -676,10 +676,10 @@ export default function AdminServicesPage({
                                       <>
                                         <p className="font-medium">£{Number(service.price).toFixed(2)}</p>
                                 {service.originalPrice && (
-                                          <p className="text-sm text-gray-500 dark:text-gray-400 line-through">£{Number(service.originalPrice).toFixed(2)}</p>
+                                          <p className="text-sm text-gray-500  line-through">£{Number(service.originalPrice).toFixed(2)}</p>
                                 )}
                                 {service.priceUnit && service.priceUnit !== "fixed" && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">/{service.priceUnit.replace("per ", "")}</p>
+                                  <p className="text-xs text-gray-500 ">/{service.priceUnit.replace("per ", "")}</p>
                                 )}
                                       </>
                                     );
@@ -687,20 +687,20 @@ export default function AdminServicesPage({
                                 })()}
                               </div>
                             </TableCell>
-                            <TableCell className="text-black dark:text-white">
+                            <TableCell className="text-black">
                               <div className="flex items-center gap-1">
                                 <span className="text-sm">{service.rating?.toFixed(1) || "0.0"}</span>
                                 <span className="text-[#FE8A0F]">★</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">({service.reviewCount || 0})</span>
+                                <span className="text-xs text-gray-500 ">({service.reviewCount || 0})</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-black dark:text-white">
+                            <TableCell className="text-black">
                               <Badge className={`${getStatusBadge(service.status)} border text-xs`}>
                                 {getStatusLabel(service.status)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-black dark:text-white">
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                            <TableCell className="text-black">
+                              <span className="text-sm text-gray-600 ">
                                 {new Date(service.createdAt).toLocaleDateString()}
                               </span>
                             </TableCell>
@@ -818,7 +818,7 @@ export default function AdminServicesPage({
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between mt-6 pt-4 border-0 shadow-sm">
-                      <p className="text-sm text-black dark:text-white">
+                      <p className="text-sm text-black">
                         Page <span className="text-[#FE8A0F] font-semibold">{page}</span> of <span className="text-[#FE8A0F] font-semibold">{totalPages}</span>
                       </p>
                       <div className="flex gap-2">
@@ -827,7 +827,7 @@ export default function AdminServicesPage({
                           size="sm"
                           onClick={() => setPage((p) => Math.max(1, p - 1))}
                           disabled={page === 1}
-                          className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                          className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
                           Previous
@@ -837,7 +837,7 @@ export default function AdminServicesPage({
                           size="sm"
                           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                           disabled={page === totalPages}
-                          className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                          className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                         >
                           Next
                           <ChevronRight className="h-4 w-4 ml-1" />

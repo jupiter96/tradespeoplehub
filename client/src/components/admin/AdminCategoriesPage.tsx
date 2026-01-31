@@ -77,7 +77,7 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
       style={style}
       className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
     >
-      <TableCell className="text-black dark:text-white font-medium w-12">
+      <TableCell className="text-black font-medium w-12">
         <div className="flex items-center gap-2">
           <button
             {...attributes}
@@ -89,16 +89,16 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
           <span>{category.order}</span>
         </div>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         <div className="font-medium truncate" title={category.name}>
           {category.name && category.name.length > 25 ? category.name.substring(0, 25) + "..." : category.name}
         </div>
       </TableCell>
-      <TableCell className="text-black dark:text-white">
+      <TableCell className="text-black">
         <div className="flex flex-col gap-1">
           {category.subCategories && category.subCategories.length > 0 ? (
             category.subCategories.slice(0, 3).map((sub: SubCategory, idx: number) => (
-              <span key={idx} className="text-xs text-gray-600 dark:text-gray-400 truncate" title={sub.name}>
+              <span key={idx} className="text-xs text-gray-600  truncate" title={sub.name}>
                 {sub.name}
               </span>
             ))
@@ -118,29 +118,29 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+              className="h-8 w-8 text-black hover:bg-[#FE8A0F]/10"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+          <DropdownMenuContent align="end" className="bg-white border-0 shadow-xl shadow-gray-300 ">
             <DropdownMenuItem
               onClick={() => onEdit(category)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <FolderTree className="h-4 w-4 mr-2" />
               View Category
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onEdit(category)}
-              className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+              className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
             >
               <Edit2 className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onToggleActive(category)}
-              className={category.isActive ? "text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer" : "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"}
+              className={category.isActive ? "text-red-600  hover:bg-red-500/10 cursor-pointer" : "text-green-600  hover:bg-green-500/10 cursor-pointer"}
             >
               {category.isActive ? (
                 <>
@@ -156,7 +156,7 @@ function SortableRow({ category, onEdit, onDelete, onToggleActive }: {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(category)}
-              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+              className="text-red-600  hover:bg-red-500/10 cursor-pointer"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -806,32 +806,32 @@ export default function AdminCategoriesPage() {
               {/* Search and Controls - All in one row */}
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-black dark:text-white whitespace-nowrap">
+                  <p className="text-sm text-black whitespace-nowrap">
                     Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> categories
                   </p>
                 </div>
                 <div className="relative flex-shrink-0" style={{ width: '200px' }}>
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50" />
                   <Input
                     type="text"
                     placeholder="Search categories..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="pl-10 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="rows-per-page" className="text-sm text-black dark:text-white whitespace-nowrap">
+                  <Label htmlFor="rows-per-page" className="text-sm text-black whitespace-nowrap">
                     Rows per page:
                   </Label>
                   <Select value={limit.toString()} onValueChange={(value) => {
                     setLimit(parseInt(value));
                     setPage(1);
                   }}>
-                    <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                    <SelectTrigger id="rows-per-page" className="w-20 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                    <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                       <SelectItem value="10">10</SelectItem>
                       <SelectItem value="20">20</SelectItem>
                       <SelectItem value="50">50</SelectItem>
@@ -851,10 +851,10 @@ export default function AdminCategoriesPage() {
               </div>
 
               {/* Table */}
-              <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+              <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
                 {currentCategories.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-black dark:text-white">No categories found</p>
+                    <p className="text-black">No categories found</p>
                   </div>
                 ) : (
                   <DndContext
@@ -896,7 +896,7 @@ export default function AdminCategoriesPage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-6 pt-4 border-0 shadow-sm">
-                    <p className="text-sm text-black dark:text-white">
+                    <p className="text-sm text-black">
                       Page <span className="text-[#FE8A0F] font-semibold">{page}</span> of <span className="text-[#FE8A0F] font-semibold">{totalPages}</span>
                     </p>
                     <div className="flex gap-2">
@@ -905,7 +905,7 @@ export default function AdminCategoriesPage() {
                         size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                        className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                       >
                         <ChevronLeft className="h-4 w-4 mr-1" />
                         Previous
@@ -915,7 +915,7 @@ export default function AdminCategoriesPage() {
                         size="sm"
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
-                        className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                        className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
                       >
                         Next
                         <ChevronRight className="h-4 w-4 ml-1" />
@@ -931,7 +931,7 @@ export default function AdminCategoriesPage() {
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl shadow-gray-400 ">
           <DialogHeader>
             <DialogTitle className="text-[#FE8A0F] text-2xl">
               {editingCategory ? "Edit Category" : "Create New Category"}
@@ -942,17 +942,17 @@ export default function AdminCategoriesPage() {
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="sector" className="text-black dark:text-white">
+                <Label htmlFor="sector" className="text-black">
                   Sector <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={formData.sector}
                   onValueChange={(value) => handleInputChange("sector", value)}
                 >
-                  <SelectTrigger className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                  <SelectTrigger className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                     <SelectValue placeholder="Select a sector" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                  <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                     {sectors.map((sector) => (
                       <SelectItem key={sector._id} value={sector._id}>
                         {sector.name}
@@ -962,7 +962,7 @@ export default function AdminCategoriesPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="name" className="text-black dark:text-white">
+                <Label htmlFor="name" className="text-black">
                   Category Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -970,11 +970,11 @@ export default function AdminCategoriesPage() {
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Plumbing"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
               <div className="flex items-center gap-4">
-                <Label htmlFor="isActive" className="text-black dark:text-white">
+                <Label htmlFor="isActive" className="text-black">
                   Status
                 </Label>
                 <div className="flex items-center gap-2">
@@ -985,7 +985,7 @@ export default function AdminCategoriesPage() {
                     onChange={(e) => handleInputChange("isActive", e.target.checked)}
                     className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                   />
-                  <span className="text-sm text-black dark:text-white">
+                  <span className="text-sm text-black">
                     {formData.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
@@ -995,26 +995,26 @@ export default function AdminCategoriesPage() {
             {/* Subcategories */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Subcategories</Label>
+                <Label className="text-black">Subcategories</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleAddSubCategory}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   Add Subcategory
                 </Button>
               </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {formData.subCategories.length === 0 ? (
-                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                  <p className="text-sm text-black/50 text-center py-4">
                     No subcategories. Click "Add Subcategory" to add one.
                   </p>
                 ) : (
                   formData.subCategories.map((subCategory, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
                       <div className="flex-1 grid grid-cols-2 gap-3">
                         <div>
                           <Input
@@ -1023,7 +1023,7 @@ export default function AdminCategoriesPage() {
                               handleSubCategoryChange(index, "name", e.target.value)
                             }
                             placeholder="Subcategory name"
-                            className="text-sm bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="text-sm bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                         <div>
@@ -1038,7 +1038,7 @@ export default function AdminCategoriesPage() {
                               )
                             }
                             placeholder="Order"
-                            className="text-sm bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="text-sm bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                       </div>
@@ -1068,7 +1068,7 @@ export default function AdminCategoriesPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleRemoveSubCategory(index)}
-                          className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                          className="h-8 w-8 p-0 text-red-600  hover:bg-red-500/10"
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -1085,7 +1085,7 @@ export default function AdminCategoriesPage() {
               variant="outline"
               onClick={() => setIsModalOpen(false)}
               disabled={isSaving}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>
@@ -1112,14 +1112,14 @@ export default function AdminCategoriesPage() {
 
       {/* Confirmation Modal */}
       <Dialog open={confirmModal.isOpen} onOpenChange={(open) => setConfirmModal({ ...confirmModal, isOpen: open })}>
-        <DialogContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+        <DialogContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
           <DialogHeader>
-            <DialogTitle className="text-black dark:text-white">
+            <DialogTitle className="text-black">
               {confirmModal.title}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-gray-700 dark:text-gray-300 text-sm">
+            <p className="text-gray-700  text-sm">
               {confirmModal.message}
             </p>
           </div>
@@ -1127,7 +1127,7 @@ export default function AdminCategoriesPage() {
             <Button
               variant="outline"
               onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>

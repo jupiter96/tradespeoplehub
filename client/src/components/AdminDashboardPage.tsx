@@ -459,10 +459,10 @@ export default function AdminDashboardPage() {
       return (
         <div className="space-y-8">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-semibold text-black dark:text-white mb-2">
+            <h2 className="text-2xl font-semibold text-black mb-2">
               Dashboard
             </h2>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 ">
               Overview of your assigned management areas
             </p>
           </div>
@@ -471,7 +471,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
-                <p className="text-black dark:text-white">Loading statistics...</p>
+                <p className="text-black">Loading statistics...</p>
               </div>
             </div>
           ) : (
@@ -542,16 +542,16 @@ export default function AdminDashboardPage() {
       <div className="space-y-8">
               {/* Dashboard Tabs - Only for Super Admin */}
               <Tabs value={dashboardTab} onValueChange={setDashboardTab} className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 dark:bg-gray-800">
+                <TabsList className="grid w-full max-w-md grid-cols-2 bg-gray-100 ">
                   <TabsTrigger 
                     value="state"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
+                    className="data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600  border-0 transition-all"
                   >
                     State
                   </TabsTrigger>
                   <TabsTrigger 
                     value="statistics"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600 dark:text-gray-400 border-0 transition-all"
+                    className="data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-md data-[state=active]:shadow-[#FE8A0F]/30 text-gray-600  border-0 transition-all"
                   >
                     Statistics
                   </TabsTrigger>
@@ -563,7 +563,7 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center justify-center py-12">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F] mx-auto mb-4"></div>
-                        <p className="text-black dark:text-white">Loading statistics...</p>
+                        <p className="text-black">Loading statistics...</p>
                       </div>
                     </div>
                   ) : (
@@ -730,12 +730,12 @@ export default function AdminDashboardPage() {
 
                   {/* Chart Cards Section */}
                   <div className="mt-8 space-y-6">
-                    <h2 className="text-2xl font-bold text-black dark:text-white mb-4">Analytics Overview</h2>
+                    <h2 className="text-2xl font-bold text-black mb-4">Analytics Overview</h2>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* User Growth Chart */}
-                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">User Growth Trend</h3>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black mb-4">User Growth Trend</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <AreaChart
                             data={[
@@ -759,8 +759,8 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Revenue Chart */}
-                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Monthly Revenue</h3>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black mb-4">Monthly Revenue</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <BarChart
                             data={[
@@ -782,8 +782,8 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Job Status Distribution */}
-                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Job Status Distribution</h3>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black mb-4">Job Status Distribution</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <PieChart>
                             <Pie
@@ -816,8 +816,8 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Verification Status */}
-                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Verification Status</h3>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black mb-4">Verification Status</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <BarChart
                             data={[
@@ -838,8 +838,8 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Category Popularity */}
-                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Top Categories</h3>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black mb-4">Top Categories</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <BarChart
                             data={[
@@ -860,8 +860,8 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {/* Monthly Activity */}
-                      <div className="bg-white dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Monthly Activity</h3>
+                      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-lg">
+                        <h3 className="text-lg font-semibold text-black mb-4">Monthly Activity</h3>
                         <ResponsiveContainer width="100%" height={300}>
                           <LineChart
                             data={[
@@ -929,12 +929,12 @@ function StatCard({
 
   return (
     <div 
-      className={`relative rounded-2xl bg-white dark:bg-black border border-[#FE8A0F]/20 p-6 shadow-lg shadow-[#FE8A0F]/10 hover:shadow-2xl hover:shadow-[#FE8A0F]/20 transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
+      className={`relative rounded-2xl bg-white border border-[#FE8A0F]/20 p-6 shadow-lg shadow-[#FE8A0F]/10 hover:shadow-2xl hover:shadow-[#FE8A0F]/20 transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
       onClick={onClick}
     >
       {/* Badge - Shows new count in real-time */}
       {shouldShowBadge && (
-        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg shadow-red-500/50 ring-2 ring-white dark:ring-black">
+        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full min-w-[28px] h-7 flex items-center justify-center px-2.5 z-30 shadow-lg shadow-red-500/50 ring-2 ring-white">
           {badge}
         </div>
       )}
@@ -942,7 +942,7 @@ function StatCard({
       <div className="flex items-start justify-between gap-4">
         {/* Left side - Content */}
         <div className="flex flex-col gap-2 flex-1 min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 ">
             {title}
           </p>
           <p className="text-3xl font-bold text-[#FE8A0F]">

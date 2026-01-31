@@ -155,7 +155,7 @@ export default function AdminPageLayout({
       <div>
         <h1 className="text-6xl font-semibold text-[#FE8A0F] mb-2">{title}</h1>
         {description && (
-          <p className="text-sm text-black dark:text-white">{description}</p>
+          <p className="text-sm text-black">{description}</p>
         )}
       </div>
 
@@ -168,7 +168,7 @@ export default function AdminPageLayout({
                   variant="ghost"
                   size="icon"
                   onClick={() => scrollTabs("left")}
-                  className="absolute left-0 top-0 bottom-0 z-10 bg-white dark:bg-black hover:bg-[#FE8A0F]/10 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-none h-full"
+                  className="absolute left-0 top-0 bottom-0 z-10 bg-white hover:bg-[#FE8A0F]/10 border-0 shadow-md shadow-gray-200  rounded-none h-full"
                 >
                   <ChevronLeft className="h-5 w-5 text-[#FE8A0F]" />
                 </Button>
@@ -178,7 +178,7 @@ export default function AdminPageLayout({
                   variant="ghost"
                   size="icon"
                   onClick={() => scrollTabs("right")}
-                  className="absolute right-0 top-0 bottom-0 z-10 bg-white dark:bg-black hover:bg-[#FE8A0F]/10 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-none h-full"
+                  className="absolute right-0 top-0 bottom-0 z-10 bg-white hover:bg-[#FE8A0F]/10 border-0 shadow-md shadow-gray-200  rounded-none h-full"
                 >
                   <ChevronRight className="h-5 w-5 text-[#FE8A0F]" />
                 </Button>
@@ -203,7 +203,7 @@ export default function AdminPageLayout({
                 className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.key
                     ? "text-[#FE8A0F] shadow-md shadow-[#FE8A0F]/30"
-                    : "text-black dark:text-white hover:text-[#FE8A0F] hover:shadow-sm"
+                    : "text-black hover:text-[#FE8A0F] hover:shadow-sm"
                 }`}
               >
                 {tab.label}

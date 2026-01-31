@@ -12,6 +12,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
 import Service from '../models/Service.js';
 import Review from '../models/Review.js';
+import Order from '../models/Order.js';
 import PendingRegistration from '../models/PendingRegistration.js';
 import SEOContent from '../models/SEOContent.js';
 import SocialAuthError from '../models/SocialAuthError.js';
@@ -4363,6 +4364,190 @@ router.get('/profile/:identifier', async (req, res) => {
   } catch (error) {
     // console.error('Get public profile error', error);
     return res.status(500).json({ error: 'Failed to get profile' });
+  }
+});
+
+// Account overview stats (real data from database)
+router.get('/account/overview', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const user = await User.findById(userId).select('role walletBalance').lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const walletBalance = user.walletBalance || 0;
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    if (user.role === 'client') {
+      const orders = await Order.find({ client: userId })
+        .select('total status createdAt items')
+        .lean();
+
+      const completedOrders = orders.filter((o) => o.status === 'Completed' || o.status === 'completed');
+      const totalOrders = orders.length;
+      const totalExpense = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+      const monthlyList = [];
+      const monthlyMap = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const label = monthNames[d.getMonth()];
+        monthlyList.push({ key, month: label, amount: 0, orders: 0 });
+        monthlyMap[key] = monthlyList[monthlyList.length - 1];
+      }
+
+      completedOrders.forEach((o) => {
+        const created = new Date(o.createdAt);
+        const key = `${created.getFullYear()}-${created.getMonth()}`;
+        if (monthlyMap[key]) {
+          monthlyMap[key].amount += o.total || 0;
+          monthlyMap[key].orders += 1;
+        }
+      });
+
+      const monthlyExpenses = monthlyList.map((m) => ({ month: m.month, amount: m.amount }));
+      const monthlyOrders = monthlyList.map((m) => ({ month: m.month, orders: m.orders }));
+
+      const categoryMap = {};
+      for (const o of completedOrders) {
+        const items = o.items || [];
+        for (const it of items) {
+          const cat = it.title || 'Other';
+          categoryMap[cat] = (categoryMap[cat] || 0) + (it.price || 0) * (it.quantity || 1);
+        }
+      }
+      const colors = ['#FE8A0F', '#3D78CB', '#22c55e', '#f59e0b', '#8b5cf6'];
+      const categorySpending = Object.entries(categoryMap).map(([name, value], i) => ({
+        name: name.length > 20 ? name.slice(0, 17) + '...' : name,
+        value: Math.round(value * 100) / 100,
+        color: colors[i % colors.length],
+      }));
+
+      const prevMonth = completedOrders.filter((o) => {
+        const d = new Date(o.createdAt);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() - 1 && d.getFullYear() === now.getFullYear();
+      });
+      const thisMonth = completedOrders.filter((o) => {
+        const d = new Date(o.createdAt);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+      const prevSum = prevMonth.reduce((s, o) => s + (o.total || 0), 0);
+      const thisSum = thisMonth.reduce((s, o) => s + (o.total || 0), 0);
+      const expenseChangePercent = prevSum > 0 ? Math.round(((thisSum - prevSum) / prevSum) * 100) : 0;
+      const ordersChangePercent = prevMonth.length > 0 ? Math.round(((thisMonth.length - prevMonth.length) / prevMonth.length) * 100) : 0;
+
+      return res.json({
+        totalOrders,
+        totalExpense: Math.round(totalExpense * 100) / 100,
+        walletBalance,
+        monthlyExpenses: monthlyExpenses.map((m) => ({ month: m.month, amount: Math.round(m.amount * 100) / 100 })),
+        monthlyOrders,
+        categorySpending: categorySpending.length > 0 ? categorySpending : [{ name: 'No data yet', value: 1, color: '#9ca3af' }],
+        expenseChangePercent,
+        ordersChangePercent,
+      });
+    }
+
+    if (user.role === 'professional') {
+      const orders = await Order.find({ professional: userId })
+        .select('total status createdAt items')
+        .lean();
+
+      const activeStatuses = ['In Progress', 'delivered', 'Revision', 'Cancellation Pending', 'disputed'];
+      const activeOrders = orders.filter((o) => activeStatuses.includes(o.status));
+      const completedOrders = orders.filter((o) => o.status === 'Completed' || o.status === 'completed');
+      const activeJobs = activeOrders.length;
+      const completedJobs = completedOrders.length;
+      const totalEarnings = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+      const monthlyList = [];
+      const monthlyMap = {};
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        const label = monthNames[d.getMonth()];
+        monthlyList.push({ key, month: label, amount: 0, jobs: 0 });
+        monthlyMap[key] = monthlyList[monthlyList.length - 1];
+      }
+
+      completedOrders.forEach((o) => {
+        const created = new Date(o.createdAt);
+        const key = `${created.getFullYear()}-${created.getMonth()}`;
+        if (monthlyMap[key]) {
+          monthlyMap[key].amount += o.total || 0;
+          monthlyMap[key].jobs += 1;
+        }
+      });
+
+      const monthlyEarnings = monthlyList.map((m) => ({ month: m.month, amount: Math.round(m.amount * 100) / 100 }));
+      const monthlyJobs = monthlyList.map((m) => ({ month: m.month, jobs: m.jobs }));
+
+      const categoryMap = {};
+      for (const o of completedOrders) {
+        const items = o.items || [];
+        for (const it of items) {
+          const cat = it.title || 'Other';
+          categoryMap[cat] = (categoryMap[cat] || 0) + (it.price || 0) * (it.quantity || 1);
+        }
+      }
+      const colors = ['#FE8A0F', '#3B82F6', '#22c55e', '#f59e0b', '#8b5cf6'];
+      const categoryEarnings = Object.entries(categoryMap).map(([name, value], i) => ({
+        name: name.length > 20 ? name.slice(0, 17) + '...' : name,
+        value: Math.round(value * 100) / 100,
+        color: colors[i % colors.length],
+      }));
+
+      const thisWeek = activeOrders.filter((o) => {
+        const d = new Date(o.createdAt);
+        const now = new Date();
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return d >= weekAgo;
+      });
+      const prevMonth = completedOrders.filter((o) => {
+        const d = new Date(o.createdAt);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() - 1 && d.getFullYear() === now.getFullYear();
+      });
+      const thisMonth = completedOrders.filter((o) => {
+        const d = new Date(o.createdAt);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+      const prevSum = prevMonth.reduce((s, o) => s + (o.total || 0), 0);
+      const thisSum = thisMonth.reduce((s, o) => s + (o.total || 0), 0);
+      const earningsChangePercent = prevSum > 0 ? Math.round(((thisSum - prevSum) / prevSum) * 100) : 0;
+      const jobsChangePercent = prevMonth.length > 0 ? Math.round(((thisMonth.length - prevMonth.length) / prevMonth.length) * 100) : 0;
+
+      return res.json({
+        activeJobs,
+        completedJobs,
+        totalEarnings: Math.round(totalEarnings * 100) / 100,
+        walletBalance,
+        monthlyEarnings,
+        monthlyJobs,
+        categoryEarnings: categoryEarnings.length > 0 ? categoryEarnings : [{ name: 'No data yet', value: 1, color: '#9ca3af' }],
+        activeJobsThisWeek: thisWeek.length,
+        earningsChangePercent,
+        jobsChangePercent,
+      });
+    }
+
+    return res.status(400).json({ error: 'Overview not available for this role' });
+  } catch (error) {
+    console.error('Account overview error:', error);
+    return res.status(500).json({ error: 'Failed to fetch overview' });
   }
 });
 

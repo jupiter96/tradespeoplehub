@@ -370,14 +370,14 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
           <Button
             variant="ghost"
             size="icon"
-            className={`relative hidden lg:flex hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+            className={`relative hidden lg:flex hover:bg-gray-100 transition-colors ${
               isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-gray-600 hover:text-[#3B82F6]"
             }`}
             title="Messages"
           >
             <MessageCircle className="w-5 h-5" />
             {messageCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold">
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500  text-white text-[10px] font-semibold">
                 {messageCount > 9 ? "9+" : messageCount}
               </Badge>
             )}
@@ -387,14 +387,14 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
           <Button
             variant="ghost"
             size="icon"
-            className={`relative hidden lg:flex hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+            className={`relative hidden lg:flex hover:bg-gray-100 transition-colors ${
               isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-gray-600 hover:text-[#3B82F6]"
             }`}
             title="Notifications"
           >
             <Bell className="w-5 h-5" />
             {notificationCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold">
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500  text-white text-[10px] font-semibold">
                 {notificationCount > 9 ? "9+" : notificationCount}
               </Badge>
             )}
@@ -405,7 +405,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className={`hidden lg:flex hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+            className={`hidden lg:flex hover:bg-gray-100 transition-colors ${
               isDarkMode ? "text-white hover:text-[#FFB347]" : "text-gray-600 hover:text-[#FE8A0F]"
             }`}
             title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -422,7 +422,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className={`font-['Poppins',sans-serif] text-[14px] px-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                className={`font-['Poppins',sans-serif] text-[14px] px-2 transition-colors hover:bg-gray-100 ${
                   isDarkMode ? "text-white" : "text-gray-600"
                 }`}
               >
@@ -438,7 +438,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+            <DropdownMenuContent align="end" className="w-48 bg-white border-0 shadow-xl shadow-gray-300 ">
               <DropdownMenuItem
                 onClick={() => {
                   setShowEditProfile(true);
@@ -451,21 +451,21 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     setAvatarPreview(currentAdmin.avatar || null);
                   }
                 }}
-                className="cursor-pointer text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="cursor-pointer text-black hover:bg-gray-100"
               >
                 <User className="mr-2 h-4 w-4" />
                 Edit Profile
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setShowChangePassword(true)}
-                className="cursor-pointer text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="cursor-pointer text-black hover:bg-gray-100"
               >
                 <Key className="mr-2 h-4 w-4" />
                 Change Password
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={handleLogout}
-                className="cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="cursor-pointer text-red-600  hover:bg-red-50"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
@@ -475,16 +475,16 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
           {/* Change Password Dialog */}
           <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
-            <DialogContent className="w-[70vw] bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+            <DialogContent className="w-[70vw] bg-white border-0 shadow-2xl shadow-gray-400 ">
               <DialogHeader>
-                <DialogTitle className="text-black dark:text-white">Change Password</DialogTitle>
-                <DialogDescription className="text-gray-600 dark:text-gray-400">
+                <DialogTitle className="text-black">Change Password</DialogTitle>
+                <DialogDescription className="text-gray-600 ">
                   Enter your current password and choose a new password.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div>
-                  <Label htmlFor="currentPassword" className="text-black dark:text-white">
+                  <Label htmlFor="currentPassword" className="text-black">
                     Current Password
                   </Label>
                   <Input
@@ -494,12 +494,12 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, currentPassword: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Enter current password"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="newPassword" className="text-black dark:text-white">
+                  <Label htmlFor="newPassword" className="text-black">
                     New Password
                   </Label>
                   <Input
@@ -509,22 +509,22 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, newPassword: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Must include uppercase, lowercase, and numbers"
                   />
                   {passwordData.newPassword && (
-                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-[11px] text-gray-500 ">
                       {getPasswordHint(passwordData.newPassword)}
                     </p>
                   )}
                   {!passwordData.newPassword && (
-                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-[11px] text-gray-500 ">
                       Password must include uppercase, lowercase, and numbers
                     </p>
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="confirmPassword" className="text-black dark:text-white">
+                  <Label htmlFor="confirmPassword" className="text-black">
                     Confirm New Password
                   </Label>
                   <Input
@@ -534,7 +534,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setPasswordData({ ...passwordData, confirmPassword: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Confirm new password"
                   />
                 </div>
@@ -549,7 +549,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                         confirmPassword: "",
                       });
                     }}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   >
                     Cancel
                   </Button>
@@ -567,17 +567,17 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
 
           {/* Edit Profile Dialog */}
           <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
-            <DialogContent className="w-[70vw] bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+            <DialogContent className="w-[70vw] bg-white border-0 shadow-2xl shadow-gray-400 ">
               <DialogHeader>
-                <DialogTitle className="text-black dark:text-white">Edit Profile</DialogTitle>
-                <DialogDescription className="text-gray-600 dark:text-gray-400">
+                <DialogTitle className="text-black">Edit Profile</DialogTitle>
+                <DialogDescription className="text-gray-600 ">
                   Update your profile information and avatar.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 {/* Avatar Upload Section */}
                 <div className="flex flex-col items-center gap-4">
-                  <Label className="text-black dark:text-white">Avatar</Label>
+                  <Label className="text-black">Avatar</Label>
                   <div className="relative">
                     <Avatar className="w-24 h-24">
                       {resolveAvatarUrl(avatarPreview || currentAdmin?.avatar || undefined) && (
@@ -608,7 +608,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingAvatar}
-                      className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white"
+                      className="border-0 shadow-md shadow-gray-200  text-black"
                     >
                       <Camera className="mr-2 h-4 w-4" />
                       {avatarPreview ? "Change Avatar" : "Upload Avatar"}
@@ -636,7 +636,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                             toast.error("Failed to remove avatar");
                           }
                         }}
-                        className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-red-600 dark:text-red-400"
+                        className="border-0 shadow-md shadow-gray-200  text-red-600 "
                       >
                         <XCircle className="mr-2 h-4 w-4" />
                         Remove
@@ -645,7 +645,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="profileFullname" className="text-black dark:text-white">
+                  <Label htmlFor="profileFullname" className="text-black">
                     Full Name *
                   </Label>
                   <Input
@@ -655,12 +655,12 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setProfileData({ ...profileData, fullname: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Enter your full name"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="profileEmail" className="text-black dark:text-white">
+                  <Label htmlFor="profileEmail" className="text-black">
                     Email *
                   </Label>
                   <Input
@@ -670,7 +670,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                     onChange={(e) =>
                       setProfileData({ ...profileData, email: e.target.value })
                     }
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -687,7 +687,7 @@ export default function AdminHeader({ onMenuToggle, sidebarOpen = false }: Admin
                         setAvatarPreview(currentAdmin.avatar || null);
                       }
                     }}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   >
                     Cancel
                   </Button>

@@ -180,7 +180,7 @@ export default function AdminHomepageContentPage() {
     return (
       <AdminPageLayout title="Home Content Management">
         <div className="flex items-center justify-center py-12">
-          <p className="text-black dark:text-white">Loading...</p>
+          <p className="text-black">Loading...</p>
         </div>
       </AdminPageLayout>
     );
@@ -190,47 +190,47 @@ export default function AdminHomepageContentPage() {
     <AdminPageLayout title="Home Content Management">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* HOME PAGE CONTENT Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             HOME PAGE CONTENT
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="homepage-title" className="text-black dark:text-white">
+              <Label htmlFor="homepage-title" className="text-black">
                 Title
               </Label>
               <Input
                 id="homepage-title"
                 value={homepageData.title}
                 onChange={(e) => setHomepageData({ ...homepageData, title: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter page title"
               />
             </div>
 
             <div>
-              <Label htmlFor="homepage-metaKeywords" className="text-black dark:text-white">
+              <Label htmlFor="homepage-metaKeywords" className="text-black">
                 Meta Keywords
               </Label>
               <Input
                 id="homepage-metaKeywords"
                 value={homepageData.metaKeywords}
                 onChange={(e) => setHomepageData({ ...homepageData, metaKeywords: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta keywords (comma separated)"
               />
             </div>
 
             <div>
-              <Label htmlFor="homepage-metaDescription" className="text-black dark:text-white">
+              <Label htmlFor="homepage-metaDescription" className="text-black">
                 Meta Description
               </Label>
               <Textarea
                 id="homepage-metaDescription"
                 value={homepageData.metaDescription}
                 onChange={(e) => setHomepageData({ ...homepageData, metaDescription: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta description"
               />
             </div>
@@ -238,86 +238,86 @@ export default function AdminHomepageContentPage() {
         </div>
 
         {/* OPEN GRAPH TAGS Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             OPEN GRAPH TAGS (Social Media Sharing)
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="ogTitle" className="text-black dark:text-white">
+              <Label htmlFor="ogTitle" className="text-black">
                 OG Title
               </Label>
               <Input
                 id="ogTitle"
                 value={homepageData.ogTitle}
                 onChange={(e) => setHomepageData({ ...homepageData, ogTitle: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Leave empty to use page title"
               />
             </div>
 
             <div>
-              <Label htmlFor="ogDescription" className="text-black dark:text-white">
+              <Label htmlFor="ogDescription" className="text-black">
                 OG Description
               </Label>
               <Textarea
                 id="ogDescription"
                 value={homepageData.ogDescription}
                 onChange={(e) => setHomepageData({ ...homepageData, ogDescription: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Leave empty to use meta description"
               />
             </div>
 
             <div>
-              <Label htmlFor="ogImage" className="text-black dark:text-white">
+              <Label htmlFor="ogImage" className="text-black">
                 OG Image URL
               </Label>
               <Input
                 id="ogImage"
                 value={homepageData.ogImage}
                 onChange={(e) => setHomepageData({ ...homepageData, ogImage: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="https://gmail.com/image.jpg (Recommended: 1200x630px)"
               />
             </div>
 
             <div>
-              <Label htmlFor="ogUrl" className="text-black dark:text-white">
+              <Label htmlFor="ogUrl" className="text-black">
                 OG URL
               </Label>
               <Input
                 id="ogUrl"
                 value={homepageData.ogUrl}
                 onChange={(e) => setHomepageData({ ...homepageData, ogUrl: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Leave empty to use current page URL"
               />
             </div>
 
             <div>
-              <Label htmlFor="ogType" className="text-black dark:text-white">
+              <Label htmlFor="ogType" className="text-black">
                 OG Type
               </Label>
               <Input
                 id="ogType"
                 value={homepageData.ogType}
                 onChange={(e) => setHomepageData({ ...homepageData, ogType: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="website, article, etc."
               />
             </div>
 
             <div>
-              <Label htmlFor="ogSiteName" className="text-black dark:text-white">
+              <Label htmlFor="ogSiteName" className="text-black">
                 OG Site Name
               </Label>
               <Input
                 id="ogSiteName"
                 value={homepageData.ogSiteName}
                 onChange={(e) => setHomepageData({ ...homepageData, ogSiteName: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Your website name"
               />
             </div>
@@ -325,60 +325,60 @@ export default function AdminHomepageContentPage() {
         </div>
 
         {/* TWITTER CARD TAGS Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             TWITTER CARD TAGS
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="twitterCard" className="text-black dark:text-white">
+              <Label htmlFor="twitterCard" className="text-black">
                 Twitter Card Type
               </Label>
               <Input
                 id="twitterCard"
                 value={homepageData.twitterCard}
                 onChange={(e) => setHomepageData({ ...homepageData, twitterCard: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="summary_large_image, summary, etc."
               />
             </div>
 
             <div>
-              <Label htmlFor="twitterTitle" className="text-black dark:text-white">
+              <Label htmlFor="twitterTitle" className="text-black">
                 Twitter Title
               </Label>
               <Input
                 id="twitterTitle"
                 value={homepageData.twitterTitle}
                 onChange={(e) => setHomepageData({ ...homepageData, twitterTitle: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Leave empty to use OG title"
               />
             </div>
 
             <div>
-              <Label htmlFor="twitterDescription" className="text-black dark:text-white">
+              <Label htmlFor="twitterDescription" className="text-black">
                 Twitter Description
               </Label>
               <Textarea
                 id="twitterDescription"
                 value={homepageData.twitterDescription}
                 onChange={(e) => setHomepageData({ ...homepageData, twitterDescription: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Leave empty to use OG description"
               />
             </div>
 
             <div>
-              <Label htmlFor="twitterImage" className="text-black dark:text-white">
+              <Label htmlFor="twitterImage" className="text-black">
                 Twitter Image URL
               </Label>
               <Input
                 id="twitterImage"
                 value={homepageData.twitterImage}
                 onChange={(e) => setHomepageData({ ...homepageData, twitterImage: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Leave empty to use OG image"
               />
             </div>
@@ -386,34 +386,34 @@ export default function AdminHomepageContentPage() {
         </div>
 
         {/* ADDITIONAL SEO Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             ADDITIONAL SEO SETTINGS
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="canonicalUrl" className="text-black dark:text-white">
+              <Label htmlFor="canonicalUrl" className="text-black">
                 Canonical URL
               </Label>
               <Input
                 id="canonicalUrl"
                 value={homepageData.canonicalUrl}
                 onChange={(e) => setHomepageData({ ...homepageData, canonicalUrl: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="https://gmail.com (Leave empty if not needed)"
               />
             </div>
 
             <div>
-              <Label htmlFor="robots" className="text-black dark:text-white">
+              <Label htmlFor="robots" className="text-black">
                 Robots Meta Tag
               </Label>
               <Input
                 id="robots"
                 value={homepageData.robots}
                 onChange={(e) => setHomepageData({ ...homepageData, robots: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="index, follow (or noindex, nofollow)"
               />
             </div>
@@ -421,34 +421,34 @@ export default function AdminHomepageContentPage() {
         </div>
 
         {/* SCRIPT MANAGEMENT Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             SCRIPT MANAGEMENT
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="headerScript" className="text-black dark:text-white">
+              <Label htmlFor="headerScript" className="text-black">
                 Header Script
               </Label>
               <Textarea
                 id="headerScript"
                 value={homepageData.headerScript}
                 onChange={(e) => setHomepageData({ ...homepageData, headerScript: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white font-mono text-sm min-h-[150px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black font-mono text-sm min-h-[150px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter header script (e.g., Google Tag Manager)"
               />
             </div>
 
             <div>
-              <Label htmlFor="bodyScript" className="text-black dark:text-white">
+              <Label htmlFor="bodyScript" className="text-black">
                 Body Script
               </Label>
               <Textarea
                 id="bodyScript"
                 value={homepageData.bodyScript}
                 onChange={(e) => setHomepageData({ ...homepageData, bodyScript: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white font-mono text-sm min-h-[150px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black font-mono text-sm min-h-[150px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter body script (e.g., noscript tags)"
               />
             </div>
@@ -456,73 +456,73 @@ export default function AdminHomepageContentPage() {
         </div>
 
         {/* BLOG CONTENT Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             BLOG CONTENT
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="blog-title" className="text-black dark:text-white">
+              <Label htmlFor="blog-title" className="text-black">
                 Title
               </Label>
               <Input
                 id="blog-title"
                 value={blogData.title}
                 onChange={(e) => setBlogData({ ...blogData, title: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter blog title"
               />
             </div>
 
             <div>
-              <Label htmlFor="blog-description" className="text-black dark:text-white">
+              <Label htmlFor="blog-description" className="text-black">
                 Description
               </Label>
               <Textarea
                 id="blog-description"
                 value={blogData.description}
                 onChange={(e) => setBlogData({ ...blogData, description: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter blog description"
               />
             </div>
 
             <div>
-              <Label htmlFor="blog-metaTitle" className="text-black dark:text-white">
+              <Label htmlFor="blog-metaTitle" className="text-black">
                 Meta Title
               </Label>
               <Input
                 id="blog-metaTitle"
                 value={blogData.metaTitle}
                 onChange={(e) => setBlogData({ ...blogData, metaTitle: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta title"
               />
             </div>
 
             <div>
-              <Label htmlFor="blog-metaKey" className="text-black dark:text-white">
+              <Label htmlFor="blog-metaKey" className="text-black">
                 Meta Key
               </Label>
               <Input
                 id="blog-metaKey"
                 value={blogData.metaKey}
                 onChange={(e) => setBlogData({ ...blogData, metaKey: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta keywords (comma separated)"
               />
             </div>
 
             <div>
-              <Label htmlFor="blog-metaDescription" className="text-black dark:text-white">
+              <Label htmlFor="blog-metaDescription" className="text-black">
                 Meta Description
               </Label>
               <Textarea
                 id="blog-metaDescription"
                 value={blogData.metaDescription}
                 onChange={(e) => setBlogData({ ...blogData, metaDescription: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta description"
               />
             </div>
@@ -530,73 +530,73 @@ export default function AdminHomepageContentPage() {
         </div>
 
         {/* COST GUIDES Section */}
-        <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
-          <h2 className="text-xl font-semibold text-black dark:text-white mb-4">
+        <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
+          <h2 className="text-xl font-semibold text-black mb-4">
             COST GUIDES
           </h2>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="cost-guide-title" className="text-black dark:text-white">
+              <Label htmlFor="cost-guide-title" className="text-black">
                 Title
               </Label>
               <Input
                 id="cost-guide-title"
                 value={costGuideData.title}
                 onChange={(e) => setCostGuideData({ ...costGuideData, title: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter cost guide title"
               />
             </div>
 
             <div>
-              <Label htmlFor="cost-guide-description" className="text-black dark:text-white">
+              <Label htmlFor="cost-guide-description" className="text-black">
                 Description
               </Label>
               <Textarea
                 id="cost-guide-description"
                 value={costGuideData.description}
                 onChange={(e) => setCostGuideData({ ...costGuideData, description: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter cost guide description"
               />
             </div>
 
             <div>
-              <Label htmlFor="cost-guide-metaTitle" className="text-black dark:text-white">
+              <Label htmlFor="cost-guide-metaTitle" className="text-black">
                 Meta Title
               </Label>
               <Input
                 id="cost-guide-metaTitle"
                 value={costGuideData.metaTitle}
                 onChange={(e) => setCostGuideData({ ...costGuideData, metaTitle: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta title"
               />
             </div>
 
             <div>
-              <Label htmlFor="cost-guide-metaKey" className="text-black dark:text-white">
+              <Label htmlFor="cost-guide-metaKey" className="text-black">
                 Meta Key
               </Label>
               <Input
                 id="cost-guide-metaKey"
                 value={costGuideData.metaKey}
                 onChange={(e) => setCostGuideData({ ...costGuideData, metaKey: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta keywords (comma separated)"
               />
             </div>
 
             <div>
-              <Label htmlFor="cost-guide-metaDescription" className="text-black dark:text-white">
+              <Label htmlFor="cost-guide-metaDescription" className="text-black">
                 Meta Description
               </Label>
               <Textarea
                 id="cost-guide-metaDescription"
                 value={costGuideData.metaDescription}
                 onChange={(e) => setCostGuideData({ ...costGuideData, metaDescription: e.target.value })}
-                className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="bg-white border-0 shadow-md shadow-gray-200  text-black min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 placeholder="Enter meta description"
               />
             </div>

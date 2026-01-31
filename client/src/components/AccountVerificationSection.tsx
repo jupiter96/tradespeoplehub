@@ -558,7 +558,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       </div>
 
       {/* Progress Overview Card */}
-      <div className="bg-gradient-to-br from-[#FFF5EB] via-white to-[#E3F2FD] border-2 border-[#FE8A0F] rounded-2xl p-6 md:p-8 mb-8">
+      <div className="bg-gradient-to-br from-[#FFF5EB] via-white to-[#E3F2FD] rounded-2xl p-6 md:p-8 mb-8 shadow-md">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-3">

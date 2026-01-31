@@ -655,7 +655,7 @@ export default function AdminSidebar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden rounded-xl border border-slate-200 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 lg:flex"
+                className="hidden rounded-xl border border-slate-200 text-slate-900 hover:bg-slate-100 lg:flex"
                 onClick={() => setIsCollapsed((prev) => !prev)}
                 title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
@@ -799,7 +799,7 @@ export default function AdminSidebar({
                               }
                               toggleMenu(menuToRender.key);
                             }}
-                            className="flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
+                            className="flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10"
                             title={isExpanded ? "Collapse submenu" : "Expand submenu"}
                           >
                             <ChevronDown
@@ -910,14 +910,14 @@ export default function AdminSidebar({
               <Button
                 variant="ghost"
                 size="icon"
-                className={`relative hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                className={`relative hover:bg-white/10 transition-colors ${
                   isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-slate-700 hover:text-[#3B82F6]"
                 }`}
                 title="Messages"
               >
                 <MessageCircle className="w-5 h-5" />
                 {messageCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold border-0">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500  text-white text-[10px] font-semibold border-0">
                     {messageCount > 9 ? "9+" : messageCount}
                   </Badge>
                 )}
@@ -927,14 +927,14 @@ export default function AdminSidebar({
               <Button
                 variant="ghost"
                 size="icon"
-                className={`relative hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                className={`relative hover:bg-white/10 transition-colors ${
                   isDarkMode ? "text-white hover:text-[#60A5FA]" : "text-slate-700 hover:text-[#3B82F6]"
                 }`}
                 title="Notifications"
               >
                 <Bell className="w-5 h-5" />
                 {notificationCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 dark:bg-red-600 text-white text-[10px] font-semibold border-0">
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500  text-white text-[10px] font-semibold border-0">
                     {notificationCount > 9 ? "9+" : notificationCount}
                   </Badge>
                 )}
@@ -945,7 +945,7 @@ export default function AdminSidebar({
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                className={`hover:bg-white/10 transition-colors ${
                   isDarkMode ? "text-white hover:text-[#FFB347]" : "text-slate-700 hover:text-[#FE8A0F]"
                 }`}
                 title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -962,7 +962,7 @@ export default function AdminSidebar({
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
-                className={`hover:bg-white/10 dark:hover:bg-white/20 transition-colors ${
+                className={`hover:bg-white/10 transition-colors ${
                   isDarkMode ? "text-red-300 hover:text-red-200" : "text-red-600 hover:text-red-700"
                 }`}
                 title="Logout"
@@ -1095,7 +1095,7 @@ export default function AdminSidebar({
                           }
                           toggleMenu(menuToRender.key);
                         }}
-                        className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10 dark:text-white"
+                        className="ml-auto flex items-center rounded-xl p-1.5 text-slate-900 transition-colors duration-200 hover:bg-white/10"
                         title={isExpanded ? "Collapse submenu" : "Expand submenu"}
                       >
                         <ChevronDown

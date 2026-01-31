@@ -188,7 +188,7 @@ export default function AdminSubAdminModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+      <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl shadow-gray-400 ">
         <DialogHeader>
           <DialogTitle className="text-[#FE8A0F] text-2xl">
             {isEditMode ? "Edit Sub Admin" : "Add Sub Admin"}
@@ -198,7 +198,7 @@ export default function AdminSubAdminModal({
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {/* Name */}
           <div>
-            <Label htmlFor="name" className="text-black dark:text-white">
+            <Label htmlFor="name" className="text-black">
               Name <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -206,14 +206,14 @@ export default function AdminSubAdminModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
+              className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
               placeholder="Enter full name"
             />
           </div>
 
           {/* Email */}
           <div>
-            <Label htmlFor="email" className="text-black dark:text-white">
+            <Label htmlFor="email" className="text-black">
               Email <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -223,16 +223,16 @@ export default function AdminSubAdminModal({
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
               disabled={isEditMode}
-              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
+              className="bg-white border-0 shadow-md shadow-gray-200  text-black disabled:opacity-50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
               placeholder="Enter email address"
             />
           </div>
 
           {/* Password */}
           <div>
-            <Label htmlFor="password" className="text-black dark:text-white">
+            <Label htmlFor="password" className="text-black">
               Password {!isEditMode && <span className="text-red-500">*</span>}
-              {isEditMode && <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(leave blank to keep current)</span>}
+              {isEditMode && <span className="text-xs text-gray-500  ml-2">(leave blank to keep current)</span>}
             </Label>
             <Input
               id="password"
@@ -240,17 +240,17 @@ export default function AdminSubAdminModal({
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required={!isEditMode}
-              className="bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
+              className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow mt-2"
               placeholder="Enter password"
             />
           </div>
 
           {/* Roles/Permissions */}
           <div>
-            <Label className="text-black dark:text-white mb-3 block">
+            <Label className="text-black mb-3 block">
               Roles <span className="text-red-500">*</span>
             </Label>
-            <div className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 rounded-md p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
+            <div className="border-0 shadow-md shadow-gray-200  rounded-md p-4 max-h-[300px] overflow-y-auto bg-white">
               <div className="space-y-2">
                 {AVAILABLE_PERMISSIONS.map((permission) => (
                   <div key={permission.value} className="flex items-center space-x-2 py-1">
@@ -262,7 +262,7 @@ export default function AdminSubAdminModal({
                     />
                     <Label
                       htmlFor={permission.value}
-                      className="text-sm font-medium cursor-pointer text-black dark:text-white"
+                      className="text-sm font-medium cursor-pointer text-black"
                     >
                       {permission.label}
                     </Label>
@@ -279,7 +279,7 @@ export default function AdminSubAdminModal({
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+              className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
             >
               Cancel
             </Button>

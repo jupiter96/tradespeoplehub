@@ -328,7 +328,7 @@ export default function AdminServiceCategoryFormPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 shadow-md shadow-gray-200 dark:shadow-gray-800">
+      <div className="bg-white border-b border-gray-200  sticky top-0 z-10 shadow-md shadow-gray-200 ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -336,7 +336,7 @@ export default function AdminServiceCategoryFormPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/admin/service-category")}
-                className="text-black dark:text-white hover:bg-[#FE8A0F]/10"
+                className="text-black hover:bg-[#FE8A0F]/10"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
@@ -368,12 +368,12 @@ export default function AdminServiceCategoryFormPage() {
 
       {/* Form Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white dark:bg-black rounded-lg shadow-2xl shadow-gray-400 dark:shadow-gray-950 border-0 p-6">
+        <div className="bg-white rounded-lg shadow-2xl shadow-gray-400  border-0 p-6">
           <div className="space-y-4">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="sector" className="text-black dark:text-white">
+                <Label htmlFor="sector" className="text-black">
                   Sector <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -382,12 +382,12 @@ export default function AdminServiceCategoryFormPage() {
                   disabled={true}
                 >
                   <SelectTrigger
-                    className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow opacity-60 cursor-not-allowed"
+                    className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow opacity-60 cursor-not-allowed"
                     disabled={true}
                   >
                     <SelectValue placeholder="Select a sector" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                  <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                     {sectors.map((sector) => (
                       <SelectItem key={sector._id} value={sector._id}>
                         {sector.name}
@@ -397,7 +397,7 @@ export default function AdminServiceCategoryFormPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="name" className="text-black dark:text-white">
+                <Label htmlFor="name" className="text-black">
                   Service Category Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -405,24 +405,24 @@ export default function AdminServiceCategoryFormPage() {
                   value={formData.name || ""}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="Plumbing"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
               <div>
-                <Label htmlFor="slug" className="text-black dark:text-white">
+                <Label htmlFor="slug" className="text-black">
                   Slug <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">(Auto-generated from name)</span>
+                  <span className="text-xs text-gray-500  ml-2">(Auto-generated from name)</span>
                 </Label>
                 <Input
                   id="slug"
                   value={formData.slug || ""}
                   disabled
                   placeholder="plumbing"
-                  className="mt-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  className="mt-1 bg-gray-100  border-0 text-gray-500  cursor-not-allowed"
                 />
               </div>
               <div className="flex items-center gap-4">
-                <Label htmlFor="isActive" className="text-black dark:text-white">
+                <Label htmlFor="isActive" className="text-black">
                   Status
                 </Label>
                 <div className="flex items-center gap-2">
@@ -433,7 +433,7 @@ export default function AdminServiceCategoryFormPage() {
                     onChange={(e) => handleInputChange("isActive", e.target.checked)}
                     className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                   />
-                  <span className="text-sm text-black dark:text-white">
+                  <span className="text-sm text-black">
                     {formData.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
@@ -442,31 +442,31 @@ export default function AdminServiceCategoryFormPage() {
 
             {/* Category Level Mapping */}
             <div>
-              <Label className="text-black dark:text-white mb-2 block">
+              <Label className="text-black mb-2 block">
                 Category Level Mapping <span className="text-red-500">*</span>
               </Label>
-              <div className="space-y-2 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-2 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {/* Level 1 - Fixed: Main Category */}
-                <div className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
-                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                <div className="flex items-center gap-3 p-2 bg-white rounded-lg border-2 border-gray-200 ">
+                  <Label className="text-black font-semibold w-40 flex-shrink-0">
                     Category Level 1:
                   </Label>
                   <Input
                     value="Main Category"
                     disabled
-                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400"
+                    className="flex-1 bg-gray-100  border-0 text-gray-500 "
                   />
                 </div>
 
                 {/* Level 2 - Fixed: Sub Category */}
-                <div className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
-                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                <div className="flex items-center gap-3 p-2 bg-white rounded-lg border-2 border-gray-200 ">
+                  <Label className="text-black font-semibold w-40 flex-shrink-0">
                     Category Level 2:
                   </Label>
                   <Input
                     value="Sub Category"
                     disabled
-                    className="flex-1 bg-gray-100 dark:bg-gray-800 border-0 text-gray-500 dark:text-gray-400"
+                    className="flex-1 bg-gray-100  border-0 text-gray-500 "
                   />
                 </div>
 
@@ -483,8 +483,8 @@ export default function AdminServiceCategoryFormPage() {
                   if (!shouldShow) return null;
 
                   return (
-                    <div key={level} className="flex items-center gap-3 p-2 bg-white dark:bg-black rounded-lg border-2 border-gray-200 dark:border-gray-800">
-                      <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                    <div key={level} className="flex items-center gap-3 p-2 bg-white rounded-lg border-2 border-gray-200 ">
+                      <Label className="text-black font-semibold w-40 flex-shrink-0">
                         Category Level {level}:
                       </Label>
                       <Select
@@ -513,10 +513,10 @@ export default function AdminServiceCategoryFormPage() {
                           });
                         }}
                       >
-                        <SelectTrigger className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                        <SelectTrigger className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                           <SelectValue placeholder="Select attribute type" />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                        <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                           {ATTRIBUTE_TYPES.map((type) => (
                             <SelectItem
                               key={type.value}
@@ -535,7 +535,7 @@ export default function AdminServiceCategoryFormPage() {
 
                 {/* Level Selection */}
                 <div className="flex items-center gap-3 p-2 pt-3">
-                  <Label className="text-black dark:text-white font-semibold w-40 flex-shrink-0">
+                  <Label className="text-black font-semibold w-40 flex-shrink-0">
                     Number of Levels <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -568,10 +568,10 @@ export default function AdminServiceCategoryFormPage() {
                       });
                     }}
                   >
-                    <SelectTrigger className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                    <SelectTrigger className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                       <SelectValue placeholder="Select number of levels" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                    <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
                       {[3, 4, 5, 6, 7].map((level) => (
                         <SelectItem key={level} value={level.toString()}>
                           {level} Levels
@@ -585,7 +585,7 @@ export default function AdminServiceCategoryFormPage() {
 
             {/* Description */}
             <div>
-              <Label htmlFor="description" className="text-black dark:text-white">
+              <Label htmlFor="description" className="text-black">
                 Description
               </Label>
               <Textarea
@@ -593,14 +593,14 @@ export default function AdminServiceCategoryFormPage() {
                 value={formData.description || ""}
                 onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="Describe this service category..."
-                className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[100px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
               />
             </div>
 
             {/* Meta Title and Meta Description */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="metaTitle" className="text-black dark:text-white">
+                <Label htmlFor="metaTitle" className="text-black">
                   Meta Title
                 </Label>
                 <Input
@@ -608,11 +608,11 @@ export default function AdminServiceCategoryFormPage() {
                   value={formData.metaTitle || ""}
                   onChange={(e) => handleInputChange("metaTitle", e.target.value)}
                   placeholder="SEO meta title"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
               <div>
-                <Label htmlFor="metaDescription" className="text-black dark:text-white">
+                <Label htmlFor="metaDescription" className="text-black">
                   Meta Description
                 </Label>
                 <Textarea
@@ -620,7 +620,7 @@ export default function AdminServiceCategoryFormPage() {
                   value={formData.metaDescription || ""}
                   onChange={(e) => handleInputChange("metaDescription", e.target.value)}
                   placeholder="SEO meta description"
-                  className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
             </div>
@@ -628,7 +628,7 @@ export default function AdminServiceCategoryFormPage() {
             {/* Images */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="icon" className="text-black dark:text-white">
+                <Label htmlFor="icon" className="text-black">
                   Icon
                 </Label>
                 <div className="mt-1 flex gap-2">
@@ -640,7 +640,7 @@ export default function AdminServiceCategoryFormPage() {
                       setIconPreview(e.target.value || null);
                     }}
                     placeholder="Icon URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
                     type="file"
@@ -657,7 +657,7 @@ export default function AdminServiceCategoryFormPage() {
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
                     title="Upload icon"
                   >
                     {uploadingImage.type === "icon" && uploadingImage.loading ? (
@@ -681,7 +681,7 @@ export default function AdminServiceCategoryFormPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="bannerImage" className="text-black dark:text-white">
+                <Label htmlFor="bannerImage" className="text-black">
                   Banner Image
                 </Label>
                 <div className="mt-1 flex gap-2">
@@ -693,7 +693,7 @@ export default function AdminServiceCategoryFormPage() {
                       setBannerPreview(e.target.value || null);
                     }}
                     placeholder="Banner image URL or upload image"
-                    className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                    className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                   />
                   <input
                     type="file"
@@ -710,7 +710,7 @@ export default function AdminServiceCategoryFormPage() {
                     variant="outline"
                     onClick={() => bannerInputRef.current?.click()}
                     disabled={uploadingImage.loading}
-                    className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
+                    className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all disabled:opacity-50"
                     title="Upload banner"
                   >
                     {uploadingImage.type === "banner" && uploadingImage.loading ? (
@@ -738,7 +738,7 @@ export default function AdminServiceCategoryFormPage() {
             {/* Service Ideal For */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Service Ideal For</Label>
+                <Label className="text-black">Service Ideal For</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -752,20 +752,20 @@ export default function AdminServiceCategoryFormPage() {
                       ],
                     }));
                   }}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   Add Option
                 </Button>
               </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {(!formData.serviceIdealFor || formData.serviceIdealFor.length === 0) ? (
-                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                  <p className="text-sm text-black/50 text-center py-4">
                     No options. Click "Add Option" to add one.
                   </p>
                 ) : (
                   (formData.serviceIdealFor || []).map((option, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
                       <Input
                         value={option.name || ""}
                         onChange={(e) => {
@@ -776,7 +776,7 @@ export default function AdminServiceCategoryFormPage() {
                           });
                         }}
                         placeholder="e.g., Homeowners, Small businesses, Landlords"
-                        className="flex-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                        className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                       />
                       <Button
                         type="button"
@@ -788,7 +788,7 @@ export default function AdminServiceCategoryFormPage() {
                             serviceIdealFor: prev.serviceIdealFor.filter((_, i) => i !== index),
                           }));
                         }}
-                        className="h-8 w-8 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                        className="h-8 w-8 p-0 text-red-600  hover:bg-red-500/10"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -801,7 +801,7 @@ export default function AdminServiceCategoryFormPage() {
             {/* Add Extra Services */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-black dark:text-white">Extra Services</Label>
+                <Label className="text-black">Extra Services</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -815,23 +815,23 @@ export default function AdminServiceCategoryFormPage() {
                       ],
                     }));
                   }}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   Add Extra Service
                 </Button>
               </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                 {(!formData.extraServices || formData.extraServices.length === 0) ? (
-                  <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                  <p className="text-sm text-black/50 text-center py-4">
                     No extra services. Click "Add Extra Service" to add one.
                   </p>
                 ) : (
                   (formData.extraServices || []).map((service, index) => (
-                    <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm space-y-3">
+                    <div key={index} className="p-3 bg-white rounded-lg shadow-sm space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                          <Label className="text-black dark:text-white text-sm">Name</Label>
+                          <Label className="text-black text-sm">Name</Label>
                           <Input
                             value={service.name || ""}
                             onChange={(e) => {
@@ -842,11 +842,11 @@ export default function AdminServiceCategoryFormPage() {
                               });
                             }}
                             placeholder="Service name"
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                         <div>
-                          <Label className="text-black dark:text-white text-sm">Price</Label>
+                          <Label className="text-black text-sm">Price</Label>
                           <Input
                             type="number"
                             value={service.price || 0}
@@ -858,11 +858,11 @@ export default function AdminServiceCategoryFormPage() {
                               });
                             }}
                             placeholder="0.00"
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                         <div>
-                          <Label className="text-black dark:text-white text-sm">Days</Label>
+                          <Label className="text-black text-sm">Days</Label>
                           <Input
                             type="number"
                             value={service.days || 0}
@@ -874,12 +874,12 @@ export default function AdminServiceCategoryFormPage() {
                               });
                             }}
                             placeholder="0"
-                            className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                            className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                           />
                         </div>
                       </div>
                       <div>
-                        <Label className="text-black dark:text-white text-sm">Description</Label>
+                        <Label className="text-black text-sm">Description</Label>
                         <Textarea
                           value={service.description || ""}
                           onChange={(e) => {
@@ -890,7 +890,7 @@ export default function AdminServiceCategoryFormPage() {
                             });
                           }}
                           placeholder="Service description"
-                          className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                          className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[80px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                         />
                       </div>
                       <div className="flex justify-end">
@@ -904,7 +904,7 @@ export default function AdminServiceCategoryFormPage() {
                               extraServices: prev.extraServices.filter((_, i) => i !== index),
                             }));
                           }}
-                          className="h-8 px-3 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                          className="h-8 px-3 text-red-600  hover:bg-red-500/10"
                         >
                           <X className="w-4 h-4 mr-1" />
                           Remove
@@ -934,12 +934,12 @@ export default function AdminServiceCategoryFormPage() {
                   }}
                   className="w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F]"
                 />
-                <Label htmlFor="pricePerUnit" className="text-black dark:text-white">
+                <Label htmlFor="pricePerUnit" className="text-black">
                   Price Per Unit
                 </Label>
               </div>
               {(formData.pricePerUnit?.enabled || false) && (
-                <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-md shadow-gray-200 dark:shadow-gray-800">
+                <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
                   <div className="flex justify-end">
                     <Button
                       type="button"
@@ -957,22 +957,22 @@ export default function AdminServiceCategoryFormPage() {
                           },
                         }));
                       }}
-                      className="flex items-center gap-2 border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                      className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
                     >
                       <Plus className="w-4 h-4" />
                       Add Price Unit
                     </Button>
                   </div>
                   {(!formData.pricePerUnit?.units || formData.pricePerUnit.units.length === 0) ? (
-                    <p className="text-sm text-black/50 dark:text-white/50 text-center py-4">
+                    <p className="text-sm text-black/50 text-center py-4">
                       No price units. Click "Add Price Unit" to add one.
                     </p>
                   ) : (
                     (formData.pricePerUnit?.units || []).map((unit, index) => (
-                      <div key={index} className="p-3 bg-white dark:bg-black rounded-lg shadow-sm">
+                      <div key={index} className="p-3 bg-white rounded-lg shadow-sm">
                         <div className="flex items-end gap-2">
                           <div className="flex-1">
-                            <Label className="text-black dark:text-white text-sm">Unit Name</Label>
+                            <Label className="text-black text-sm">Unit Name</Label>
                             <Input
                               value={unit.name || ""}
                               onChange={(e) => {
@@ -989,7 +989,7 @@ export default function AdminServiceCategoryFormPage() {
                                 });
                               }}
                               placeholder="e.g., Per hour, Per square meter"
-                              className="mt-1 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                              className="mt-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                             />
                           </div>
                           <Button
@@ -1005,7 +1005,7 @@ export default function AdminServiceCategoryFormPage() {
                                 },
                               }));
                             }}
-                            className="h-10 w-10 p-0 text-red-600 dark:text-red-400 hover:bg-red-500/10 mt-1"
+                            className="h-10 w-10 p-0 text-red-600  hover:bg-red-500/10 mt-1"
                             title="Remove unit"
                           >
                             <X className="w-4 h-4" />

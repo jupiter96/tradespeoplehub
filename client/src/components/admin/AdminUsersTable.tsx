@@ -520,13 +520,13 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
   const getRoleBadgeColor = (userRole: string) => {
     switch (userRole) {
       case "admin":
-        return "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20";
+        return "bg-purple-500/10 text-purple-700  border-purple-500/20";
       case "professional":
-        return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20";
+        return "bg-blue-500/10 text-blue-700  border-blue-500/20";
       case "client":
-        return "bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20";
+        return "bg-green-500/10 text-green-700  border-green-500/20";
       default:
-        return "bg-gray-500/10 text-gray-700 dark:text-gray-300 border-gray-500/20";
+        return "bg-gray-500/10 text-gray-700  border-gray-500/20";
     }
   };
 
@@ -603,32 +603,32 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       {/* Search and Controls - All in one row */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <p className="text-sm text-black dark:text-white whitespace-nowrap">
+          <p className="text-sm text-black whitespace-nowrap">
             Total: <span className="text-[#FE8A0F] font-semibold">{total}</span> {title.toLowerCase()}
           </p>
         </div>
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50 dark:text-white/50" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/50" />
           <Input
             type="text"
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow w-full"
+            className="pl-10 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow w-full"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Label htmlFor="rows-per-page" className="text-sm text-black dark:text-white whitespace-nowrap">
+          <Label htmlFor="rows-per-page" className="text-sm text-black whitespace-nowrap">
             Rows per page:
           </Label>
           <Select value={limit.toString()} onValueChange={(value) => {
             setLimit(parseInt(value));
             setPage(1);
           }}>
-            <SelectTrigger id="rows-per-page" className="w-20 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+            <SelectTrigger id="rows-per-page" className="w-20 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+            <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300 ">
               <SelectItem value="10">10</SelectItem>
               <SelectItem value="20">20</SelectItem>
               <SelectItem value="50">50</SelectItem>
@@ -650,14 +650,14 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
       </div>
 
       {/* Table */}
-      <div className="rounded-3xl border-0 bg-white dark:bg-black p-6 shadow-xl shadow-[#FE8A0F]/20">
+      <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-black dark:text-white">Loading...</p>
+            <p className="text-black">Loading...</p>
           </div>
         ) : users.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-black dark:text-white">No users found</p>
+            <p className="text-black">No users found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -693,7 +693,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                     key={user.id}
                     className="border-0 hover:bg-[#FE8A0F]/5 shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <TableCell className="text-black dark:text-white font-medium">
+                    <TableCell className="text-black font-medium">
                       <div className="flex items-center gap-2">
                         <span className="truncate" title={user.name || `${user.firstName} ${user.lastName}`.trim()}>
                           {truncateText(user.name || `${user.firstName} ${user.lastName}`.trim())}
@@ -750,20 +750,20 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                         })()}
                       </div>
                     </TableCell>
-                    <TableCell className="text-black dark:text-white">
+                    <TableCell className="text-black">
                       <span className="truncate block" title={user.email}>
                         {truncateText(user.email)}
                       </span>
                     </TableCell>
                     {role === "professional" && (
-                      <TableCell className="text-black dark:text-white">
+                      <TableCell className="text-black">
                         <span className="truncate block" title={user.tradingName || "-"}>
                           {truncateText(user.tradingName)}
                         </span>
                       </TableCell>
                     )}
                     {role !== "subadmin" && (
-                      <TableCell className="text-black dark:text-white">
+                      <TableCell className="text-black">
                         <span className="truncate block" title={user.phone}>
                           {truncateText(user.phone)}
                         </span>
@@ -794,7 +794,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                       })()}
                     </TableCell>
                     {role !== "subadmin" && (
-                      <TableCell className="text-black dark:text-white max-w-[200px]">
+                      <TableCell className="text-black max-w-[200px]">
                         {(() => {
                           const addressParts = [];
                           if (user.address) addressParts.push(user.address);
@@ -813,7 +813,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                       </TableCell>
                     )}
                     {role === "subadmin" && (
-                      <TableCell className="text-black dark:text-white max-w-[300px]">
+                      <TableCell className="text-black max-w-[300px]">
                         {user.permissions && user.permissions.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {user.permissions.slice(0, 3).map((permission: string, idx: number) => (
@@ -825,7 +825,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               </Badge>
                             ))}
                             {user.permissions.length > 3 && (
-                              <Badge className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border border-gray-500/20 text-xs px-2 py-0.5">
+                              <Badge className="bg-gray-500/10 text-gray-600  border border-gray-500/20 text-xs px-2 py-0.5">
                                 +{user.permissions.length - 3}
                               </Badge>
                             )}
@@ -835,7 +835,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                         )}
                       </TableCell>
                     )}
-                    <TableCell className="text-black dark:text-white">
+                    <TableCell className="text-black">
                       {formatDate(user.createdAt)}
                     </TableCell>
                     <TableCell className="text-center">
@@ -893,19 +893,19 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-black dark:text-white hover:bg-[#FE8A0F]/10"
+                            className="h-8 w-8 text-black hover:bg-[#FE8A0F]/10"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white dark:bg-black border-0 shadow-xl shadow-gray-300 dark:shadow-gray-900">
+                        <DropdownMenuContent align="end" className="bg-white border-0 shadow-xl shadow-gray-300 ">
                           {onEdit && (
                             <DropdownMenuItem
                               onClick={() => {
                                 handleMarkAsViewed(user.id);
                                 onEdit(user);
                               }}
-                              className="text-black dark:text-white hover:bg-[#FE8A0F]/10 cursor-pointer"
+                              className="text-black hover:bg-[#FE8A0F]/10 cursor-pointer"
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
@@ -917,7 +917,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                                 handleMarkAsViewed(user.id);
                                 setSelectedUserForVerification(user);
                               }}
-                              className="text-[#FE8A0F] dark:text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
+                              className="text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
                             >
                               <Shield className="h-4 w-4 mr-2" />
                               <span className="flex-1">View Verification</span>
@@ -932,7 +932,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                             <>
                               <DropdownMenuItem
                                 onClick={() => handleSendMessage(user)}
-                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
                               >
                                 <MessageCircle className="h-4 w-4 mr-2" />
                                 Send Message
@@ -940,8 +940,8 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               <DropdownMenuItem
                                 onClick={() => handleBlock(user)}
                                 className={(user.isBlocked || false)
-                                  ? "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
-                                  : "text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 cursor-pointer"
+                                  ? "text-green-600  hover:bg-green-500/10 cursor-pointer"
+                                  : "text-orange-600  hover:bg-orange-500/10 cursor-pointer"
                                 }
                               >
                                 <Ban className="h-4 w-4 mr-2" />
@@ -949,7 +949,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleViewNote(user)}
-                                className="text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 cursor-pointer"
+                                className="text-purple-600  hover:bg-purple-500/10 cursor-pointer"
                               >
                                 <FileText className="h-4 w-4 mr-2" />
                                 View Note
@@ -964,14 +964,14 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                                   const profileUrl = `${window.location.origin}/profile/${user.id}`;
                                   window.open(profileUrl, '_blank');
                                 }}
-                                className="text-[#FE8A0F] dark:text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
+                                className="text-[#FE8A0F] hover:bg-[#FE8A0F]/10 cursor-pointer"
                               >
                                 <User className="h-4 w-4 mr-2" />
                                 View Profile
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleSendMessage(user)}
-                                className="text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 cursor-pointer"
+                                className="text-blue-600  hover:bg-blue-500/10 cursor-pointer"
                               >
                                 <MessageCircle className="h-4 w-4 mr-2" />
                                 Send Message
@@ -979,8 +979,8 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               <DropdownMenuItem
                                 onClick={() => handleBlock(user)}
                                 className={(user.isBlocked || false)
-                                  ? "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
-                                  : "text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 cursor-pointer"
+                                  ? "text-green-600  hover:bg-green-500/10 cursor-pointer"
+                                  : "text-orange-600  hover:bg-orange-500/10 cursor-pointer"
                                 }
                               >
                                 <Ban className="h-4 w-4 mr-2" />
@@ -989,8 +989,8 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                               <DropdownMenuItem
                                 onClick={() => handleBlockReviewInvitation(user)}
                                 className={(user.blockReviewInvitation || false)
-                                  ? "text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
-                                  : "text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/10 cursor-pointer"
+                                  ? "text-green-600  hover:bg-green-500/10 cursor-pointer"
+                                  : "text-yellow-600 hover:bg-yellow-500/10 cursor-pointer"
                                 }
                               >
                                 <StarOff className="h-4 w-4 mr-2" />
@@ -1001,7 +1001,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           {isDeletedAccountsPage && (
                             <DropdownMenuItem
                               onClick={() => handleRestore(user)}
-                              className="text-green-600 dark:text-green-400 hover:bg-green-500/10 cursor-pointer"
+                              className="text-green-600  hover:bg-green-500/10 cursor-pointer"
                             >
                               <RotateCcw className="h-4 w-4 mr-2" />
                               Restore
@@ -1010,7 +1010,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                           {onDelete && (
                             <DropdownMenuItem
                               onClick={() => handleDelete(user)}
-                              className="text-red-600 dark:text-red-400 hover:bg-red-500/10 cursor-pointer"
+                              className="text-red-600  hover:bg-red-500/10 cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               {isDeletedAccountsPage ? "Permanently Delete" : "Delete"}
@@ -1055,7 +1055,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             setNoteText("");
           }
         }}>
-          <DialogContent className="bg-white dark:bg-black border-0 shadow-2xl shadow-gray-400 dark:shadow-gray-950">
+          <DialogContent className="bg-white border-0 shadow-2xl shadow-gray-400 ">
             <DialogHeader>
               <DialogTitle className="text-[#FE8A0F]">
                 {selectedUserForNote ? `Note for ${selectedUserForNote.name || `${selectedUserForNote.firstName} ${selectedUserForNote.lastName}`.trim()}` : "User Note"}
@@ -1063,7 +1063,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
-                <Label htmlFor="note" className="text-black dark:text-white">
+                <Label htmlFor="note" className="text-black">
                   Admin Notes
                 </Label>
                 <Textarea
@@ -1071,7 +1071,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
                   placeholder="Add notes about this user..."
-                  className="mt-2 bg-white dark:bg-black border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white placeholder:text-black/50 dark:placeholder:text-white/50 min-h-[200px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
+                  className="mt-2 bg-white border-0 shadow-md shadow-gray-200  text-black placeholder:text-black/50  min-h-[200px] focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
                 />
               </div>
             </div>
@@ -1082,7 +1082,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                   setSelectedUserForNote(null);
                   setNoteText("");
                 }}
-                className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-black dark:text-white hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
+                className="border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
               >
                 Cancel
               </Button>
@@ -1099,7 +1099,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-0 shadow-sm">
-            <p className="text-sm text-black dark:text-white">
+            <p className="text-sm text-black">
               Page <span className="text-[#FE8A0F] font-semibold">{page}</span> of <span className="text-[#FE8A0F] font-semibold">{totalPages}</span>
             </p>
             <div className="flex gap-2">
@@ -1108,7 +1108,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
@@ -1118,7 +1118,7 @@ const AdminUsersTable = forwardRef<AdminUsersTableRef, AdminUsersTableProps>(({
                 size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="border-0 shadow-md shadow-gray-200 dark:shadow-gray-800 text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
+                className="border-0 shadow-md shadow-gray-200  text-[#FE8A0F] hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 disabled:opacity-50 disabled:shadow-none transition-all"
               >
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />
