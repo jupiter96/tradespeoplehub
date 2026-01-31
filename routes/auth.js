@@ -4315,7 +4315,7 @@ router.get('/profile/:identifier', async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .limit(50)
-      .select('reviewerName rating comment createdAt')
+      .select('reviewerName rating comment createdAt response responseAt')
       .lean();
 
     const ratingCount = reviews.length;
@@ -4328,7 +4328,7 @@ router.get('/profile/:identifier', async (req, res) => {
       id: userId,
       firstName: user.firstName,
       lastName: user.lastName,
-      name: `${user.firstName} ${user.lastName}`.trim(),
+      name: (user.tradingName || 'Professional').trim(),
       tradingName: user.tradingName,
       avatar: user.avatar,
       sector: user.sector,
@@ -4354,6 +4354,7 @@ router.get('/profile/:identifier', async (req, res) => {
         stars: typeof r.rating === 'number' ? r.rating : 0,
         text: (r.comment || '').trim(),
         createdAt: r.createdAt,
+        response: r.response ? { text: r.response, respondedAt: r.responseAt } : null,
       })),
       createdAt: user.createdAt,
     };

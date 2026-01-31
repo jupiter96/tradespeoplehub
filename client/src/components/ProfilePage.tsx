@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap, Loader2 } from "lucide-react";
+import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
@@ -107,6 +107,7 @@ type ProfileData = {
     stars: number;
     text: string;
     createdAt?: string | Date;
+    response?: { text: string; respondedAt?: string } | null;
   }>;
 };
 
@@ -176,7 +177,7 @@ export default function ProfilePage() {
             id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
             image: s.images?.[0] || s.portfolioImages?.[0] || "",
             providerName: typeof s.professional === 'object' 
-              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              ? (s.professional.tradingName || 'Professional')
               : "",
             tradingName: typeof s.professional === 'object' 
               ? s.professional.tradingName || ""
@@ -299,12 +300,7 @@ export default function ProfilePage() {
 
   const displayName = useMemo(() => {
     if (!profile) return "";
-    return (
-      profile.tradingName ||
-      (profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : "") ||
-      profile.name ||
-      "User"
-    );
+    return (profile.tradingName || "Professional").trim();
   }, [profile]);
 
   const tradingName = useMemo(() => (profile?.tradingName || "").trim(), [profile?.tradingName]);
@@ -632,6 +628,15 @@ export default function ProfilePage() {
   };
 
   const [reviewAvatarErrors, setReviewAvatarErrors] = useState<Set<string>>(new Set());
+  const [expandedReviewResponses, setExpandedReviewResponses] = useState<Set<string>>(new Set());
+  const toggleReviewResponse = (reviewId: string) => {
+    setExpandedReviewResponses(prev => {
+      const next = new Set(prev);
+      if (next.has(reviewId)) next.delete(reviewId);
+      else next.add(reviewId);
+      return next;
+    });
+  };
   const showReviewAvatarImage = (reviewId: string, avatarUrl: string | undefined) =>
     Boolean(avatarUrl && !reviewAvatarErrors.has(reviewId));
 
@@ -1150,7 +1155,10 @@ export default function ProfilePage() {
                 {reviews.length === 0 ? (
                   <p className="text-slate-500">No reviews yet.</p>
                 ) : (
-                  reviews.map((r) => (
+                  reviews.map((r) => {
+                    const hasResponse = (r as { response?: { text: string } | null }).response?.text;
+                    const isExpanded = expandedReviewResponses.has(r.id);
+                    return (
                     <div key={r.id} className="review-row">
                       <div
                         className="review-avatar-wrap"
@@ -1168,7 +1176,7 @@ export default function ProfilePage() {
                           {getTwoLetterInitials(r.name)}
                         </div>
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="review-head">
                           <div className="review-name">{r.name}</div>
                           <div className="review-time">{r.time}</div>
@@ -1179,9 +1187,34 @@ export default function ProfilePage() {
                           ))}
                         </div>
                         <div className="review-text">{r.text}</div>
+                        {hasResponse && (
+                          <div className="mt-3 pt-3 border-t border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => toggleReviewResponse(r.id)}
+                              className="w-full flex items-center justify-between gap-2 py-2 px-3 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors text-left"
+                            >
+                              <span className="text-sm font-medium text-slate-700">
+                                {profile?.tradingName || profile?.firstName || "Professional"}&apos;s Response
+                              </span>
+                              {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+                            </button>
+                            {isExpanded && (
+                              <div className="mt-2 ml-2 pl-3 border-l-2 border-slate-200">
+                                <p className="text-sm text-slate-600 whitespace-pre-wrap">{(r as { response: { text: string; respondedAt?: string } }).response.text}</p>
+                                {(r as { response: { respondedAt?: string } }).response.respondedAt && (
+                                  <p className="text-xs text-slate-400 mt-2">
+                                    {new Date((r as { response: { respondedAt: string } }).response.respondedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
                       </div>
                     )}

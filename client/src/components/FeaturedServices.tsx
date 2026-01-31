@@ -1552,7 +1552,7 @@ export default function FeaturedServices() {
               ? (s.professional._id || s.professional.id || s.professional)
               : (typeof s.professional === 'string' ? s.professional : null),
             providerName: typeof s.professional === 'object' 
-              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              ? (s.professional.tradingName || 'Professional')
               : "",
             tradingName: typeof s.professional === 'object' 
               ? s.professional.tradingName || ""

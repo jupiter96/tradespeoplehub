@@ -577,9 +577,7 @@ router.post('/available-by-services', authenticateToken, async (req, res) => {
         discount: discountAmount,
         discountType: promoCode.discountType,
         originalDiscount: promoCode.discount,
-        professional: promoCode.professional?.tradingName || 
-          `${promoCode.professional?.firstName || ''} ${promoCode.professional?.lastName || ''}`.trim() ||
-          'Professional',
+        professional: promoCode.professional?.tradingName || 'Professional',
         description: promoCode.description
       });
     }

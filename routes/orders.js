@@ -2382,7 +2382,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         items: order.items.map(item => ({
           id: item.serviceId,
           title: item.title,
-          seller: item.seller || (professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim()),
+          seller: item.seller || professional?.tradingName || 'Professional',
           price: item.price,
           image: item.image || '',
           rating: item.rating,
@@ -2396,7 +2396,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         status,
         amount,
         amountValue: order.total,
-        professional: professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional',
+        professional: professional?.tradingName || 'Professional',
         professionalId: professional?._id ? professional._id.toString() : undefined,
         clientId: client?._id ? client._id.toString() : undefined,
         professionalAvatar: professional?.avatar || '',
@@ -2522,22 +2522,22 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
             dispute.claimantId._id ? (
               dispute.claimantId._id.toString() === client?._id?.toString() ? 
                 `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
-                dispute.claimantId.tradingName || `${dispute.claimantId.firstName || ''} ${dispute.claimantId.lastName || ''}`.trim() || 'Professional'
+                dispute.claimantId.tradingName || 'Professional'
             ) : (
               dispute.claimantId.toString() === client?._id?.toString() ? 
                 `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
-                professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional'
+                professional?.tradingName || 'Professional'
             )
           ) : undefined,
           respondentName: dispute.respondentId ? (
             dispute.respondentId._id ? (
               dispute.respondentId._id.toString() === client?._id?.toString() ? 
                 `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
-                dispute.respondentId.tradingName || `${dispute.respondentId.firstName || ''} ${dispute.respondentId.lastName || ''}`.trim() || 'Professional'
+                dispute.respondentId.tradingName || 'Professional'
             ) : (
               dispute.respondentId.toString() === client?._id?.toString() ? 
                 `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client' :
-                professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional'
+                professional?.tradingName || 'Professional'
             )
           ) : undefined,
           claimantAvatar: dispute.claimantId ? (
@@ -2594,7 +2594,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           response: review.response || undefined,
           responseBy: review.responseBy ? {
             id: review.responseBy._id.toString(),
-            name: `${review.responseBy.firstName || ''} ${review.responseBy.lastName || ''}`.trim() || review.responseBy.tradingName,
+            name: review.responseBy.tradingName || 'Professional',
             avatar: review.responseBy.avatar || '',
           } : undefined,
           responseAt: review.responseAt ? new Date(review.responseAt).toISOString() : undefined,
@@ -3953,7 +3953,7 @@ router.post('/:orderId/buyer-review', authenticateToken, requireRole(['professio
       rating: rating,
       comment: comment?.trim() || '',
       reviewedBy: req.user.id,
-      reviewerName: `${professional.firstName || ''} ${professional.lastName || ''}`.trim() || professional.tradingName || 'Professional',
+      reviewerName: professional.tradingName || 'Professional',
       reviewedAt: new Date(),
     };
 	    // NOTE: `metadata` is a Mixed type in the Order schema, so we must mark it modified
@@ -3973,6 +3973,7 @@ router.post('/:orderId/buyer-review', authenticateToken, requireRole(['professio
 });
 
 // Professional: Respond to client review (one-time only)
+// Saves to Review table (response, responseBy, responseAt, hasResponded) for service detail page display
 router.post('/:orderId/respond-to-review', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -3993,26 +3994,40 @@ router.post('/:orderId/respond-to-review', authenticateToken, requireRole(['prof
       return res.status(400).json({ error: 'Can only respond to reviews for completed orders' });
     }
 
-    // Check if client has left a review
-    if (!order.rating && !order.review) {
+    // Find the Review document for this order (client's review of the service)
+    const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
+    const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
+    let reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });
+
+    if (!reviewDoc) {
+      // Fallback: try without service (legacy orders)
+      reviewDoc = await Review.findOne({ order: order._id, service: null });
+    }
+
+    if (!reviewDoc) {
       return res.status(400).json({ error: 'No client review found for this order' });
     }
 
-    // Check if professional has already responded
-    if (order.professionalResponse) {
+    if (reviewDoc.hasResponded) {
       return res.status(400).json({ error: 'You have already responded to this review' });
     }
 
-    // Save professional's response
+    // Save to Review table (canonical storage for service detail page)
+    reviewDoc.response = response.trim();
+    reviewDoc.responseBy = req.user.id;
+    reviewDoc.responseAt = new Date();
+    reviewDoc.hasResponded = true;
+    await reviewDoc.save();
+
+    // Also update Order for order detail page compatibility
     order.professionalResponse = response.trim();
     order.professionalResponseDate = new Date();
-    
     await order.save();
 
-    res.json({ 
+    res.json({
       message: 'Response submitted successfully',
-      professionalResponse: order.professionalResponse,
-      professionalResponseDate: order.professionalResponseDate,
+      professionalResponse: reviewDoc.response,
+      professionalResponseDate: reviewDoc.responseAt,
     });
   } catch (error) {
     console.error('Respond to review error:', error);
@@ -4183,7 +4198,7 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       userId: claimantId,
       userName: isClient ? 
         `${claimantUser?.firstName || ''} ${claimantUser?.lastName || ''}`.trim() : 
-        (claimantUser?.tradingName || `${claimantUser?.firstName || ''} ${claimantUser?.lastName || ''}`.trim()),
+        (claimantUser?.tradingName || 'Professional'),
       userAvatar: claimantUser?.avatar || '',
       message: `**Requirements:** ${requirements}\n\n**Unmet Requirements:** ${unmetRequirements}`,
       timestamp: new Date(),
@@ -4320,7 +4335,7 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
         userId: req.user.id,
         userName: isClient ? 
           `${respondentUser.firstName || ''} ${respondentUser.lastName || ''}`.trim() : 
-          (respondentUser.tradingName || `${respondentUser.firstName || ''} ${respondentUser.lastName || ''}`.trim()),
+          (respondentUser.tradingName || 'Professional'),
         userAvatar: respondentUser.avatar || '',
         message: message.trim(),
         timestamp: new Date(),
@@ -4412,7 +4427,7 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
       userId: req.user.id,
       userName: isClient ? 
         `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
-        (user.tradingName || `${user.firstName || ''} ${user.lastName || ''}`.trim()),
+        (user.tradingName || 'Professional'),
       userAvatar: user.avatar || '',
       message: message ? message.trim() : '',
       timestamp: new Date(),
@@ -4686,7 +4701,7 @@ router.post('/:orderId/dispute/reject', authenticateToken, async (req, res) => {
         userId: req.user.id,
         userName: isClient ? 
           `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
-          (user.tradingName || `${user.firstName || ''} ${user.lastName || ''}`.trim()),
+          (user.tradingName || 'Professional'),
         userAvatar: user.avatar || '',
         message: `Rejected offer. ${message.trim()}`,
         timestamp: new Date(),

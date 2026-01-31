@@ -207,6 +207,7 @@ interface Review {
   notHelpfulVotes: number;
   professionalResponse?: {
     text: string;
+    respondedAt?: string;
     providerName: string;
     providerImage: string;
   };
@@ -265,6 +266,7 @@ const generateReviews = (serviceId: number, reviewCount: number, providerName: s
       notHelpfulVotes: Math.floor(Math.random() * 3),
       professionalResponse: hasResponse ? {
         text: responses[i % responses.length],
+        respondedAt: new Date().toISOString(),
         providerName: providerName,
         providerImage: providerImage
       } : undefined
@@ -356,7 +358,7 @@ export default function ServiceDetailPage() {
               ? (s.professional._id || s.professional.id || s.professional)
               : (typeof s.professional === 'string' ? s.professional : null),
             providerName: typeof s.professional === 'object' 
-              ? `${s.professional.firstName} ${s.professional.lastName}` 
+              ? (s.professional.tradingName || 'Professional')
               : "",
             tradingName: typeof s.professional === 'object' 
               ? s.professional.tradingName || ""
@@ -602,10 +604,11 @@ export default function ServiceDetailPage() {
         comment: review.comment || '',
         helpfulVotes: 0,
         notHelpfulVotes: 0,
-        professionalResponse: review.response ? {
-          text: review.response.text,
-          providerName: service.providerName,
-          providerImage: service.providerImage
+        professionalResponse: (review.response?.text != null && String(review.response.text).trim()) ? {
+          text: String(review.response.text).trim(),
+          respondedAt: review.response.respondedAt,
+          providerName: service.providerName || 'Professional',
+          providerImage: service.providerImage || ''
         } : undefined
       }));
     }
@@ -2699,18 +2702,17 @@ export default function ServiceDetailPage() {
                             </div>
                           )}
 
-                          {/* Professional Response */}
+                          {/* Professional Response - Collapsible */}
                           {review.professionalResponse && (
-                            <div className="mb-4 bg-[#f8f9fa] rounded-lg p-4">
+                            <div className="mt-4 pt-4 border-t border-gray-200">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleResponseExpansion(review.id);
                                 }}
-                                className="w-full flex items-center justify-between gap-3 mb-2 hover:opacity-80 transition-opacity"
+                                className="w-full flex items-center justify-between gap-3 py-2 px-3 bg-[#f8f9fa] hover:bg-[#eef0f2] rounded-lg transition-colors text-left"
                               >
-                                {/* Profile link removed - provider ID not available in review data */}
                                 <div className="flex items-center gap-3">
                                   <Avatar className="w-8 h-8">
                                     {resolveAvatarUrl(review.professionalResponse.providerImage) && (
@@ -2720,21 +2722,30 @@ export default function ServiceDetailPage() {
                                       {getTwoLetterInitials(review.professionalResponse.providerName, "P")}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                    {review.professionalResponse.providerName}'s Response
+                                  <span className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#2c353f]">
+                                    {review.professionalResponse.providerName}&apos;s Response
+                                    {!isResponseExpanded && (
+                                      <span className="font-normal text-[#6b6b6b] ml-1">— Click to expand</span>
+                                    )}
                                   </span>
                                 </div>
                                 {isResponseExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-[#6b6b6b]" />
+                                  <ChevronUp className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-[#6b6b6b]" />
+                                  <ChevronDown className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" />
                                 )}
                               </button>
-                              
                               {isResponseExpanded && (
-                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] leading-relaxed pl-11">
-                                  {review.professionalResponse.text}
-                                </p>
+                                <div className="mt-3 ml-2 pl-4 border-l-2 border-[#FE8A0F]/40">
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#5b5b5b] leading-relaxed whitespace-pre-wrap">
+                                    {review.professionalResponse.text}
+                                  </p>
+                                  {review.professionalResponse.respondedAt && (
+                                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#9ca3af] mt-2">
+                                      {new Date(review.professionalResponse.respondedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           )}

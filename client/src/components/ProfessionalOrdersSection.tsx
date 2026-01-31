@@ -210,7 +210,7 @@ function ProfessionalOrdersSection() {
     const resp = reviewResponse.trim();
     setReviewResponse("");
     toast.promise(
-      respondToClientReview(currentOrder.id, resp).then(() => refreshOrders()),
+      respondToClientReview(currentOrder.id, resp).then(() => { refreshOrders(); }),
       { loading: "Processing...", success: "Response submitted successfully", error: (e: any) => e.message || "Failed to submit response" }
     );
   };
@@ -1893,12 +1893,10 @@ function ProfessionalOrdersSection() {
                                 const error = await response.json();
                                 throw new Error(error.error || 'Failed to submit review');
                               }
-                              await refreshOrders();
-                              const reviewRes = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/review`), { credentials: 'include' });
-                              if (reviewRes.ok) {
-                                const reviewData = await reviewRes.json();
-                                setClientReviewData(reviewData.review);
-                              }
+                              refreshOrders(); // fire-and-forget – don't block toast
+                              fetch(resolveApiUrl(`/api/orders/${selectedOrder}/review`), { credentials: 'include' })
+                                .then(res => res.ok ? res.json() : null)
+                                .then(data => data?.review && setClientReviewData(data.review));
                             })(),
                             { loading: "Processing...", success: "Review submitted successfully!", error: (e: any) => e.message || "Failed to submit review" }
                           );

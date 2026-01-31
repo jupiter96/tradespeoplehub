@@ -982,7 +982,7 @@ export default function ClientOrdersSection() {
     setRevisionMessage("");
     setRevisionFiles([]);
     toast.promise(
-      requestRevision(orderId, reason, message, files).then(() => refreshOrders()),
+      requestRevision(orderId, reason, message, files).then(() => { refreshOrders(); }),
       { loading: "Processing...", success: "Revision request submitted. The professional will review your request.", error: (e: any) => e.message || "Failed to request revision" }
     );
   };
@@ -1061,7 +1061,7 @@ export default function ClientOrdersSection() {
     toast.promise(
       acceptDelivery(orderId).then(() => {
         openModal('rating');
-        refreshOrders();
+        refreshOrders(); // fire-and-forget – don't block toast
       }),
       { loading: "Processing...", success: "Order completed! Funds have been released to the professional. You can now rate the service.", error: (e: any) => e.message || "Failed to complete order" }
     );
@@ -1131,7 +1131,7 @@ export default function ClientOrdersSection() {
           }
 
           const data = await response.json();
-          refreshOrders();
+          refreshOrders(); // fire-and-forget – don't block toast
           navigate(`/dispute/${data.disputeId}`);
           return data;
         })(),
@@ -1157,7 +1157,7 @@ export default function ClientOrdersSection() {
     setServiceAsDescribedRating(0);
     setBuyAgainRating(0);
     toast.promise(
-      (orderId ? rateOrder(orderId, averageRating, review) : Promise.resolve()).then(() => refreshOrders()),
+      (orderId ? rateOrder(orderId, averageRating, review) : Promise.resolve()).then(() => { refreshOrders(); }),
       { loading: "Processing...", success: "Thank you for your feedback! Your review has been submitted.", error: (e: any) => e.message || "Failed to submit review" }
     );
   };
@@ -3960,23 +3960,6 @@ export default function ClientOrdersSection() {
                   </p>
                 </div>
 
-                {/* Action Buttons - Cancel Order moved to three dots menu in header */}
-
-                {((currentOrder.deliveryFiles && currentOrder.deliveryFiles.length > 0) || currentOrder.status === "Revision") && currentOrder.status !== "Completed" && (
-                  <>
-                    <Separator className="mb-6" />
-                    <div className="space-y-2">
-                      <Button
-                        onClick={() => openModal('dispute')}
-                        variant="outline"
-                        className="w-full font-['Poppins',sans-serif] text-[13px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                      >
-                        <AlertTriangle className="w-4 h-4 mr-2" />
-                        Open Dispute
-                      </Button>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>

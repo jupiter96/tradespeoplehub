@@ -1,4 +1,4 @@
-import { Calendar, Clock, MessageCircle, Upload, AlertTriangle, MoreVertical, XCircle } from "lucide-react";
+import { Calendar, Clock, MessageCircle, AlertTriangle, MoreVertical, XCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -270,45 +270,6 @@ export default function ProfessionalOrderDetailSidebar({
           </p>
         </div>
 
-        {/* Action Buttons */}
-        {(() => {
-          const revisionRequests = order.revisionRequest 
-            ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
-            : [];
-          const hasActiveRevision = revisionRequests.some(rr => 
-            rr && (rr.status === 'pending' || rr.status === 'in_progress')
-          );
-          return order.deliveryStatus === "active" || hasActiveRevision;
-        })() && (
-          <>
-            <Separator className="mb-6" />
-            <div className="space-y-2">
-              <Button
-                onClick={onOpenDeliveryModal}
-                className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] text-[13px]"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Deliver Order
-              </Button>
-            </div>
-          </>
-        )}
-
-        {(order.deliveryStatus === "delivered" || order.status === "Revision") && order.status !== "Completed" && (
-          <>
-            <Separator className="mb-6" />
-            <div className="space-y-2">
-              <Button
-                onClick={onOpenDisputeModal}
-                variant="outline"
-                className="w-full font-['Poppins',sans-serif] text-[13px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                Open Dispute
-              </Button>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );

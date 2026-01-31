@@ -459,10 +459,9 @@ export default function AccountPage() {
                     )}
                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[20px]">
                       {(() => {
-                        if (userInfo?.firstName && userInfo?.lastName) {
-                          return (userInfo.firstName[0] + userInfo.lastName[0]).toUpperCase();
-                        }
-                        const name = userInfo?.name || "";
+                        const name = userRole === 'professional' 
+                          ? (userInfo?.tradingName || '') 
+                          : (userInfo?.firstName && userInfo?.lastName ? `${userInfo.firstName} ${userInfo.lastName}` : userInfo?.name || '');
                         if (name) {
                           const parts = name.trim().split(/\s+/);
                           if (parts.length >= 2) {
@@ -476,8 +475,8 @@ export default function AccountPage() {
                   </Avatar>
                   <div>
                     <h3 className="font-['Poppins',sans-serif] text-[18px] mb-1">
-                      {userRole === "professional" && userInfo?.tradingName
-                        ? userInfo.tradingName
+                      {userRole === "professional"
+                        ? (userInfo?.tradingName || 'Professional')
                         : (userInfo?.firstName && userInfo?.lastName
                           ? `${userInfo.firstName} ${userInfo.lastName}`
                           : userInfo?.name || 'User')}
@@ -6653,7 +6652,7 @@ function MessengerSection() {
                       // Regular text message
                       const isOwnMessage = message.senderId === userInfo?.id;
                       const senderName = isOwnMessage 
-                        ? `${userInfo?.firstName || ''} ${userInfo?.lastName || ''}`.trim() || userInfo?.name
+                        ? (userRole === 'professional' ? (userInfo?.tradingName || 'Professional') : `${userInfo?.firstName || ''} ${userInfo?.lastName || ''}`.trim() || userInfo?.name)
                         : selectedContact?.name;
                       
                       return (

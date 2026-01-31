@@ -45,6 +45,8 @@ import {
   ShieldCheck,
   Home,
   Briefcase,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -124,9 +126,8 @@ export default function ProfileSection() {
     insurance: userInfo?.verification?.publicLiabilityInsurance?.status === 'verified' || userInfo?.verification?.publicLiabilityInsurance?.status === 'completed',
   };
   
-  // For professionals, prioritize tradingName over firstName/lastName
+  // For professionals, use tradingName only (never real name)
   const displayName = userInfo?.tradingName || 
-    (userInfo?.firstName && userInfo?.lastName ? `${userInfo.firstName} ${userInfo.lastName}` : null) || 
     userInfo?.name || 
     "Professional";
   
@@ -409,7 +410,7 @@ export default function ProfileSection() {
   type ProfileStats = {
     ratingAverage: number;
     ratingCount: number;
-    reviews: Array<{ id: string; name: string; stars: number; text: string; createdAt?: string | Date }>;
+    reviews: Array<{ id: string; name: string; stars: number; text: string; createdAt?: string | Date; response?: { text: string; respondedAt?: string } | null }>;
   };
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const [profileStatsLoading, setProfileStatsLoading] = useState(false);
@@ -446,6 +447,15 @@ export default function ProfileSection() {
     return () => { cancelled = true; };
   }, [userInfo?.id ?? (userInfo as any)?._id]);
 
+  const [expandedReviewResponses, setExpandedReviewResponses] = useState<Set<string>>(new Set());
+  const toggleReviewResponse = (reviewId: string) => {
+    setExpandedReviewResponses(prev => {
+      const next = new Set(prev);
+      if (next.has(reviewId)) next.delete(reviewId);
+      else next.add(reviewId);
+      return next;
+    });
+  };
   const reviewCount = profileStats?.ratingCount ?? 0;
   const rating = profileStats?.ratingAverage ?? 0;
   const reviewText = profileStatsLoading
@@ -2089,6 +2099,8 @@ export default function ProfileSection() {
                                 ? createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
                                 : "";
                               const stars = typeof r.stars === "number" ? Math.max(0, Math.min(5, Math.round(r.stars))) : 0;
+                              const hasResponse = r.response?.text;
+                              const isExpanded = expandedReviewResponses.has(r.id);
                               return (
                                 <div key={r.id} className="flex gap-3 p-3 md:p-4 border border-gray-200 rounded-xl">
                                   <div className="w-10 h-10 rounded-full bg-[#E6F0FF] flex items-center justify-center flex-shrink-0 font-['Poppins',sans-serif] text-[14px] font-semibold text-[#003D82]">
@@ -2108,6 +2120,30 @@ export default function ProfileSection() {
                                       ))}
                                     </div>
                                     {r.text && <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">{r.text}</p>}
+                                    {hasResponse && (
+                                      <div className="mt-3 border-t border-gray-200 pt-3">
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleReviewResponse(r.id)}
+                                          className="w-full flex items-center justify-between gap-2 py-2 px-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left"
+                                        >
+                                          <span className="font-['Poppins',sans-serif] text-[12px] font-medium text-[#003D82]">
+                                            {userInfo?.tradingName || "Professional"}&apos;s Response
+                                          </span>
+                                          {isExpanded ? <ChevronUp className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" />}
+                                        </button>
+                                        {isExpanded && (
+                                          <div className="mt-2 ml-2 pl-3 border-l-2 border-blue-200">
+                                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">{r.response!.text}</p>
+                                            {r.response?.respondedAt && (
+                                              <p className="font-['Poppins',sans-serif] text-[11px] text-[#9ca3af] mt-2">
+                                                {new Date(r.response.respondedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );

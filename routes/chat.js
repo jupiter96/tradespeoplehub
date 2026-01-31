@@ -81,7 +81,7 @@ router.get('/conversations', requireAuth, async (req, res) => {
         participant: {
           id: otherParticipant._id.toString(),
           name: otherParticipant.role === 'professional'
-            ? otherParticipant.tradingName || `${otherParticipant.firstName} ${otherParticipant.lastName}`
+            ? (otherParticipant.tradingName || 'Professional')
             : `${otherParticipant.firstName} ${otherParticipant.lastName}`,
           avatar: otherParticipant.avatar,
           role: otherParticipant.role,
@@ -196,7 +196,7 @@ router.post('/conversations', requireAuth, async (req, res) => {
         participant: {
           id: otherParticipant._id.toString(),
           name: otherParticipant.role === 'professional'
-            ? otherParticipant.tradingName || `${otherParticipant.firstName} ${otherParticipant.lastName}`
+            ? (otherParticipant.tradingName || 'Professional')
             : `${otherParticipant.firstName} ${otherParticipant.lastName}`,
           avatar: otherParticipant.avatar,
           role: otherParticipant.role,
@@ -272,7 +272,7 @@ router.get('/conversations/:conversationId/messages', requireAuth, async (req, r
       id: msg._id.toString(),
       senderId: msg.sender._id.toString(),
       senderName: msg.sender.role === 'professional'
-        ? msg.sender.tradingName || `${msg.sender.firstName} ${msg.sender.lastName}`
+        ? (msg.sender.tradingName || 'Professional')
         : `${msg.sender.firstName} ${msg.sender.lastName}`,
       senderAvatar: msg.sender.avatar,
       text: msg.text,

@@ -626,7 +626,7 @@ export default function FloatingMessenger() {
                           ? userInfo?.avatar 
                           : (message.senderAvatar || selectedContact?.avatar);
                         const senderName = isOwnMessage
-                          ? `${userInfo?.firstName || ''} ${userInfo?.lastName || ''}`.trim() || userInfo?.name
+                          ? (userRole === 'professional' ? (userInfo?.tradingName || 'Professional') : `${userInfo?.firstName || ''} ${userInfo?.lastName || ''}`.trim() || userInfo?.name)
                           : (message.senderName || selectedContact?.name);
                         
                         return (

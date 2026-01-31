@@ -428,7 +428,7 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
       items: [{
         serviceId: `custom-${customOffer.offerNumber}`,
         title: customOffer.serviceName,
-        seller: customOffer.professional.tradingName || `${customOffer.professional.firstName} ${customOffer.professional.lastName}`,
+        seller: customOffer.professional.tradingName || 'Professional',
         price: customOffer.price,
         quantity: 1,
         booking: undefined,
@@ -676,7 +676,7 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       items: [{
         serviceId: `custom-${customOffer.offerNumber}`,
         title: customOffer.serviceName,
-        seller: customOffer.professional.tradingName || `${customOffer.professional.firstName} ${customOffer.professional.lastName}`,
+        seller: customOffer.professional.tradingName || 'Professional',
         price: customOffer.price,
         quantity: 1,
         booking: undefined,
@@ -780,7 +780,7 @@ router.get('/conversation/:conversationId', authenticateToken, async (req, res) 
       createdAt: offer.createdAt,
       professional: {
         id: offer.professional._id.toString(),
-        name: offer.professional.tradingName || `${offer.professional.firstName} ${offer.professional.lastName}`,
+        name: offer.professional.tradingName || 'Professional',
         avatar: offer.professional.avatar,
       },
       client: {
