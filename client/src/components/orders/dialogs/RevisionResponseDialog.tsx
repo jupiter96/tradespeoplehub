@@ -11,7 +11,7 @@ interface RevisionResponseDialogProps {
   revisionAdditionalNotes: string;
   onRevisionAdditionalNotesChange: (notes: string) => void;
   currentOrder: Order | null;
-  onSubmit: () => Promise<void>;
+  onSubmit: () => void | Promise<void>;
   onCancel: () => void;
 }
 

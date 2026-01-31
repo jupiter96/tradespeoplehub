@@ -155,10 +155,8 @@ function ProfessionalOrdersSection() {
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isWithdrawCancellationDialogOpen, setIsWithdrawCancellationDialogOpen] = useState(false);
-  const [withdrawCancellationReason, setWithdrawCancellationReason] = useState("");
   const [isAcceptCancellationDialogOpen, setIsAcceptCancellationDialogOpen] = useState(false);
   const [isRejectCancellationDialogOpen, setIsRejectCancellationDialogOpen] = useState(false);
-  const [rejectCancellationReason, setRejectCancellationReason] = useState("");
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
   const [revisionResponseAction, setRevisionResponseAction] = useState<'accept' | 'reject'>('accept');
   const [revisionAdditionalNotes, setRevisionAdditionalNotes] = useState("");
@@ -194,8 +192,6 @@ function ProfessionalOrdersSection() {
     // Reset form states when closing modals
     setCancelReason("");
     setCancellationReason("");
-    setWithdrawCancellationReason("");
-    setRejectCancellationReason("");
     setExtensionReason("");
     setExtensionNewDate("");
     setExtensionNewTime("09:00");
@@ -209,20 +205,14 @@ function ProfessionalOrdersSection() {
   };
 
   // Handle submit response to client review
-  const handleSubmitReviewResponse = async () => {
+  const handleSubmitReviewResponse = () => {
     if (!reviewResponse.trim() || !currentOrder) return;
-    
-    setIsSubmittingResponse(true);
-    try {
-      await respondToClientReview(currentOrder.id, reviewResponse.trim());
-      toast.success("Response submitted successfully");
-      setReviewResponse("");
-      await refreshOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit response");
-    } finally {
-      setIsSubmittingResponse(false);
-    }
+    const resp = reviewResponse.trim();
+    setReviewResponse("");
+    toast.promise(
+      respondToClientReview(currentOrder.id, resp).then(() => refreshOrders()),
+      { loading: "Processing...", success: "Response submitted successfully", error: (e: any) => e.message || "Failed to submit response" }
+    );
   };
 
   // Function to open a specific modal and close all others
@@ -655,25 +645,21 @@ function ProfessionalOrdersSection() {
         : [];
       const hasInProgressRevision = revisionRequests.some(rr => rr && rr.status === 'in_progress');
       if (hasInProgressRevision) {
-        try {
-          await completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined);
-          toast.success("Revision completed and delivered successfully!");
-          closeAllModals();
-          setDeliveryMessage("");
-          setDeliveryFiles([]);
-        } catch (error: any) {
-          toast.error(error.message || "Failed to complete revision");
-        }
+        closeAllModals();
+        setDeliveryMessage("");
+        setDeliveryFiles([]);
+        toast.promise(
+          completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
+          { loading: "Processing...", success: "Revision completed and delivered successfully!", error: (e: any) => e.message || "Failed to complete revision" }
+        );
       } else {
-        try {
-          await deliverWork(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined);
-          toast.success("Order marked as delivered! Client will be notified.");
-          closeAllModals();
-          setDeliveryMessage("");
-          setDeliveryFiles([]);
-        } catch (error: any) {
-          toast.error(error.message || "Failed to mark order as delivered");
-        }
+        closeAllModals();
+        setDeliveryMessage("");
+        setDeliveryFiles([]);
+        toast.promise(
+          deliverWork(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
+          { loading: "Processing...", success: "Order marked as delivered! Client will be notified.", error: (e: any) => e.message || "Failed to mark order as delivered" }
+        );
       }
     }
   };
@@ -686,18 +672,15 @@ function ProfessionalOrdersSection() {
       return;
     }
 
-    try {
-      // Combine date and time for the new delivery datetime
-      const newDeliveryDateTime = `${extensionNewDate}T${extensionNewTime}`;
-      await requestExtension(selectedOrder, newDeliveryDateTime, extensionReason || undefined);
-      toast.success("Extension request submitted. The client will be notified.");
-      closeAllModals();
-      setExtensionNewDate("");
-      setExtensionNewTime("09:00");
-      setExtensionReason("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to request extension");
-    }
+    const newDeliveryDateTime = `${extensionNewDate}T${extensionNewTime}`;
+    closeAllModals();
+    setExtensionNewDate("");
+    setExtensionNewTime("09:00");
+    setExtensionReason("");
+    toast.promise(
+      requestExtension(selectedOrder, newDeliveryDateTime, extensionReason || undefined),
+      { loading: "Processing...", success: "Extension request submitted. The client will be notified.", error: (e: any) => e.message || "Failed to request extension" }
+    );
   };
 
   const handleProfessionalComplete = async () => {
@@ -706,15 +689,13 @@ function ProfessionalOrdersSection() {
       toast.error("Please add a completion message or upload verification files");
       return;
     }
-    try {
-      await professionalComplete(selectedOrder, completionMessage || undefined, completionFiles.length > 0 ? completionFiles : undefined);
-      toast.success("Completion request submitted. Waiting for client approval.");
-      closeAllModals();
-      setCompletionMessage("");
-      setCompletionFiles([]);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit completion request");
-    }
+    closeAllModals();
+    setCompletionMessage("");
+    setCompletionFiles([]);
+    toast.promise(
+      professionalComplete(selectedOrder, completionMessage || undefined, completionFiles.length > 0 ? completionFiles : undefined),
+      { loading: "Processing...", success: "Completion request submitted. Waiting for client approval.", error: (e: any) => e.message || "Failed to submit completion request" }
+    );
   };
 
   const handleCompletionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -728,16 +709,14 @@ function ProfessionalOrdersSection() {
     setCompletionFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleRespondToRevision = async () => {
+  const handleRespondToRevision = () => {
     if (!selectedOrder) return;
-    try {
-      await respondToRevision(selectedOrder, revisionResponseAction, revisionAdditionalNotes || undefined);
-      toast.success(`Revision request ${revisionResponseAction}ed successfully`);
-      closeAllModals();
-      setRevisionAdditionalNotes("");
-    } catch (error: any) {
-      toast.error(error.message || `Failed to ${revisionResponseAction} revision request`);
-    }
+    closeAllModals();
+    setRevisionAdditionalNotes("");
+    toast.promise(
+      respondToRevision(selectedOrder, revisionResponseAction, revisionAdditionalNotes || undefined),
+      { loading: "Processing...", success: `Revision request ${revisionResponseAction}ed successfully`, error: (e: any) => e.message || `Failed to ${revisionResponseAction} revision request` }
+    );
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -775,11 +754,12 @@ function ProfessionalOrdersSection() {
       return;
     }
     if (selectedOrder) {
-      cancelOrder(selectedOrder);
-      toast.success("Order has been cancelled");
+      const orderId = selectedOrder;
       closeAllModals();
       setCancelReason("");
       setSelectedOrder(null);
+      cancelOrder(orderId);
+      toast.success("Order has been cancelled");
     }
   };
 
@@ -818,144 +798,114 @@ function ProfessionalOrdersSection() {
         return;
       }
       
-      try {
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append('requirements', disputeRequirements);
-        formData.append('unmetRequirements', disputeUnmetRequirements);
-        formData.append('offerAmount', disputeOfferAmount);
-        
-        // Add evidence files
-        disputeEvidenceFiles.forEach((file) => {
-          formData.append('evidenceFiles', file);
-        });
-        
-        // Call API to create dispute
-        const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/dispute`), {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create dispute');
-        }
-
-        const data = await response.json();
-        
-        toast.success("Dispute has been created");
-        closeAllModals();
-        setDisputeRequirements("");
-        setDisputeUnmetRequirements("");
-        setDisputeEvidenceFiles([]);
-        setDisputeOfferAmount("");
-        
-        // Refresh orders to get updated status
-        await refreshOrders();
-        
-        // Navigate to dispute discussion page
-        navigate(`/dispute/${data.disputeId}`);
-      } catch (error: any) {
-        toast.error(error.message || "Failed to create dispute");
-      }
-    }
-  };
-
-  const handleRespondToDispute = async () => {
-    if (!selectedOrder) return;
-    try {
-      await respondToDispute(selectedOrder, disputeResponseMessage || undefined);
-      toast.success("Dispute response submitted successfully");
+      const reqs = disputeRequirements;
+      const unmet = disputeUnmetRequirements;
+      const offer = disputeOfferAmount;
+      const files = disputeEvidenceFiles;
       closeAllModals();
-      setDisputeResponseMessage("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to respond to dispute");
+      setDisputeRequirements("");
+      setDisputeUnmetRequirements("");
+      setDisputeEvidenceFiles([]);
+      setDisputeOfferAmount("");
+      toast.promise(
+        (async () => {
+          const formData = new FormData();
+          formData.append('requirements', reqs);
+          formData.append('unmetRequirements', unmet);
+          formData.append('offerAmount', offer);
+          files.forEach((file) => formData.append('evidenceFiles', file));
+
+          const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/dispute`), {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create dispute');
+          }
+
+          const data = await response.json();
+          refreshOrders();
+          navigate(`/dispute/${data.disputeId}`);
+          return data;
+        })(),
+        { loading: "Processing...", success: "Dispute has been created", error: (e: any) => e.message || "Failed to create dispute" }
+      );
     }
   };
 
-  const handleRequestCancellation = async (files?: File[]) => {
+  const handleRespondToDispute = () => {
     if (!selectedOrder) return;
-    try {
-      await requestCancellation(selectedOrder, cancellationReason, files);
-      toast.success("Cancellation request submitted. Waiting for response.");
-      closeAllModals();
-      setCancellationReason("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to request cancellation");
-    }
+    closeAllModals();
+    setDisputeResponseMessage("");
+    toast.promise(
+      respondToDispute(selectedOrder, disputeResponseMessage || undefined),
+      { loading: "Processing...", success: "Dispute response submitted successfully", error: (e: any) => e.message || "Failed to respond to dispute" }
+    );
   };
 
-  const handleRespondToCancellation = async (action: 'approve' | 'reject', reason?: string) => {
+  const handleRequestCancellation = (files?: File[]) => {
     if (!selectedOrder) return;
-    try {
-      await respondToCancellation(selectedOrder, action, reason);
-      toast.success(`Cancellation request ${action}d successfully`);
-    } catch (error: any) {
-      toast.error(error.message || `Failed to ${action} cancellation request`);
-    }
+    closeAllModals();
+    setCancellationReason("");
+    toast.promise(
+      requestCancellation(selectedOrder, cancellationReason, files),
+      { loading: "Processing...", success: "Cancellation request submitted. Waiting for response.", error: (e: any) => e.message || "Failed to request cancellation" }
+    );
   };
 
-  const handleAcceptCancellation = async () => {
+  const handleRespondToCancellation = (action: 'approve' | 'reject', reason?: string) => {
     if (!selectedOrder) return;
-    try {
-      await handleRespondToCancellation('approve');
-      closeAllModals();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to accept cancellation request");
-    }
+    closeAllModals();
+    toast.promise(
+      respondToCancellation(selectedOrder, action, reason),
+      { loading: "Processing...", success: `Cancellation request ${action}d successfully`, error: (e: any) => e.message || `Failed to ${action} cancellation request` }
+    );
   };
 
-  const handleWithdrawCancellation = async () => {
+  const handleAcceptCancellation = () => {
     if (!selectedOrder) return;
-    if (!withdrawCancellationReason.trim()) {
-      toast.error("Please provide a reason for withdrawing the cancellation request");
-      return;
-    }
-    try {
-      await respondToCancellation(selectedOrder, 'reject', withdrawCancellationReason.trim());
-      toast.success("Cancellation request withdrawn. Your reason has been sent to the client.");
-      closeAllModals();
-      setWithdrawCancellationReason("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to withdraw cancellation request");
-    }
+    closeAllModals();
+    toast.promise(
+      respondToCancellation(selectedOrder, 'approve'),
+      { loading: "Processing...", success: "Cancellation request approved. Order has been cancelled.", error: (e: any) => e.message || "Failed to accept cancellation request" }
+    );
   };
 
-  const handleRejectCancellation = async () => {
+  const handleWithdrawCancellation = () => {
     if (!selectedOrder) return;
-    if (!rejectCancellationReason.trim()) {
-      toast.error("Please provide a reason for rejecting the cancellation request");
-      return;
-    }
-    try {
-      await respondToCancellation(selectedOrder, 'reject', rejectCancellationReason.trim());
-      toast.success("Cancellation request rejected. Your reason has been sent to the client.");
-      closeAllModals();
-      setRejectCancellationReason("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject cancellation request");
-    }
+    closeAllModals();
+    toast.promise(
+      withdrawCancellation(selectedOrder),
+      { loading: "Processing...", success: "Cancellation request withdrawn. The order will continue as normal.", error: (e: any) => e.message || "Failed to withdraw cancellation request" }
+    );
   };
 
-  const handleRequestArbitration = async () => {
+  const handleRejectCancellation = () => {
     if (!selectedOrder) return;
-    try {
-      await requestArbitration(selectedOrder);
-      toast.success("Arbitration requested successfully. Admin will review the case.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to request arbitration");
-    }
+    closeAllModals();
+    toast.promise(
+      respondToCancellation(selectedOrder, 'reject'),
+      { loading: "Processing...", success: "Cancellation request rejected. Order will continue.", error: (e: any) => e.message || "Failed to reject cancellation request" }
+    );
   };
 
-  const handleCancelDispute = async () => {
+  const handleRequestArbitration = () => {
     if (!selectedOrder) return;
-    try {
-      await cancelDispute(selectedOrder);
-      toast.success("Dispute cancelled successfully");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to cancel dispute");
-    }
+    toast.promise(
+      requestArbitration(selectedOrder),
+      { loading: "Processing...", success: "Arbitration requested successfully. Admin will review the case.", error: (e: any) => e.message || "Failed to request arbitration" }
+    );
+  };
+
+  const handleCancelDispute = () => {
+    if (!selectedOrder) return;
+    toast.promise(
+      cancelDispute(selectedOrder),
+      { loading: "Processing...", success: "Dispute cancelled successfully", error: (e: any) => e.message || "Failed to cancel dispute" }
+    );
   };
 
   const renderOrderCard = (order: any) => (
@@ -1310,13 +1260,12 @@ function ProfessionalOrdersSection() {
                   onOpenModal={openModal}
                   onStartConversation={startConversation}
                   onRespondToCancellation={handleRespondToCancellation}
-                  onRespondToRevision={async (action) => {
-                    try {
-                      await respondToRevision(currentOrder.id, action);
-                      toast.success(action === 'accept' ? "Revision accepted. Work resumed." : "Revision rejected.");
-                    } catch (error: any) {
-                      toast.error(error.message || "Failed to respond to revision");
-                    }
+                  onRespondToRevision={(action) => {
+                    closeAllModals();
+                    toast.promise(
+                      respondToRevision(currentOrder.id, action),
+                      { loading: "Processing...", success: action === 'accept' ? "Revision accepted. Work resumed." : "Revision rejected.", error: (e: any) => e.message || "Failed to respond to revision" }
+                    );
                   }}
                   onRequestArbitration={handleRequestArbitration}
                   onCancelDispute={handleCancelDispute}
@@ -1925,45 +1874,36 @@ function ProfessionalOrdersSection() {
                     {/* Submit Button */}
                     <div className="flex justify-center">
                       <Button
-                        onClick={async () => {
+                        onClick={() => {
                           if (buyerRating === 0) {
                             toast.error("Please select a rating");
                             return;
                           }
-                          setIsSubmittingBuyerReview(true);
-                          try {
-                            const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/buyer-review`), {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              credentials: 'include',
-                              body: JSON.stringify({
-                                rating: buyerRating,
-                                comment: buyerReview,
-                              }),
-                            });
-                            if (!response.ok) {
-                              const error = await response.json();
-                              throw new Error(error.error || 'Failed to submit review');
-                            }
-                            toast.success("Review submitted successfully!");
-                            setHasSubmittedBuyerReview(true);
-                            await refreshOrders();
-                            const reviewResponse = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/review`), {
-                              credentials: 'include',
-                            });
-                            if (reviewResponse.ok) {
-                              const reviewData = await reviewResponse.json();
-                              setClientReviewData(reviewData.review);
-                            }
-                          } catch (error: any) {
-                            toast.error(error.message || "Failed to submit review");
-                          } finally {
-                            setIsSubmittingBuyerReview(false);
-                          }
+                          closeAllModals();
+                          setHasSubmittedBuyerReview(true);
+                          toast.promise(
+                            (async () => {
+                              const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/buyer-review`), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ rating: buyerRating, comment: buyerReview }),
+                              });
+                              if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.error || 'Failed to submit review');
+                              }
+                              await refreshOrders();
+                              const reviewRes = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/review`), { credentials: 'include' });
+                              if (reviewRes.ok) {
+                                const reviewData = await reviewRes.json();
+                                setClientReviewData(reviewData.review);
+                              }
+                            })(),
+                            { loading: "Processing...", success: "Review submitted successfully!", error: (e: any) => e.message || "Failed to submit review" }
+                          );
                         }}
-                        disabled={isSubmittingBuyerReview || buyerRating === 0}
+                        disabled={buyerRating === 0}
                         className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
                       >
                         {isSubmittingBuyerReview ? "Submitting..." : "Submit"}
@@ -2307,20 +2247,14 @@ function ProfessionalOrdersSection() {
           }}
         />
 
-        {/* Withdraw Cancellation Request Dialog */}
+        {/* Withdraw Cancellation Request Dialog – confirmation only */}
         <WithdrawCancellationDialog
           open={isWithdrawCancellationDialogOpen}
           onOpenChange={(open) => {
-	          // Close-only handler; opening is controlled via openModal('withdrawCancellation')
-	          if (!open) closeAllModals();
+            if (!open) closeAllModals();
           }}
-          withdrawCancellationReason={withdrawCancellationReason}
-          onWithdrawCancellationReasonChange={setWithdrawCancellationReason}
           onSubmit={handleWithdrawCancellation}
-          onCancel={() => {
-            closeAllModals();
-            setWithdrawCancellationReason("");
-          }}
+          onCancel={closeAllModals}
         />
 
         {/* Accept Cancellation Request Confirmation Dialog */}
@@ -2360,20 +2294,14 @@ function ProfessionalOrdersSection() {
           </DialogContent>
         </Dialog>
 
-        {/* Reject Cancellation Request Dialog (Professional rejecting client's request) */}
+        {/* Reject Cancellation Request Dialog – confirmation only */}
         <RejectCancellationDialog
           open={isRejectCancellationDialogOpen}
           onOpenChange={(open) => {
-	          // Close-only handler; opening is controlled via openModal('rejectCancellation')
-	          if (!open) closeAllModals();
+            if (!open) closeAllModals();
           }}
-          rejectCancellationReason={rejectCancellationReason}
-          onRejectCancellationReasonChange={setRejectCancellationReason}
           onSubmit={handleRejectCancellation}
-          onCancel={() => {
-            closeAllModals();
-            setRejectCancellationReason("");
-          }}
+          onCancel={closeAllModals}
         />
       </div>
     );

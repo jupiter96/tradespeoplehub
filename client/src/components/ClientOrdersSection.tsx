@@ -240,6 +240,10 @@ export default function ClientOrdersSection() {
   const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
   const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
+  const [isCancellationConfirmDialogOpen, setIsCancellationConfirmDialogOpen] = useState(false);
+  const [pendingCancellationOrderId, setPendingCancellationOrderId] = useState<string | null>(null);
+  const [pendingCancellationAction, setPendingCancellationAction] = useState<'approve' | 'reject' | null>(null);
+  const [isRespondingToCancellation, setIsRespondingToCancellation] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<{
     url: string;
     fileName: string;
@@ -270,6 +274,9 @@ export default function ClientOrdersSection() {
     setIsAddInfoDialogOpen(false);
     setIsApproveConfirmDialogOpen(false);
     setApproveOrderId(null);
+    setIsCancellationConfirmDialogOpen(false);
+    setPendingCancellationOrderId(null);
+    setPendingCancellationAction(null);
     setPreviewAttachment(null);
     // Reset form states when closing modals
     setCancelReason("");
@@ -884,15 +891,16 @@ export default function ClientOrdersSection() {
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
       if (order && order.status === "In Progress") {
-        try {
-          await requestCancellation(selectedOrder, cancelReason, cancelFiles.length > 0 ? cancelFiles : undefined);
-          toast.success("Cancellation request submitted. Waiting for professional approval.");
-          closeAllModals();
-          setCancelReason("");
-          setCancelFiles([]);
-        } catch (error: any) {
-          toast.error(error.message || "Failed to request cancellation");
-        }
+        const orderId = selectedOrder;
+        const reason = cancelReason;
+        const files = cancelFiles.length > 0 ? cancelFiles : undefined;
+        closeAllModals();
+        setCancelReason("");
+        setCancelFiles([]);
+        toast.promise(
+          requestCancellation(orderId, reason, files),
+          { loading: "Processing...", success: "Cancellation request submitted. Waiting for professional approval.", error: (e: any) => e.message || "Failed to request cancellation" }
+        );
       } else {
         cancelOrder(selectedOrder);
         toast.success("Order has been cancelled");
@@ -917,36 +925,47 @@ export default function ClientOrdersSection() {
     e.target.value = "";
   };
 
-  const handleRequestCancellation = async (files?: File[]) => {
+  const handleRequestCancellation = (files?: File[]) => {
     if (!selectedOrder) return;
-    try {
-      await requestCancellation(selectedOrder, cancellationReason, files);
-      toast.success("Cancellation request submitted. Waiting for response.");
-      closeAllModals();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to request cancellation");
-    }
+    closeAllModals();
+    setCancellationReason("");
+    toast.promise(
+      requestCancellation(selectedOrder, cancellationReason, files),
+      { loading: "Processing...", success: "Cancellation request submitted. Waiting for response.", error: (e: any) => e.message || "Failed to request cancellation" }
+    );
   };
 
-  const handleRespondToCancellation = async (action: 'approve' | 'reject') => {
+  const handleRespondToCancellation = (action: 'approve' | 'reject') => {
     if (!selectedOrder) return;
-    try {
-      await respondToCancellation(selectedOrder, action);
-      toast.success(`Cancellation request ${action}d successfully`);
-    } catch (error: any) {
-      toast.error(error.message || `Failed to ${action} cancellation request`);
-    }
+    closeAllModals();
+    toast.promise(
+      respondToCancellation(selectedOrder, action),
+      { loading: "Processing...", success: `Cancellation request ${action}d successfully`, error: (e: any) => e.message || `Failed to ${action} cancellation request` }
+    );
   };
 
-  const handleWithdrawCancellation = async () => {
+  const confirmRespondToCancellation = () => {
+    if (!pendingCancellationOrderId || !pendingCancellationAction) return;
+    const orderId = pendingCancellationOrderId;
+    const action = pendingCancellationAction;
+    closeAllModals();
+    setIsCancellationConfirmDialogOpen(false);
+    setPendingCancellationOrderId(null);
+    setPendingCancellationAction(null);
+    toast.promise(
+      respondToCancellation(orderId, action),
+      { loading: "Processing...", success: action === 'approve' ? "Cancellation approved. Order has been cancelled." : "Cancellation rejected. Order will continue.", error: (e: any) => e.message || `Failed to ${action} cancellation request` }
+    );
+  };
+
+  const handleWithdrawCancellation = () => {
     if (!selectedOrder) return;
-    try {
-      await withdrawCancellation(selectedOrder);
-      setIsWithdrawDialogOpen(false);
-      toast.success("Cancellation request withdrawn. Order will continue.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to withdraw cancellation request");
-    }
+    closeAllModals();
+    setIsWithdrawDialogOpen(false);
+    toast.promise(
+      withdrawCancellation(selectedOrder),
+      { loading: "Processing...", success: "Cancellation request withdrawn. Order will continue.", error: (e: any) => e.message || "Failed to withdraw cancellation request" }
+    );
   };
 
   const handleRequestRevision = async () => {
@@ -954,20 +973,18 @@ export default function ClientOrdersSection() {
       toast.error("Please provide a reason for the revision request");
       return;
     }
-    try {
-      await requestRevision(
-        selectedOrder,
-        revisionReason,
-        revisionMessage.trim() ? revisionMessage : undefined,
-        revisionFiles.length > 0 ? revisionFiles : undefined
-      );
-      toast.success("Revision request submitted. The professional will review your request.");
-      closeAllModals();
-      // Refresh orders to update timeline
-      await refreshOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to request revision");
-    }
+    const orderId = selectedOrder;
+    const reason = revisionReason;
+    const message = revisionMessage.trim() ? revisionMessage : undefined;
+    const files = revisionFiles.length > 0 ? revisionFiles : undefined;
+    closeAllModals();
+    setRevisionReason("");
+    setRevisionMessage("");
+    setRevisionFiles([]);
+    toast.promise(
+      requestRevision(orderId, reason, message, files).then(() => refreshOrders()),
+      { loading: "Processing...", success: "Revision request submitted. The professional will review your request.", error: (e: any) => e.message || "Failed to request revision" }
+    );
   };
 
   const handleRevisionFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -992,40 +1009,30 @@ export default function ClientOrdersSection() {
     setRevisionFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleRespondToDispute = async () => {
+  const handleRespondToDispute = () => {
     if (!selectedOrder) return;
-    try {
-      await respondToDispute(selectedOrder, disputeResponseMessage || undefined);
-      toast.success("Dispute response submitted successfully. Negotiation period has started.");
-      closeAllModals();
-      setDisputeResponseMessage("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to respond to dispute");
-    }
+    closeAllModals();
+    setDisputeResponseMessage("");
+    toast.promise(
+      respondToDispute(selectedOrder, disputeResponseMessage || undefined),
+      { loading: "Processing...", success: "Dispute response submitted successfully. Negotiation period has started.", error: (e: any) => e.message || "Failed to respond to dispute" }
+    );
   };
 
-  const handleRequestArbitration = async () => {
+  const handleRequestArbitration = () => {
     if (!selectedOrder) return;
-    try {
-      await requestArbitration(selectedOrder);
-      toast.success("Arbitration requested successfully. Admin will review the case.");
-    } catch (error: any) {
-      if (error.message.includes('Insufficient balance')) {
-        toast.error(error.message);
-      } else {
-        toast.error(error.message || "Failed to request arbitration");
-      }
-    }
+    toast.promise(
+      requestArbitration(selectedOrder),
+      { loading: "Processing...", success: "Arbitration requested successfully. Admin will review the case.", error: (e: any) => e.message?.includes('Insufficient balance') ? e.message : (e.message || "Failed to request arbitration") }
+    );
   };
 
-  const handleCancelDispute = async () => {
+  const handleCancelDispute = () => {
     if (!selectedOrder) return;
-    try {
-      await cancelDispute(selectedOrder);
-      toast.success("Dispute cancelled successfully. Order restored to delivered status.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to cancel dispute");
-    }
+    toast.promise(
+      cancelDispute(selectedOrder),
+      { loading: "Processing...", success: "Dispute cancelled successfully. Order restored to delivered status.", error: (e: any) => e.message || "Failed to cancel dispute" }
+    );
   };
 
   // Open approve confirmation dialog (keep consistent with other modal flows)
@@ -1043,24 +1050,21 @@ export default function ClientOrdersSection() {
   };
 
   // Confirm and execute the approval
-  const confirmApproveDelivery = async () => {
+  const confirmApproveDelivery = () => {
     if (!approveOrderId) return;
 
-    setIsApproving(true);
-    try {
-      await acceptDelivery(approveOrderId);
-      toast.success("Order completed! Funds have been released to the professional. You can now rate the service.");
-      setSelectedOrder(approveOrderId);
-      setIsApproveConfirmDialogOpen(false);
-      setApproveOrderId(null);
-      openModal('rating');
-      // Refresh orders to update status
-      await refreshOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to complete order");
-    } finally {
-      setIsApproving(false);
-    }
+    const orderId = approveOrderId;
+    closeAllModals();
+    setIsApproveConfirmDialogOpen(false);
+    setApproveOrderId(null);
+    setSelectedOrder(orderId);
+    toast.promise(
+      acceptDelivery(orderId).then(() => {
+        openModal('rating');
+        refreshOrders();
+      }),
+      { loading: "Processing...", success: "Order completed! Funds have been released to the professional. You can now rate the service.", error: (e: any) => e.message || "Failed to complete order" }
+    );
   };
 
   const handleCreateDispute = async () => {
@@ -1092,53 +1096,47 @@ export default function ClientOrdersSection() {
     
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
-      // Check if order is delivered
       if (order?.status !== 'In Progress' && (!order?.deliveryFiles || order.deliveryFiles.length === 0)) {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
-      
-      try {
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append('requirements', disputeRequirements);
-        formData.append('unmetRequirements', disputeUnmetRequirements);
-        formData.append('offerAmount', disputeOfferAmount);
-        
-        // Add evidence files
-        disputeEvidenceFiles.forEach((file) => {
-          formData.append('evidenceFiles', file);
-        });
-        
-        // Call API to create dispute
-        const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/dispute`), {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to create dispute');
-        }
+      const reqs = disputeRequirements;
+      const unmet = disputeUnmetRequirements;
+      const offer = disputeOfferAmount;
+      const evidenceFiles = disputeEvidenceFiles;
+      const orderId = selectedOrder;
+      closeAllModals();
+      setDisputeRequirements("");
+      setDisputeUnmetRequirements("");
+      setDisputeEvidenceFiles([]);
+      setDisputeOfferAmount("");
+      toast.promise(
+        (async () => {
+          const formData = new FormData();
+          formData.append('requirements', reqs);
+          formData.append('unmetRequirements', unmet);
+          formData.append('offerAmount', offer);
+          evidenceFiles.forEach((file) => formData.append('evidenceFiles', file));
 
-        const data = await response.json();
-        
-        toast.success("Dispute has been created");
-        closeAllModals();
-        setDisputeRequirements("");
-        setDisputeUnmetRequirements("");
-        setDisputeEvidenceFiles([]);
-        setDisputeOfferAmount("");
-        
-        // Refresh orders to get updated status
-        await refreshOrders();
-        
-        // Navigate to dispute discussion page
-        navigate(`/dispute/${data.disputeId}`);
-      } catch (error: any) {
-        toast.error(error.message || "Failed to create dispute");
-      }
+          const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute`), {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create dispute');
+          }
+
+          const data = await response.json();
+          refreshOrders();
+          navigate(`/dispute/${data.disputeId}`);
+          return data;
+        })(),
+        { loading: "Processing...", success: "Dispute has been created", error: (e: any) => e.message || "Failed to create dispute" }
+      );
     }
   };
 
@@ -1151,25 +1149,17 @@ export default function ClientOrdersSection() {
       return;
     }
     
-    setIsSubmittingReview(true);
-    try {
-      if (selectedOrder) {
-        await rateOrder(selectedOrder, averageRating, review);
-      }
-      toast.success("Thank you for your feedback! Your review has been submitted.");
-      closeAllModals();
-      setRating(0);
-      setReview("");
-      setCommunicationRating(0);
-      setServiceAsDescribedRating(0);
-      setBuyAgainRating(0);
-      // Refresh orders to update review status
-      await refreshOrders();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit review");
-    } finally {
-      setIsSubmittingReview(false);
-    }
+    const orderId = selectedOrder;
+    closeAllModals();
+    setRating(0);
+    setReview("");
+    setCommunicationRating(0);
+    setServiceAsDescribedRating(0);
+    setBuyAgainRating(0);
+    toast.promise(
+      (orderId ? rateOrder(orderId, averageRating, review) : Promise.resolve()).then(() => refreshOrders()),
+      { loading: "Processing...", success: "Thank you for your feedback! Your review has been submitted.", error: (e: any) => e.message || "Failed to submit review" }
+    );
   };
 
   const handleStartConversation = (professionalName: string, professionalAvatar?: string) => {
@@ -1772,6 +1762,20 @@ export default function ClientOrdersSection() {
               </div>
             ) : null}
 
+            {/* Order Cancellation Initiated – pro sent cancel request (status message card at top of Timeline tab) */}
+            {currentOrder.cancellationRequest?.status === "pending" &&
+             currentOrder.cancellationRequest?.requestedBy &&
+             currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+                  Order Cancellation Initiated
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+                  {currentOrder.professional || "The professional"} has initiated the cancellation of the order. Please respond to the request, as failure to do so before the deadline will result in the automatic cancellation of the order.
+                </p>
+              </div>
+            )}
+
             {/* Completion Message for Completed Orders */}
             {currentOrder.status === "Completed" && (
               <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md">
@@ -1787,117 +1791,6 @@ export default function ClientOrdersSection() {
                 >
                   View review
                 </Button>
-              </div>
-            )}
-
-            {/* Cancellation Request - Pending (Client can respond to professional's request) */}
-            {currentOrder.cancellationRequest && 
-             currentOrder.cancellationRequest.status === 'pending' && 
-             currentOrder.cancellationRequest.requestedBy && 
-             currentOrder.cancellationRequest.requestedBy.toString() !== userInfo?.id?.toString() && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 sm:p-6 shadow-md">
-                <div className="flex items-start gap-2 sm:gap-3 mb-4">
-                  <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                      Cancellation Request Received
-                    </h4>
-                    <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-3 break-words">
-                      {currentOrder.professional || "The professional"} has requested to cancel this order.
-                    </p>
-                    {currentOrder.cancellationRequest.reason && (
-                      <div className="mb-3 p-2 sm:p-3 bg-white rounded">
-                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-1">
-                          Reason:
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] break-words">
-                          {currentOrder.cancellationRequest.reason}
-                        </p>
-                      </div>
-                    )}
-                    {(currentOrder.cancellationRequest.files || []).length > 0 && (
-                      <div className="mb-3">
-                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mb-2">📎 Attachments ({currentOrder.cancellationRequest.files.length})</p>
-                        <div className="flex flex-wrap gap-2">
-                          {currentOrder.cancellationRequest.files.map((file: any, idx: number) => {
-                            const fileUrl = file.url || "";
-                            const fileName = file.fileName || "Attachment";
-                            const resolvedUrl = resolveFileUrl(fileUrl);
-                            const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
-                            const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
-                            return (
-                              <Button
-                                key={idx}
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  openPreviewAttachment({
-                                    url: resolvedUrl,
-                                    fileName: fileName,
-                                    type: isImage ? "image" : (isPdf ? "pdf" : "other")
-                                  });
-                                }}
-                              >
-                                <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                                <span className="truncate">{fileName}</span>
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    {currentOrder.cancellationRequest.responseDeadline && (
-                      <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-orange-700 mb-4 break-words">
-                        ⚠️ Response deadline: {new Date(currentOrder.cancellationRequest.responseDeadline).toLocaleString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    )}
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                      <Button
-                        onClick={async () => {
-                          try {
-                            if (selectedOrder) {
-                              await respondToCancellation(selectedOrder, 'approve');
-                              toast.success("Cancellation approved. Order has been cancelled.");
-                            }
-                          } catch (error: any) {
-                            toast.error(error.message || "Failed to approve cancellation");
-                          }
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Approve Cancellation
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          try {
-                            if (selectedOrder) {
-                              await respondToCancellation(selectedOrder, 'reject');
-                              toast.success("Cancellation rejected. Order will continue.");
-                            }
-                          } catch (error: any) {
-                            toast.error(error.message || "Failed to reject cancellation");
-                          }
-                        }}
-                        variant="outline"
-                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Reject Cancellation
-                      </Button>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -2378,8 +2271,8 @@ export default function ClientOrdersSection() {
                               </p>
                             )}
                           </div>
-                          
-                          {/* Description */}
+
+                          {/* 1. Reason (description) - for Cancellation Requested show first */}
                           {event.description && (
                             <div className="mb-3 bg-gray-50 border-l-4 border-blue-500 rounded p-3">
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
@@ -2388,7 +2281,7 @@ export default function ClientOrdersSection() {
                             </div>
                           )}
                           
-                          {/* Message/Reason - Highlighted */}
+                          {/* Message - Highlighted (for other events) */}
                           {event.message && (
                             <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
                               <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700 font-medium mb-1">
@@ -2399,7 +2292,71 @@ export default function ClientOrdersSection() {
                               </p>
                             </div>
                           )}
-                          {/* Withdraw button for Cancellation Requested event (client-initiated) */}
+
+                          {/* 2. Attachments - for Cancellation Requested show after reason, before warning */}
+                          {event.title === "Cancellation Requested" && event.id === "cancellation-requested" && event.files && event.files.length > 0 && (
+                            <div className="mb-3">
+                              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-3 flex items-center gap-2">
+                                  <Paperclip className="w-4 h-4" />
+                                  Attachments ({event.files.length})
+                                </p>
+                                <div className="space-y-3">
+                                  {event.files.map((file: any, index: number) => {
+                                    const fileUrl = file.url || "";
+                                    const fileName = file.fileName || "attachment";
+                                    const isImage =
+                                      file.fileType === "image" ||
+                                      /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
+                                      /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                                    const resolvedUrl = resolveFileUrl(fileUrl);
+                                    return (
+                                      <div key={index} className="relative group">
+                                        {isImage ? (
+                                          <img
+                                            src={resolvedUrl}
+                                            alt={fileName}
+                                            className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              openPreviewAttachment({
+                                                url: resolvedUrl,
+                                                fileName: fileName,
+                                                type: "image"
+                                              });
+                                            }}
+                                          />
+                                        ) : (
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full hover:bg-blue-50"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                              openPreviewAttachment({
+                                                url: resolvedUrl,
+                                                fileName: fileName,
+                                                type: isPdf ? "pdf" : "other"
+                                              });
+                                            }}
+                                          >
+                                            <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                            <span className="truncate">{fileName}</span>
+                                          </Button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 3. Warning message + Withdraw for Cancellation Requested (client-initiated) */}
                           {event.title === "Cancellation Requested" && 
                            event.id === "cancellation-requested" &&
                            currentOrder.cancellationRequest?.requestedBy?.toString() === userInfo?.id?.toString() &&
@@ -2436,6 +2393,66 @@ export default function ClientOrdersSection() {
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Withdraw
                               </Button>
+                            </div>
+                          )}
+
+                          {/* 4. Warning message + Approve/Reject for Cancellation Requested (pro-initiated) – at bottom of timeline card */}
+                          {event.title === "Cancellation Requested" &&
+                           event.id === "cancellation-requested" &&
+                           currentOrder.cancellationRequest?.requestedBy?.toString() !== userInfo?.id?.toString() &&
+                           currentOrder.cancellationRequest?.status === "pending" && (
+                            <div className="mt-3">
+                              <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 mb-3 shadow-sm">
+                                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] mb-2 break-words">
+                                  {currentOrder.professional || "The professional"} has requested to cancel this order.
+                                </p>
+                                {currentOrder.cancellationRequest.responseDeadline && (
+                                  <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-orange-700 mb-4 break-words">
+                                    ⚠️ Response deadline: {new Date(currentOrder.cancellationRequest.responseDeadline).toLocaleString('en-GB', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </p>
+                                )}
+                                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                  <Button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (currentOrder.id) {
+                                        setSelectedOrder(currentOrder.id);
+                                        setPendingCancellationOrderId(currentOrder.id);
+                                        setPendingCancellationAction('approve');
+                                        setIsCancellationConfirmDialogOpen(true);
+                                      }
+                                    }}
+                                    className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    Approve Cancellation
+                                  </Button>
+                                  <Button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (currentOrder.id) {
+                                        setSelectedOrder(currentOrder.id);
+                                        setPendingCancellationOrderId(currentOrder.id);
+                                        setPendingCancellationAction('reject');
+                                        setIsCancellationConfirmDialogOpen(true);
+                                      }
+                                    }}
+                                    variant="outline"
+                                    className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] sm:text-[14px] w-full sm:w-auto"
+                                  >
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Reject Cancellation
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
                           )}
 
@@ -2507,8 +2524,8 @@ export default function ClientOrdersSection() {
                           )}
 
                           
-                          {/* Attachments Section */}
-                          {event.files && event.files.length > 0 && (() => {
+                          {/* Attachments Section (skip for Cancellation Requested - already shown above in order: reason, attachment, warning) */}
+                          {event.files && event.files.length > 0 && event.id !== "cancellation-requested" && (() => {
                             // For "Work Delivered" events, filter files by deliveryNumber
                             // For other events (like "Revision Requested"), show all files
                             let filesToShow = event.files;
@@ -4959,7 +4976,7 @@ export default function ClientOrdersSection() {
           order={currentOrder ? { id: currentOrder.id, service: currentOrder.service } : null}
           onSubmit={async (orderId, message, files) => {
             await addAdditionalInfo(orderId, message, files);
-            await refreshOrders();
+            refreshOrders();
           }}
         />
 
@@ -5028,6 +5045,58 @@ export default function ClientOrdersSection() {
             </div>
           </div>
         )}
+
+        {/* Cancellation Response Confirmation Dialog – Approve/Reject cancellation request */}
+        <Dialog
+          open={isCancellationConfirmDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCancellationConfirmDialogOpen(false);
+              setPendingCancellationOrderId(null);
+              setPendingCancellationAction(null);
+            }
+          }}
+        >
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <div className="flex flex-col items-center text-center py-4">
+              <div className={`w-10 h-10 rounded-full border-4 flex items-center justify-center mb-6 ${pendingCancellationAction === 'approve' ? 'border-[#16a34a]' : 'border-red-500'}`}>
+                {pendingCancellationAction === 'approve' ? (
+                  <CheckCircle2 className="w-5 h-5 text-[#16a34a]" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-500" />
+                )}
+              </div>
+              <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] font-semibold mb-3">
+                {pendingCancellationAction === 'approve' ? 'Approve Cancellation Request?' : 'Reject Cancellation Request?'}
+              </h2>
+              <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mb-6">
+                {pendingCancellationAction === 'approve'
+                  ? 'This will cancel the order. Are you sure you want to approve the cancellation?'
+                  : 'The order will continue as normal. Are you sure you want to reject the cancellation request?'}
+              </p>
+              <div className="flex gap-3 w-full justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsCancellationConfirmDialogOpen(false);
+                    setPendingCancellationOrderId(null);
+                    setPendingCancellationAction(null);
+                  }}
+                  className="font-['Poppins',sans-serif] text-[14px] px-6"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmRespondToCancellation}
+                  disabled={isRespondingToCancellation}
+                  className={`font-['Poppins',sans-serif] text-[14px] px-6 text-white ${pendingCancellationAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                >
+                  {isRespondingToCancellation ? 'Processing...' : pendingCancellationAction === 'approve' ? 'Yes, Approve' : 'Yes, Reject'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Accept Extension Confirmation Modal - Inline React Modal */}
         {isAcceptExtensionDialogOpen && (
@@ -5103,16 +5172,13 @@ export default function ClientOrdersSection() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      if (selectedOrder) {
-                        await respondToExtension(selectedOrder, 'approve');
-                        setIsAcceptExtensionDialogOpen(false);
-                        toast.success("Extension request accepted");
-                      }
-                    } catch (error: any) {
-                      toast.error(error.message || "Failed to accept extension");
-                    }
+                  onClick={() => {
+                    if (!selectedOrder) return;
+                    setIsAcceptExtensionDialogOpen(false);
+                    toast.promise(
+                      respondToExtension(selectedOrder, 'approve'),
+                      { loading: "Processing...", success: "Extension request accepted", error: (e: any) => e.message || "Failed to accept extension" }
+                    );
                   }}
                   className="font-['Poppins',sans-serif] bg-green-600 hover:bg-green-700 text-white text-[14px]"
                 >
@@ -5182,16 +5248,13 @@ export default function ClientOrdersSection() {
                 </Button>
                 <Button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      if (selectedOrder) {
-                        await respondToExtension(selectedOrder, 'reject');
-                        setIsDeclineExtensionDialogOpen(false);
-                        toast.success("Extension request declined");
-                      }
-                    } catch (error: any) {
-                      toast.error(error.message || "Failed to decline extension");
-                    }
+                  onClick={() => {
+                    if (!selectedOrder) return;
+                    setIsDeclineExtensionDialogOpen(false);
+                    toast.promise(
+                      respondToExtension(selectedOrder, 'reject'),
+                      { loading: "Processing...", success: "Extension request declined", error: (e: any) => e.message || "Failed to decline extension" }
+                    );
                   }}
                   className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700 text-white text-[14px]"
                 >

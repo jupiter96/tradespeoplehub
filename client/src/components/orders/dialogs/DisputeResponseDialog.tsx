@@ -8,7 +8,7 @@ interface DisputeResponseDialogProps {
   onOpenChange: (open: boolean) => void;
   disputeResponseMessage: string;
   onDisputeResponseMessageChange: (message: string) => void;
-  onSubmit: () => Promise<void>;
+  onSubmit: () => void | Promise<void>;
   onCancel: () => void;
 }
 

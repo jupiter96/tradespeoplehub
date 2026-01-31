@@ -11,7 +11,7 @@ interface CancellationRequestDialogProps {
   onOpenChange: (open: boolean) => void;
   cancellationReason: string;
   onCancellationReasonChange: (reason: string) => void;
-  onSubmit: (files?: File[]) => Promise<void>;
+  onSubmit: (files?: File[]) => void | Promise<void>;
   onCancel: () => void;
 }
 

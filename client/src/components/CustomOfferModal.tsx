@@ -26,12 +26,20 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "./ui/select";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner@2.0.3";
 import { resolveApiUrl } from "../config/api";
 import { useEffect } from "react";
+import { Checkbox } from "./ui/checkbox";
+
+const resolveMediaUrl = (url: string | undefined): string => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) return url;
+  if (url.startsWith("/")) return resolveApiUrl(url);
+  return url;
+};
 
 interface CustomOfferModalProps {
   isOpen: boolean;
@@ -46,6 +54,10 @@ interface ProfessionalService {
   basePrice: number;
   category: string;
   deliveryDays: number;
+  thumbnailUrl?: string;
+  thumbnailType?: "image" | "video";
+  priceUnit?: string;
+  features?: string[];
 }
 
 interface Milestone {
@@ -76,6 +88,10 @@ export default function CustomOfferModal({
   ]);
   const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [chargePer, setChargePer] = useState<string>("service");
+  const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
+  const [offerExpiresEnabled, setOfferExpiresEnabled] = useState(false);
+  const [offerExpiresInDays, setOfferExpiresInDays] = useState<string>("3");
 
   const selectedService = professionalServices.find(s => s.id === selectedServiceId);
 
@@ -101,13 +117,25 @@ export default function CustomOfferModal({
 
       const data = await response.json();
       const list = Array.isArray(data.services) ? data.services : [];
-      const transformedServices: ProfessionalService[] = list.map((service: any) => ({
-        id: service._id || service.id,
-        name: service.title || service.name,
-        basePrice: service.packages?.[0]?.price ?? service.price ?? 0,
-        category: service.serviceCategory?.name || service.category?.name || service.category || 'Service',
-        deliveryDays: service.packages?.[0]?.deliveryDays ?? service.deliveryDays ?? 1,
-      }));
+      const transformedServices: ProfessionalService[] = list.map((service: any) => {
+        const firstGallery = service.gallery?.[0] || service.images?.[0];
+        const thumbUrl = typeof firstGallery === "object" ? firstGallery?.url : firstGallery;
+        const thumbType = typeof firstGallery === "object" && firstGallery?.type === "video" ? "video" : "image";
+        const pkg = service.packages?.[0];
+        const features = pkg?.features && Array.isArray(pkg.features) ? pkg.features : (service.highlights && Array.isArray(service.highlights) ? service.highlights : []);
+        const priceUnit = pkg?.priceUnit || service.priceUnit || "fixed";
+        return {
+          id: service._id || service.id,
+          name: service.title || service.name,
+          basePrice: pkg?.price ?? service.price ?? 0,
+          category: service.serviceCategory?.name || service.category?.name || service.category || "Service",
+          deliveryDays: pkg?.deliveryDays ?? service.deliveryDays ?? 1,
+          thumbnailUrl: thumbUrl,
+          thumbnailType: thumbType,
+          priceUnit: priceUnit,
+          features: features,
+        };
+      });
 
       setProfessionalServices(transformedServices);
     } catch (error: any) {
@@ -126,6 +154,10 @@ export default function CustomOfferModal({
     setOfferDescription("");
     setPaymentType("single");
     setMilestones([{ id: "1", name: "", description: "", amount: 0, dueInDays: 1 }]);
+    setChargePer("service");
+    setSelectedAttributes([]);
+    setOfferExpiresEnabled(false);
+    setOfferExpiresInDays("3");
     onClose();
   };
 
@@ -135,6 +167,8 @@ export default function CustomOfferModal({
       setSelectedServiceId(serviceId);
       setCustomPrice(service.basePrice.toString());
       setDeliveryDays(service.deliveryDays.toString());
+      setChargePer(service.priceUnit === "fixed" || !service.priceUnit ? "service" : service.priceUnit);
+      setSelectedAttributes([]);
       setStep("payment");
     }
   };
@@ -219,12 +253,15 @@ export default function CustomOfferModal({
           conversationId: contact.conversationId,
           serviceName: selectedService.name,
           price: parseFloat(customPrice),
-        deliveryDays: parseInt(deliveryDays),
-        description: offerDescription,
-        paymentType: paymentType,
-        milestones: paymentType === "milestone" ? milestones : undefined,
+          deliveryDays: parseInt(deliveryDays),
+          description: offerDescription,
+          paymentType: paymentType,
+          milestones: paymentType === "milestone" ? milestones : undefined,
+          chargePer: chargePer,
+          attributes: selectedAttributes,
+          ...(offerExpiresEnabled && { offerExpiresInDays: parseInt(offerExpiresInDays, 10) || 3 }),
         }),
-    });
+      });
 
       if (!response.ok) {
         const error = await response.json();
@@ -552,88 +589,208 @@ export default function CustomOfferModal({
           <div className="flex flex-col flex-1 overflow-hidden">
             <ScrollArea className="flex-1 overflow-auto px-6">
               <div className="space-y-5 py-4">
-                {/* Selected Service Summary */}
+                {/* Service name + thumbnail (image or video) */}
                 {selectedService && (
-                  <div className="bg-gradient-to-r from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                        {selectedService.name}
-                      </h3>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setStep("select")}
-                        className="text-[#6b6b6b] hover:text-[#FE8A0F]"
-                      >
-                        Change
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-white/80 text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
-                        {selectedService.category}
-                      </Badge>
-                      <Badge className="bg-white/80 text-[#FE8A0F] border-[#FE8A0F]/20 font-['Poppins',sans-serif] text-[11px]">
-                        {paymentType === "single" ? "Single Payment" : `${milestones.length} Milestones`}
-                      </Badge>
+                  <div className="bg-white border border-[#FE8A0F]/30 rounded-xl overflow-hidden">
+                    <div className="flex gap-4 p-4">
+                      <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        {selectedService.thumbnailUrl ? (
+                          selectedService.thumbnailType === "video" ? (
+                            <video
+                              src={resolveMediaUrl(selectedService.thumbnailUrl)}
+                              className="w-full h-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                          ) : (
+                            <img
+                              src={resolveMediaUrl(selectedService.thumbnailUrl)}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          )
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[#FE8A0F]">
+                            <ShoppingBag className="w-10 h-10" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-1">
+                          {selectedService.name}
+                        </h3>
+                        <Badge className="bg-[#EFF6FF] text-[#3D78CB] border-[#3D78CB]/20 font-['Poppins',sans-serif] text-[11px]">
+                          {selectedService.category}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setStep("select")}
+                          className="mt-2 text-[#6b6b6b] hover:text-[#FE8A0F] font-['Poppins',sans-serif] text-[12px]"
+                        >
+                          Change service
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Pricing */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
-                    <Package className="w-4 h-4 text-[#FE8A0F]" />
-                    Offer Price (£)
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="Enter your price"
-                    value={customPrice}
-                    onChange={(e) => setCustomPrice(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
-                    min="1"
-                    step="1"
-                  />
-                  {selectedService && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
-                      Base price: £{selectedService.basePrice}
-                    </p>
-                  )}
-                </div>
-
-                {/* Delivery Time */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[#FE8A0F]" />
-                    Delivery Time (Days)
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="Number of days"
-                    value={deliveryDays}
-                    onChange={(e) => setDeliveryDays(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
-                    min="1"
-                    step="1"
-                  />
-                  {selectedService && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
-                      Standard delivery: {selectedService.deliveryDays} {selectedService.deliveryDays === 1 ? 'day' : 'days'}
-                    </p>
-                  )}
-                </div>
-
                 {/* Description */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
-                    Offer Description
+                    Offer description
                   </Label>
                   <Textarea
-                    placeholder="Describe what's included in this offer..."
+                    placeholder="Custom offer..."
                     value={offerDescription}
                     onChange={(e) => setOfferDescription(e.target.value)}
-                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[120px]"
+                    className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[100px]"
                   />
+                </div>
+
+                {/* Switch to Milestones (single payment only) */}
+                {paymentType === "single" && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] p-0 h-auto"
+                      onClick={() => {
+                        setStep("payment");
+                        setPaymentType("milestone");
+                      }}
+                    >
+                      Switch to Milestones
+                    </Button>
+                  </div>
+                )}
+
+                {/* Define terms section */}
+                <div className="border border-gray-200 rounded-xl p-4 space-y-4">
+                  <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold">
+                    Define the terms of your offer and what it includes
+                  </h4>
+
+                  {/* Delivery */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                      Delivery In
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="No. of Days"
+                      value={deliveryDays}
+                      onChange={(e) => setDeliveryDays(e.target.value)}
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                      min="1"
+                      step="1"
+                    />
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                      Price (£)
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder="Enter price"
+                      value={customPrice}
+                      onChange={(e) => setCustomPrice(e.target.value)}
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                      min="0"
+                      step="0.01"
+                    />
+                    {selectedService && (
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
+                        Base: £{selectedService.basePrice}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Charge Per: Service option + price unit options (from this service) */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                      Charge Per
+                    </Label>
+                    <Select value={chargePer} onValueChange={setChargePer} modal={false}>
+                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]">
+                        <SelectValue placeholder="Please Select" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[100002] max-h-[16rem]" position="popper" sideOffset={4}>
+                        <SelectGroup>
+                          <SelectLabel className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            Service
+                          </SelectLabel>
+                          <SelectItem value="service">Service</SelectItem>
+                        </SelectGroup>
+                        <SelectGroup>
+                          <SelectLabel className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            {selectedService?.category ? `Price unit (${selectedService.category})` : "Price unit"}
+                          </SelectLabel>
+                          <SelectItem value="per hour">Per hour</SelectItem>
+                          <SelectItem value="per day">Per day</SelectItem>
+                          <SelectItem value="per item">Per item</SelectItem>
+                          {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
+                            <SelectItem value={selectedService.priceUnit}>{selectedService.priceUnit}</SelectItem>
+                          )}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Attributes (from service features) */}
+                  {selectedService && selectedService.features && selectedService.features.length > 0 && (
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2 block">
+                        Offer includes
+                      </Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {selectedService.features.map((attr) => (
+                          <label
+                            key={attr}
+                            className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]"
+                          >
+                            <Checkbox
+                              checked={selectedAttributes.includes(attr)}
+                              onCheckedChange={(checked) => {
+                                setSelectedAttributes((prev) =>
+                                  checked ? [...prev, attr] : prev.filter((a) => a !== attr)
+                                );
+                              }}
+                            />
+                            <span>{attr}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Offer expires in */}
+                  <div className="space-y-2 mt-6 pt-4 border-t border-gray-200">
+                    <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      <Checkbox
+                        checked={offerExpiresEnabled}
+                        onCheckedChange={(c) => setOfferExpiresEnabled(!!c)}
+                      />
+                      <span>Offer expires in</span>
+                    </label>
+                    {offerExpiresEnabled && (
+                      <div className="flex items-center gap-2 pl-6">
+                        <Input
+                          type="number"
+                          placeholder="Days"
+                          value={offerExpiresInDays}
+                          onChange={(e) => setOfferExpiresInDays(e.target.value)}
+                          className="w-20 font-['Poppins',sans-serif] text-[14px] border-gray-200"
+                          min="1"
+                          max="30"
+                        />
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">days</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Milestone Details (if milestone payment selected) */}

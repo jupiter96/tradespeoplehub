@@ -52,10 +52,10 @@ interface ProfessionalOrderTimelineTabProps {
     jobId?: string;
     jobTitle?: string;
   }) => void;
-  onRespondToCancellation: (action: 'approve' | 'reject') => Promise<void>;
-  onRespondToRevision: (action: 'accept' | 'reject') => Promise<void>;
-  onRequestArbitration: () => Promise<void>;
-  onCancelDispute: () => Promise<void>;
+  onRespondToCancellation: (action: 'approve' | 'reject') => void | Promise<void>;
+  onRespondToRevision: (action: 'accept' | 'reject') => void | Promise<void>;
+  onRequestArbitration: () => void | Promise<void>;
+  onCancelDispute: () => void | Promise<void>;
   onSetExtensionNewDate: (date: string) => void;
   onSetExtensionNewTime: (time: string) => void;
   onSetExtensionReason: (reason: string) => void;
@@ -606,15 +606,72 @@ export default function ProfessionalOrderTimelineTab({
                       </div>
                     )}
                   
-                    {/* Withdraw button for Cancellation Requested event (professional-initiated) */}
+                    {/* Attachments - for Cancellation Requested show after reason, before warning (order: reason → attachments → warning → withdraw) */}
+                    {event.label === "Cancellation Requested" && event.id === "cancellation-requested" && event.files && event.files.length > 0 && (
+                      <div className="mb-3">
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-3 flex items-center gap-2">
+                            <Paperclip className="w-4 h-4" />
+                            Attachments ({event.files.length})
+                          </p>
+                          <div className="space-y-3">
+                            {event.files.map((file: any, index: number) => {
+                              const fileUrl = file.url || "";
+                              const fileName = file.fileName || "attachment";
+                              const isImage =
+                                file.fileType === "image" ||
+                                /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) ||
+                                /\.(png|jpe?g|gif|webp)$/i.test(fileName);
+                              const resolvedUrl = resolveFileUrl(fileUrl);
+                              return (
+                                <div key={index} className="relative group">
+                                  {isImage ? (
+                                    <img
+                                      src={resolvedUrl}
+                                      alt={fileName}
+                                      className="block max-w-full max-h-48 min-h-24 w-auto h-auto object-contain rounded-lg border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                      onClick={() => setPreviewAttachment({
+                                        url: resolvedUrl,
+                                        fileName: fileName,
+                                        type: "image"
+                                      })}
+                                    />
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full hover:bg-blue-50"
+                                      onClick={() => {
+                                        const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
+                                        setPreviewAttachment({
+                                          url: resolvedUrl,
+                                          fileName: fileName,
+                                          type: isPdf ? "pdf" : "other"
+                                        });
+                                      }}
+                                    >
+                                      <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
+                                      <span className="truncate">{fileName}</span>
+                                    </Button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Warning message card for Cancellation Requested (professional-initiated) – after reason & attachments */}
                     {event.label === "Cancellation Requested" && 
                      event.id === "cancellation-requested" &&
                      (() => {
                        const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
                        return cr?.requestedBy?.toString() === userInfo?.id?.toString() && cr?.status === "pending";
                      })() && (
-                      <div className="mt-3">
-                        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 mb-3 shadow-sm">
+                      <div className="mb-3">
+                        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-4 shadow-sm">
                           <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed break-words">
                             {(currentOrder as any).client || "The client"} has until{" "}
                             <span className="font-semibold text-orange-700">
@@ -635,6 +692,17 @@ export default function ProfessionalOrderTimelineTab({
                             to respond to the cancellation request. If no response is received, the order will be automatically canceled, and the amount will be credited to the client's Wallet.
                           </p>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Withdraw button for Cancellation Requested event (professional-initiated) – at bottom */}
+                    {event.label === "Cancellation Requested" && 
+                     event.id === "cancellation-requested" &&
+                     (() => {
+                       const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+                       return cr?.requestedBy?.toString() === userInfo?.id?.toString() && cr?.status === "pending";
+                     })() && (
+                      <div className="mt-3">
                         <Button
                           onClick={() => onOpenModal('withdrawCancellation')}
                           variant="outline"
@@ -646,8 +714,8 @@ export default function ProfessionalOrderTimelineTab({
                       </div>
                     )}
                       
-                    {/* Attachments Section */}
-                    {event.files && event.files.length > 0 && (
+                    {/* Attachments Section (for non-Cancellation Requested events) */}
+                    {event.files && event.files.length > 0 && event.id !== "cancellation-requested" && (
                       <div className="mt-3">
                         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
                           <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-3 flex items-center gap-2">
@@ -719,56 +787,6 @@ export default function ProfessionalOrderTimelineTab({
                                 const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
                                 return (
                                   <>
-                                    {/* Cancellation Reason - Highlighted */}
-                                    {cr?.reason && (
-                                      <div className="mb-4">
-                                        <p className="font-['Poppins',sans-serif] text-[12px] text-orange-700 font-medium mb-2">
-                                          Cancellation Reason:
-                                        </p>
-                                        <div className="bg-white border border-orange-200 rounded-lg p-3">
-                                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
-                                            {cr.reason}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Attachments */}
-                                    {(cr?.files || []).length > 0 && (
-                                      <div className="mb-4">
-                                        <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 font-medium mb-2 flex items-center gap-2">
-                                          <Paperclip className="w-4 h-4" />
-                                          Attachments ({cr.files.length})
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {cr.files.map((file: any, idx: number) => {
-                                            const fileUrl = file.url || "";
-                                            const fileName = file.fileName || "Attachment";
-                                            const resolvedUrl = resolveFileUrl(fileUrl);
-                                            const isImage = file.fileType === "image" || /\.(png|jpe?g|gif|webp)$/i.test(fileUrl) || /\.(png|jpe?g|gif|webp)$/i.test(fileName);
-                                            const isPdf = /\.pdf$/i.test(fileUrl) || /\.pdf$/i.test(fileName);
-                                            return (
-                                              <Button
-                                                key={idx}
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                className="font-['Poppins',sans-serif] text-[12px] text-left justify-start truncate max-w-full hover:bg-blue-50"
-                                                onClick={() => setPreviewAttachment({
-                                                  url: resolvedUrl,
-                                                  fileName: fileName,
-                                                  type: isImage ? "image" : (isPdf ? "pdf" : "other")
-                                                })}
-                                              >
-                                                <Paperclip className="w-3 h-3 flex-shrink-0 mr-1.5" />
-                                                <span className="truncate">{fileName}</span>
-                                              </Button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
-                                    
                                     {/* Deadline Information */}
                                     <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">

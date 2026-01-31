@@ -67,18 +67,16 @@ export default function AddInfoDialog({
     }
     if (!order) return;
 
-    setIsSubmitting(true);
-    try {
-      await onSubmit(order.id, message, files.length > 0 ? files : undefined);
-      toast.success("Additional information submitted successfully!");
-      setMessage("");
-      setFiles([]);
-      onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit additional information");
-    } finally {
-      setIsSubmitting(false);
-    }
+    const orderId = order.id;
+    const msg = message;
+    const filesToSend = files.length > 0 ? files : undefined;
+    onOpenChange(false);
+    setMessage("");
+    setFiles([]);
+    toast.promise(
+      onSubmit(orderId, msg, filesToSend),
+      { loading: "Processing...", success: "Additional information submitted successfully!", error: (e: any) => e.message || "Failed to submit additional information" }
+    );
   };
 
   const handleClearAndClose = () => {

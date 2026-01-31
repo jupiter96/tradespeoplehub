@@ -313,6 +313,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Deferred refresh: run after current tick so modal close animations and state updates complete first
+  const scheduleDeferredRefresh = () => {
+    setTimeout(() => { refreshOrders(); }, 0);
+  };
+
   // Load orders when user logs in
   useEffect(() => {
     refreshOrders();
@@ -413,8 +418,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         order.id === orderId ? { ...order, rating, review } : order
       ));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Rate order error:', error);
       throw error;
@@ -457,8 +461,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Accept order error:', error);
       throw error;
@@ -497,8 +500,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Reject order error:', error);
       throw error;
@@ -556,8 +558,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Deliver work error:', error);
       throw error;
@@ -604,8 +605,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Professional complete error:', error);
       throw error;
@@ -642,8 +642,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Accept delivery error:', error);
       throw error;
@@ -703,8 +702,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Extension request error:', error);
       throw error;
@@ -755,8 +753,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Extension response error:', error);
       throw error;
@@ -817,8 +814,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
 
       return data.disputeId || data.dispute?.id || '';
     } catch (error: any) {
@@ -926,7 +922,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         };
       }));
 
-      await refreshOrders();
+      refreshOrders();
     } catch (error: any) {
       console.error('Cancellation request error:', error);
       throw error;
@@ -969,8 +965,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Cancellation response error:', error);
       throw error;
@@ -1006,8 +1001,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Withdraw cancellation error:', error);
       throw error;
@@ -1036,8 +1030,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to add message');
       }
 
-      // Refresh orders to get updated dispute info
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Add dispute message error:', error);
       throw error;
@@ -1100,8 +1093,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Revision request error:', error);
       throw error;
@@ -1157,8 +1149,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Revision response error:', error);
       throw error;
@@ -1210,8 +1201,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Complete revision error:', error);
       throw error;
@@ -1258,8 +1248,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Review response error:', error);
       throw error;
@@ -1302,8 +1291,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to respond to review');
       }
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Respond to client review error:', error);
       throw error;
@@ -1344,8 +1332,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Dispute response error:', error);
       throw error;
@@ -1383,8 +1370,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Request arbitration error:', error);
       throw error;
@@ -1420,8 +1406,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         return order;
       }));
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Cancel dispute error:', error);
       throw error;
@@ -1450,8 +1435,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to submit offer');
       }
 
-      // Refresh orders to get updated dispute info
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Make dispute offer error:', error);
       throw error;
@@ -1477,8 +1461,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to accept dispute offer');
       }
 
-      // Refresh orders to get updated dispute info
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Accept dispute offer error:', error);
       throw error;
@@ -1508,8 +1491,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to reject dispute offer');
       }
 
-      // Refresh orders to get updated dispute info
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Reject dispute offer error:', error);
       throw error;
@@ -1539,8 +1521,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to submit additional information');
       }
 
-      // Refresh orders to get latest data
-      await refreshOrders();
+      scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Add additional info error:', error);
       throw error;

@@ -52,7 +52,7 @@ function generateOfferNumber() {
 // Professional: Create custom offer
 router.post('/', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
-    const { conversationId, serviceName, price, deliveryDays, description, paymentType, milestones } = req.body;
+    const { conversationId, serviceName, price, deliveryDays, description, paymentType, milestones, offerExpiresInDays } = req.body;
 
     if (!conversationId || !serviceName || !price || !deliveryDays) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -93,13 +93,15 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       }
     }
 
-    // Get response time from payment settings
+    // Response deadline: use offerExpiresInDays (days) if provided, else from payment settings (hours)
     const settings = await PaymentSettings.getSettings();
-    const responseTimeHours = settings.customOfferResponseTimeHours || 48;
-
-    // Calculate response deadline
     const responseDeadline = new Date();
-    responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+    if (typeof offerExpiresInDays === 'number' && offerExpiresInDays > 0) {
+      responseDeadline.setDate(responseDeadline.getDate() + offerExpiresInDays);
+    } else {
+      const responseTimeHours = settings.customOfferResponseTimeHours || 48;
+      responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+    }
 
     const offerNumber = generateOfferNumber();
 
