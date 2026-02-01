@@ -95,6 +95,9 @@ const cartItemSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // For custom offer items: link to existing order and offer
+  orderId: { type: String },
+  offerId: { type: String },
 }, { _id: true });
 
 const cartSchema = new mongoose.Schema(

@@ -614,8 +614,11 @@ export default function CartPage() {
       let foundInPersonService = false;
       
       for (const item of cartItems) {
+        // Custom offer items are treated as online - no address needed
+        if ((item as any).offerId) continue;
+        const serviceId = (item as any).serviceId || item.id;
+        if (typeof serviceId === "string" && serviceId.startsWith("custom-")) continue;
         try {
-          const serviceId = (item as any).serviceId || item.id;
           const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
             credentials: "include",
           });
@@ -1564,9 +1567,13 @@ export default function CartPage() {
     }
     
     
-    // Build order requests for each item with their individual time slots
+    // Split cart: custom offer items (from "offer created" orders) vs regular items
+    const customOfferItems = cartItems.filter((item) => (item as any).offerId);
+    const regularItems = cartItems.filter((item) => !(item as any).offerId);
+
+    // Build order requests for regular items only (custom offers are processed via accept API)
     // For online services, no booking/time slot is needed
-    const orderRequests = cartItems.map((item, index) => {
+    const orderRequests = regularItems.map((item, index) => {
       const timeSlot = itemTimeSlots[item.id];
       const itemSubtotal = (item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity;
       
@@ -1767,8 +1774,12 @@ export default function CartPage() {
     
     // Helper function to check if a service is online
     const isServiceOnline = async (item: any): Promise<boolean> => {
+      // Custom offer items (from "offer created" orders) are treated as online - no address/time slot needed
+      if ((item as any).offerId) return true;
       try {
         const serviceId = (item as any).serviceId || item.id;
+        // Skip fetch for custom-* serviceIds (custom offer placeholders)
+        if (typeof serviceId === "string" && serviceId.startsWith("custom-")) return true;
         const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
           credentials: "include",
         });
@@ -1794,9 +1805,9 @@ export default function CartPage() {
     );
     
     // Check each in-person item has a time slot selected (date, start time, and end time)
-    // Online services don't need time slots
+    // Online services and custom offer items don't need time slots
     const missingTimeSlots = serviceTypeChecks
-      .filter(({ item, isOnline }) => !isOnline)
+      .filter(({ item, isOnline }) => !isOnline && !(item as any).offerId)
       .map(({ item }) => item)
       .filter(item => {
         const timeSlot = itemTimeSlots[item.id];

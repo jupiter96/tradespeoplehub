@@ -27,73 +27,14 @@ import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
+import { useOrders } from "./OrdersContext";
 import { useNavigate } from "react-router-dom";
 import { getTwoLetterInitials } from "./orders/utils";
 import CustomOfferModal from "./CustomOfferModal";
 import CustomOfferPaymentModal from "./CustomOfferPaymentModal";
 import { toast } from "sonner";
 import { resolveApiUrl } from "../config/api";
-import { useCountdown } from "../hooks/useCountdown";
 import { resolveAvatarUrl } from "./orders/utils";
-
-/** Renders countdown + Accept/Decline for a single custom offer. useCountdown must run at top level. */
-function CustomOfferPendingActions({
-  responseDeadline,
-  offerId,
-  price,
-  onAccept,
-  onDecline,
-}: {
-  responseDeadline: string | Date | null | undefined;
-  offerId: string | undefined;
-  price: number;
-  onAccept: () => void;
-  onDecline: () => void;
-}) {
-  const countdown = useCountdown(responseDeadline);
-  return (
-    <div className="space-y-2 mt-3">
-      {responseDeadline && (
-        <div className="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="font-['Poppins',sans-serif] text-[10px] text-[#8d8d8d] mb-1">
-            {countdown.expired ? "Offer Expired" : "Time Remaining:"}
-          </p>
-          {countdown.expired ? (
-            <p className="font-['Poppins',sans-serif] text-[11px] text-red-600 font-medium">
-              Expired
-            </p>
-          ) : (
-            <p className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F] font-semibold">
-              {countdown.days > 0 && `${countdown.days}d `}
-              {countdown.hours.toString().padStart(2, '0')}:
-              {countdown.minutes.toString().padStart(2, '0')}:
-              {countdown.seconds.toString().padStart(2, '0')}
-            </p>
-          )}
-        </div>
-      )}
-      {!countdown.expired && (
-        <div className="flex gap-2">
-          <Button
-            onClick={onAccept}
-            size="sm"
-            className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
-          >
-            Accept Offer
-          </Button>
-          <Button
-            onClick={onDecline}
-            variant="outline"
-            size="sm"
-            className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
-          >
-            Decline
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function FloatingMessenger() {
   const {
@@ -106,6 +47,7 @@ export default function FloatingMessenger() {
     openMessenger,
     closeMessenger,
     getMessages,
+    refreshMessages,
     addMessage,
     uploadFile,
     getContactById,
@@ -118,6 +60,7 @@ export default function FloatingMessenger() {
   } = useMessenger();
   
   const { userInfo, userRole: accountUserRole } = useAccount();
+  const { refreshOrders } = useOrders();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; avatar?: string }>>([]);
@@ -700,7 +643,7 @@ export default function FloatingMessenger() {
                                       {message.type === "custom_offer" ? "Custom Offer" : "Order Placed"}
                                     </p>
                                     <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-2">
-                                      {message.orderDetails.service}
+                                      {message.orderDetails.service || message.orderDetails.serviceName || "Custom Offer"}
                                     </h4>
                                     <div className="space-y-1">
                                       <div className="flex justify-between">
@@ -708,7 +651,7 @@ export default function FloatingMessenger() {
                                           Amount:
                                         </span>
                                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
-                                          {message.orderDetails.amount}
+                                          {message.orderDetails.amount || (message.orderDetails.price != null ? `£${Number(message.orderDetails.price).toFixed(2)}` : "—")}
                                         </span>
                                       </div>
                                       {message.type === "custom_offer" && message.orderDetails.deliveryDays && (
@@ -744,7 +687,7 @@ export default function FloatingMessenger() {
                                           Status:
                                         </span>
                                         <Badge className="bg-blue-500 text-white text-[10px] h-5">
-                                          {message.orderDetails.status.toUpperCase()}
+                                          {(message.orderDetails.status || "pending").toUpperCase()}
                                         </Badge>
                                       </div>
                                     </div>
@@ -760,44 +703,58 @@ export default function FloatingMessenger() {
                                     )}
                                   </div>
                                 </div>
-                                {message.type === "custom_offer" && message.orderDetails.status === "pending" && (
-                                  <CustomOfferPendingActions
-                                    responseDeadline={message.orderDetails.responseDeadline}
-                                    offerId={message.orderId || message.orderDetails?.offerId}
-                                    price={message.orderDetails?.price ?? (parseFloat(String(message.orderDetails?.amount || "0").replace(/£/g, "")) || 0)}
-                                    onAccept={() => {
-                                      const offerId = message.orderId || message.orderDetails?.offerId;
-                                      if (!offerId) {
-                                        toast.error("Offer ID not found");
-                                        return;
-                                      }
-                                      const price = message.orderDetails?.price ?? (parseFloat(String(message.orderDetails?.amount || "0").replace(/£/g, "")) || 0);
-                                      const serviceFee = 0;
-                                      setSelectedOffer({ id: offerId, price, serviceFee, total: price + serviceFee });
-                                      setShowOfferPaymentModal(true);
-                                    }}
-                                    onDecline={async () => {
-                                      try {
-                                        const offerId = message.orderId || message.orderDetails?.offerId;
-                                        if (!offerId) {
-                                          toast.error("Offer ID not found");
-                                          return;
-                                        }
-                                        const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          credentials: 'include',
-                                        });
-                                        if (!response.ok) {
-                                          const error = await response.json();
-                                          throw new Error(error.error || 'Failed to reject offer');
-                                        }
-                                        toast.success("Offer declined");
-                                      } catch (error: any) {
-                                        toast.error(error.message || "Failed to reject offer");
-                                      }
-                                    }}
-                                  />
+                                {message.type === "custom_offer" && (message.orderDetails?.orderId || message.orderId) && (
+                                  <div className="space-y-2 mt-3">
+                                    <div className="flex gap-2 flex-wrap">
+                                      <Button
+                                        onClick={() => {
+                                          const orderId = message.orderDetails?.orderId || (message as any).orderId;
+                                          if (orderId) {
+                                            closeMessenger();
+                                            const orderIdStr = typeof orderId === 'string' ? orderId : String(orderId);
+                                            navigate(`/account?tab=orders&orderId=${encodeURIComponent(orderIdStr)}`);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                          } else {
+                                            toast.error("Order link not found. Please check your orders.");
+                                          }
+                                        }}
+                                        size="sm"
+                                        className="flex-1 min-w-[100px] bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                                      >
+                                        <ExternalLink className="w-3 h-3 mr-1" />
+                                        {(message.orderDetails?.status || "pending") === "pending" ? "View Offer" : "View Order"}
+                                      </Button>
+                                      {message.orderDetails?.status === "pending" && userRole === 'professional' && (
+                                        <Button
+                                          onClick={async () => {
+                                            const offerId = message.orderDetails?.offerId;
+                                            if (!offerId) return;
+                                            try {
+                                              const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/withdraw`), {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                credentials: 'include',
+                                              });
+                                              if (!response.ok) {
+                                                const error = await response.json();
+                                                throw new Error(error.error || 'Failed to withdraw offer');
+                                              }
+                                              toast.success("Offer withdrawn");
+                                              refreshMessages(selectedContactId!);
+                                              refreshOrders();
+                                            } catch (error: any) {
+                                              toast.error(error.message || "Failed to withdraw offer");
+                                            }
+                                          }}
+                                          variant="outline"
+                                          size="sm"
+                                          className="border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[12px]"
+                                        >
+                                          Withdraw
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
                                 {message.type === "order" && (
                                   <Button

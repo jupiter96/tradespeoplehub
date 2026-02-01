@@ -67,6 +67,8 @@ router.get('/', authenticateToken, requireRole(['client']), async (req, res) => 
         packageType: item.packageType,
         thumbnailVideo: item.thumbnailVideo || undefined,
         priceUnit: priceUnit || 'fixed',
+        orderId: item.orderId,
+        offerId: item.offerId,
       };
     }));
 

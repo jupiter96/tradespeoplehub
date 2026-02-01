@@ -50,6 +50,8 @@ export const getStatusBadge = (status?: string): string => {
     case "disputed":
     case "dispute":
       return "bg-orange-50 text-orange-700 border-orange-200";
+    case "offer created":
+      return "bg-amber-50 text-amber-700 border-amber-200";
     default:
       return "bg-gray-50 text-gray-700 border-gray-200";
   }
@@ -140,6 +142,8 @@ export const getStatusIcon = (status?: string): React.ReactNode => {
       return <XCircle className="w-4 h-4" />;
     case "dispute":
       return <AlertTriangle className="w-4 h-4" />;
+    case "offer created":
+      return <ShoppingBag className="w-4 h-4" />;
     default:
       return <ShoppingBag className="w-4 h-4" />;
   }

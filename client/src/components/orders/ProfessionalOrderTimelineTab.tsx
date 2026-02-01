@@ -67,6 +67,9 @@ interface ProfessionalOrderTimelineTabProps {
   onSetBuyerRating: (rating: number) => void;
   onSetBuyerReview: (review: string) => void;
   navigate: (path: string) => void;
+  offerResponseDeadline?: Date | string | null;
+  offerResponseCountdown?: { days: number; hours: number; minutes: number; seconds: number; expired: boolean };
+  onWithdrawOffer?: () => void | Promise<void>;
 }
 
 export default function ProfessionalOrderTimelineTab({
@@ -96,6 +99,9 @@ export default function ProfessionalOrderTimelineTab({
   onSetBuyerRating,
   onSetBuyerReview,
   navigate,
+  offerResponseDeadline,
+  offerResponseCountdown,
+  onWithdrawOffer,
 }: ProfessionalOrderTimelineTabProps) {
   const [previewAttachment, setPreviewAttachment] = useState<{
     url: string;
@@ -163,7 +169,56 @@ export default function ProfessionalOrderTimelineTab({
   return (
     <div className="space-y-4 md:space-y-6 px-4 md:px-6">
       {/* STATUS MESSAGE CARDS - Display above timeline (No action buttons) */}
-      
+
+      {/* Custom Offer Awaiting Response – offer created status (professional) */}
+      {currentOrder.status === "offer created" && (
+        <>
+          <div className="bg-[#EFF6FF] border border-[#3B82F6]/30 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+            <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+              Custom offer awaiting client response
+            </h3>
+            <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+              Your custom offer has been sent and is now awaiting the client&apos;s response. Once the client reviews and accepts the offer, you can proceed to the next steps. If needed, feel free to reach out to the client for any further discussions regarding the offer.
+            </p>
+          </div>
+          {/* Expected response time + Withdraw in warning card */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+            <div className="flex items-start gap-2 sm:gap-3 mb-4">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                  Expected Response Time
+                </h4>
+                {offerResponseDeadline && offerResponseCountdown ? (
+                  offerResponseCountdown.expired ? (
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-red-600 font-medium">
+                      This offer has expired
+                    </p>
+                  ) : (
+                    <div className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] font-semibold text-[#FE8A0F] tabular-nums">
+                      {String(offerResponseCountdown.days).padStart(2, '0')}d {String(offerResponseCountdown.hours).padStart(2, '0')}:{String(offerResponseCountdown.minutes).padStart(2, '0')}:{String(offerResponseCountdown.seconds).padStart(2, '0')}
+                    </div>
+                  )
+                ) : (
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">—</p>
+                )}
+              </div>
+            </div>
+            {offerResponseDeadline && offerResponseCountdown && !offerResponseCountdown.expired && onWithdrawOffer && (
+              <div className="mt-4 pt-4 border-t border-amber-200">
+                <Button
+                  onClick={() => onWithdrawOffer()}
+                  variant="outline"
+                  className="border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px] sm:text-[14px]"
+                >
+                  Withdraw Offer
+                </Button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Order Cancellation Initiated – Professional sent cancel request (pending) or already cancelled */}
       {(() => {
         const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;

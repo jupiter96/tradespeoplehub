@@ -4,6 +4,7 @@ import CustomOffer from '../models/CustomOffer.js';
 import Message from '../models/Message.js';
 import Conversation from '../models/Conversation.js';
 import Order from '../models/Order.js';
+import { getIO } from '../services/socket.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import User from '../models/User.js';
 import Stripe from 'stripe';
@@ -52,7 +53,7 @@ function generateOfferNumber() {
 // Professional: Create custom offer
 router.post('/', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
-    const { conversationId, serviceName, price, deliveryDays, description, paymentType, milestones, offerExpiresInDays } = req.body;
+    const { conversationId, serviceName, price, deliveryDays, quantity, chargePer, description, paymentType, milestones, offerExpiresInDays } = req.body;
 
     if (!conversationId || !serviceName || !price || !deliveryDays) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -105,6 +106,10 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
 
     const offerNumber = generateOfferNumber();
 
+    const qty = Math.max(1, parseInt(quantity, 10) || 1);
+    const unitPrice = price / qty;
+    const priceUnitLabel = chargePer || 'service';
+
     // Create message first (CustomOffer schema requires message ref)
     const message = new Message({
       conversation: conversationId,
@@ -116,6 +121,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         service: serviceName,
         amount: `£${price.toFixed(2)}`,
         price,
+        quantity: qty,
+        chargePer: priceUnitLabel,
         deliveryDays,
         description: description || '',
         paymentType: paymentType || 'single',
@@ -138,6 +145,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       serviceName,
       price,
       deliveryDays,
+      quantity: qty,
+      chargePer: priceUnitLabel,
       description: description || '',
       paymentType: paymentType || 'single',
       milestones: paymentType === 'milestone' ? milestones : undefined,
@@ -146,9 +155,48 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     });
     await customOffer.save();
 
-    // Attach offerId to message orderDetails for client display
+    // Create order with status "offer created" – same structure as regular order (quantity, deliveryDays)
+    const professionalUser = await User.findById(req.user.id).select('tradingName').lean();
+    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    const order = new Order({
+      orderNumber,
+      client: clientId,
+      professional: req.user.id,
+      items: [{
+        serviceId: `custom-${customOffer.offerNumber}`,
+        title: serviceName,
+        seller: professionalUser?.tradingName || 'Professional',
+        price: unitPrice,
+        quantity: qty,
+        packageType: priceUnitLabel,
+      }],
+      address: undefined,
+      skipAddress: true,
+      paymentMethod: 'account_balance',
+      total: price,
+      subtotal: price,
+      discount: 0,
+      serviceFee: 0,
+      paymentStatus: 'pending',
+      status: 'offer created',
+      deliveryStatus: 'pending',
+      metadata: {
+        fromCustomOffer: true,
+        customOfferId: customOffer._id,
+        responseDeadline: responseDeadline.toISOString(),
+        deliveryDays: deliveryDays,
+        chargePer: priceUnitLabel,
+      },
+    });
+    await order.save();
+
+    customOffer.order = order._id;
+    await customOffer.save();
+
+    // Attach offerId and orderId to message orderDetails for View Offer navigation
     message.orderDetails = message.orderDetails || {};
     message.orderDetails.offerId = customOffer._id.toString();
+    message.orderDetails.orderId = order.orderNumber;
     await message.save();
 
     // Update conversation
@@ -166,6 +214,35 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       { path: 'professional', select: 'firstName lastName tradingName avatar' },
       { path: 'client', select: 'firstName lastName avatar' },
     ]);
+
+    // Emit socket event so both participants see the new custom offer message immediately
+    try {
+      const msgPopulated = await Message.findById(message._id).populate('sender', 'firstName lastName avatar role tradingName').lean();
+      if (msgPopulated) {
+        const io = getIO();
+        const messageData = {
+          id: msgPopulated._id.toString(),
+          conversationId: conversationId.toString(),
+          senderId: msgPopulated.sender._id.toString(),
+          senderName: msgPopulated.sender.role === 'professional'
+            ? (msgPopulated.sender.tradingName || 'Professional')
+            : `${msgPopulated.sender.firstName || ''} ${msgPopulated.sender.lastName || ''}`.trim() || 'User',
+          senderAvatar: msgPopulated.sender.avatar,
+          text: msgPopulated.text || '',
+          timestamp: msgPopulated.createdAt,
+          read: false,
+          type: msgPopulated.type || 'custom_offer',
+          orderId: msgPopulated.orderDetails?.orderId,
+          orderDetails: msgPopulated.orderDetails,
+        };
+        conversation.participants.forEach((participantId) => {
+          const pid = participantId.toString();
+          io.to(`user:${pid}`).emit('new-message', messageData);
+        });
+      }
+    } catch (socketErr) {
+      console.error('Socket emit for custom offer message:', socketErr);
+    }
 
     res.json({
       message: 'Custom offer created successfully',
@@ -417,47 +494,32 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
       }
     }
 
-    // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    // Update existing order (created when offer was made) with payment and address
+    const order = await Order.findById(customOffer.order);
+    if (!order || order.status !== 'offer created') {
+      return res.status(400).json({ error: 'Order not found or already processed' });
+    }
 
-    // Create order from offer
-    const order = new Order({
-      orderNumber,
-      client: customOffer.client._id,
-      professional: customOffer.professional._id,
-      items: [{
-        serviceId: `custom-${customOffer.offerNumber}`,
-        title: customOffer.serviceName,
-        seller: customOffer.professional.tradingName || 'Professional',
-        price: customOffer.price,
-        quantity: 1,
-        booking: undefined,
-      }],
-      address: address ? {
-        postcode: address.postcode,
-        address: address.address,
-        city: address.city,
-        county: address.county,
-        phone: address.phone,
-      } : undefined,
-      skipAddress: skipAddress || false,
-      paymentMethod: paymentMethod || 'account_balance',
-      paymentMethodId: paymentMethod === 'card' ? paymentMethodId : undefined,
-      total,
-      subtotal,
-      discount: 0,
-      serviceFee,
-      status: 'In Progress',
-      deliveryStatus: 'active',
-      walletTransactionId,
-      paymentTransactionId,
-      metadata: {
-        createdAt: new Date(),
-        professionalPayoutAmount: subtotal,
-        fromCustomOffer: true,
-        customOfferId: customOffer._id,
-      },
-    });
+    order.address = address ? {
+      postcode: address.postcode,
+      address: address.address,
+      city: address.city,
+      county: address.county,
+      phone: address.phone,
+    } : undefined;
+    order.skipAddress = skipAddress || false;
+    order.paymentMethod = paymentMethod || 'account_balance';
+    order.paymentMethodId = paymentMethod === 'card' ? paymentMethodId : undefined;
+    order.total = total;
+    order.subtotal = subtotal;
+    order.serviceFee = serviceFee;
+    order.paymentStatus = 'completed';
+    order.status = 'In Progress';
+    order.deliveryStatus = 'active';
+    order.walletTransactionId = walletTransactionId;
+    order.paymentTransactionId = paymentTransactionId;
+    order.metadata = order.metadata || {};
+    order.metadata.professionalPayoutAmount = subtotal;
     await order.save();
 
     // Update custom offer
@@ -531,6 +593,11 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
     customOffer.rejectedAt = new Date();
     await customOffer.save();
 
+    // Cancel the "offer created" order if it exists
+    if (customOffer.order) {
+      await Order.findByIdAndUpdate(customOffer.order, { status: 'Cancelled' });
+    }
+
     // Update message
     const message = await Message.findById(customOffer.message);
     if (message && message.orderDetails) {
@@ -549,6 +616,50 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
   } catch (error) {
     console.error('Reject custom offer error:', error);
     res.status(500).json({ error: error.message || 'Failed to reject custom offer' });
+  }
+});
+
+// Professional: Withdraw custom offer (sets order status to Cancelled)
+router.post('/:offerId/withdraw', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { offerId } = req.params;
+
+    const customOffer = await CustomOffer.findById(offerId);
+
+    if (!customOffer) {
+      return res.status(404).json({ error: 'Offer not found' });
+    }
+
+    if (customOffer.professional.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to withdraw this offer' });
+    }
+
+    if (customOffer.status !== 'pending') {
+      return res.status(400).json({ error: `Offer has already been ${customOffer.status}` });
+    }
+
+    customOffer.status = 'rejected';
+    customOffer.rejectedAt = new Date();
+    await customOffer.save();
+
+    // Set order status to Cancelled (same as client decline)
+    if (customOffer.order) {
+      await Order.findByIdAndUpdate(customOffer.order, { status: 'Cancelled' });
+    }
+
+    const message = await Message.findById(customOffer.message);
+    if (message && message.orderDetails) {
+      message.orderDetails.status = 'rejected';
+      await message.save();
+    }
+
+    res.json({
+      message: 'Offer withdrawn successfully',
+      offer: { id: customOffer._id.toString(), status: customOffer.status },
+    });
+  } catch (error) {
+    console.error('Withdraw custom offer error:', error);
+    res.status(500).json({ error: error.message || 'Failed to withdraw offer' });
   }
 });
 
@@ -656,7 +767,7 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       status: 'completed',
       paymentMethod: 'wallet',
       description: `Custom Order Payment - ${customOffer.offerNumber}`,
-      orderId: null, // Will be updated after order creation
+      orderId: null, // Will be updated after order update
       metadata: {
         offerNumber: customOffer.offerNumber,
         depositTransactionId: depositTransaction._id.toString(),
@@ -665,40 +776,25 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
     await paymentTransaction.save();
     const paymentTransactionId = paymentTransaction._id;
 
-    // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    // Update existing order (created when offer was made) - same flow as wallet/card accept
+    const order = await Order.findById(customOffer.order);
+    if (!order || order.status !== 'offer created') {
+      return res.status(400).json({ error: 'Order not found or already processed' });
+    }
 
-    // Create order from offer
-    const order = new Order({
-      orderNumber,
-      client: customOffer.client._id,
-      professional: customOffer.professional._id,
-      items: [{
-        serviceId: `custom-${customOffer.offerNumber}`,
-        title: customOffer.serviceName,
-        seller: customOffer.professional.tradingName || 'Professional',
-        price: customOffer.price,
-        quantity: 1,
-        booking: undefined,
-      }],
-      address: undefined, // Can be added later
-      skipAddress: true,
-      paymentMethod: 'paypal',
-      total,
-      subtotal: customOffer.price,
-      discount: 0,
-      serviceFee,
-      status: 'In Progress',
-      deliveryStatus: 'active',
-      walletTransactionId,
-      paymentTransactionId,
-      metadata: {
-        createdAt: new Date(),
-        professionalPayoutAmount: customOffer.price,
-        fromCustomOffer: true,
-        customOfferId: customOffer._id,
-      },
-    });
+    order.address = undefined; // Can be added later by client
+    order.skipAddress = true;
+    order.paymentMethod = 'paypal';
+    order.total = total;
+    order.subtotal = customOffer.price;
+    order.serviceFee = serviceFee;
+    order.paymentStatus = 'completed';
+    order.status = 'In Progress';
+    order.deliveryStatus = 'active';
+    order.walletTransactionId = walletTransactionId;
+    order.paymentTransactionId = paymentTransactionId;
+    order.metadata = order.metadata || {};
+    order.metadata.professionalPayoutAmount = customOffer.price;
     await order.save();
 
     // Update custom offer

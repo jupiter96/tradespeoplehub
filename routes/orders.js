@@ -2348,6 +2348,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       if (status === 'Cancellation Pending' || status === 'cancellation_pending') status = 'Cancellation Pending';
       if (status === 'rejected' || status === 'Rejected') status = 'Cancelled';
       if (status === 'disputed') status = 'disputed';
+      if (status === 'offer created') status = 'offer created';
       
       // Map delivery status
       let deliveryStatus = order.deliveryStatus || 'active';
@@ -2415,6 +2416,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         metadata: {
           deliveryDays: order.metadata?.deliveryDays,
           scheduledDate: order.metadata?.scheduledDate,
+          customOfferId: order.metadata?.customOfferId?.toString?.() || order.metadata?.customOfferId,
+          responseDeadline: order.metadata?.responseDeadline,
         },
         review: order.review || undefined,
         professionalResponse: order.professionalResponse || undefined,

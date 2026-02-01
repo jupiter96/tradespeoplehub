@@ -24,15 +24,24 @@ export interface Message {
   text: string;
   timestamp: string | Date;
   read: boolean;
-  type: "text" | "image" | "file" | "order" | "system";
+  type: "text" | "image" | "file" | "order" | "custom_offer" | "system";
   fileUrl?: string;
   fileName?: string;
   orderId?: string;
   orderDetails?: {
-    service: string;
-    amount: string;
-    date: string;
-    status: string;
+    service?: string;
+    serviceName?: string;
+    amount?: string;
+    date?: string;
+    status?: string;
+    orderId?: string;
+    offerId?: string;
+    deliveryDays?: number;
+    description?: string;
+    paymentType?: string;
+    price?: number;
+    quantity?: number;
+    chargePer?: string;
   };
 }
 
@@ -41,6 +50,7 @@ interface MessengerContextType {
   getContactById: (id: string) => Contact | undefined;
   getOrCreateContact: (contact: Omit<Contact, "lastMessage" | "timestamp" | "unread">) => Contact;
   getMessages: (contactId: string) => Message[];
+  refreshMessages: (contactId: string) => Promise<void>;
   addMessage: (contactId: string, message: Omit<Message, "id" | "timestamp">) => void;
   uploadFile: (contactId: string, file: File, text?: string) => Promise<void>;
   openMessenger: () => void;
@@ -414,6 +424,13 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     return messagesByContact[contactId] || [];
   };
 
+  const refreshMessages = useCallback(async (contactId: string) => {
+    const contact = contacts.find(c => c.id === contactId);
+    if (contact?.conversationId) {
+      await fetchMessages(contact.conversationId, contactId);
+    }
+  }, [contacts, fetchMessages]);
+
   const addMessage = (contactId: string, messageData: Omit<Message, "id" | "timestamp">) => {
     if (userInfo?.isBlocked) {
       const contactExists = contacts.find(c => c.id === contactId);
@@ -709,6 +726,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
         getContactById,
         getOrCreateContact,
         getMessages,
+        refreshMessages,
         addMessage,
         uploadFile,
         openMessenger,

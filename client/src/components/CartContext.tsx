@@ -29,6 +29,8 @@ export interface CartItem {
   packageType?: string; // "basic", "standard", "premium"
   thumbnailVideo?: { url: string; thumbnail?: string }; // Video thumbnail for cart display
   priceUnit?: string; // "hour", "cm", "sqm", "fixed", etc.
+  orderId?: string; // For custom offer: link to existing "offer created" order
+  offerId?: string; // For custom offer: link to custom offer document
 }
 
 interface CartContextType {

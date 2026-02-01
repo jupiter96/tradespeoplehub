@@ -116,7 +116,7 @@ function ProfessionalOrdersSection() {
   const location = useLocation();
   const { orders, cancelOrder, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
-  const { startConversation } = useMessenger();
+  const { startConversation, refreshMessages } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
 
   const getTwoLetterInitials = (name?: string, fallback = "C") => {
@@ -160,6 +160,7 @@ function ProfessionalOrdersSection() {
   const [isRevisionResponseDialogOpen, setIsRevisionResponseDialogOpen] = useState(false);
   const [revisionResponseAction, setRevisionResponseAction] = useState<'accept' | 'reject'>('accept');
   const [revisionAdditionalNotes, setRevisionAdditionalNotes] = useState("");
+  const [isWithdrawOfferConfirmOpen, setIsWithdrawOfferConfirmOpen] = useState(false);
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionFiles, setCompletionFiles] = useState<File[]>([]);
@@ -187,6 +188,7 @@ function ProfessionalOrdersSection() {
     setIsAcceptCancellationDialogOpen(false);
     setIsRejectCancellationDialogOpen(false);
     setIsRevisionResponseDialogOpen(false);
+    setIsWithdrawOfferConfirmOpen(false);
     setIsCompletionDialogOpen(false);
     setIsProfessionalReviewDialogOpen(false);
     // Reset form states when closing modals
@@ -507,6 +509,14 @@ function ProfessionalOrdersSection() {
 
   // Countdown hook for appointment time (before order is accepted)
   const appointmentCountdown = useCountdown(appointmentDeadline);
+
+  // Offer response deadline (for "offer created" status - custom offer awaiting client response)
+  const offerResponseDeadline = useMemo(() => {
+    if (!currentOrder || currentOrder.status !== 'offer created') return null;
+    const rd = (currentOrder as any).metadata?.responseDeadline;
+    return rd ? new Date(rd) : null;
+  }, [currentOrder]);
+  const offerResponseCountdown = useCountdown(offerResponseDeadline);
 
   // Elapsed time since order was accepted (work in progress timer)
   // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
@@ -908,6 +918,31 @@ function ProfessionalOrdersSection() {
     );
   };
 
+  const handleWithdrawOffer = () => {
+    const offerId = (currentOrder as any)?.metadata?.customOfferId;
+    if (!offerId) {
+      toast.error("Offer not found");
+      return;
+    }
+    closeAllModals();
+    toast.promise(
+      fetch(resolveApiUrl(`/api/custom-offers/${offerId}/withdraw`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      }).then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to withdraw offer');
+        }
+        refreshOrders();
+        const clientId = (currentOrder as any)?.clientId;
+        if (clientId) refreshMessages(clientId);
+      }),
+      { loading: "Processing...", success: "Offer withdrawn successfully", error: (e: any) => e.message || "Failed to withdraw offer" }
+    );
+  };
+
   const renderOrderCard = (order: any) => (
     <div
       key={order.id}
@@ -1280,6 +1315,9 @@ function ProfessionalOrdersSection() {
                   onSetBuyerRating={setBuyerRating}
                   onSetBuyerReview={setBuyerReview}
                   navigate={navigate}
+                  offerResponseDeadline={offerResponseDeadline}
+                  offerResponseCountdown={offerResponseCountdown}
+                  onWithdrawOffer={() => setIsWithdrawOfferConfirmOpen(true)}
                 />
               </TabsContent>
 
@@ -2301,6 +2339,39 @@ function ProfessionalOrdersSection() {
           onSubmit={handleRejectCancellation}
           onCancel={closeAllModals}
         />
+
+        {/* Withdraw Offer Confirmation Dialog */}
+        <Dialog open={isWithdrawOfferConfirmOpen} onOpenChange={setIsWithdrawOfferConfirmOpen}>
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+                Withdraw Offer
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Are you sure you want to withdraw this custom offer? The associated order will be removed. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 justify-end mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsWithdrawOfferConfirmOpen(false)}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsWithdrawOfferConfirmOpen(false);
+                  handleWithdrawOffer();
+                }}
+                variant="destructive"
+                className="font-['Poppins',sans-serif]"
+              >
+                Yes, Withdraw
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

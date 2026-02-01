@@ -26,7 +26,6 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "./ui/select";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner@2.0.3";
@@ -74,7 +73,7 @@ export default function CustomOfferModal({
   clientId,
   clientName,
 }: CustomOfferModalProps) {
-  const { addMessage, getContactById } = useMessenger();
+  const { getContactById, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
   
   const [step, setStep] = useState<"select" | "payment" | "customize">("select");
@@ -89,6 +88,7 @@ export default function CustomOfferModal({
   const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [chargePer, setChargePer] = useState<string>("service");
+  const [quantity, setQuantity] = useState<string>("1");
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
   const [offerExpiresEnabled, setOfferExpiresEnabled] = useState(false);
   const [offerExpiresInDays, setOfferExpiresInDays] = useState<string>("3");
@@ -155,6 +155,7 @@ export default function CustomOfferModal({
     setPaymentType("single");
     setMilestones([{ id: "1", name: "", description: "", amount: 0, dueInDays: 1 }]);
     setChargePer("service");
+    setQuantity("1");
     setSelectedAttributes([]);
     setOfferExpiresEnabled(false);
     setOfferExpiresInDays("3");
@@ -168,6 +169,7 @@ export default function CustomOfferModal({
       setCustomPrice(service.basePrice.toString());
       setDeliveryDays(service.deliveryDays.toString());
       setChargePer(service.priceUnit === "fixed" || !service.priceUnit ? "service" : service.priceUnit);
+      setQuantity("1");
       setSelectedAttributes([]);
       setStep("payment");
     }
@@ -178,13 +180,24 @@ export default function CustomOfferModal({
     setStep("customize");
   };
 
+  // Label for "No of X" based on chargePer
+  const getQuantityLabel = () => {
+    const unit = chargePer === "service" ? "service" : chargePer === "per hour" ? "hours" : chargePer === "per day" ? "days" : chargePer === "per item" ? "items" : chargePer.replace(/^per\s+/i, "").replace(/\s+/g, " ");
+    return `No of ${unit}`;
+  };
+
   const handleContinueToFinalize = () => {
     if (!customPrice || parseFloat(customPrice) <= 0) {
       toast.error("Please enter a valid price");
       return;
     }
-    if (!deliveryDays || parseInt(deliveryDays) <= 0) {
-      toast.error("Please enter valid delivery days");
+    if (!deliveryDays || parseInt(deliveryDays, 10) <= 0) {
+      toast.error("Please enter valid delivery expected time (days)");
+      return;
+    }
+    const qty = parseInt(quantity, 10);
+    if (!quantity || isNaN(qty) || qty < 1) {
+      toast.error(`Please enter a valid ${getQuantityLabel().toLowerCase()}`);
       return;
     }
     
@@ -253,11 +266,12 @@ export default function CustomOfferModal({
           conversationId: contact.conversationId,
           serviceName: selectedService.name,
           price: parseFloat(customPrice),
-          deliveryDays: parseInt(deliveryDays),
+          deliveryDays: parseInt(deliveryDays, 10),
+          quantity: parseInt(quantity, 10) || 1,
+          chargePer: chargePer,
           description: offerDescription,
           paymentType: paymentType,
           milestones: paymentType === "milestone" ? milestones : undefined,
-          chargePer: chargePer,
           attributes: selectedAttributes,
           ...(offerExpiresEnabled && { offerExpiresInDays: parseInt(offerExpiresInDays, 10) || 3 }),
         }),
@@ -273,9 +287,7 @@ export default function CustomOfferModal({
       // The message will be created by the backend, so we just need to refresh
     toast.success(`Custom offer sent to ${clientName}!`);
     handleClose();
-      
-      // Refresh messages to show the new offer
-      // The socket will handle this automatically
+    refreshMessages(clientId);
     } catch (error: any) {
       toast.error(error.message || "Failed to send custom offer");
     }
@@ -672,14 +684,14 @@ export default function CustomOfferModal({
                     Define the terms of your offer and what it includes
                   </h4>
 
-                  {/* Delivery */}
+                  {/* Delivery expected (days) - same as order delivery expected time */}
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
-                      Delivery In
+                      Delivery In (days)
                     </Label>
                     <Input
                       type="number"
-                      placeholder="No. of Days"
+                      placeholder="Delivery expected time in days"
                       value={deliveryDays}
                       onChange={(e) => setDeliveryDays(e.target.value)}
                       className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
@@ -688,14 +700,14 @@ export default function CustomOfferModal({
                     />
                   </div>
 
-                  {/* Price */}
+                  {/* Price (total) */}
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
                       Price (£)
                     </Label>
                     <Input
                       type="number"
-                      placeholder="Enter price"
+                      placeholder="Enter total price"
                       value={customPrice}
                       onChange={(e) => setCustomPrice(e.target.value)}
                       className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
@@ -709,35 +721,40 @@ export default function CustomOfferModal({
                     )}
                   </div>
 
-                  {/* Charge Per: Service option + price unit options (from this service) */}
+                  {/* Charge Per */}
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
                       Charge Per
                     </Label>
-                    <Select value={chargePer} onValueChange={setChargePer} modal={false}>
-                      <SelectTrigger className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]">
-                        <SelectValue placeholder="Please Select" />
-                      </SelectTrigger>
-                      <SelectContent className="z-[100002] max-h-[16rem]" position="popper" sideOffset={4}>
-                        <SelectGroup>
-                          <SelectLabel className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            Service
-                          </SelectLabel>
-                          <SelectItem value="service">Service</SelectItem>
-                        </SelectGroup>
-                        <SelectGroup>
-                          <SelectLabel className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            {selectedService?.category ? `Price unit (${selectedService.category})` : "Price unit"}
-                          </SelectLabel>
-                          <SelectItem value="per hour">Per hour</SelectItem>
-                          <SelectItem value="per day">Per day</SelectItem>
-                          <SelectItem value="per item">Per item</SelectItem>
-                          {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
-                            <SelectItem value={selectedService.priceUnit}>{selectedService.priceUnit}</SelectItem>
-                          )}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={chargePer}
+                      onChange={(e) => setChargePer(e.target.value)}
+                      className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-input-background px-3 py-2 text-sm font-['Poppins',sans-serif] border-gray-200 focus:border-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/20 cursor-pointer"
+                    >
+                      <option value="service">Service</option>
+                      <option value="per hour">Per hour</option>
+                      <option value="per day">Per day</option>
+                      <option value="per item">Per item</option>
+                      {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
+                        <option value={selectedService.priceUnit}>{selectedService.priceUnit}</option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* No of ${price unit} - quantity for order */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                      {getQuantityLabel()}
+                    </Label>
+                    <Input
+                      type="number"
+                      placeholder={`Enter ${getQuantityLabel().toLowerCase()}`}
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                      min="1"
+                      step="1"
+                    />
                   </div>
 
                   {/* Attributes (from service features) */}

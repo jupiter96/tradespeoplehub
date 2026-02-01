@@ -90,7 +90,7 @@ export interface Order {
   items: OrderItem[];
   service: string; // main service title for display
   date: string; // order creation date
-  status: "In Progress" | "Completed" | "Cancelled" | "Cancellation Pending" | "Rejected" | "disputed";
+  status: "In Progress" | "Completed" | "Cancelled" | "Cancellation Pending" | "Rejected" | "disputed" | "offer created";
   amount: string; // formatted amount with £
   amountValue: number; // numeric value for sorting
   professional: string;

@@ -45,6 +45,15 @@ const customOfferSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    quantity: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    chargePer: {
+      type: String,
+      trim: true,
+    },
     description: {
       type: String,
       trim: true,

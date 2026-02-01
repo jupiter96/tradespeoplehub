@@ -6245,7 +6245,7 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
 // Messenger Section
 function MessengerSection() {
   const navigate = useNavigate();
-  const { contacts, getMessages, addMessage, uploadFile, userRole, setUserRole } = useMessenger();
+  const { contacts, getMessages, refreshMessages, addMessage, uploadFile, userRole, setUserRole } = useMessenger();
   const { userInfo, userRole: accountUserRole } = useAccount();
 
   // Sync messenger userRole with account userRole
@@ -6613,96 +6613,106 @@ function MessengerSection() {
                                 )}
                               </div>
                               {message.type === "custom_offer" && message.orderDetails.status === "pending" ? (
-                                <div className="space-y-2 mt-3">
-                                  {message.orderDetails.responseDeadline && (() => {
-                                    const countdown = useCountdown(message.orderDetails.responseDeadline);
-                                    return (
-                                      <div className="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mb-1">
-                                          {countdown.expired ? "Offer Expired" : "Time Remaining:"}
-                                        </p>
-                                        {countdown.expired ? (
-                                          <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 font-medium">
-                                            This offer has expired
-                                          </p>
-                                        ) : (
-                                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F] font-semibold">
-                                            {countdown.days > 0 && `${countdown.days}d `}
-                                            {countdown.hours.toString().padStart(2, '0')}:
-                                            {countdown.minutes.toString().padStart(2, '0')}:
-                                            {countdown.seconds.toString().padStart(2, '0')}
-                                          </p>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-                                  <div className="flex gap-2">
-                                  <Button
-                                    onClick={() => {
-                                        const offerId = message.orderId || message.orderDetails?.offerId;
-                                        if (!offerId) {
-                                          toast.error("Offer ID not found");
-                                          return;
-                                        }
-                                        
-                                        // Get price from message
-                                        const price = message.orderDetails?.price || parseFloat(message.orderDetails?.amount?.replace('£', '') || '0');
-                                        const serviceFee = 0; // Will be calculated on backend
-                                        const total = price + serviceFee;
-                                        
-                                        setSelectedOffer({
-                                          id: offerId,
-                                          price,
-                                          serviceFee,
-                                          total,
-                                        });
-                                        setShowOfferPaymentModal(true);
-                                    }}
-                                    size="sm"
-                                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
-                                  >
-                                    Accept
-                                  </Button>
-                                  <Button
-                                      onClick={async () => {
-                                        try {
-                                          const offerId = message.orderId || message.orderDetails?.offerId;
-                                          if (!offerId) {
-                                            toast.error("Offer ID not found");
-                                            return;
+                                message.orderDetails?.orderId ? (
+                                  <div className="space-y-2 mt-3">
+                                    <div className="flex gap-2 flex-wrap">
+                                      <Button
+                                        onClick={() => {
+                                          const orderId = message.orderDetails?.orderId;
+                                          if (orderId) {
+                                            navigate(`/account?tab=orders&orderId=${orderId}`);
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
                                           }
-
-                                          const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
-                                            method: 'POST',
-                                            headers: {
-                                              'Content-Type': 'application/json',
-                                            },
-                                            credentials: 'include',
-                                          });
-
-                                          if (!response.ok) {
-                                            const error = await response.json();
-                                            throw new Error(error.error || 'Failed to reject offer');
-                                          }
-
-                                          toast.success("Offer declined");
-                                        } catch (error: any) {
-                                          toast.error(error.message || "Failed to reject offer");
-                                        }
-                                    }}
-                                    variant="outline"
-                                    size="sm"
-                                    className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
-                                  >
-                                    Decline
-                                  </Button>
+                                        }}
+                                        size="sm"
+                                        className="flex-1 min-w-[100px] bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                                      >
+                                        <ExternalLink className="w-3 h-3 mr-1" />
+                                        View Offer
+                                      </Button>
+                                      {accountUserRole === 'professional' && (
+                                        <Button
+                                          onClick={async () => {
+                                            const offerId = message.orderDetails?.offerId;
+                                            if (!offerId) return;
+                                            try {
+                                              const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/withdraw`), {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                credentials: 'include',
+                                              });
+                                              if (!response.ok) {
+                                                const error = await response.json();
+                                                throw new Error(error.error || 'Failed to withdraw offer');
+                                              }
+                                              toast.success("Offer withdrawn");
+                                              if (selectedContactId) refreshMessages(selectedContactId);
+                                            } catch (error: any) {
+                                              toast.error(error.message || "Failed to withdraw offer");
+                                            }
+                                          }}
+                                          variant="outline"
+                                          size="sm"
+                                          className="border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[12px]"
+                                        >
+                                          Withdraw
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              ) : message.orderId && (
+                                ) : (
+                                  <div className="space-y-2 mt-3">
+                                    <div className="flex gap-2">
+                                      <Button
+                                        onClick={() => {
+                                          const offerId = message.orderDetails?.offerId;
+                                          if (!offerId) { toast.error("Offer ID not found"); return; }
+                                          const price = message.orderDetails?.price || parseFloat(String(message.orderDetails?.amount || "0").replace(/£/g, "")) || 0;
+                                          setSelectedOffer({ id: offerId, price, serviceFee: 0, total: price });
+                                          setShowOfferPaymentModal(true);
+                                        }}
+                                        size="sm"
+                                        className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                                      >
+                                        Accept
+                                      </Button>
+                                      <Button
+                                        onClick={async () => {
+                                          try {
+                                            const offerId = message.orderDetails?.offerId;
+                                            if (!offerId) { toast.error("Offer ID not found"); return; }
+                                            const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              credentials: 'include',
+                                            });
+                                            if (!response.ok) {
+                                              const error = await response.json();
+                                              throw new Error(error.error || 'Failed to reject offer');
+                                            }
+                                            toast.success("Offer declined");
+                                            if (selectedContactId) refreshMessages(selectedContactId);
+                                          } catch (error: any) {
+                                            toast.error(error.message || "Failed to reject offer");
+                                          }
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[12px]"
+                                      >
+                                        Decline
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              ) : (message.orderId || message.orderDetails?.orderId) ? (
                                 <Button
                                   onClick={() => {
-                                    navigate(`/account?tab=orders&orderId=${message.orderId}`);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    const orderId = message.orderId || message.orderDetails?.orderId;
+                                    if (orderId) {
+                                      navigate(`/account?tab=orders&orderId=${orderId}`);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
                                   }}
                                   variant="outline"
                                   size="sm"
@@ -6711,7 +6721,7 @@ function MessengerSection() {
                                   <Eye className="w-3 h-3 mr-1" />
                                   View Order
                                 </Button>
-                              )}
+                              ) : null}
                               <p className="font-['Poppins',sans-serif] text-[10px] text-[#8d8d8d] text-center mt-2">
                                 {message.timestamp}
                               </p>
@@ -7016,6 +7026,7 @@ function MessengerSection() {
             navigate(`/account?tab=orders&orderId=${orderNumber}`);
             setShowOfferPaymentModal(false);
             setSelectedOffer(null);
+            if (selectedContactId) refreshMessages(selectedContactId);
           }}
         />
       )}

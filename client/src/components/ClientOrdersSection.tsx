@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
+import { useCart } from "./CartContext";
 import DeliveryCountdown from "./DeliveryCountdown";
 import { useCountdown } from "../hooks/useCountdown";
 import { useElapsedTime } from "../hooks/useElapsedTime";
@@ -197,8 +198,9 @@ export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
   const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
-  const { startConversation } = useMessenger();
+  const { startConversation, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
+  const { addToCart } = useCart();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -236,7 +238,9 @@ export default function ClientOrdersSection() {
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
-  
+  const [isAcceptOfferConfirmOpen, setIsAcceptOfferConfirmOpen] = useState(false);
+  const [isDeclineOfferConfirmOpen, setIsDeclineOfferConfirmOpen] = useState(false);
+
   const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
   const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
@@ -272,6 +276,8 @@ export default function ClientOrdersSection() {
     setIsRevisionRequestDialogOpen(false);
     setIsDisputeResponseDialogOpen(false);
     setIsAddInfoDialogOpen(false);
+    setIsAcceptOfferConfirmOpen(false);
+    setIsDeclineOfferConfirmOpen(false);
     setIsApproveConfirmDialogOpen(false);
     setApproveOrderId(null);
     setIsCancellationConfirmDialogOpen(false);
@@ -1444,6 +1450,14 @@ export default function ClientOrdersSection() {
   // Use countdown hook for appointment time
   const appointmentCountdown = useCountdown(appointmentDeadline);
 
+  // Offer response deadline (for "offer created" status - custom offer awaiting client response)
+  const offerResponseDeadline = useMemo(() => {
+    if (!currentOrder || currentOrder.status !== 'offer created') return null;
+    const rd = (currentOrder as any).metadata?.responseDeadline;
+    return rd ? new Date(rd) : null;
+  }, [currentOrder]);
+  const offerResponseCountdown = useCountdown(offerResponseDeadline);
+
   // Elapsed time since booking time arrives (work in progress timer)
   // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
   const workStartTime = useMemo(() => {
@@ -1741,6 +1755,68 @@ export default function ClientOrdersSection() {
 
           {/* Timeline Tab */}
           <TabsContent value="timeline" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
+            {/* Custom Offer Received – offer created status (client) */}
+            {currentOrder.status === "offer created" && (
+              <>
+                <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+                    You have received a custom offer!
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+                    You&apos;ve received a custom offer tailored to your needs with personalised terms and pricing. Review the offer and reach out to the PRO if you have any questions. Otherwise, accept or reject the offer.
+                  </p>
+                </div>
+                {/* Expected response time + Accept/Decline in warning card */}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                  <div className="flex items-start gap-2 sm:gap-3 mb-4">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
+                        Expected Response Time
+                      </h4>
+                      {offerResponseDeadline ? (
+                        offerResponseCountdown.expired ? (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-red-600 font-medium">
+                            This offer has expired
+                          </p>
+                        ) : (
+                          <div className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] font-semibold text-[#FE8A0F] tabular-nums">
+                            {String(offerResponseCountdown.days).padStart(2, '0')}d {String(offerResponseCountdown.hours).padStart(2, '0')}:{String(offerResponseCountdown.minutes).padStart(2, '0')}:{String(offerResponseCountdown.seconds).padStart(2, '0')}
+                          </div>
+                        )
+                      ) : (
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">—</p>
+                      )}
+                    </div>
+                  </div>
+                  {offerResponseDeadline && !offerResponseCountdown.expired && (
+                    <div className="flex gap-2 flex-wrap mt-4 pt-4 border-t border-amber-200">
+                      <Button
+                        onClick={() => {
+                          const offerId = (currentOrder as any).metadata?.customOfferId;
+                          if (offerId) {
+                            setIsAcceptOfferConfirmOpen(true);
+                          } else {
+                            toast.error("Offer not found");
+                          }
+                        }}
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px]"
+                      >
+                        Accept Offer
+                      </Button>
+                      <Button
+                        onClick={() => setIsDeclineOfferConfirmOpen(true)}
+                        variant="outline"
+                        className="border-gray-300 text-gray-600 hover:bg-gray-50 font-['Poppins',sans-serif] text-[13px] sm:text-[14px]"
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Order Cancellation Initiated – client sent cancel request (pending) or already cancelled */}
             {((currentOrder.status === "Cancellation Pending" || (currentOrder as any).cancellationRequest?.status === "pending") &&
               currentOrder.cancellationRequest?.requestedBy &&
@@ -4962,6 +5038,116 @@ export default function ClientOrdersSection() {
             refreshOrders();
           }}
         />
+
+        {/* Accept Offer Confirmation Dialog */}
+        <Dialog open={isAcceptOfferConfirmOpen} onOpenChange={setIsAcceptOfferConfirmOpen}>
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+                Accept Offer
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Are you sure you want to accept this custom offer? The service will be added to your cart and you can complete payment at checkout.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 justify-end mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsAcceptOfferConfirmOpen(false)}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const offerId = (currentOrder as any)?.metadata?.customOfferId;
+                  if (!offerId) {
+                    toast.error("Offer not found");
+                    return;
+                  }
+                  const firstItem = currentOrder?.items?.[0];
+                  if (!firstItem) {
+                    toast.error("Order details not found");
+                    return;
+                  }
+                  const serviceId = (firstItem as any)?.serviceId || (firstItem as any)?.id;
+                  const unitPrice = (firstItem as any)?.price ?? (currentOrder?.amountValue ?? 0);
+                  const qty = (firstItem as any)?.quantity ?? 1;
+                  const orderId = (currentOrder as any)?.id || (currentOrder as any)?.orderNumber;
+                  addToCart({
+                    id: serviceId,
+                    serviceId,
+                    title: currentOrder?.service || (firstItem as any)?.title || "Custom Offer",
+                    seller: currentOrder?.professional || (firstItem as any)?.seller || "",
+                    price: unitPrice,
+                    image: (firstItem as any)?.image || "",
+                    packageType: (firstItem as any)?.packageType || (currentOrder as any)?.metadata?.chargePer,
+                    priceUnit: (currentOrder as any)?.metadata?.chargePer || "fixed",
+                    orderId: orderId ? String(orderId) : undefined,
+                    offerId: typeof offerId === "string" ? offerId : String(offerId),
+                  }, qty);
+                  setIsAcceptOfferConfirmOpen(false);
+                  toast.success("Custom offer added to cart");
+                  navigate("/cart");
+                }}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+              >
+                Yes, Accept
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Decline Offer Confirmation Dialog */}
+        <Dialog open={isDeclineOfferConfirmOpen} onOpenChange={setIsDeclineOfferConfirmOpen}>
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+                Decline Offer
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Are you sure you want to decline this offer? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 justify-end mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeclineOfferConfirmOpen(false)}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  const offerId = (currentOrder as any)?.metadata?.customOfferId;
+                  if (!offerId) { toast.error("Offer not found"); setIsDeclineOfferConfirmOpen(false); return; }
+                  try {
+                    const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/reject`), {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                    });
+                    if (!response.ok) {
+                      const error = await response.json();
+                      throw new Error(error.error || 'Failed to reject offer');
+                    }
+                    setIsDeclineOfferConfirmOpen(false);
+                    toast.success("Offer declined");
+                    refreshOrders();
+                    const profId = (currentOrder as any)?.professionalId;
+                    if (profId) refreshMessages(profId);
+                  } catch (error: any) {
+                    toast.error(error.message || "Failed to reject offer");
+                  }
+                }}
+                variant="destructive"
+                className="font-['Poppins',sans-serif]"
+              >
+                Yes, Decline
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Withdraw Cancellation Confirmation Modal - Inline React Modal (not Radix UI) */}
         {isWithdrawDialogOpen && (

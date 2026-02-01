@@ -65,7 +65,7 @@ export interface Order {
   clientId?: string;
   clientName?: string;
   clientAvatar?: string;
-  status: 'In Progress' | 'Completed' | 'Cancelled' | 'Cancellation Pending' | 'disputed' | 'delivered';
+  status: 'In Progress' | 'Completed' | 'Cancelled' | 'Cancellation Pending' | 'disputed' | 'delivered' | 'offer created';
   deliveryStatus?: 'pending' | 'active' | 'delivered' | 'completed' | 'cancelled';
   date: string;
   amount: string;
@@ -90,6 +90,8 @@ export interface Order {
   hasReview?: boolean;
   items?: OrderItem[];
   metadata?: {
+    customOfferId?: string;
+    responseDeadline?: string;
     professionalCompleteRequest?: {
       completionMessage?: string;
       completionFiles?: OrderFile[];
