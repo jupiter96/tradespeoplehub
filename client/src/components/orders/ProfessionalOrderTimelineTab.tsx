@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Order, TimelineEvent } from "./types";
 import { buildProfessionalTimeline, formatDate, formatDateTime, resolveFileUrl } from "./index";
+import { formatDateOrdinal } from "./utils";
 import { toast } from "sonner";
 
 interface ProfessionalOrderTimelineTabProps {
@@ -959,6 +960,54 @@ export default function ProfessionalOrderTimelineTab({
 
       {/* Order Placed / Order Created / Order Started - order from top: Placed, Created, Started (bottom) */}
       <div className="space-y-0">
+        {/* Created Milestones - table above Order Placed (custom offer milestone payment) */}
+        {(currentOrder as any).metadata?.paymentType === "milestone" &&
+          Array.isArray((currentOrder as any).metadata?.milestones) &&
+          (currentOrder as any).metadata.milestones.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold mb-3">
+                Created Milestones
+              </h4>
+              <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Milestone Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Delivery Date</th>
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Hours</th>
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Description</th>
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Amount</th>
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {((currentOrder as any).metadata.milestones as Array<{
+                      name?: string;
+                      description?: string;
+                      amount?: number;
+                      dueInDays?: number;
+                      hours?: number;
+                    }>).map((m, idx) => {
+                      const orderDate = currentOrder.date ? new Date(currentOrder.date) : new Date();
+                      const deliveryDate = new Date(orderDate);
+                      deliveryDate.setDate(deliveryDate.getDate() + (typeof m.dueInDays === "number" ? m.dueInDays : 0));
+                      return (
+                        <tr key={idx} className="border-b border-gray-100 last:border-b-0">
+                          <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
+                          <td className="py-3 px-4 text-[#2c353f]">{formatDateOrdinal(deliveryDate.toISOString())}</td>
+                          <td className="py-3 px-4 text-[#2c353f]">{typeof m.hours === "number" ? m.hours : "—"}</td>
+                          <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || "—"}</td>
+                          <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof m.amount === "number" ? m.amount.toFixed(2) : "0.00"}</td>
+                          <td className="py-3 px-4 text-[#2c353f]">Offer created</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
         {/* Order Placed - top */}
         {currentOrder.date && (
           <div className="flex gap-4">

@@ -91,6 +91,9 @@ export interface Order {
   items?: OrderItem[];
   metadata?: {
     customOfferId?: string;
+    fromCustomOffer?: boolean;
+    paymentType?: "single" | "milestone";
+    milestones?: Array<{ name?: string; description?: string; amount?: number; dueInDays?: number; hours?: number }>;
     responseDeadline?: string;
     professionalCompleteRequest?: {
       completionMessage?: string;

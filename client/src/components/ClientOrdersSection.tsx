@@ -513,6 +513,20 @@ export default function ClientOrdersSection() {
     });
   };
 
+  /** Format date as "3rd February, 2026" (ordinal day + month + year) */
+  const formatDateOrdinal = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    const day = date.getDate();
+    const getOrdinal = (n: number) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return s[(v - 20) % 10] || s[v] || s[0];
+    };
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    return `${day}${getOrdinal(day)} ${monthNames[date.getMonth()]}, ${date.getFullYear()}`;
+  };
+
   const formatDateTime = (isoString?: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -2144,6 +2158,54 @@ export default function ClientOrdersSection() {
               <div style={{ order: 2 }}>
             {/* Order Placed / Order Created / Order Started - order: Placed (top), Created, Started (bottom) */}
             <div className="space-y-0">
+              {/* Created Milestones - table above Order Placed (custom offer milestone payment) */}
+              {(currentOrder as any).metadata?.paymentType === "milestone" &&
+                Array.isArray((currentOrder as any).metadata?.milestones) &&
+                (currentOrder as any).metadata.milestones.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold mb-3">
+                      Created Milestones
+                    </h4>
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                      <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Milestone Name</th>
+                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Delivery Date</th>
+                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Hours</th>
+                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Description</th>
+                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Amount</th>
+                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {((currentOrder as any).metadata.milestones as Array<{
+                            name?: string;
+                            description?: string;
+                            amount?: number;
+                            dueInDays?: number;
+                            hours?: number;
+                          }>).map((m, idx) => {
+                            const orderDate = (currentOrder.date || currentOrder.createdAt) ? new Date(currentOrder.date || currentOrder.createdAt || "") : new Date();
+                            const deliveryDate = new Date(orderDate);
+                            deliveryDate.setDate(deliveryDate.getDate() + (typeof m.dueInDays === "number" ? m.dueInDays : 0));
+                            return (
+                              <tr key={idx} className="border-b border-gray-100 last:border-b-0">
+                                <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
+                                <td className="py-3 px-4 text-[#2c353f]">{formatDateOrdinal(deliveryDate.toISOString())}</td>
+                                <td className="py-3 px-4 text-[#2c353f]">{typeof m.hours === "number" ? m.hours : "—"}</td>
+                                <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || "—"}</td>
+                                <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof m.amount === "number" ? m.amount.toFixed(2) : "0.00"}</td>
+                                <td className="py-3 px-4 text-[#2c353f]">Offer created</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
               {/* Order Placed - top */}
               {(currentOrder.date || currentOrder.createdAt) && (
                 <div className="flex gap-4">

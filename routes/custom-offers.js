@@ -210,6 +210,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         responseDeadline: responseDeadline.toISOString(),
         deliveryDays: deliveryDays,
         chargePer: priceUnitLabel,
+        paymentType: paymentType || 'single',
+        milestones: paymentType === 'milestone' && Array.isArray(milestones) ? milestones : undefined,
       },
     });
     await order.save();

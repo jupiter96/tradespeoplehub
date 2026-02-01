@@ -65,6 +65,7 @@ interface Milestone {
   description: string;
   amount: number;
   dueInDays: number;
+  hours?: number;
 }
 
 export default function CustomOfferModal({
@@ -83,7 +84,7 @@ export default function CustomOfferModal({
   const [offerDescription, setOfferDescription] = useState("");
   const [paymentType, setPaymentType] = useState<"single" | "milestone">("single");
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: "1", name: "", description: "", amount: 0, dueInDays: 1 }
+    { id: "1", name: "", description: "", amount: 0, dueInDays: 1, hours: 0 }
   ]);
   const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -153,7 +154,7 @@ export default function CustomOfferModal({
     setDeliveryDays("");
     setOfferDescription("");
     setPaymentType("single");
-    setMilestones([{ id: "1", name: "", description: "", amount: 0, dueInDays: 1 }]);
+    setMilestones([{ id: "1", name: "", description: "", amount: 0, dueInDays: 1, hours: 0 }]);
     setChargePer("service");
     setQuantity("1");
     setSelectedAttributes([]);
@@ -227,7 +228,7 @@ export default function CustomOfferModal({
 
   const addMilestone = () => {
     const newId = (milestones.length + 1).toString();
-    setMilestones([...milestones, { id: newId, name: "", description: "", amount: 0, dueInDays: 1 }]);
+    setMilestones([...milestones, { id: newId, name: "", description: "", amount: 0, dueInDays: 1, hours: 0 }]);
   };
 
   const removeMilestone = (id: string) => {
@@ -531,18 +532,33 @@ export default function CustomOfferModal({
                               />
                             </div>
 
-                            <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Due in Days
-                              </Label>
-                              <Input
-                                type="number"
-                                placeholder="Number of days"
-                                value={milestone.dueInDays || ""}
-                                onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
-                                min="1"
-                              />
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Due in Days
+                                </Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Number of days"
+                                  value={milestone.dueInDays || ""}
+                                  onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
+                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  min="1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Hours
+                                </Label>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  value={milestone.hours ?? ""}
+                                  onChange={(e) => updateMilestone(milestone.id, "hours", parseInt(e.target.value) || 0)}
+                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  min="0"
+                                />
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -890,18 +906,33 @@ export default function CustomOfferModal({
                             />
                           </div>
 
-                          <div>
-                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Due in Days
-                            </Label>
-                            <Input
-                              type="number"
-                              placeholder="Number of days"
-                              value={milestone.dueInDays || ""}
-                              onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
-                              className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
-                              min="1"
-                            />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Due in Days
+                              </Label>
+                              <Input
+                                type="number"
+                                placeholder="Number of days"
+                                value={milestone.dueInDays || ""}
+                                onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
+                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                min="1"
+                              />
+                            </div>
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Hours
+                              </Label>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={milestone.hours ?? ""}
+                                onChange={(e) => updateMilestone(milestone.id, "hours", parseInt(e.target.value) || 0)}
+                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                min="0"
+                              />
+                            </div>
                           </div>
                         </div>
                       ))}

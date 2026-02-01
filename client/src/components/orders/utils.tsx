@@ -1,6 +1,20 @@
 // Order-related utility functions
 import { resolveApiUrl } from "../../config/api";
 
+/** Format date as "3rd February, 2026" (ordinal day + month + year) */
+export const formatDateOrdinal = (dateString: string): string => {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+  const day = date.getDate();
+  const getOrdinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
+  };
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${day}${getOrdinal(day)} ${monthNames[date.getMonth()]}, ${date.getFullYear()}`;
+};
+
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-GB", {

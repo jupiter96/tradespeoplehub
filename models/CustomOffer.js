@@ -73,6 +73,7 @@ const customOfferSchema = new mongoose.Schema(
       description: String,
       amount: Number,
       dueInDays: Number,
+      hours: Number,
     }],
     status: {
       type: String,
