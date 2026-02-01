@@ -31,6 +31,7 @@ export interface CartItem {
   priceUnit?: string; // "hour", "cm", "sqm", "fixed", etc.
   orderId?: string; // For custom offer: link to existing "offer created" order
   offerId?: string; // For custom offer: link to custom offer document
+  deliveryDays?: number; // For custom offer: expected delivery days
 }
 
 interface CartContextType {

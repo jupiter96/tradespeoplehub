@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
-import { useCart } from "./CartContext";
+import { usePendingCustomOffer } from "./PendingCustomOfferContext";
 import DeliveryCountdown from "./DeliveryCountdown";
 import { useCountdown } from "../hooks/useCountdown";
 import { useElapsedTime } from "../hooks/useElapsedTime";
@@ -200,7 +200,7 @@ export default function ClientOrdersSection() {
   const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
   const { startConversation, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
-  const { addToCart } = useCart();
+  const { setPendingOffer } = usePendingCustomOffer();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -1309,13 +1309,14 @@ export default function ClientOrdersSection() {
     ? orders.find((o) => o.id === selectedOrder)
     : null;
 
-  // Fetch service thumbnail for current order
+  // Fetch service thumbnail for current order (skip for custom offers - they use synthetic serviceId)
   useEffect(() => {
     const fetchServiceThumbnail = async () => {
       if (!currentOrder || !currentOrder.items || currentOrder.items.length === 0) return;
       
       const serviceId = (currentOrder.items[0] as any)?.serviceId || currentOrder.items[0]?.id;
       if (!serviceId || serviceThumbnails[currentOrder.id]) return; // Already fetched
+      if (String(serviceId).startsWith("custom-")) return; // Custom offer: no real service document, use order item image only
       
       try {
         const response = await fetch(resolveApiUrl(`/api/services/${serviceId}`), {
@@ -1766,7 +1767,7 @@ export default function ClientOrdersSection() {
                     You&apos;ve received a custom offer tailored to your needs with personalised terms and pricing. Review the offer and reach out to the PRO if you have any questions. Otherwise, accept or reject the offer.
                   </p>
                 </div>
-                {/* Expected response time + Accept/Decline in warning card */}
+                {/* Expected response time + Accept/Decline – same countdown style as other orders */}
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
                   <div className="flex items-start gap-2 sm:gap-3 mb-4">
                     <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -1780,8 +1781,64 @@ export default function ClientOrdersSection() {
                             This offer has expired
                           </p>
                         ) : (
-                          <div className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] font-semibold text-[#FE8A0F] tabular-nums">
-                            {String(offerResponseCountdown.days).padStart(2, '0')}d {String(offerResponseCountdown.hours).padStart(2, '0')}:{String(offerResponseCountdown.minutes).padStart(2, '0')}:{String(offerResponseCountdown.seconds).padStart(2, '0')}
+                          <div className="bg-white rounded-2xl p-6 shadow-lg mt-2">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
+                                <Clock className="w-5 h-5 text-[#FE8A0F]" />
+                              </div>
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                                Time remaining to respond
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-4 gap-3">
+                              <div className="bg-gray-100 rounded-xl p-4 text-center">
+                                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                                  {String(offerResponseCountdown.days).padStart(2, '0')}
+                                </div>
+                                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                                  Days
+                                </div>
+                              </div>
+                              <div className="bg-gray-100 rounded-xl p-4 text-center">
+                                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                                  {String(offerResponseCountdown.hours).padStart(2, '0')}
+                                </div>
+                                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                                  Hours
+                                </div>
+                              </div>
+                              <div className="bg-gray-100 rounded-xl p-4 text-center">
+                                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                                  {String(offerResponseCountdown.minutes).padStart(2, '0')}
+                                </div>
+                                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                                  Minutes
+                                </div>
+                              </div>
+                              <div className="bg-gray-100 rounded-xl p-4 text-center">
+                                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                                  {String(offerResponseCountdown.seconds).padStart(2, '0')}
+                                </div>
+                                <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                                  Seconds
+                                </div>
+                              </div>
+                            </div>
+                            {typeof offerResponseCountdown.total === 'number' && (
+                              <div className="mt-4 flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                                    style={{
+                                      width: `${Math.min(100, Math.max(0, 100 - (offerResponseCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
+                                    }}
+                                  />
+                                </div>
+                                <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                                  {offerResponseCountdown.days > 0 ? `${offerResponseCountdown.days}d remaining` : 'Today'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )
                       ) : (
@@ -5070,25 +5127,28 @@ export default function ClientOrdersSection() {
                     toast.error("Order details not found");
                     return;
                   }
-                  const serviceId = (firstItem as any)?.serviceId || (firstItem as any)?.id;
+                  const metadata = (currentOrder as any)?.metadata || {};
+                  const serviceId = metadata.sourceServiceId || (firstItem as any)?.serviceId || (firstItem as any)?.id;
                   const unitPrice = (firstItem as any)?.price ?? (currentOrder?.amountValue ?? 0);
                   const qty = (firstItem as any)?.quantity ?? 1;
                   const orderId = (currentOrder as any)?.id || (currentOrder as any)?.orderNumber;
-                  addToCart({
-                    id: serviceId,
+                  const deliveryDays = (currentOrder as any)?.metadata?.deliveryDays;
+                  setPendingOffer({
+                    offerId: typeof offerId === "string" ? offerId : String(offerId),
+                    orderId: orderId ? String(orderId) : undefined,
                     serviceId,
                     title: currentOrder?.service || (firstItem as any)?.title || "Custom Offer",
                     seller: currentOrder?.professional || (firstItem as any)?.seller || "",
                     price: unitPrice,
                     image: (firstItem as any)?.image || "",
+                    quantity: qty,
+                    ...(typeof deliveryDays === "number" && { deliveryDays }),
                     packageType: (firstItem as any)?.packageType || (currentOrder as any)?.metadata?.chargePer,
                     priceUnit: (currentOrder as any)?.metadata?.chargePer || "fixed",
-                    orderId: orderId ? String(orderId) : undefined,
-                    offerId: typeof offerId === "string" ? offerId : String(offerId),
-                  }, qty);
+                  });
                   setIsAcceptOfferConfirmOpen(false);
-                  toast.success("Custom offer added to cart");
-                  navigate("/cart");
+                  toast.success("Redirecting to checkout");
+                  navigate(`/custom-checkout?offerId=${encodeURIComponent(offerId)}`);
                 }}
                 className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
               >

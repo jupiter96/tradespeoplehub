@@ -128,9 +128,9 @@ export default function FloatingMessenger() {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Debounce search
-    setIsSearching(true);
-    searchTimeoutRef.current = setTimeout(async () => {
+    // Debounce search: only set loading inside timeout to avoid extra renders
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
       try {
         const results = await searchProfessionals(searchQuery);
         setSearchResults(results);
@@ -141,6 +141,7 @@ export default function FloatingMessenger() {
         setIsSearching(false);
       }
     }, 300);
+    searchTimeoutRef.current = timeoutId;
 
     return () => {
       if (searchTimeoutRef.current) {
@@ -703,20 +704,20 @@ export default function FloatingMessenger() {
                                     )}
                                   </div>
                                 </div>
-                                {message.type === "custom_offer" && (message.orderDetails?.orderId || message.orderId) && (
+                                {message.type === "custom_offer" && message.orderDetails && (
                                   <div className="space-y-2 mt-3">
                                     <div className="flex gap-2 flex-wrap">
                                       <Button
                                         onClick={() => {
                                           const orderId = message.orderDetails?.orderId || (message as any).orderId;
+                                          closeMessenger();
                                           if (orderId) {
-                                            closeMessenger();
                                             const orderIdStr = typeof orderId === 'string' ? orderId : String(orderId);
                                             navigate(`/account?tab=orders&orderId=${encodeURIComponent(orderIdStr)}`);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
                                           } else {
-                                            toast.error("Order link not found. Please check your orders.");
+                                            navigate(`/account?tab=orders`);
                                           }
+                                          window.scrollTo({ top: 0, behavior: 'smooth' });
                                         }}
                                         size="sm"
                                         className="flex-1 min-w-[100px] bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
@@ -728,7 +729,10 @@ export default function FloatingMessenger() {
                                         <Button
                                           onClick={async () => {
                                             const offerId = message.orderDetails?.offerId;
-                                            if (!offerId) return;
+                                            if (!offerId) {
+                                              toast.error("Offer ID not found. Please refresh and try again.");
+                                              return;
+                                            }
                                             try {
                                               const response = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/withdraw`), {
                                                 method: 'POST',

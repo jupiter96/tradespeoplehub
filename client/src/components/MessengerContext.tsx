@@ -641,7 +641,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const searchProfessionals = async (query: string): Promise<Array<{ id: string; name: string; avatar?: string }>> => {
+  const searchProfessionals = useCallback(async (query: string): Promise<Array<{ id: string; name: string; avatar?: string }>> => {
     if (!userInfo?.id || userInfo.role !== 'client') {
       return [];
     }
@@ -671,9 +671,9 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
     }
 
     return [];
-  };
+  }, [userInfo?.id]);
 
-  const sendTyping = (conversationId: string, isTypingValue: boolean) => {
+  const sendTyping = useCallback((conversationId: string, isTypingValue: boolean) => {
     const socket = getSocket();
     if (!socket) return;
 
@@ -703,7 +703,7 @@ export function MessengerProvider({ children }: { children: ReactNode }) {
         [contact.id]: false,
       }));
     }
-  };
+  }, [contacts]);
 
   const markMessagesAsRead = useCallback((conversationId: string) => {
     const socket = getSocket();

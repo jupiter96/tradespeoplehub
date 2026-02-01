@@ -68,7 +68,7 @@ interface ProfessionalOrderTimelineTabProps {
   onSetBuyerReview: (review: string) => void;
   navigate: (path: string) => void;
   offerResponseDeadline?: Date | string | null;
-  offerResponseCountdown?: { days: number; hours: number; minutes: number; seconds: number; expired: boolean };
+  offerResponseCountdown?: { days: number; hours: number; minutes: number; seconds: number; total: number; expired: boolean };
   onWithdrawOffer?: () => void | Promise<void>;
 }
 
@@ -181,7 +181,7 @@ export default function ProfessionalOrderTimelineTab({
               Your custom offer has been sent and is now awaiting the client&apos;s response. Once the client reviews and accepts the offer, you can proceed to the next steps. If needed, feel free to reach out to the client for any further discussions regarding the offer.
             </p>
           </div>
-          {/* Expected response time + Withdraw in warning card */}
+          {/* Expected response time + Withdraw – same countdown style as other orders */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
             <div className="flex items-start gap-2 sm:gap-3 mb-4">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -195,8 +195,64 @@ export default function ProfessionalOrderTimelineTab({
                       This offer has expired
                     </p>
                   ) : (
-                    <div className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] font-semibold text-[#FE8A0F] tabular-nums">
-                      {String(offerResponseCountdown.days).padStart(2, '0')}d {String(offerResponseCountdown.hours).padStart(2, '0')}:{String(offerResponseCountdown.minutes).padStart(2, '0')}:{String(offerResponseCountdown.seconds).padStart(2, '0')}
+                    <div className="bg-white rounded-2xl p-6 shadow-lg mt-2">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-[#FE8A0F]" />
+                        </div>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                          Time remaining to respond
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div className="bg-gray-100 rounded-xl p-4 text-center">
+                          <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                            {String(offerResponseCountdown.days).padStart(2, '0')}
+                          </div>
+                          <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                            Days
+                          </div>
+                        </div>
+                        <div className="bg-gray-100 rounded-xl p-4 text-center">
+                          <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                            {String(offerResponseCountdown.hours).padStart(2, '0')}
+                          </div>
+                          <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                            Hours
+                          </div>
+                        </div>
+                        <div className="bg-gray-100 rounded-xl p-4 text-center">
+                          <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                            {String(offerResponseCountdown.minutes).padStart(2, '0')}
+                          </div>
+                          <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                            Minutes
+                          </div>
+                        </div>
+                        <div className="bg-gray-100 rounded-xl p-4 text-center">
+                          <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-[#2c353f] leading-none">
+                            {String(offerResponseCountdown.seconds).padStart(2, '0')}
+                          </div>
+                          <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
+                            Seconds
+                          </div>
+                        </div>
+                      </div>
+                      {typeof offerResponseCountdown.total === 'number' && (
+                        <div className="mt-4 flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] rounded-full transition-all duration-1000"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, 100 - (offerResponseCountdown.total / (24 * 60 * 60 * 1000) * 100)))}%`
+                              }}
+                            />
+                          </div>
+                          <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                            {offerResponseCountdown.days > 0 ? `${offerResponseCountdown.days}d remaining` : 'Today'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )
                 ) : (
@@ -976,25 +1032,6 @@ export default function ProfessionalOrderTimelineTab({
           </div>
         </div>
 
-        {/* Order Started - bottom */}
-        {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "delivered") && (
-          <div className="flex gap-4">
-            <div className="flex flex-col items-center pt-1">
-              <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
-                <Send className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
-            </div>
-            <div className="flex-1 pb-6">
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                Order Started
-              </p>
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                You accepted this order
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Attachment Preview Modal - Inline React Modal (not Radix UI) */}

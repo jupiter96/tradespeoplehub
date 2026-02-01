@@ -8,7 +8,7 @@ import API_BASE_URL from "../config/api";
 interface PaymentMethodModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newPaymentMethodId?: string) => void;
   publishableKey: string;
 }
 
@@ -145,7 +145,7 @@ export default function PaymentMethodModal({
       }
 
       toast.success("Payment method added successfully!");
-      onSuccess();
+      onSuccess(confirmedIntent.payment_method);
       onClose();
     } catch (error: any) {
       console.log("[card-add][error]", error);

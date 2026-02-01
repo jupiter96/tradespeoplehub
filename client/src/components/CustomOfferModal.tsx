@@ -264,6 +264,7 @@ export default function CustomOfferModal({
         credentials: 'include',
         body: JSON.stringify({
           conversationId: contact.conversationId,
+          serviceId: selectedService.id,
           serviceName: selectedService.name,
           price: parseFloat(customPrice),
           deliveryDays: parseInt(deliveryDays, 10),

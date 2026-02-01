@@ -4,6 +4,8 @@ import CustomOffer from '../models/CustomOffer.js';
 import Message from '../models/Message.js';
 import Conversation from '../models/Conversation.js';
 import Order from '../models/Order.js';
+import Service from '../models/Service.js';
+import PromoCode from '../models/PromoCode.js';
 import { getIO } from '../services/socket.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import User from '../models/User.js';
@@ -53,7 +55,7 @@ function generateOfferNumber() {
 // Professional: Create custom offer
 router.post('/', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
-    const { conversationId, serviceName, price, deliveryDays, quantity, chargePer, description, paymentType, milestones, offerExpiresInDays } = req.body;
+    const { conversationId, serviceId, serviceName, price, deliveryDays, quantity, chargePer, description, paymentType, milestones, offerExpiresInDays } = req.body;
 
     if (!conversationId || !serviceName || !price || !deliveryDays) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -135,6 +137,9 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     });
     await message.save();
 
+    // Resolve serviceId for DB (ObjectId if valid)
+    const serviceIdForOffer = serviceId && /^[0-9a-fA-F]{24}$/.test(String(serviceId)) ? serviceId : undefined;
+
     // Create custom offer with message ID (required by schema)
     const customOffer = new CustomOffer({
       offerNumber,
@@ -143,6 +148,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       client: clientId,
       message: message._id,
       serviceName,
+      serviceId: serviceIdForOffer,
       price,
       deliveryDays,
       quantity: qty,
@@ -158,6 +164,22 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     // Create order with status "offer created" – same structure as regular order (quantity, deliveryDays)
     const professionalUser = await User.findById(req.user.id).select('tradingName').lean();
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    // Fetch service thumbnail when serviceId is available
+    let itemImage = '';
+    if (serviceIdForOffer) {
+      try {
+        const serviceDoc = await Service.findById(serviceIdForOffer).select('gallery images image').lean();
+        if (serviceDoc) {
+          const first = serviceDoc.gallery?.[0] || serviceDoc.images?.[0];
+          const thumbUrl = typeof first === 'object' && first?.url ? first.url : (typeof first === 'string' ? first : null);
+          itemImage = thumbUrl || serviceDoc.image || '';
+        }
+      } catch (e) {
+        console.error('Failed to fetch service thumbnail for custom offer:', e);
+      }
+    }
+
     const order = new Order({
       orderNumber,
       client: clientId,
@@ -169,6 +191,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         price: unitPrice,
         quantity: qty,
         packageType: priceUnitLabel,
+        image: itemImage || undefined,
       }],
       address: undefined,
       skipAddress: true,
@@ -183,6 +206,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       metadata: {
         fromCustomOffer: true,
         customOfferId: customOffer._id,
+        sourceServiceId: serviceIdForOffer ? String(serviceIdForOffer) : undefined,
         responseDeadline: responseDeadline.toISOString(),
         deliveryDays: deliveryDays,
         chargePer: priceUnitLabel,
@@ -270,11 +294,71 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
   }
 });
 
+// Client: Get checkout details for a pending custom offer (for page refresh persistence)
+router.get('/:offerId/checkout-details', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { offerId } = req.params;
+
+    const customOffer = await CustomOffer.findById(offerId)
+      .populate('professional', 'tradingName')
+      .populate('client', 'firstName lastName');
+
+    if (!customOffer) {
+      return res.status(404).json({ error: 'Offer not found' });
+    }
+
+    if (customOffer.client._id.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to view this offer' });
+    }
+
+    if (customOffer.status !== 'pending') {
+      return res.status(400).json({ error: `Offer has already been ${customOffer.status}` });
+    }
+
+    if (new Date() > customOffer.responseDeadline) {
+      return res.status(400).json({ error: 'This offer has expired' });
+    }
+
+    const order = customOffer.order ? await Order.findById(customOffer.order).lean() : null;
+    const firstItem = order?.items?.[0];
+    const metadata = order?.metadata || {};
+    const itemServiceId = firstItem?.serviceId?.toString?.() || '';
+    const sourceServiceId = metadata.sourceServiceId
+      ? String(metadata.sourceServiceId)
+      : customOffer.serviceId
+        ? String(customOffer.serviceId)
+        : itemServiceId.startsWith('custom-')
+          ? null
+          : itemServiceId || null;
+    const professionalUser = customOffer.professional;
+    const unitPrice = customOffer.price / (customOffer.quantity || 1);
+
+    const checkoutDetails = {
+      offerId: customOffer._id.toString(),
+      orderId: order?.orderNumber,
+      serviceId: sourceServiceId || `custom-${customOffer.offerNumber}`,
+      title: customOffer.serviceName,
+      seller: professionalUser?.tradingName || 'Professional',
+      price: unitPrice,
+      image: firstItem?.image || '',
+      quantity: customOffer.quantity || 1,
+      deliveryDays: customOffer.deliveryDays,
+      packageType: customOffer.chargePer || 'service',
+      priceUnit: customOffer.chargePer || 'fixed',
+    };
+
+    res.json({ checkoutDetails });
+  } catch (error) {
+    console.error('Get checkout details error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get checkout details' });
+  }
+});
+
 // Client: Accept custom offer (creates order)
 router.post('/:offerId/accept', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const { offerId } = req.params;
-    const { address, skipAddress, paymentMethod, paymentMethodId } = req.body;
+    const { address, skipAddress, paymentMethod, paymentMethodId, promoCode: promoCodeFromBody, discount: discountFromBody } = req.body;
 
     const customOffer = await CustomOffer.findById(offerId)
       .populate('professional', 'firstName lastName tradingName')
@@ -307,11 +391,55 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
     // Get payment settings
     const settings = await PaymentSettings.getSettings();
     const serviceFeeAmount = settings.serviceFees || 0;
+    const serviceFeeThreshold = settings.serviceFeeThreshold || 0;
 
     // Calculate totals
-    const subtotal = customOffer.price;
-    const serviceFee = serviceFeeAmount;
-    const total = subtotal + serviceFee;
+    const originalSubtotal = customOffer.price;
+    let subtotal = originalSubtotal;
+    let discountAmount = 0;
+    let appliedPromoDoc = null;
+
+    if (promoCodeFromBody && promoCodeFromBody.trim()) {
+      const promoDoc = await PromoCode.findOne({
+        code: promoCodeFromBody.toUpperCase().trim(),
+        status: 'active',
+      });
+      if (promoDoc) {
+        const validation = promoDoc.isValid(req.user?.id);
+        if (validation.valid) {
+          if (promoDoc.minOrderAmount && subtotal < promoDoc.minOrderAmount) {
+            return res.status(400).json({
+              error: `Minimum order amount of £${promoDoc.minOrderAmount.toFixed(2)} required for this promo`,
+            });
+          }
+          if (promoDoc.type === 'pro' && promoDoc.professional) {
+            const promoProId = promoDoc.professional.toString?.() || String(promoDoc.professional);
+            const offerProId = customOffer.professional._id?.toString?.() || customOffer.professional.toString?.() || String(customOffer.professional);
+            if (promoProId !== offerProId) {
+              return res.status(400).json({
+                error: 'This promo code is not applicable to this offer',
+              });
+            }
+          }
+          if (promoDoc.discountType === 'percentage') {
+            discountAmount = (subtotal * (promoDoc.discount || 0)) / 100;
+            if (promoDoc.maxDiscountAmount != null) {
+              discountAmount = Math.min(discountAmount, promoDoc.maxDiscountAmount);
+            }
+          } else {
+            discountAmount = Math.min(promoDoc.discount || 0, subtotal);
+          }
+          discountAmount = Math.round(discountAmount * 100) / 100;
+          appliedPromoDoc = promoDoc;
+        }
+      }
+    }
+
+    subtotal = Math.max(0, originalSubtotal - discountAmount);
+    const actualServiceFee = (serviceFeeThreshold > 0 && subtotal >= serviceFeeThreshold)
+      ? 0
+      : serviceFeeAmount;
+    const total = subtotal + actualServiceFee;
 
     // Get user
     const user = await User.findById(req.user.id);
@@ -497,6 +625,11 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
       }
     }
 
+    // Record promo code usage if applied
+    if (appliedPromoDoc) {
+      await appliedPromoDoc.recordUsage(req.user.id);
+    }
+
     // Update existing order (created when offer was made) with payment and address
     const order = await Order.findById(customOffer.order);
     if (!order || order.status !== 'offer created') {
@@ -515,7 +648,8 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
     order.paymentMethodId = paymentMethod === 'card' ? paymentMethodId : undefined;
     order.total = total;
     order.subtotal = subtotal;
-    order.serviceFee = serviceFee;
+    order.discount = discountAmount;
+    order.serviceFee = actualServiceFee;
     order.paymentStatus = 'completed';
     order.status = 'In Progress';
     order.deliveryStatus = 'active';
@@ -523,6 +657,10 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
     order.paymentTransactionId = paymentTransactionId;
     order.metadata = order.metadata || {};
     order.metadata.professionalPayoutAmount = subtotal;
+    if (appliedPromoDoc && discountAmount > 0) {
+      order.metadata.promoCode = appliedPromoDoc.code;
+      order.metadata.promoCodeType = appliedPromoDoc.type;
+    }
     await order.save();
 
     // Update custom offer
@@ -719,8 +857,12 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
     const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
     const paypalCommission = (customOffer.price * paypalCommissionPercentage / 100) + paypalCommissionFixed;
     const depositAmount = customOffer.price; // Amount to deposit to wallet
-    const serviceFee = settings.serviceFees || 0;
-    const total = depositAmount + serviceFee;
+    const serviceFeeAmount = settings.serviceFees || 0;
+    const serviceFeeThreshold = settings.serviceFeeThreshold || 0;
+    const actualServiceFee = (serviceFeeThreshold > 0 && customOffer.price >= serviceFeeThreshold)
+      ? 0
+      : serviceFeeAmount;
+    const total = depositAmount + actualServiceFee;
 
     // Get user
     const user = await User.findById(req.user.id);
@@ -790,7 +932,7 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
     order.paymentMethod = 'paypal';
     order.total = total;
     order.subtotal = customOffer.price;
-    order.serviceFee = serviceFee;
+    order.serviceFee = actualServiceFee;
     order.paymentStatus = 'completed';
     order.status = 'In Progress';
     order.deliveryStatus = 'active';

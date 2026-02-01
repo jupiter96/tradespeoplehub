@@ -490,6 +490,11 @@ export default function ThankYouPage() {
                     Your Orders ({currentOrders.length})
                   </h2>
                   {currentOrders.map(order => renderOrderCard(order))}
+                  {orderIds.length === 1 && (
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] text-center mt-4">
+                      Redirecting to order details in 3 seconds...
+                    </p>
+                  )}
                 </div>
               )}
 

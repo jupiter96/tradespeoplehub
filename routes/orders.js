@@ -2417,6 +2417,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           deliveryDays: order.metadata?.deliveryDays,
           scheduledDate: order.metadata?.scheduledDate,
           customOfferId: order.metadata?.customOfferId?.toString?.() || order.metadata?.customOfferId,
+          sourceServiceId: order.metadata?.sourceServiceId || undefined,
           responseDeadline: order.metadata?.responseDeadline,
         },
         review: order.review || undefined,

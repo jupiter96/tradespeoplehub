@@ -8,6 +8,7 @@ import ServicesPage from "./components/ServicesPage";
 import ServiceDetailPage from "./components/ServiceDetailPage";
 import ProfilePage from "./components/ProfilePage";
 import CartPage from "./components/CartPage";
+import CustomCheckoutPage from "./components/CustomCheckoutPage";
 import LoginPage from "./components/LoginPage";
 import AccountPage from "./components/AccountPage";
 import ProfessionalProfileSetup from "./components/ProfessionalProfileSetup";
@@ -24,6 +25,7 @@ import AdminDashboardPage from "./components/AdminDashboardPage";
 import SocialOnboardingPage from "./components/SocialOnboardingPage";
 import ThankYouPage from "./components/ThankYouPage";
 import { CartProvider } from "./components/CartContext";
+import { PendingCustomOfferProvider } from "./components/PendingCustomOfferContext";
 import { AccountProvider, useAccount } from "./components/AccountContext";
 import { JobsProvider } from "./components/JobsContext";
 import { MessengerProvider } from "./components/MessengerContext";
@@ -52,6 +54,7 @@ function AppContent() {
         <Route path="/category/:categorySlug/:subCategorySlug" element={<SectorPage />} />
         <Route path="/category/:categorySlug" element={<SectorPage />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="/custom-checkout" element={<CustomCheckoutPage />} />
         <Route path="/thank-you" element={<ThankYouPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/social-onboarding" element={<SocialOnboardingPage />} />
@@ -89,9 +92,11 @@ export default function App() {
         <MessengerProvider>
           <OrdersProvider>
             <CartProvider>
-              <Router>
-                <AppContent />
-              </Router>
+              <PendingCustomOfferProvider>
+                <Router>
+                  <AppContent />
+                </Router>
+              </PendingCustomOfferProvider>
             </CartProvider>
           </OrdersProvider>
         </MessengerProvider>

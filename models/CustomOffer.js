@@ -35,6 +35,11 @@ const customOfferSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    serviceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Service',
+      index: true,
+    },
     price: {
       type: Number,
       required: true,

@@ -267,23 +267,28 @@ router.get('/conversations/:conversationId/messages', requireAuth, async (req, r
     conversation.unreadCount.set(userId.toString(), 0);
     await conversation.save();
 
-    // Format messages
-    const formattedMessages = messages.reverse().map((msg) => ({
-      id: msg._id.toString(),
-      senderId: msg.sender._id.toString(),
-      senderName: msg.sender.role === 'professional'
-        ? (msg.sender.tradingName || 'Professional')
-        : `${msg.sender.firstName} ${msg.sender.lastName}`,
-      senderAvatar: msg.sender.avatar,
-      text: msg.text,
-      timestamp: msg.createdAt,
-      read: msg.read,
-      type: msg.type,
-      fileUrl: msg.fileUrl,
-      fileName: msg.fileName,
-      orderId: msg.orderId,
-      orderDetails: msg.orderDetails,
-    }));
+    // Format messages (include orderId from orderDetails for custom_offer when top-level orderId is missing)
+    const formattedMessages = messages.reverse().map((msg) => {
+      const orderId = msg.orderId != null
+        ? (typeof msg.orderId === 'object' && msg.orderId._id ? msg.orderId._id.toString() : String(msg.orderId))
+        : (msg.orderDetails?.orderId ?? null);
+      return {
+        id: msg._id.toString(),
+        senderId: msg.sender._id.toString(),
+        senderName: msg.sender.role === 'professional'
+          ? (msg.sender.tradingName || 'Professional')
+          : `${msg.sender.firstName} ${msg.sender.lastName}`,
+        senderAvatar: msg.sender.avatar,
+        text: msg.text,
+        timestamp: msg.createdAt,
+        read: msg.read,
+        type: msg.type,
+        fileUrl: msg.fileUrl,
+        fileName: msg.fileName,
+        orderId: orderId,
+        orderDetails: msg.orderDetails,
+      };
+    });
 
     res.json({ messages: formattedMessages });
   } catch (error) {
