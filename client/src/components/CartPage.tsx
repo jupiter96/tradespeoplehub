@@ -1663,9 +1663,9 @@ export default function CartPage() {
         paymentMethodId = undefined;
       }
       
-      // Upload files and prepare additional information per item
+      // Upload files and prepare additional information per item (only for regular items)
       for (let i = 0; i < orderRequests.length; i++) {
-        const item = cartItems[i];
+        const item = regularItems[i];
         const itemInfo = additionalInfoPerItem[item.id];
         
         if (itemInfo && (itemInfo.message?.trim() || itemInfo.files.length > 0)) {
@@ -1711,7 +1711,66 @@ export default function CartPage() {
         }
       }
 
-      // Create bulk orders
+      // Process custom offer items first (call accept API for each)
+      const acceptedOrderIds: string[] = [];
+      for (const item of customOfferItems) {
+        const offerId = (item as any).offerId;
+        if (!offerId) continue;
+        const offerPrice = (item.price + (item.addons?.reduce((s, a) => s + a.price, 0) || 0)) * item.quantity;
+        const acceptRes = await fetch(resolveApiUrl(`/api/custom-offers/${offerId}/accept`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            paymentMethod: paymentMethodType,
+            paymentMethodId: paymentMethodId,
+            skipAddress: true,
+          }),
+        });
+        if (!acceptRes.ok) {
+          const err = await acceptRes.json();
+          throw new Error(err.error || "Failed to accept custom offer");
+        }
+        const acceptData = await acceptRes.json();
+        if (acceptData.requiresApproval && acceptData.approveUrl) {
+          window.location.href = acceptData.approveUrl;
+          return;
+        }
+        if (acceptData.order?.orderNumber) acceptedOrderIds.push(acceptData.order.orderNumber);
+        await removeFromCart(item.id);
+        if (acceptData.newBalance !== undefined) setWalletBalance(acceptData.newBalance);
+      }
+
+      // If no regular items, we're done - redirect to thank you
+      if (orderRequests.length === 0) {
+        await clearCart();
+        if (refreshOrders) await refreshOrders();
+        const ids = acceptedOrderIds.join(",");
+        navigate(ids ? `/thank-you?orderIds=${ids}` : "/account?tab=orders", { replace: true });
+        toast.success("Custom offer(s) accepted!", {
+          description: ids ? `Order${acceptedOrderIds.length > 1 ? "s" : ""} created.` : "",
+        });
+        return;
+      }
+
+      // Recalculate amounts for bulk (regular items only)
+      const regularSubtotal = orderRequests.reduce((s, r) => s + r.subtotal, 0);
+      const regularDiscount = orderRequests.reduce((s, r) => s + (r.discount || 0), 0);
+      const regularTotalBeforeFee = regularSubtotal - regularDiscount;
+      const regularServiceFee = subtotal > 0 ? (actualServiceFee / subtotal) * regularSubtotal : 0;
+      const regularTotal = regularTotalBeforeFee + regularServiceFee;
+      let bulkWalletAmount = Math.min(walletBalance, regularTotal);
+      let bulkRemainderAmount = Math.max(0, regularTotal - walletBalance);
+      if (customOfferItems.length > 0) {
+        const balRes = await fetch(resolveApiUrl("/api/wallet/balance"), { credentials: "include" });
+        if (balRes.ok) {
+          const { balance } = await balRes.json();
+          bulkWalletAmount = Math.min(balance || 0, regularTotal);
+          bulkRemainderAmount = Math.max(0, regularTotal - (balance || 0));
+        }
+      }
+
+      // Create bulk orders for regular items
       const response = await fetch(resolveApiUrl("/api/orders/bulk"), {
         method: "POST",
         headers: {
@@ -1722,9 +1781,9 @@ export default function CartPage() {
           orders: orderRequests,
           paymentMethod: paymentMethodType,
           paymentMethodId: paymentMethodId,
-          totalAmount: orderTotal,
-          walletAmount: walletAmount,
-          remainderAmount: remainderAmount,
+          totalAmount: regularTotal,
+          walletAmount: bulkWalletAmount,
+          remainderAmount: bulkRemainderAmount,
           address: addressDetails,
           skipAddress: skipAddress,
         }),

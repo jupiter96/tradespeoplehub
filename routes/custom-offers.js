@@ -194,9 +194,12 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     await customOffer.save();
 
     // Attach offerId and orderId to message orderDetails for View Offer navigation
-    message.orderDetails = message.orderDetails || {};
-    message.orderDetails.offerId = customOffer._id.toString();
-    message.orderDetails.orderId = order.orderNumber;
+    // Mongoose Mixed type does not track nested changes - must markModified
+    message.orderDetails = Object.assign({}, message.orderDetails || {}, {
+      offerId: customOffer._id.toString(),
+      orderId: order.orderNumber,
+    });
+    message.markModified('orderDetails');
     await message.save();
 
     // Update conversation
