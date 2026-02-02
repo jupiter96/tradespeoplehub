@@ -4756,6 +4756,20 @@ function WithdrawSection() {
     return map[status] || status;
   };
 
+  const getTransactionDescription = (tx: any) => {
+    const desc = tx.description || tx.metadata?.description;
+    if (desc) return desc;
+    const typeLabel = formatTypeLabel(tx.type);
+    const orderNum = tx.metadata?.orderNumber || (tx.orderId && typeof tx.orderId === "object" && (tx.orderId as any).orderNumber ? (tx.orderId as any).orderNumber : null);
+    const refStr = orderNum || "";
+    if (tx.type === "payment" && refStr) return `Payment for order ${refStr}`;
+    if (tx.type === "withdrawal") return `Withdrawal${refStr ? ` (ref: ${refStr})` : ""}`;
+    if (tx.type === "deposit") return `Deposit to wallet${refStr ? ` — ${refStr}` : ""}`;
+    if (tx.type === "refund" && refStr) return `Refund for order ${refStr}`;
+    if (tx.type === "manual_transfer") return `Bank transfer${refStr ? ` — ${refStr}` : ""}`;
+    return typeLabel + (refStr ? ` — ${refStr}` : "");
+  };
+
   const transactionRows = useMemo(() => {
     const rows = transactions.map((tx, index) => {
       const createdAt = tx.createdAt || tx.date || tx.timestamp;
@@ -4773,7 +4787,7 @@ function WithdrawSection() {
         methodLabel: formatMethodLabel(tx),
         status: tx.status || "pending",
         statusLabel: formatStatusLabel(tx.status),
-        description: tx.description || tx.metadata?.description || "",
+        description: getTransactionDescription(tx),
         reference: reference ? reference.toString() : "",
       };
     });
@@ -5352,7 +5366,7 @@ function WithdrawSection() {
                       Date
                     </th>
                     <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Type
+                      Description
                     </th>
                     <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Amount
@@ -5368,14 +5382,14 @@ function WithdrawSection() {
                 <tbody className="divide-y divide-gray-200">
                   {loadingTransactions && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <td colSpan={6} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         Loading transactions...
                       </td>
                     </tr>
                   )}
                   {!loadingTransactions && transactionRows.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <td colSpan={6} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         No transactions found
                       </td>
                     </tr>
@@ -5396,8 +5410,8 @@ function WithdrawSection() {
                             })
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
-                        {transaction.typeLabel}
+                      <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] max-w-[280px]">
+                        {transaction.description || "—"}
                       </td>
                       <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         <span className={isDebit ? "text-red-600" : "text-green-600"}>

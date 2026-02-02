@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { Order } from "./types";
 import { formatDate, formatMoney } from "./utils";
 import { resolveApiUrl } from "../../config/api";
@@ -91,20 +91,47 @@ export default function OrderDetailsTab({
     (order.booking?.date ? `${order.booking.date}${order.booking?.starttime ? ` at ${order.booking.starttime}` : ""}` : "") ||
     formatDate(deliveryByDate.toISOString());
 
-  const isCustomOffer = meta.fromCustomOffer === true;
-  const quantity = isCustomOffer && (meta.quantity ?? 0) > 0
-    ? meta.quantity
-    : (primaryItem?.quantity ?? 1);
-  const unitPrice = isCustomOffer && (meta.unitPrice ?? 0) > 0
-    ? meta.unitPrice
-    : (primaryItem?.price ?? 0);
+  const quantity = primaryItem?.quantity ?? 1;
+  const unitPrice = primaryItem?.price ?? 0;
   const subtotal = order.subtotal ?? order.amountValue ?? unitPrice * quantity;
   const discount = order.discount ?? 0;
   const serviceFee = order.serviceFee ?? 0;
   const total = order.amountValue ?? order.amount ?? subtotal - discount + serviceFee;
   const promoCode = meta.promoCode || (order as any).promoCode?.code;
 
+  const isMilestoneCustomOffer =
+    meta.fromCustomOffer &&
+    meta.paymentType === "milestone" &&
+    Array.isArray(meta.milestones) &&
+    meta.milestones.length > 0;
+  const milestones = (meta.milestones || []) as Array<{
+    name?: string;
+    price?: number;
+    amount?: number;
+    chargePer?: string;
+    noOf?: number;
+  }>;
+
+  // Subtotal for milestone = sum of (price × noOf) per milestone
+  const milestoneSubtotal =
+    isMilestoneCustomOffer && milestones.length > 0
+      ? milestones.reduce((sum, m) => {
+          const p = m.price ?? m.amount ?? 0;
+          const q = m.noOf ?? 1;
+          return sum + p * q;
+        }, 0)
+      : 0;
+  const displaySubtotal = isMilestoneCustomOffer ? milestoneSubtotal : subtotal;
+
   const serviceTitle = order.service || primaryItem?.title || "Service";
+
+  function getNoOfLabel(unit: string): string {
+    if (unit === "hour") return "hours";
+    if (unit === "day") return "days";
+    if (unit === "item") return "items";
+    if (unit === "service" || unit === "fixed") return "services";
+    return unit + "s";
+  }
 
   return (
     <div className="bg-white rounded-xl p-8 shadow-md">
@@ -156,14 +183,53 @@ export default function OrderDetailsTab({
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         <table className="w-full font-['Poppins',sans-serif]">
           <tbody>
-            <tr className="bg-gray-50">
-              <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
-                Price ({priceUnitDisplay === "service" || priceUnitDisplay === "fixed" ? "per service" : `per ${priceUnitDisplay}`})
-              </td>
-              <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                £{formatVal(unitPrice)}{priceUnitDisplay !== "service" && priceUnitDisplay !== "fixed" ? `/${priceUnitDisplay}` : ""}
-              </td>
-            </tr>
+            {isMilestoneCustomOffer ? (
+              milestones.map((m, idx) => {
+                const mPrice = m.price ?? m.amount ?? 0;
+                const mNoOf = m.noOf ?? 1;
+                const mTotal = mPrice * mNoOf;
+                const mUnit = getPriceUnitLabel(m.chargePer, meta.chargePer);
+                const mUnitDisplay = mUnit === "service" || mUnit === "fixed" ? "service" : mUnit;
+                const mNoOfLabel = getNoOfLabel(mUnitDisplay);
+                return (
+                  <Fragment key={idx}>
+                    <tr className={idx === 0 ? "bg-gray-50" : "bg-gray-50 border-t border-gray-200"}>
+                      <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
+                        Milestone {idx + 1}{m.name ? `: ${m.name}` : ""} — Price
+                      </td>
+                      <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
+                        £{formatVal(mPrice)}{mUnitDisplay !== "service" && mUnitDisplay !== "fixed" ? ` / ${mUnitDisplay}` : " / service"}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-gray-200">
+                      <td className="px-4 py-3 text-[14px] text-[#6b6b6b] pl-6">
+                        No. of {mNoOfLabel} (Milestone {idx + 1})
+                      </td>
+                      <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
+                        {mNoOf}
+                      </td>
+                    </tr>
+                    <tr className="border-t border-gray-200">
+                      <td className="px-4 py-3 text-[14px] text-[#6b6b6b] pl-6">
+                        Milestone {idx + 1} total
+                      </td>
+                      <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
+                        £{formatVal(mTotal)}
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })
+            ) : (
+              <tr className="bg-gray-50">
+                <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
+                  Price ({priceUnitDisplay === "service" || priceUnitDisplay === "fixed" ? "per service" : `per ${priceUnitDisplay}`})
+                </td>
+                <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
+                  £{formatVal(unitPrice)}{priceUnitDisplay !== "service" && priceUnitDisplay !== "fixed" ? ` / ${priceUnitDisplay}` : ""}
+                </td>
+              </tr>
+            )}
             <tr className="border-t border-gray-200">
               <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
                 Delivery by
@@ -176,20 +242,22 @@ export default function OrderDetailsTab({
                     : deliveryByStr}
               </td>
             </tr>
-            <tr className="bg-gray-50 border-t border-gray-200">
-              <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
-                Total no. of {priceUnitDisplay === "hour" ? "hours" : priceUnitDisplay === "day" ? "days" : priceUnitDisplay === "item" ? "items" : priceUnitDisplay + "s"}
-              </td>
-              <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                {quantity}
-              </td>
-            </tr>
+            {!isMilestoneCustomOffer && (
+              <tr className="bg-gray-50 border-t border-gray-200">
+                <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
+                  Total no. of {priceUnitDisplay === "hour" ? "hours" : priceUnitDisplay === "day" ? "days" : priceUnitDisplay === "item" ? "items" : priceUnitDisplay + "s"}
+                </td>
+                <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
+                  {quantity}
+                </td>
+              </tr>
+            )}
             <tr className="border-t border-gray-200">
               <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
                 Subtotal
               </td>
               <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                £{formatVal(subtotal)}
+                £{formatVal(isMilestoneCustomOffer ? displaySubtotal : subtotal)}
               </td>
             </tr>
             {discount > 0 && (

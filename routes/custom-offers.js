@@ -118,13 +118,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const offerNumber = generateOfferNumber();
 
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
-    let unitPrice = offerPrice / qty;
-    let displayQuantity = qty;
-    if (paymentType === 'milestone' && milestones && milestones.length > 0) {
-      const first = milestones[0];
-      unitPrice = first.price ?? first.amount ?? unitPrice;
-      displayQuantity = first.noOf ?? 1;
-    }
+    const unitPrice = offerPrice / qty;
     const priceUnitLabel = chargePer || 'service';
 
     // Create message first (CustomOffer schema requires message ref)
@@ -214,7 +208,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         title: serviceName,
         seller: professionalUser?.tradingName || 'Professional',
         price: unitPrice,
-        quantity: displayQuantity,
+        quantity: qty,
         packageType: priceUnitLabel,
         image: itemImage || undefined,
       }],
@@ -240,8 +234,6 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         serviceDescription: serviceDescription || undefined,
         attributes: attributes || undefined,
         idealFor: idealFor || undefined,
-        unitPrice: unitPrice,
-        quantity: displayQuantity,
       },
     });
     await order.save();

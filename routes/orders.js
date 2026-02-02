@@ -2446,8 +2446,6 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           promoCode: order.metadata?.promoCode || order.promoCode?.code || undefined,
           promoCodeType: order.metadata?.promoCodeType || order.promoCode?.type || undefined,
           chargePer: order.metadata?.chargePer || undefined,
-          unitPrice: order.metadata?.unitPrice,
-          quantity: order.metadata?.quantity,
         },
         review: order.review || undefined,
         professionalResponse: order.professionalResponse || undefined,
