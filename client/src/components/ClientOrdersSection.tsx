@@ -4,7 +4,6 @@ import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { usePendingCustomOffer } from "./PendingCustomOfferContext";
-import DeliveryCountdown from "./DeliveryCountdown";
 import { useCountdown } from "../hooks/useCountdown";
 import { useElapsedTime } from "../hooks/useElapsedTime";
 import { resolveApiUrl } from "../config/api";
@@ -675,10 +674,7 @@ export default function ClientOrdersSection() {
               : "Extension Rejected",
           description: order.extensionRequest.status === "approved"
             ? "Your extension request was approved."
-            : "Your extension request was rejected.",
-          message: order.extensionRequest.status === "rejected"
-            ? "Your extension request has been rejected. Please deliver the work by the original deadline."
-            : undefined,
+            : "You declined the extension request.",
           colorClass:
             order.extensionRequest.status === "approved"
               ? "bg-green-600"
@@ -2170,12 +2166,6 @@ export default function ClientOrdersSection() {
                 )}
               </div>
               ) : null}
-
-            {/* Delivery Countdown - Show for in progress orders (uses extended date when extension approved) */}
-            {currentOrder.status === "In Progress" && (effectiveExpectedDelivery || currentOrder.expectedDelivery) && (
-              <DeliveryCountdown expectedDelivery={effectiveExpectedDelivery || currentOrder.expectedDelivery!} />
-            )}
-
 
             {timelineTimer}
 

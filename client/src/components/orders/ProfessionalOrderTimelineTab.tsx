@@ -635,15 +635,6 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
-      {/* Delivery Countdown - Show for active and pending orders */}
-      {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") && (effectiveExpectedDelivery || currentOrder.expectedDelivery) && (
-        <div className="bg-white rounded-lg p-6 shadow-md">
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-            Expected delivery: {formatDateTime(effectiveExpectedDelivery || currentOrder.expectedDelivery!)}
-          </p>
-        </div>
-      )}
-
       {/* Timeline Events */}
       <div className="space-y-0">
         {timelineEvents.length === 0 && (

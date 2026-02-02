@@ -146,6 +146,10 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
               ? `New delivery date & time: ${newDeliveryFormatted}`
               : "Extension approved."
             : "Client rejected the extension request.",
+        message:
+          ext.status === "rejected"
+            ? "Your extension request has been rejected. Please deliver the work by the original deadline."
+            : undefined,
         colorClass: ext.status === "approved" ? "bg-green-600" : "bg-red-600",
         icon:
           ext.status === "approved" ? (
