@@ -239,6 +239,20 @@ html {
   animation: heartbeat 2s ease-in-out infinite;
 }
 
+/* Spin animation for loading icons (e.g. Place Order button) */
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
 /* Custom Scrollbar for Modal */
 .custom-scrollbar {
   scrollbar-width: thin;

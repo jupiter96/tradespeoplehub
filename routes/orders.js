@@ -2458,7 +2458,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         deliveryStatus,
         booking,
         disputeId: order.disputeId || dispute?.disputeId || undefined,
-        expectedDelivery: order.expectedDelivery || undefined,
+        expectedDelivery: (order.metadata?.expectedDelivery ? new Date(order.metadata.expectedDelivery).toISOString() : null) || (order.extensionRequest?.status === 'approved' && order.extensionRequest?.newDeliveryDate ? new Date(order.extensionRequest.newDeliveryDate).toISOString() : null) || (order.expectedDelivery ? new Date(order.expectedDelivery).toISOString() : undefined),
         subtotal: order.subtotal || 0,
         discount: order.discount || 0,
         serviceFee: order.serviceFee || 0,
@@ -2719,12 +2719,14 @@ router.put('/:orderId/extension-request', authenticateToken, requireRole(['clien
     }
 
     if (action === 'approve') {
-      // Update scheduled date if exists in metadata
+      // Update scheduled date and expected delivery when extension is approved
       if (order.extensionRequest.newDeliveryDate) {
+        const newDate = order.extensionRequest.newDeliveryDate;
         if (order.metadata && typeof order.metadata === 'object') {
-          order.metadata.scheduledDate = order.extensionRequest.newDeliveryDate;
+          order.metadata.scheduledDate = newDate;
+          order.metadata.expectedDelivery = newDate;
         } else {
-          order.metadata = { scheduledDate: order.extensionRequest.newDeliveryDate };
+          order.metadata = { scheduledDate: newDate, expectedDelivery: newDate };
         }
       }
 

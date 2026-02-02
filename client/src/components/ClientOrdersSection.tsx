@@ -1413,14 +1413,25 @@ export default function ClientOrdersSection() {
     [currentOrder]
   );
 
+  // Effective expected delivery: use extended date when extension was approved
+  const effectiveExpectedDelivery = useMemo(() => {
+    if (!currentOrder) return undefined;
+    if (currentOrder.extensionRequest?.status === 'approved' && currentOrder.extensionRequest?.newDeliveryDate) {
+      return typeof currentOrder.extensionRequest.newDeliveryDate === 'string'
+        ? currentOrder.extensionRequest.newDeliveryDate
+        : new Date(currentOrder.extensionRequest.newDeliveryDate).toISOString();
+    }
+    return currentOrder.expectedDelivery;
+  }, [currentOrder]);
+
   // Calculate appointment deadline for countdown
-  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date > calculated from createdAt + deliveryDays
+  // Priority: effective expected delivery > booking date/time > scheduled date > calculated from createdAt + deliveryDays
   const appointmentDeadline = useMemo(() => {
     if (!currentOrder) return null;
     
-    // First priority: expectedDelivery (selected at order time)
-    if (currentOrder.expectedDelivery) {
-      return new Date(currentOrder.expectedDelivery);
+    // First priority: effective expected delivery (includes extended date when extension approved)
+    if (effectiveExpectedDelivery) {
+      return new Date(effectiveExpectedDelivery);
     }
     
     // Second priority: booking date/time (for in-person services)
@@ -1460,7 +1471,7 @@ export default function ClientOrdersSection() {
     }
     
     return null;
-  }, [currentOrder]);
+  }, [currentOrder, effectiveExpectedDelivery]);
 
   // Use countdown hook for appointment time
   const appointmentCountdown = useCountdown(appointmentDeadline);
@@ -1473,16 +1484,24 @@ export default function ClientOrdersSection() {
   }, [currentOrder]);
   const offerResponseCountdown = useCountdown(offerResponseDeadline);
 
+  // Extension request: countdown to new delivery date (when extension is pending)
+  const extensionDeadline = useMemo(() => {
+    if (!currentOrder?.extensionRequest?.newDeliveryDate) return null;
+    if (currentOrder.extensionRequest?.status !== 'pending') return null;
+    return new Date(currentOrder.extensionRequest.newDeliveryDate);
+  }, [currentOrder]);
+  const extensionCountdown = useCountdown(extensionDeadline);
+
   // Elapsed time since booking time arrives (work in progress timer)
-  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
+  // Priority: effective expected delivery > booking date/time > scheduled date
   const workStartTime = useMemo(() => {
     if (!currentOrder) return null;
     // Stop timer for completed, cancelled, or cancellation-pending orders
     if (currentOrder.status === "Completed" || currentOrder.status === "Cancelled" || currentOrder.status === "Cancellation Pending") return null;
 
-    // First priority: expectedDelivery (selected at order time)
-    if (currentOrder.expectedDelivery) {
-      const start = new Date(currentOrder.expectedDelivery);
+    // First priority: effective expected delivery (includes extended date when extension approved)
+    if (effectiveExpectedDelivery) {
+      const start = new Date(effectiveExpectedDelivery);
       if (Date.now() >= start.getTime()) return start;
     }
 
@@ -1504,7 +1523,7 @@ export default function ClientOrdersSection() {
     }
 
     return null;
-  }, [currentOrder]);
+  }, [currentOrder, effectiveExpectedDelivery]);
 
   const workElapsedTime = useElapsedTime(workStartTime);
 
@@ -1537,13 +1556,20 @@ export default function ClientOrdersSection() {
                       Expected Delivery Time
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                      {currentOrder.booking?.date
-                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`
-                        : currentOrder.scheduledDate
-                          ? formatDate(currentOrder.scheduledDate)
-                          : appointmentDeadline
-                            ? formatDate(appointmentDeadline.toISOString())
-                            : "TBD"}
+                      {effectiveExpectedDelivery
+                        ? (() => {
+                            const d = new Date(effectiveExpectedDelivery);
+                            const dateStr = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                            const timeStr = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                            return `${dateStr} ${timeStr}`;
+                          })()
+                        : currentOrder.booking?.date
+                          ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`
+                          : currentOrder.scheduledDate
+                            ? formatDate(currentOrder.scheduledDate)
+                            : appointmentDeadline
+                              ? formatDate(appointmentDeadline.toISOString())
+                              : "TBD"}
                     </p>
                   </div>
                 </div>
@@ -2145,9 +2171,9 @@ export default function ClientOrdersSection() {
               </div>
               ) : null}
 
-            {/* Delivery Countdown - Show for in progress orders */}
-            {currentOrder.status === "In Progress" && currentOrder.expectedDelivery && (
-              <DeliveryCountdown expectedDelivery={currentOrder.expectedDelivery} />
+            {/* Delivery Countdown - Show for in progress orders (uses extended date when extension approved) */}
+            {currentOrder.status === "In Progress" && (effectiveExpectedDelivery || currentOrder.expectedDelivery) && (
+              <DeliveryCountdown expectedDelivery={effectiveExpectedDelivery || currentOrder.expectedDelivery!} />
             )}
 
 
@@ -2693,6 +2719,45 @@ export default function ClientOrdersSection() {
                                         })() : 'N/A'}
                                       </p>
                                     </div>
+                                    {extensionCountdown && (
+                                      <div className="bg-white border border-indigo-200 rounded-lg p-3 mb-4">
+                                        <p className="font-['Poppins',sans-serif] text-[12px] text-indigo-700 uppercase tracking-wider mb-2">
+                                          Time until new delivery deadline
+                                        </p>
+                                        {extensionCountdown.expired ? (
+                                          <p className="font-['Poppins',sans-serif] text-[13px] text-red-600 font-medium">
+                                            New delivery deadline has passed
+                                          </p>
+                                        ) : (
+                                          <div className="grid grid-cols-4 gap-2">
+                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
+                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                                {String(extensionCountdown.days).padStart(2, '0')}
+                                              </div>
+                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Days</div>
+                                            </div>
+                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
+                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                                {String(extensionCountdown.hours).padStart(2, '0')}
+                                              </div>
+                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Hours</div>
+                                            </div>
+                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
+                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                                {String(extensionCountdown.minutes).padStart(2, '0')}
+                                              </div>
+                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Min</div>
+                                            </div>
+                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
+                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                                {String(extensionCountdown.seconds).padStart(2, '0')}
+                                              </div>
+                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Sec</div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                     <div className="flex gap-3 flex-wrap">
                                       <Button
                                         onClick={(e) => {

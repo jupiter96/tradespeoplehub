@@ -71,6 +71,8 @@ interface ProfessionalOrderTimelineTabProps {
   offerResponseDeadline?: Date | string | null;
   offerResponseCountdown?: { days: number; hours: number; minutes: number; seconds: number; total: number; expired: boolean };
   onWithdrawOffer?: () => void | Promise<void>;
+  extensionCountdown?: { days: number; hours: number; minutes: number; seconds: number; total: number; expired: boolean };
+  effectiveExpectedDelivery?: string; // When extension approved, use this for "Expected delivery" and countdown
 }
 
 export default function ProfessionalOrderTimelineTab({
@@ -103,6 +105,8 @@ export default function ProfessionalOrderTimelineTab({
   offerResponseDeadline,
   offerResponseCountdown,
   onWithdrawOffer,
+  extensionCountdown,
+  effectiveExpectedDelivery,
 }: ProfessionalOrderTimelineTabProps) {
   const [previewAttachment, setPreviewAttachment] = useState<{
     url: string;
@@ -632,10 +636,10 @@ export default function ProfessionalOrderTimelineTab({
       )}
 
       {/* Delivery Countdown - Show for active and pending orders */}
-      {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") && currentOrder.expectedDelivery && (
+      {(currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") && (effectiveExpectedDelivery || currentOrder.expectedDelivery) && (
         <div className="bg-white rounded-lg p-6 shadow-md">
           <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-            Expected delivery: {formatDateTime(currentOrder.expectedDelivery)}
+            Expected delivery: {formatDateTime(effectiveExpectedDelivery || currentOrder.expectedDelivery!)}
           </p>
         </div>
       )}
@@ -703,6 +707,50 @@ export default function ProfessionalOrderTimelineTab({
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
                           {event.description}
                         </p>
+                      </div>
+                    )}
+
+                    {/* Extension Requested: countdown to new delivery date */}
+                    {event.label === "Extension Requested" && event.id === "extension-requested" && (currentOrder as any).extensionRequest?.status === "pending" && extensionCountdown && (
+                      <div className="mb-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Clock className="w-4 h-4 text-indigo-600" />
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-indigo-700 uppercase tracking-wider">
+                            Time until new delivery deadline
+                          </p>
+                        </div>
+                        {extensionCountdown.expired ? (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-red-600 font-medium">
+                            New delivery deadline has passed
+                          </p>
+                        ) : (
+                          <div className="grid grid-cols-4 gap-2">
+                            <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
+                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                {String(extensionCountdown.days).padStart(2, '0')}
+                              </div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Days</div>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
+                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                {String(extensionCountdown.hours).padStart(2, '0')}
+                              </div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Hours</div>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
+                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                {String(extensionCountdown.minutes).padStart(2, '0')}
+                              </div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Min</div>
+                            </div>
+                            <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
+                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
+                                {String(extensionCountdown.seconds).padStart(2, '0')}
+                              </div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Sec</div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                     

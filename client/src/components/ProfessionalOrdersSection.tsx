@@ -476,14 +476,24 @@ function ProfessionalOrdersSection() {
     [currentOrder]
   );
 
+  // Effective expected delivery: use extended date when extension was approved
+  const effectiveExpectedDelivery = useMemo(() => {
+    if (!currentOrder) return undefined;
+    if ((currentOrder as any).extensionRequest?.status === 'approved' && (currentOrder as any).extensionRequest?.newDeliveryDate) {
+      const d = (currentOrder as any).extensionRequest.newDeliveryDate;
+      return typeof d === 'string' ? d : new Date(d).toISOString();
+    }
+    return currentOrder.expectedDelivery;
+  }, [currentOrder]);
+
   // Calculate appointment deadline for countdown
-  // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
+  // Priority: effective expected delivery > booking date/time > scheduled date
   const appointmentDeadline = useMemo(() => {
     if (!currentOrder) return null;
     
-    // First priority: expectedDelivery (selected at order time)
-    if (currentOrder.expectedDelivery) {
-      return new Date(currentOrder.expectedDelivery);
+    // First priority: effective expected delivery (includes extended date when extension approved)
+    if (effectiveExpectedDelivery) {
+      return new Date(effectiveExpectedDelivery);
     }
     
     // Second priority: booking date/time
@@ -505,7 +515,7 @@ function ProfessionalOrdersSection() {
     }
     
     return null;
-  }, [currentOrder]);
+  }, [currentOrder, effectiveExpectedDelivery]);
 
   // Countdown hook for appointment time (before order is accepted)
   const appointmentCountdown = useCountdown(appointmentDeadline);
@@ -517,6 +527,14 @@ function ProfessionalOrdersSection() {
     return rd ? new Date(rd) : null;
   }, [currentOrder]);
   const offerResponseCountdown = useCountdown(offerResponseDeadline);
+
+  // Extension request: countdown to new delivery date (when extension is pending)
+  const extensionDeadline = useMemo(() => {
+    if (!currentOrder?.extensionRequest?.newDeliveryDate) return null;
+    if ((currentOrder as any).extensionRequest?.status !== 'pending') return null;
+    return new Date((currentOrder as any).extensionRequest.newDeliveryDate);
+  }, [currentOrder]);
+  const extensionCountdown = useCountdown(extensionDeadline);
 
   // Elapsed time since order was accepted (work in progress timer)
   // Priority: expectedDelivery (selected at order time) > booking date/time > scheduled date
@@ -534,9 +552,9 @@ function ProfessionalOrdersSection() {
       return new Date(inProgressRevision.respondedAt);
     }
 
-    // First priority: expectedDelivery (selected at order time)
-    if (currentOrder.expectedDelivery) {
-      const start = new Date(currentOrder.expectedDelivery);
+    // First priority: effective expected delivery (includes extended date when extension approved)
+    if (effectiveExpectedDelivery) {
+      const start = new Date(effectiveExpectedDelivery);
       if (Date.now() >= start.getTime()) return start;
     }
 
@@ -558,7 +576,7 @@ function ProfessionalOrdersSection() {
     }
 
     return null;
-  }, [currentOrder]);
+  }, [currentOrder, effectiveExpectedDelivery]);
 
   // Calculate pause time (when work was delivered)
   const pauseTime = useMemo(() => {
@@ -1081,11 +1099,20 @@ function ProfessionalOrdersSection() {
                       Expected Delivery Time
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                      {currentOrder.booking?.date
-                        ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}`
-                        : currentOrder.scheduledDate
-                          ? formatDate(currentOrder.scheduledDate)
-                          : "TBD"}
+                      {effectiveExpectedDelivery
+                        ? (() => {
+                            const d = new Date(effectiveExpectedDelivery);
+                            const dateStr = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                            const timeStr = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                            return `${dateStr} ${timeStr}`;
+                          })()
+                        : currentOrder.booking?.date
+                          ? `${formatDate(currentOrder.booking.date)} ${currentOrder.booking?.starttime || currentOrder.booking?.timeSlot || ''}`
+                          : currentOrder.scheduledDate
+                            ? formatDate(currentOrder.scheduledDate)
+                            : appointmentDeadline
+                              ? formatDate(appointmentDeadline.toISOString())
+                              : "TBD"}
                     </p>
                   </div>
                 </div>
@@ -1318,6 +1345,8 @@ function ProfessionalOrdersSection() {
                   offerResponseDeadline={offerResponseDeadline}
                   offerResponseCountdown={offerResponseCountdown}
                   onWithdrawOffer={() => setIsWithdrawOfferConfirmOpen(true)}
+                  extensionCountdown={extensionCountdown}
+                  effectiveExpectedDelivery={effectiveExpectedDelivery}
                 />
               </TabsContent>
 

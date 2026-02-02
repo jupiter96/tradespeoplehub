@@ -736,11 +736,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             respondedAt: data.extensionRequest.respondedAt,
           };
 
-          // If approved, update scheduled date
+          // If approved, update scheduled date and expected delivery so countdown/display update immediately
           if (action === 'approve' && data.extensionRequest.newDeliveryDate) {
+            const newDeliveryDateIso = typeof data.extensionRequest.newDeliveryDate === 'string'
+              ? data.extensionRequest.newDeliveryDate
+              : new Date(data.extensionRequest.newDeliveryDate).toISOString();
             return {
               ...order,
-              scheduledDate: new Date(data.extensionRequest.newDeliveryDate).toISOString().split('T')[0],
+              scheduledDate: newDeliveryDateIso.split('T')[0],
+              expectedDelivery: newDeliveryDateIso,
               extensionRequest: updatedExtensionRequest,
             };
           }

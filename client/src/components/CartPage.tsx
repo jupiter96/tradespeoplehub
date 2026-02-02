@@ -34,7 +34,8 @@ import {
   Upload,
   Film,
   Info,
-  StickyNote
+  StickyNote,
+  Loader2
 } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Input } from "./ui/input";
@@ -839,6 +840,7 @@ export default function CartPage() {
   const [showPaymentSection, setShowPaymentSection] = useState(true);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [showItemsSection, setShowItemsSection] = useState(true);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) {
@@ -1830,7 +1832,8 @@ export default function CartPage() {
   };
 
   const handlePlaceOrder = async () => {
-    
+    setIsPlacingOrder(true);
+    try {
     // Helper function to check if a service is online
     const isServiceOnline = async (item: any): Promise<boolean> => {
       // Custom offer items (from "offer created" orders) are treated as online - no address/time slot needed
@@ -1916,10 +1919,12 @@ export default function CartPage() {
       setShowTimeSection(true);
       return;
     }
-    
-    
+
     // Proceed with creating multiple orders
-    proceedWithOrder(serviceTypeChecks);
+    await proceedWithOrder(serviceTypeChecks);
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
     const subtotal = cartTotal;
@@ -3096,10 +3101,20 @@ export default function CartPage() {
                 {/* Place Order Button */}
                 <Button 
                   onClick={handlePlaceOrder}
-                  className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px] mb-3"
+                  disabled={isPlacingOrder}
+                  className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white py-6 rounded-full transition-all duration-300 font-['Poppins',sans-serif] text-[16px] mb-3 disabled:opacity-70 disabled:pointer-events-none"
                 >
-                  <CheckCircle2 className="w-5 h-5 mr-2" />
-                  Place Order
+                  {isPlacingOrder ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 icon-spin" />
+                      Placing order...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                      Place Order
+                    </>
+                  )}
                 </Button>
 
                 {/* Add Remarks Button */}
