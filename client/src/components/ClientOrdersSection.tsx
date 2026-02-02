@@ -1409,10 +1409,11 @@ export default function ClientOrdersSection() {
     [currentOrder]
   );
 
-  // Effective expected delivery: use extended date when extension was approved
+  // Effective expected delivery: use extended/proposed date when extension approved or pending
   const effectiveExpectedDelivery = useMemo(() => {
     if (!currentOrder) return undefined;
-    if (currentOrder.extensionRequest?.status === 'approved' && currentOrder.extensionRequest?.newDeliveryDate) {
+    if (currentOrder.extensionRequest?.newDeliveryDate &&
+        (currentOrder.extensionRequest?.status === 'approved' || currentOrder.extensionRequest?.status === 'pending')) {
       return typeof currentOrder.extensionRequest.newDeliveryDate === 'string'
         ? currentOrder.extensionRequest.newDeliveryDate
         : new Date(currentOrder.extensionRequest.newDeliveryDate).toISOString();
@@ -1480,14 +1481,6 @@ export default function ClientOrdersSection() {
   }, [currentOrder]);
   const offerResponseCountdown = useCountdown(offerResponseDeadline);
 
-  // Extension request: countdown to new delivery date (when extension is pending)
-  const extensionDeadline = useMemo(() => {
-    if (!currentOrder?.extensionRequest?.newDeliveryDate) return null;
-    if (currentOrder.extensionRequest?.status !== 'pending') return null;
-    return new Date(currentOrder.extensionRequest.newDeliveryDate);
-  }, [currentOrder]);
-  const extensionCountdown = useCountdown(extensionDeadline);
-
   // Elapsed time since booking time arrives (work in progress timer)
   // Priority: effective expected delivery > booking date/time > scheduled date
   const workStartTime = useMemo(() => {
@@ -1544,12 +1537,14 @@ export default function ClientOrdersSection() {
               <div className="bg-white rounded-2xl p-6 shadow-lg">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-[#FE8A0F]/10 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-[#FE8A0F]" />
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${currentOrder.extensionRequest?.status === 'pending' ? 'bg-indigo-100' : 'bg-[#FE8A0F]/10'}`}>
+                    <Clock className={`w-5 h-5 ${currentOrder.extensionRequest?.status === 'pending' ? 'text-indigo-600' : 'text-[#FE8A0F]'}`} />
                   </div>
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
-                      Expected Delivery Time
+                      {currentOrder.extensionRequest?.status === 'pending'
+                        ? 'Proposed new delivery time (extension requested)'
+                        : 'Expected Delivery Time'}
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
                       {effectiveExpectedDelivery
@@ -1627,6 +1622,33 @@ export default function ClientOrdersSection() {
                     {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
                   </span>
                 </div>
+
+                {/* Accept/Decline buttons when extension is pending */}
+                {currentOrder.extensionRequest?.status === 'pending' && (
+                  <div className="mt-4 pt-4 border-t border-gray-200 flex gap-3 flex-wrap">
+                    <Button
+                      onClick={() => {
+                        setSelectedOrder(currentOrder.id);
+                        setIsAcceptExtensionDialogOpen(true);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Accept
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSelectedOrder(currentOrder.id);
+                        setIsDeclineExtensionDialogOpen(true);
+                      }}
+                      variant="outline"
+                      className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px]"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Decline
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1963,27 +1985,8 @@ export default function ClientOrdersSection() {
               </div>
             )}
 
-            {/* Status Alert Box - Service In Progress, Under Revision, or Extension Request (show when In Progress or Revision) */}
+            {/* Status Alert Box - Service In Progress, Under Revision (show when In Progress or Revision) */}
             {(currentOrder.status === "In Progress" || currentOrder.status === "Revision") && (() => {
-              // Check if there's a pending extension request
-              if (currentOrder.extensionRequest && currentOrder.extensionRequest.status === 'pending') {
-                return (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 shadow-md">
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] mb-2 break-words">
-                          A delivery extension has been requested for your order!
-                        </h4>
-                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] break-words">
-                          {currentOrder.professional} has requested an extension for the order delivery time and is awaiting your response. Please respond, or feel free to discuss any details with the seller.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
               // Check if there's an active revision request (only when status is Revision)
               if (currentOrder.status === "Revision") {
                 const revisionRequests = (currentOrder as any).revisionRequest
@@ -2675,113 +2678,6 @@ export default function ClientOrdersSection() {
                             </div>
                           )}
 
-                          {/* Extension Request Action Card - for pending status */}
-                          {event.title === "Extension Requested" && 
-                           event.id === "extension-requested" &&
-                           currentOrder.extensionRequest?.status === "pending" && (
-                            <div className="mt-3">
-                              <div className="bg-indigo-50 border-l-4 border-indigo-500 rounded-lg p-4 shadow-sm">
-                                <div className="flex items-start gap-3">
-                                  <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-1" />
-                                  <div className="flex-1">
-                                    <p className="font-['Poppins',sans-serif] text-[12px] text-indigo-700 font-medium mb-2">
-                                      Delivery time extension requested
-                                    </p>
-                                    <div className="bg-white border border-indigo-200 rounded-lg p-3 mb-4">
-                                      <p className="font-['Poppins',sans-serif] text-[12px] text-gray-700 mb-1">
-                                        Expected delivery:
-                                      </p>
-                                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                                        {currentOrder.extensionRequest?.newDeliveryDate ? (() => {
-                                          const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                                          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                                          const day = d.getDate();
-                                          const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                                          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                                          const dayName = dayNames[d.getDay()];
-                                          const month = monthNames[d.getMonth()];
-                                          const year = d.getFullYear();
-                                          const timeStr = d.toLocaleTimeString("en-GB", {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          });
-                                          return `${dayName} ${day}${daySuffix} ${month}, ${year} ${timeStr}`;
-                                        })() : 'N/A'}
-                                      </p>
-                                    </div>
-                                    {extensionCountdown && (
-                                      <div className="bg-white border border-indigo-200 rounded-lg p-3 mb-4">
-                                        <p className="font-['Poppins',sans-serif] text-[12px] text-indigo-700 uppercase tracking-wider mb-2">
-                                          Time until new delivery deadline
-                                        </p>
-                                        {extensionCountdown.expired ? (
-                                          <p className="font-['Poppins',sans-serif] text-[13px] text-red-600 font-medium">
-                                            New delivery deadline has passed
-                                          </p>
-                                        ) : (
-                                          <div className="grid grid-cols-4 gap-2">
-                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
-                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
-                                                {String(extensionCountdown.days).padStart(2, '0')}
-                                              </div>
-                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Days</div>
-                                            </div>
-                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
-                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
-                                                {String(extensionCountdown.hours).padStart(2, '0')}
-                                              </div>
-                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Hours</div>
-                                            </div>
-                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
-                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
-                                                {String(extensionCountdown.minutes).padStart(2, '0')}
-                                              </div>
-                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Min</div>
-                                            </div>
-                                            <div className="bg-gray-100 rounded-xl p-3 text-center">
-                                              <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
-                                                {String(extensionCountdown.seconds).padStart(2, '0')}
-                                              </div>
-                                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Sec</div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    <div className="flex gap-3 flex-wrap">
-                                      <Button
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setSelectedOrder(currentOrder.id);
-                                          setIsAcceptExtensionDialogOpen(true);
-                                        }}
-                                        className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px] shadow-sm"
-                                      >
-                                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                                        Accept
-                                      </Button>
-                                      <Button
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setSelectedOrder(currentOrder.id);
-                                          setIsDeclineExtensionDialogOpen(true);
-                                        }}
-                                        variant="outline"
-                                        className="font-['Poppins',sans-serif] border-red-500 text-red-600 hover:bg-red-50 text-[13px] shadow-sm"
-                                      >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Decline
-                                      </Button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          
                           {/* Attachments Section (skip for Cancellation Requested - already shown above in order: reason, attachment, warning) */}
                           {event.files && event.files.length > 0 && event.id !== "cancellation-requested" && (() => {
                             // For "Work Delivered" events, filter files by deliveryNumber
@@ -2980,150 +2876,6 @@ export default function ClientOrdersSection() {
                           {currentOrder.cancellationRequest.reason}
                         </p>
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Extension Request Timeline */}
-              {currentOrder.extensionRequest && currentOrder.extensionRequest.status && (
-                <div className="flex gap-4 mb-0">
-                  <div className="flex flex-col items-center pt-1">
-                    <div className="w-10 h-10 rounded-lg bg-white border-2 border-blue-500 flex items-center justify-center flex-shrink-0">
-                      <Clock className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="w-px flex-1 bg-gray-200 mt-2" style={{ minHeight: "20px" }} />
-                  </div>
-                  <div className="flex-1 pb-6">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
-                      Extension Request {currentOrder.extensionRequest.status === 'pending' ? 'Pending' : currentOrder.extensionRequest.status === 'approved' ? 'Approved' : 'Rejected'}
-                    </p>
-                    {currentOrder.extensionRequest.requestedAt && (
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
-                        {formatDateTime(currentOrder.extensionRequest.requestedAt)}
-                      </p>
-                    )}
-                    
-                    {/* Show action message card for pending status */}
-                    {currentOrder.extensionRequest.status === 'pending' && (
-                      <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3 mb-3">
-                          <AlertTriangle className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            <h6 className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f] mb-2">
-                              Delivery time extension requested
-                            </h6>
-                            <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Expected delivery:</p>
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                  {currentOrder.extensionRequest.newDeliveryDate 
-                                    ? (() => {
-                                        const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                                        const dateStr = d.toLocaleDateString("en-GB", {
-                                          weekday: "short",
-                                          day: "numeric",
-                                          month: "short",
-                                          year: "numeric",
-                                        });
-                                        const timeStr = d.toLocaleTimeString("en-GB", {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        });
-                                        return `${dateStr}, ${timeStr}`;
-                                      })()
-                                    : 'N/A'}
-                              </p>
-                            </div>
-                            {currentOrder.scheduledDate && currentOrder.extensionRequest.newDeliveryDate && (
-                              <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
-                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Extension duration:</p>
-                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                    +{(() => {
-                                      const original = new Date(currentOrder.scheduledDate);
-                                      const requested = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                                      const diffMs = requested.getTime() - original.getTime();
-                                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                                      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                                      
-                                      if (diffDays > 0 && diffHours > 0) {
-                                        return `${diffDays} day${diffDays > 1 ? 's' : ''} ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
-                                      } else if (diffDays > 0) {
-                                        return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
-                                      } else if (diffHours > 0) {
-                                        return `${diffHours} hour${diffHours > 1 ? 's' : ''}`;
-                                      } else {
-                                        const diffMinutes = Math.floor(diffMs / (1000 * 60));
-                                        return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
-                                      }
-                                    })()}
-                                </p>
-                              </div>
-                            )}
-                            {currentOrder.extensionRequest.reason && (
-                              <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
-                                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Reason:</p>
-                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                    {currentOrder.extensionRequest.reason}
-                                </p>
-                              </div>
-                            )}
-                            <div className="flex gap-3 flex-wrap">
-                              <Button
-                                onClick={() => setIsAcceptExtensionDialogOpen(true)}
-                                className="bg-green-600 hover:bg-green-700 text-white font-['Poppins',sans-serif] text-[13px]"
-                              >
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Accept
-                              </Button>
-                              <Button
-                                onClick={() => setIsDeclineExtensionDialogOpen(true)}
-                                variant="outline"
-                                className="border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Decline
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Show info for approved/rejected status */}
-                    {currentOrder.extensionRequest.status !== 'pending' && (
-                      <>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">
-                          {currentOrder.extensionRequest.status === 'approved' 
-                            ? 'New delivery date: ' 
-                            : 'Requested delivery date: '}
-                          <span className="text-[#2c353f]">
-                            {currentOrder.extensionRequest.newDeliveryDate 
-                              ? (() => {
-                                  const d = new Date(currentOrder.extensionRequest.newDeliveryDate);
-                                  const dateStr = d.toLocaleDateString("en-GB", {
-                                    weekday: "short",
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  });
-                                  const timeStr = d.toLocaleTimeString("en-GB", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  });
-                                  return `${dateStr} at ${timeStr}`;
-                                })()
-                              : 'N/A'}
-                          </span>
-                        </p>
-                        {currentOrder.extensionRequest.reason && (
-                          <div className="bg-gray-50 rounded-lg p-3 mt-2">
-                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">Reason:</p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                              {currentOrder.extensionRequest.reason}
-                            </p>
-                          </div>
-                        )}
-                      </>
                     )}
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { resolveApiUrl } from "../../config/api";
 interface OrderDetailsTabProps {
   order: Order;
   formatMoneyFn?: (value?: number | string, fallback?: string) => string;
+  hideServiceFee?: boolean; // Hide service fee for professional view
 }
 
 function getPriceUnitLabel(packageType?: string, chargePer?: string): string {
@@ -20,6 +21,7 @@ function getPriceUnitLabel(packageType?: string, chargePer?: string): string {
 export default function OrderDetailsTab({
   order,
   formatMoneyFn,
+  hideServiceFee = false,
 }: OrderDetailsTabProps) {
   const [serviceDetails, setServiceDetails] = useState<{
     description?: string;
@@ -270,14 +272,16 @@ export default function OrderDetailsTab({
                 </td>
               </tr>
             )}
-            <tr className="border-t border-gray-200">
-              <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
-                Service Fee
-              </td>
-              <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                £{formatVal(serviceFee ?? 0)}
-              </td>
-            </tr>
+            {!hideServiceFee && (
+              <tr className="border-t border-gray-200">
+                <td className="px-4 py-3 text-[14px] text-[#6b6b6b]">
+                  Service Fee
+                </td>
+                <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
+                  £{formatVal(serviceFee ?? 0)}
+                </td>
+              </tr>
+            )}
             <tr className="bg-gray-50 border-t-2 border-gray-300">
               <td className="px-4 py-3 text-[16px] font-semibold text-[#2c353f]">
                 Total

@@ -1308,7 +1308,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
           subtotal,
           discount,
           promoCode: promoCodeData,
-          serviceFee: serviceFeeAmount,
+          serviceFee: actualServiceFee,
           status: 'Pending Payment',
           deliveryStatus: 'pending',
           paymentStatus: 'pending',
@@ -1487,7 +1487,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       subtotal,
       discount,
       promoCode: promoCodeData,
-      serviceFee: serviceFeeAmount,
+      serviceFee: actualServiceFee,
       status: 'In Progress',
       deliveryStatus: isPaidOrder ? 'active' : 'pending',
       walletTransactionId,
@@ -1859,7 +1859,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
             total: orderTotal,
             subtotal,
             discount,
-            serviceFee: 0,
+            serviceFee: createdPendingOrders.length === 0 ? actualServiceFee : 0, // Service fee applied to first order only
             status: 'Pending Payment',
             deliveryStatus: 'pending',
             paymentStatus: 'pending',
@@ -2098,7 +2098,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
         total: orderTotal,
         subtotal,
         discount,
-        serviceFee: 0, // Service fee is applied once to the total, not per order
+        serviceFee: createdOrders.length === 0 ? actualServiceFee : 0, // Service fee applied to first order only
         status: 'In Progress',
         deliveryStatus: 'active', // All orders are paid (wallet + card/paypal)
         additionalInformation: additionalInfo,

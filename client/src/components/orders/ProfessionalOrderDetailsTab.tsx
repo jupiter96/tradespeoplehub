@@ -8,5 +8,5 @@ interface ProfessionalOrderDetailsTabProps {
 export default function ProfessionalOrderDetailsTab({
   order,
 }: ProfessionalOrderDetailsTabProps) {
-  return <OrderDetailsTab order={order} />;
+  return <OrderDetailsTab order={order} hideServiceFee />;
 }
