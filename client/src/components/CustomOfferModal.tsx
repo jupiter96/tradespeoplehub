@@ -61,11 +61,12 @@ interface ProfessionalService {
 
 interface Milestone {
   id: string;
-  name: string;
-  description: string;
-  amount: number;
-  dueInDays: number;
-  hours?: number;
+  name?: string;
+  description?: string;
+  deliveryInDays: number;
+  price: number;
+  chargePer: string;
+  noOf: number;
 }
 
 export default function CustomOfferModal({
@@ -84,7 +85,7 @@ export default function CustomOfferModal({
   const [offerDescription, setOfferDescription] = useState("");
   const [paymentType, setPaymentType] = useState<"single" | "milestone">("single");
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: "1", name: "", description: "", amount: 0, dueInDays: 1, hours: 0 }
+    { id: "1", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1 }
   ]);
   const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -154,7 +155,7 @@ export default function CustomOfferModal({
     setDeliveryDays("");
     setOfferDescription("");
     setPaymentType("single");
-    setMilestones([{ id: "1", name: "", description: "", amount: 0, dueInDays: 1, hours: 0 }]);
+    setMilestones([{ id: "1", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1 }]);
     setChargePer("service");
     setQuantity("1");
     setSelectedAttributes([]);
@@ -188,36 +189,30 @@ export default function CustomOfferModal({
   };
 
   const handleContinueToFinalize = () => {
-    if (!customPrice || parseFloat(customPrice) <= 0) {
-      toast.error("Please enter a valid price");
-      return;
-    }
-    if (!deliveryDays || parseInt(deliveryDays, 10) <= 0) {
-      toast.error("Please enter valid delivery expected time (days)");
-      return;
-    }
-    const qty = parseInt(quantity, 10);
-    if (!quantity || isNaN(qty) || qty < 1) {
-      toast.error(`Please enter a valid ${getQuantityLabel().toLowerCase()}`);
-      return;
+    if (paymentType !== "milestone") {
+      if (!customPrice || parseFloat(customPrice) <= 0) {
+        toast.error("Please enter a valid price");
+        return;
+      }
+      if (!deliveryDays || parseInt(deliveryDays, 10) <= 0) {
+        toast.error("Please enter valid delivery expected time (days)");
+        return;
+      }
+      const qty = parseInt(quantity, 10);
+      if (!quantity || isNaN(qty) || qty < 1) {
+        toast.error(`Please enter a valid ${getQuantityLabel().toLowerCase()}`);
+        return;
+      }
     }
     
     // Validate milestones if milestone payment is selected
     if (paymentType === "milestone") {
       const hasEmptyFields = milestones.some(
-        m => !m.name || !m.description || m.amount <= 0 || m.dueInDays <= 0
+        m => m.deliveryInDays <= 0 || m.price <= 0 || m.noOf <= 0
       );
       
       if (hasEmptyFields) {
-        toast.error("Please fill in all milestone fields");
-        return;
-      }
-
-      const totalMilestoneAmount = milestones.reduce((sum, m) => sum + m.amount, 0);
-      const offerPrice = parseFloat(customPrice);
-      
-      if (Math.abs(totalMilestoneAmount - offerPrice) > 0.01) {
-        toast.error(`Total milestone amount (£${totalMilestoneAmount.toFixed(2)}) must equal offer price (£${offerPrice.toFixed(2)})`);
+        toast.error("Please fill in all milestone fields (Delivery In, Price, No of)");
         return;
       }
     }
@@ -228,7 +223,8 @@ export default function CustomOfferModal({
 
   const addMilestone = () => {
     const newId = (milestones.length + 1).toString();
-    setMilestones([...milestones, { id: newId, name: "", description: "", amount: 0, dueInDays: 1, hours: 0 }]);
+    const lastChargePer = milestones[milestones.length - 1]?.chargePer || "per hour";
+    setMilestones([...milestones, { id: newId, deliveryInDays: 1, price: 0, chargePer: lastChargePer, noOf: 1 }]);
   };
 
   const removeMilestone = (id: string) => {
@@ -256,6 +252,9 @@ export default function CustomOfferModal({
         return;
       }
 
+      const totalPrice = paymentType === "milestone" ? milestones.reduce((s, m) => s + m.price * (m.noOf || 1), 0) : parseFloat(customPrice);
+      const totalDeliveryDays = paymentType === "milestone" ? milestones.reduce((s, m) => s + m.deliveryInDays, 0) : parseInt(deliveryDays, 10);
+
       // Call API to create custom offer
       const response = await fetch(resolveApiUrl(`/api/custom-offers`), {
         method: 'POST',
@@ -267,13 +266,13 @@ export default function CustomOfferModal({
           conversationId: contact.conversationId,
           serviceId: selectedService.id,
           serviceName: selectedService.name,
-          price: parseFloat(customPrice),
-          deliveryDays: parseInt(deliveryDays, 10),
+          price: totalPrice,
+          deliveryDays: totalDeliveryDays,
           quantity: parseInt(quantity, 10) || 1,
           chargePer: chargePer,
           description: offerDescription,
           paymentType: paymentType,
-          milestones: paymentType === "milestone" ? milestones : undefined,
+          milestones: paymentType === "milestone" ? milestones.map(({ id, ...m }) => m) : undefined,
           attributes: selectedAttributes,
           ...(offerExpiresEnabled && { offerExpiresInDays: parseInt(offerExpiresInDays, 10) || 3 }),
         }),
@@ -295,7 +294,13 @@ export default function CustomOfferModal({
     }
   };
 
-  const totalMilestones = milestones.reduce((sum, m) => sum + m.amount, 0);
+  const totalMilestonesPrice = milestones.reduce((sum, m) => sum + m.price * (m.noOf || 1), 0);
+  const totalMilestonesDelivery = milestones.reduce((sum, m) => sum + m.deliveryInDays, 0);
+
+  const getMilestoneNoOfLabel = (chargePerVal: string) => {
+    const unit = chargePerVal === "service" ? "service" : chargePerVal === "per hour" ? "hours" : chargePerVal === "per day" ? "days" : chargePerVal === "per item" ? "items" : chargePerVal.replace(/^per\s+/i, "").replace(/\s+/g, " ");
+    return `No of ${unit}`;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -496,67 +501,71 @@ export default function CustomOfferModal({
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Milestone Name
-                                </Label>
-                                <Input
-                                  type="text"
-                                  placeholder="e.g., Initial Setup"
-                                  value={milestone.name}
-                                  onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
-                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
-                                />
-                              </div>
-                              <div>
-                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Amount (£)
+                                  Delivery In (days)
                                 </Label>
                                 <Input
                                   type="number"
-                                  placeholder="0"
-                                  value={milestone.amount || ""}
-                                  onChange={(e) => updateMilestone(milestone.id, "amount", parseFloat(e.target.value) || 0)}
-                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Description
-                              </Label>
-                              <Textarea
-                                placeholder="What will be delivered in this milestone..."
-                                value={milestone.description}
-                                onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Due in Days
-                                </Label>
-                                <Input
-                                  type="number"
-                                  placeholder="Number of days"
-                                  value={milestone.dueInDays || ""}
-                                  onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
+                                  placeholder="1"
+                                  value={milestone.deliveryInDays || ""}
+                                  onChange={(e) => updateMilestone(milestone.id, "deliveryInDays", parseInt(e.target.value) || 1)}
                                   className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                   min="1"
                                 />
                               </div>
                               <div>
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Hours
+                                  Price (£) per unit
                                 </Label>
                                 <Input
                                   type="number"
                                   placeholder="0"
-                                  value={milestone.hours ?? ""}
-                                  onChange={(e) => updateMilestone(milestone.id, "hours", parseInt(e.target.value) || 0)}
+                                  value={milestone.price || ""}
+                                  onChange={(e) => updateMilestone(milestone.id, "price", parseFloat(e.target.value) || 0)}
                                   className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                   min="0"
+                                  step="0.01"
+                                />
+                                {selectedService && (
+                                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
+                                    Base: £{selectedService.basePrice}
+                                  </p>
+                                )}
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F] font-medium mt-1">
+                                  Total: £{(milestone.price * (milestone.noOf || 1)).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  Charge Per
+                                </Label>
+                                <select
+                                  value={milestone.chargePer}
+                                  onChange={(e) => updateMilestone(milestone.id, "chargePer", e.target.value)}
+                                  className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-input-background px-3 py-2 text-sm font-['Poppins',sans-serif] border-gray-200 focus:border-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/20 cursor-pointer"
+                                >
+                                  <option value="service">Service</option>
+                                  <option value="per hour">Per hour</option>
+                                  <option value="per day">Per day</option>
+                                  <option value="per item">Per item</option>
+                                  {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
+                                    <option value={selectedService.priceUnit}>{selectedService.priceUnit}</option>
+                                  )}
+                                </select>
+                              </div>
+                              <div>
+                                <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                  {getMilestoneNoOfLabel(milestone.chargePer)}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  placeholder="1"
+                                  value={milestone.noOf ?? ""}
+                                  onChange={(e) => updateMilestone(milestone.id, "noOf", parseInt(e.target.value) || 0)}
+                                  className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                  min="1"
                                 />
                               </div>
                             </div>
@@ -564,26 +573,22 @@ export default function CustomOfferModal({
                         ))}
                       </div>
 
-                      {/* Total Validation */}
+                      {/* Total Validation - sum of (price × noOf) per milestone */}
                       <div className="p-4 bg-[#EFF6FF] border border-[#3D78CB]/20 rounded-lg">
                         <div className="flex items-center justify-between">
                           <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            Total Milestones:
+                            Total Price (sum of price × noOf per milestone):
                           </span>
-                          <span className={`font-['Poppins',sans-serif] text-[16px] ${
-                            Math.abs(totalMilestones - parseFloat(customPrice || "0")) < 0.01
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}>
-                            £{totalMilestones.toFixed(2)}
+                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
+                            £{totalMilestonesPrice.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-1">
                           <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                            Offer Price:
+                            Total Delivery (sum of days):
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
-                            £{parseFloat(customPrice || "0").toFixed(2)}
+                          <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
+                            {totalMilestonesDelivery} days
                           </span>
                         </div>
                       </div>
@@ -695,12 +700,14 @@ export default function CustomOfferModal({
                   </div>
                 )}
 
-                {/* Define terms section */}
+                {/* Define terms section - single payment only */}
                 <div className="border border-gray-200 rounded-xl p-4 space-y-4">
                   <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold">
                     Define the terms of your offer and what it includes
                   </h4>
 
+                  {paymentType === "single" && (
+                    <>
                   {/* Delivery expected (days) - same as order delivery expected time */}
                   <div>
                     <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
@@ -773,6 +780,8 @@ export default function CustomOfferModal({
                       step="1"
                     />
                   </div>
+                    </>
+                  )}
 
                   {/* Attributes (from service features) */}
                   {selectedService && selectedService.features && selectedService.features.length > 0 && (
@@ -870,67 +879,71 @@ export default function CustomOfferModal({
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Milestone Name
-                              </Label>
-                              <Input
-                                type="text"
-                                placeholder="e.g., Initial Setup"
-                                value={milestone.name}
-                                onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
-                              />
-                            </div>
-                            <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Amount (£)
+                                Delivery In (days)
                               </Label>
                               <Input
                                 type="number"
-                                placeholder="0"
-                                value={milestone.amount || ""}
-                                onChange={(e) => updateMilestone(milestone.id, "amount", parseFloat(e.target.value) || 0)}
-                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Description
-                            </Label>
-                            <Textarea
-                              placeholder="What will be delivered in this milestone..."
-                              value={milestone.description}
-                              onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
-                              className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[60px]"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Due in Days
-                              </Label>
-                              <Input
-                                type="number"
-                                placeholder="Number of days"
-                                value={milestone.dueInDays || ""}
-                                onChange={(e) => updateMilestone(milestone.id, "dueInDays", parseInt(e.target.value) || 1)}
+                                placeholder="1"
+                                value={milestone.deliveryInDays || ""}
+                                onChange={(e) => updateMilestone(milestone.id, "deliveryInDays", parseInt(e.target.value) || 1)}
                                 className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 min="1"
                               />
                             </div>
                             <div>
                               <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Hours
+                                Price (£) per unit
                               </Label>
                               <Input
                                 type="number"
                                 placeholder="0"
-                                value={milestone.hours ?? ""}
-                                onChange={(e) => updateMilestone(milestone.id, "hours", parseInt(e.target.value) || 0)}
+                                value={milestone.price || ""}
+                                onChange={(e) => updateMilestone(milestone.id, "price", parseFloat(e.target.value) || 0)}
                                 className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
                                 min="0"
+                                step="0.01"
+                              />
+                              {selectedService && (
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
+                                  Base: £{selectedService.basePrice}
+                                </p>
+                              )}
+                              <p className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F] font-medium mt-1">
+                                Total: £{(milestone.price * (milestone.noOf || 1)).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Charge Per
+                              </Label>
+                              <select
+                                value={milestone.chargePer}
+                                onChange={(e) => updateMilestone(milestone.id, "chargePer", e.target.value)}
+                                className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-input-background px-3 py-2 text-sm font-['Poppins',sans-serif] border-gray-200 focus:border-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/20 cursor-pointer"
+                              >
+                                <option value="service">Service</option>
+                                <option value="per hour">Per hour</option>
+                                <option value="per day">Per day</option>
+                                <option value="per item">Per item</option>
+                                {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
+                                  <option value={selectedService.priceUnit}>{selectedService.priceUnit}</option>
+                                )}
+                              </select>
+                            </div>
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                {getMilestoneNoOfLabel(milestone.chargePer)}
+                              </Label>
+                              <Input
+                                type="number"
+                                placeholder="1"
+                                value={milestone.noOf ?? ""}
+                                onChange={(e) => updateMilestone(milestone.id, "noOf", parseInt(e.target.value) || 0)}
+                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                                min="1"
                               />
                             </div>
                           </div>
@@ -938,26 +951,22 @@ export default function CustomOfferModal({
                       ))}
                     </div>
 
-                    {/* Total Validation */}
+                    {/* Total Validation - sum of (price × noOf) per milestone */}
                     <div className="p-4 bg-[#EFF6FF] border border-[#3D78CB]/20 rounded-lg">
                       <div className="flex items-center justify-between">
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          Total Milestones:
+                          Total Price (sum of price × noOf per milestone):
                         </span>
-                        <span className={`font-['Poppins',sans-serif] text-[16px] ${
-                          Math.abs(totalMilestones - parseFloat(customPrice || "0")) < 0.01
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}>
-                          £{totalMilestones.toFixed(2)}
+                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
+                          £{totalMilestonesPrice.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          Offer Price:
+                          Total Delivery (sum of days):
                         </span>
-                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
-                          £{parseFloat(customPrice || "0").toFixed(2)}
+                        <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
+                          {totalMilestonesDelivery} days
                         </span>
                       </div>
                     </div>

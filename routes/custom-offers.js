@@ -86,12 +86,21 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       return res.status(400).json({ error: 'Client not found in conversation' });
     }
 
-    // Validate milestones if milestone payment
-    if (paymentType === 'milestone' && milestones) {
-      const totalMilestoneAmount = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-      if (Math.abs(totalMilestoneAmount - price) > 0.01) {
-        return res.status(400).json({ 
-          error: `Total milestone amount (${totalMilestoneAmount}) must equal offer price (${price})` 
+    // For milestone payment: compute price and deliveryDays from milestones
+    // Each milestone total = price * noOf; total = sum of all milestone totals
+    // Total delivery = sum of all deliveryInDays
+    let offerPrice = price;
+    let offerDeliveryDays = deliveryDays;
+    if (paymentType === 'milestone' && milestones && milestones.length > 0) {
+      offerPrice = milestones.reduce((sum, m) => {
+        const unitPrice = m.price ?? m.amount ?? 0;
+        const qty = m.noOf ?? 1;
+        return sum + unitPrice * qty;
+      }, 0);
+      offerDeliveryDays = milestones.reduce((sum, m) => sum + (m.deliveryInDays ?? m.dueInDays ?? 0), 0);
+      if (offerPrice <= 0 || offerDeliveryDays <= 0) {
+        return res.status(400).json({
+          error: 'Milestone totals must be greater than 0'
         });
       }
     }
@@ -109,23 +118,23 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const offerNumber = generateOfferNumber();
 
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
-    const unitPrice = price / qty;
+    const unitPrice = offerPrice / qty;
     const priceUnitLabel = chargePer || 'service';
 
     // Create message first (CustomOffer schema requires message ref)
     const message = new Message({
       conversation: conversationId,
       sender: req.user.id,
-      text: `Custom offer: ${serviceName} - £${price.toFixed(2)}`,
+      text: `Custom offer: ${serviceName} - £${offerPrice.toFixed(2)}`,
       type: 'custom_offer',
       orderDetails: {
         serviceName,
         service: serviceName,
-        amount: `£${price.toFixed(2)}`,
-        price,
+        amount: `£${offerPrice.toFixed(2)}`,
+        price: offerPrice,
         quantity: qty,
         chargePer: priceUnitLabel,
-        deliveryDays,
+        deliveryDays: offerDeliveryDays,
         description: description || '',
         paymentType: paymentType || 'single',
         milestones: paymentType === 'milestone' ? milestones : undefined,
@@ -149,8 +158,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       message: message._id,
       serviceName,
       serviceId: serviceIdForOffer,
-      price,
-      deliveryDays,
+      price: offerPrice,
+      deliveryDays: offerDeliveryDays,
       quantity: qty,
       chargePer: priceUnitLabel,
       description: description || '',
@@ -196,8 +205,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       address: undefined,
       skipAddress: true,
       paymentMethod: 'account_balance',
-      total: price,
-      subtotal: price,
+      total: offerPrice,
+      subtotal: offerPrice,
       discount: 0,
       serviceFee: 0,
       paymentStatus: 'pending',
@@ -208,7 +217,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         customOfferId: customOffer._id,
         sourceServiceId: serviceIdForOffer ? String(serviceIdForOffer) : undefined,
         responseDeadline: responseDeadline.toISOString(),
-        deliveryDays: deliveryDays,
+        deliveryDays: offerDeliveryDays,
         chargePer: priceUnitLabel,
         paymentType: paymentType || 'single',
         milestones: paymentType === 'milestone' && Array.isArray(milestones) ? milestones : undefined,

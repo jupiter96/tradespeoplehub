@@ -71,6 +71,12 @@ const customOfferSchema = new mongoose.Schema(
     milestones: [{
       name: String,
       description: String,
+      // New per-milestone fields
+      deliveryInDays: Number,
+      price: Number,
+      chargePer: String,
+      noOf: Number,
+      // Legacy (kept for backward compatibility)
       amount: Number,
       dueInDays: Number,
       hours: Number,
