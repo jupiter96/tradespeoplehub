@@ -118,7 +118,13 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const offerNumber = generateOfferNumber();
 
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
-    const unitPrice = offerPrice / qty;
+    let unitPrice = offerPrice / qty;
+    let displayQuantity = qty;
+    if (paymentType === 'milestone' && milestones && milestones.length > 0) {
+      const first = milestones[0];
+      unitPrice = first.price ?? first.amount ?? unitPrice;
+      displayQuantity = first.noOf ?? 1;
+    }
     const priceUnitLabel = chargePer || 'service';
 
     // Create message first (CustomOffer schema requires message ref)
@@ -174,19 +180,29 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const professionalUser = await User.findById(req.user.id).select('tradingName').lean();
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-    // Fetch service thumbnail when serviceId is available
+    // Fetch service thumbnail and details when serviceId is available
     let itemImage = '';
+    let serviceDescription = description || undefined;
+    let attributes = undefined;
+    let idealFor = undefined;
     if (serviceIdForOffer) {
       try {
-        const serviceDoc = await Service.findById(serviceIdForOffer).select('gallery images image').lean();
+        const serviceDoc = await Service.findById(serviceIdForOffer).select('gallery images image description highlights idealFor packages').lean();
         if (serviceDoc) {
           const first = serviceDoc.gallery?.[0] || serviceDoc.images?.[0];
           const thumbUrl = typeof first === 'object' && first?.url ? first.url : (typeof first === 'string' ? first : null);
           itemImage = thumbUrl || serviceDoc.image || '';
+          if (serviceDoc.description) serviceDescription = serviceDoc.description;
+          attributes = (serviceDoc.highlights || [])?.filter(Boolean);
+          if (serviceDoc.idealFor?.length) idealFor = serviceDoc.idealFor;
         }
       } catch (e) {
-        console.error('Failed to fetch service thumbnail for custom offer:', e);
+        console.error('Failed to fetch service for custom offer:', e);
       }
+    }
+    // Use attributes from request if provided (from CustomOfferModal selectedAttributes)
+    if (req.body.attributes && Array.isArray(req.body.attributes) && req.body.attributes.length > 0) {
+      attributes = req.body.attributes.filter(Boolean);
     }
 
     const order = new Order({
@@ -198,7 +214,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         title: serviceName,
         seller: professionalUser?.tradingName || 'Professional',
         price: unitPrice,
-        quantity: qty,
+        quantity: displayQuantity,
         packageType: priceUnitLabel,
         image: itemImage || undefined,
       }],
@@ -221,6 +237,11 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         chargePer: priceUnitLabel,
         paymentType: paymentType || 'single',
         milestones: paymentType === 'milestone' && Array.isArray(milestones) ? milestones : undefined,
+        serviceDescription: serviceDescription || undefined,
+        attributes: attributes || undefined,
+        idealFor: idealFor || undefined,
+        unitPrice: unitPrice,
+        quantity: displayQuantity,
       },
     });
     await order.save();

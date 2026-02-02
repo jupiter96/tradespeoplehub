@@ -1319,6 +1319,15 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
             promoCodeType: promoCodeData?.type || null,
             walletAmount,
             remainderAmount,
+            ...(service && firstItem && {
+              serviceDescription: service.description || undefined,
+              attributes: (() => {
+                const pkg = firstItem.packageType && service.packages?.find(p => p.name === firstItem.packageType || p.name?.toUpperCase() === firstItem.packageType?.toUpperCase());
+                return (pkg?.features || service.highlights || [])?.filter(Boolean) || undefined;
+              })(),
+              idealFor: service.idealFor?.length ? service.idealFor : undefined,
+              chargePer: firstItem.packageType || service.priceUnit || undefined,
+            }),
           },
         });
         
@@ -1489,6 +1498,15 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         promoCodeType: promoCodeData?.type || null,
         deliveryDays: deliveryDays, // Store delivery days for countdown calculation
         scheduledDate: scheduledDate, // Store calculated delivery deadline
+        ...(service && {
+          serviceDescription: service.description || undefined,
+          attributes: (() => {
+            const pkg = firstItem.packageType && service.packages?.find(p => p.name === firstItem.packageType || p.name?.toUpperCase() === firstItem.packageType?.toUpperCase());
+            return (pkg?.features || service.highlights || [])?.filter(Boolean) || undefined;
+          })(),
+          idealFor: service.idealFor?.length ? service.idealFor : undefined,
+          chargePer: firstItem.packageType || service.priceUnit || undefined,
+        }),
       },
     });
     
@@ -2422,6 +2440,14 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           responseDeadline: order.metadata?.responseDeadline,
           paymentType: order.metadata?.paymentType || undefined,
           milestones: order.metadata?.milestones || undefined,
+          serviceDescription: order.metadata?.serviceDescription || undefined,
+          attributes: order.metadata?.attributes || undefined,
+          idealFor: order.metadata?.idealFor || undefined,
+          promoCode: order.metadata?.promoCode || order.promoCode?.code || undefined,
+          promoCodeType: order.metadata?.promoCodeType || order.promoCode?.type || undefined,
+          chargePer: order.metadata?.chargePer || undefined,
+          unitPrice: order.metadata?.unitPrice,
+          quantity: order.metadata?.quantity,
         },
         review: order.review || undefined,
         professionalResponse: order.professionalResponse || undefined,

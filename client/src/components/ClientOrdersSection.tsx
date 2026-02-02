@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 
 // Import separated order components
-import { getStatusLabel, getStatusLabelForTable, AddInfoDialog } from "./orders";
+import { getStatusLabel, getStatusLabelForTable, AddInfoDialog, OrderDetailsTab } from "./orders";
 import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -3425,131 +3425,10 @@ export default function ClientOrdersSection() {
 
           {/* Details Tab */}
           <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
-            <div className="bg-white rounded-xl p-8 shadow-md">
-              {/* Service Title */}
-              <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-4">
-                {currentOrder.service || primaryItem?.title || "Service"}
-              </h2>
-
-              {/* Service Category */}
-              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-6">
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                  {currentOrder.category || "Professional Service"}
-                </p>
-              </div>
-
-              {/* Offer Includes Section */}
-              <div className="mb-6">
-                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-3">
-                  Offer Includes
-                </h3>
-                <ul className="space-y-2 list-disc list-inside">
-                  <li className="font-['Poppins',sans-serif] text-[14px] text-blue-600 hover:underline cursor-pointer">
-                    Professional service delivery
-                  </li>
-                  <li className="font-['Poppins',sans-serif] text-[14px] text-blue-600 hover:underline cursor-pointer">
-                    Quality assured work
-                  </li>
-                  {currentOrder.description && (
-                    <li className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      {currentOrder.description}
-                    </li>
-                  )}
-                </ul>
-              </div>
-
-              {/* Price Breakdown Table */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <tbody>
-                    {primaryItem && (
-                      <>
-                        <tr className="bg-gray-50">
-                          <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            Unit Price
-                          </td>
-                          <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            £{formatMoney(primaryItem.price)}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-gray-200">
-                          <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                            Quantity
-                          </td>
-                          <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            {primaryItem.quantity || 1}
-                          </td>
-                        </tr>
-                      </>
-                    )}
-                    <tr className="border-t border-gray-200">
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Delivered by
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {currentOrder.scheduledDate 
-                          ? formatDate(currentOrder.scheduledDate) 
-                          : appointmentDeadline
-                            ? formatDate(appointmentDeadline.toISOString())
-                            : "TBD"}
-                      </td>
-                    </tr>
-                    {(currentOrder.booking?.date || currentOrder.booking?.starttime) && (
-                      <tr className="border-t border-gray-200">
-                        <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          Delivery Date & Time
-                        </td>
-                        <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          {currentOrder.booking?.date 
-                            ? formatDate(currentOrder.booking.date) 
-                            : appointmentDeadline
-                              ? formatDate(appointmentDeadline.toISOString())
-                              : "TBD"}
-                          {currentOrder.booking?.starttime && ` at ${currentOrder.booking.starttime}${currentOrder.booking?.endtime && currentOrder.booking.endtime !== currentOrder.booking.starttime ? ` - ${currentOrder.booking.endtime}` : ''}`}
-                          {currentOrder.booking?.timeSlot && ` (${currentOrder.booking.timeSlot})`}
-                        </td>
-                      </tr>
-                    )}
-                    {currentOrder.discount > 0 && (
-                      <tr className="bg-gray-50 border-t border-gray-200">
-                        <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          Discount
-                        </td>
-                        <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-green-600">
-                          -£{formatMoney(currentOrder.discount)}
-                        </td>
-                      </tr>
-                    )}
-                    <tr className={`${currentOrder.discount && currentOrder.discount > 0 ? '' : 'bg-gray-50'} border-t border-gray-200`}>
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Sub Total
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £{formatMoney(currentOrder.subtotal ?? currentOrder.amountValue ?? 0)}
-                      </td>
-                    </tr>
-                    {currentOrder.serviceFee > 0 && (
-                      <tr className="border-t border-gray-200">
-                        <td className="px-4 py-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                          Service Fee
-                        </td>
-                        <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          £{formatMoney(currentOrder.serviceFee)}
-                        </td>
-                      </tr>
-                    )}
-                    <tr className="bg-gray-50 border-t-2 border-gray-300">
-                      <td className="px-4 py-3 font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                        Total
-                      </td>
-                      <td className="px-4 py-3 text-right font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                        £{formatMoney(currentOrder.amountValue ?? currentOrder.amount ?? 0)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <OrderDetailsTab
+              order={currentOrder}
+              formatMoneyFn={(v, fb) => formatMoney(v, fb ?? "0.00")}
+            />
           </TabsContent>
 
           {/* Additional Info Tab */}

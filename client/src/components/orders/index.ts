@@ -5,6 +5,7 @@ export { default as ProfessionalOrderList } from './ProfessionalOrderList';
 export { default as ProfessionalOrderDetailHeader } from './ProfessionalOrderDetailHeader';
 export { default as ProfessionalOrderDetailSidebar } from './ProfessionalOrderDetailSidebar';
 export { default as ProfessionalOrderDetailsTab } from './ProfessionalOrderDetailsTab';
+export { default as OrderDetailsTab } from './OrderDetailsTab';
 export { default as ProfessionalOrderAdditionalInfoTab } from './ProfessionalOrderAdditionalInfoTab';
 export { default as ProfessionalOrderDeliveryTab, ProfessionalOrderServiceAddressSection, ProfessionalOrderDeliveryCompletionSection } from './ProfessionalOrderDeliveryTab';
 export { default as ProfessionalOrderTimelineTab } from './ProfessionalOrderTimelineTab';
