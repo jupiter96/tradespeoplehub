@@ -58,6 +58,7 @@ import AdminServiceAttributesPage from "./admin/AdminServiceAttributesPage";
 import AdminServiceIdealForPage from "./admin/AdminServiceIdealForPage";
 import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
+import AdminOrdersPage from "./admin/AdminOrdersPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
 import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
 import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
@@ -252,44 +253,45 @@ export default function AdminDashboardPage() {
     return labels[section] || section.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
   };
 
-  // Route to specific page components
+  // Route to specific page components. key={activeSection} forces remount when section changes so content/tables refresh.
   const renderSection = () => {
     switch (activeSection) {
       case "clients":
-        return <AdminClientsPage />;
+        return <AdminClientsPage key={activeSection} />;
       case "professionals":
-        return <AdminProfessionalsPage />;
+        return <AdminProfessionalsPage key={activeSection} />;
       case "sub-admins":
-        return <AdminSubAdminsPage />;
+        return <AdminSubAdminsPage key={activeSection} />;
       case "delete-account":
-        return <AdminDeleteAccountPage />;
+        return <AdminDeleteAccountPage key={activeSection} />;
       case "referrals-client":
-        return <AdminReferralsClientPage />;
+        return <AdminReferralsClientPage key={activeSection} />;
       case "referrals-professional":
-        return <AdminReferralsProfessionalPage />;
+        return <AdminReferralsProfessionalPage key={activeSection} />;
       case "homepage-content":
-        return <AdminHomepageContentPage />;
+        return <AdminHomepageContentPage key={activeSection} />;
       case "blog-content":
-        return <AdminBlogContentPage />;
+        return <AdminBlogContentPage key={activeSection} />;
       case "cost-guide":
-        return <AdminCostGuidePage />;
+        return <AdminCostGuidePage key={activeSection} />;
       case "sectors":
-        return <AdminSectorsPage />;
+        return <AdminSectorsPage key={activeSection} />;
       case "categories":
-        return <AdminCategoriesPage />;
+        return <AdminCategoriesPage key={activeSection} />;
       case "service-category":
-        return <AdminServiceCategoriesPage />;
+        return <AdminServiceCategoriesPage key={activeSection} />;
       case "service-category-form":
-        return <AdminServiceCategoryFormPage />;
+        return <AdminServiceCategoryFormPage key={activeSection} />;
       case "service-titles":
-        return <AdminServiceTitlesPage />;
+        return <AdminServiceTitlesPage key={activeSection} />;
       case "service-attributes":
-        return <AdminServiceAttributesPage />;
+        return <AdminServiceAttributesPage key={activeSection} />;
       case "service-ideal-for":
-        return <AdminServiceIdealForPage />;
+        return <AdminServiceIdealForPage key={activeSection} />;
       case "all-service":
         return (
           <AdminServicesPage
+            key={activeSection}
             initialTab="all"
             title="All Services"
             description="View and manage all professional services"
@@ -298,6 +300,7 @@ export default function AdminDashboardPage() {
       case "approval-pending-service":
         return (
           <AdminServicesPage
+            key={activeSection}
             initialTab="pending"
             title="Approval Pending Services"
             description="View and manage services pending approval"
@@ -307,6 +310,7 @@ export default function AdminDashboardPage() {
       case "required-modification-service":
         return (
           <AdminServicesPage
+            key={activeSection}
             initialTab="required_modification"
             title="Required Modification Services"
             description="View and manage services that require modification"
@@ -316,6 +320,7 @@ export default function AdminDashboardPage() {
       case "approved-service":
         return (
           <AdminServicesPage
+            key={activeSection}
             initialTab="approved"
             title="Approved Services"
             description="View and manage approved services"
@@ -328,22 +333,73 @@ export default function AdminDashboardPage() {
           navigate("/admin/dashboard", { replace: true });
           return null;
         }
-        return <AdminEmailCampaignPage />;
+        return <AdminEmailCampaignPage key={activeSection} />;
       case "category-manage":
         // Redirect category-manage to sectors
         navigate("/admin/sectors", { replace: true });
-        return <AdminSectorsPage />;
+        return <AdminSectorsPage key={activeSection} />;
       case "payment-settings":
-        return <AdminPaymentSettingsPage />;
+        return <AdminPaymentSettingsPage key={activeSection} />;
       case "transaction-history":
-        return <AdminTransactionHistoryPage />;
+        return <AdminTransactionHistoryPage key={activeSection} />;
       case "bank-transfer-request":
-        return <AdminBankTransferRequestPage />;
+        return <AdminBankTransferRequestPage key={activeSection} />;
       case "coupon-manage":
-        return <PromoCodeSection />;
+        return <PromoCodeSection key={activeSection} />;
+      case "completed-order":
+        return (
+          <AdminOrdersPage
+            key={activeSection}
+            initialStatus="Completed"
+            title="Completed Orders"
+            description="View and manage completed orders"
+            hideStatusFilter={true}
+          />
+        );
+      case "pending-order":
+        return (
+          <AdminOrdersPage
+            key={activeSection}
+            initialStatus="In Progress"
+            title="Pending Orders (In Progress)"
+            description="View and manage orders in progress"
+            hideStatusFilter={true}
+          />
+        );
+      case "cancel-order":
+        return (
+          <AdminOrdersPage
+            key={activeSection}
+            initialStatus="cancel-order"
+            title="Cancelled Orders"
+            description="View and manage cancelled and cancellation-pending orders"
+            hideStatusFilter={true}
+          />
+        );
+      case "disputed-order":
+        return (
+          <AdminOrdersPage
+            key={activeSection}
+            initialStatus="disputed"
+            title="Disputed Orders"
+            description="View and manage disputed orders"
+            hideStatusFilter={true}
+          />
+        );
+      case "active-order":
+        return (
+          <AdminOrdersPage
+            key={activeSection}
+            initialStatus=""
+            title="Active Orders (All)"
+            description="View and manage all orders with search, filter, and sort"
+            hideStatusFilter={false}
+          />
+        );
       default:
         return (
           <AdminGenericPage
+            key={activeSection}
             title={getSectionLabel(activeSection)}
             description={`Manage ${getSectionLabel(activeSection).toLowerCase()} settings and configurations`}
           />

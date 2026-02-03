@@ -70,6 +70,7 @@ import { Separator } from "./ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import serviceVector from "../assets/service_vector.jpg";
 import {
@@ -228,6 +229,7 @@ export default function ClientOrdersSection() {
   const [disputeUnmetRequirements, setDisputeUnmetRequirements] = useState("");
   const [disputeEvidenceFiles, setDisputeEvidenceFiles] = useState<File[]>([]);
   const [disputeOfferAmount, setDisputeOfferAmount] = useState("");
+  const [selectedMilestoneIndices, setSelectedMilestoneIndices] = useState<number[]>([]);
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
@@ -1091,8 +1093,25 @@ export default function ClientOrdersSection() {
     );
   };
 
+  const handleMilestoneIndicesChange = (indices: number[]) => {
+    setSelectedMilestoneIndices(indices);
+    const order = selectedOrder ? orders.find(o => o.id === selectedOrder) : null;
+    const meta = (order as any)?.metadata || {};
+    const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+    if (milestones.length > 0 && indices.length > 0) {
+      const sum = indices.reduce((s, i) => {
+        const m = milestones[i];
+        const p = m?.price ?? m?.amount ?? 0;
+        const q = m?.noOf ?? 1;
+        return s + p * q;
+      }, 0);
+      setDisputeOfferAmount(sum.toFixed(2));
+    } else {
+      setDisputeOfferAmount("");
+    }
+  };
+
   const handleCreateDispute = async () => {
-    // Validate required fields
     if (!disputeRequirements.trim()) {
       toast.error("Please describe what the requirements were for the order");
       return;
@@ -1101,10 +1120,30 @@ export default function ClientOrdersSection() {
       toast.error("Please describe which requirements were not completed");
       return;
     }
-    
+
+    const order = selectedOrder ? orders.find(o => o.id === selectedOrder) : null;
+    const meta = (order as any)?.metadata || {};
+    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+    const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+
+    if (isMilestoneOrder && selectedMilestoneIndices.length === 0) {
+      toast.error("Please select at least one milestone to dispute");
+      return;
+    }
+
     const offerAmount = parseFloat(disputeOfferAmount);
-    const orderAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
-    
+    let maxAmount: number;
+    if (isMilestoneOrder && selectedMilestoneIndices.length > 0) {
+      maxAmount = selectedMilestoneIndices.reduce((s, i) => {
+        const m = milestones[i];
+        const p = m?.price ?? m?.amount ?? 0;
+        const q = m?.noOf ?? 1;
+        return s + p * q;
+      }, 0);
+    } else {
+      maxAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
+    }
+
     if (disputeOfferAmount === '' || isNaN(offerAmount)) {
       toast.error("Please enter a valid offer amount");
       return;
@@ -1113,18 +1152,18 @@ export default function ClientOrdersSection() {
       toast.error("Offer amount cannot be negative");
       return;
     }
-    if (offerAmount > orderAmount) {
-      toast.error(`Offer amount cannot exceed the order amount (£${orderAmount.toFixed(2)})`);
+    if (offerAmount > maxAmount + 0.01) {
+      toast.error(`Offer amount cannot exceed £${maxAmount.toFixed(2)}`);
       return;
     }
     if (disputeEvidenceFiles.length === 0) {
       toast.error("Please upload at least one evidence file");
       return;
     }
-    
+
     if (selectedOrder) {
-      const order = orders.find(o => o.id === selectedOrder);
-      if (order?.status !== 'In Progress' && (!order?.deliveryFiles || order.deliveryFiles.length === 0)) {
+      const ord = orders.find(o => o.id === selectedOrder);
+      if (ord?.status !== 'In Progress' && (!ord?.deliveryFiles || ord.deliveryFiles.length === 0)) {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
@@ -1133,12 +1172,14 @@ export default function ClientOrdersSection() {
       const unmet = disputeUnmetRequirements;
       const offer = disputeOfferAmount;
       const evidenceFiles = disputeEvidenceFiles;
+      const milestoneInds = selectedMilestoneIndices;
       const orderId = selectedOrder;
       closeAllModals();
       setDisputeRequirements("");
       setDisputeUnmetRequirements("");
       setDisputeEvidenceFiles([]);
       setDisputeOfferAmount("");
+      setSelectedMilestoneIndices([]);
       toast.promise(
         (async () => {
           const formData = new FormData();
@@ -1146,6 +1187,9 @@ export default function ClientOrdersSection() {
           formData.append('unmetRequirements', unmet);
           formData.append('offerAmount', offer);
           evidenceFiles.forEach((file) => formData.append('evidenceFiles', file));
+          if (isMilestoneOrder && milestoneInds.length > 0) {
+            formData.append('milestoneIndices', JSON.stringify(milestoneInds));
+          }
 
           const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute`), {
             method: 'POST',
@@ -1159,7 +1203,7 @@ export default function ClientOrdersSection() {
           }
 
           const data = await response.json();
-          refreshOrders(); // fire-and-forget – don't block toast
+          refreshOrders();
           navigate(`/dispute/${data.disputeId}`);
           return data;
         })(),
@@ -4620,10 +4664,76 @@ export default function ClientOrdersSection() {
                 )}
               </div>
 
+              {/* Milestone selection (custom offer + milestone payment only) */}
+              {(() => {
+                const meta = (currentOrder as any)?.metadata || {};
+                const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+                const milestones = (meta.milestones || []) as Array<{ name?: string; price?: number; amount?: number; noOf?: number }>;
+                if (!isMilestoneOrder || milestones.length === 0) return null;
+                const toggleMilestone = (index: number) => {
+                  if (selectedMilestoneIndices.includes(index)) {
+                    handleMilestoneIndicesChange(selectedMilestoneIndices.filter((i) => i !== index));
+                  } else {
+                    handleMilestoneIndicesChange([...selectedMilestoneIndices, index].sort((a, b) => a - b));
+                  }
+                };
+                const toggleAll = (checked: boolean) => {
+                  handleMilestoneIndicesChange(checked ? milestones.map((_, i) => i) : []);
+                };
+                const totalFromSelection = selectedMilestoneIndices.reduce((s, i) => {
+                  const m = milestones[i];
+                  const p = m?.price ?? m?.amount ?? 0;
+                  const q = m?.noOf ?? 1;
+                  return s + p * q;
+                }, 0);
+                return (
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Select milestone(s) to dispute *
+                    </Label>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
+                      Choose one or more milestones. The total dispute amount will be the sum of the selected milestones.
+                    </p>
+                    <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                      <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                        <Checkbox
+                          checked={selectedMilestoneIndices.length === milestones.length}
+                          onCheckedChange={(c) => toggleAll(!!c)}
+                        />
+                        Select all
+                      </label>
+                      {milestones.map((m, idx) => {
+                        const p = m?.price ?? m?.amount ?? 0;
+                        const noOf = m?.noOf ?? 1;
+                        const total = p * noOf;
+                        return (
+                          <label key={idx} className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            <Checkbox
+                              checked={selectedMilestoneIndices.includes(idx)}
+                              onCheckedChange={() => toggleMilestone(idx)}
+                            />
+                            <span>Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {selectedMilestoneIndices.length > 0 && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                        Total dispute amount: £{totalFromSelection.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Offer Amount Field */}
               <div>
                 <Label htmlFor="dispute-offer" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Offer the amount you are prepared to pay *
+                  {(() => {
+                    const meta = (currentOrder as any)?.metadata || {};
+                    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+                    return isMilestoneOrder ? "Total dispute amount (from selected milestones) *" : "Offer the amount you are prepared to pay *";
+                  })()}
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
@@ -4636,13 +4746,22 @@ export default function ClientOrdersSection() {
                     max={currentOrder?.amountValue || undefined}
                     step="0.01"
                     value={disputeOfferAmount}
-                    onChange={(e) => setDisputeOfferAmount(e.target.value)}
+                    onChange={(e) => {
+                      const meta = (currentOrder as any)?.metadata || {};
+                      const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+                      if (!isMilestoneOrder) setDisputeOfferAmount(e.target.value);
+                    }}
+                    readOnly={!!((currentOrder as any)?.metadata?.fromCustomOffer && (currentOrder as any)?.metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any)?.metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0)}
                     placeholder="0.00"
                     className="font-['Poppins',sans-serif] text-[14px] pl-10"
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                  Must be between £0.00 and £{currentOrder?.amountValue?.toFixed(2) || '0.00'} (order amount)
+                  {(() => {
+                    const meta = (currentOrder as any)?.metadata || {};
+                    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+                    return isMilestoneOrder ? "Amount is set from selected milestones above." : `Must be between £0.00 and £${currentOrder?.amountValue?.toFixed(2) || "0.00"} (order amount)`;
+                  })()}
                 </p>
               </div>
 
@@ -4662,6 +4781,7 @@ export default function ClientOrdersSection() {
                     setDisputeUnmetRequirements("");
                     setDisputeEvidenceFiles([]);
                     setDisputeOfferAmount("");
+                    setSelectedMilestoneIndices([]);
                   }}
                   variant="outline"
                   className="font-['Poppins',sans-serif]"
@@ -4670,7 +4790,13 @@ export default function ClientOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleCreateDispute}
-                  disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount || disputeEvidenceFiles.length === 0}
+                  disabled={
+                    !disputeRequirements.trim() ||
+                    !disputeUnmetRequirements.trim() ||
+                    !disputeOfferAmount ||
+                    disputeEvidenceFiles.length === 0 ||
+                    (!!((currentOrder as any)?.metadata?.fromCustomOffer && (currentOrder as any)?.metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any)?.metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0) && selectedMilestoneIndices.length === 0)
+                  }
                   className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />

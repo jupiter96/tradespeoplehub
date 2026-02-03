@@ -1,10 +1,19 @@
+import { useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { Textarea } from "../../ui/textarea";
+import { Checkbox } from "../../ui/checkbox";
 import { AlertTriangle, Paperclip, PoundSterling, X } from "lucide-react";
 import { Order } from "../types";
+
+interface MilestoneItem {
+  name?: string;
+  price?: number;
+  amount?: number;
+  noOf?: number;
+}
 
 interface DisputeDialogProps {
   open: boolean;
@@ -18,6 +27,9 @@ interface DisputeDialogProps {
   disputeOfferAmount: string;
   onDisputeOfferAmountChange: (value: string) => void;
   currentOrder: Order | null;
+  /** For milestone custom-offer orders: selected milestone indices (0-based). */
+  selectedMilestoneIndices?: number[];
+  onSelectedMilestoneIndicesChange?: (indices: number[]) => void;
   onSubmit: () => Promise<void>;
   onCancel: () => void;
 }
@@ -34,9 +46,49 @@ export default function DisputeDialog({
   disputeOfferAmount,
   onDisputeOfferAmountChange,
   currentOrder,
+  selectedMilestoneIndices = [],
+  onSelectedMilestoneIndicesChange,
   onSubmit,
   onCancel,
 }: DisputeDialogProps) {
+  const meta = (currentOrder as any)?.metadata || {};
+  const isMilestoneOrder =
+    meta.fromCustomOffer &&
+    meta.paymentType === "milestone" &&
+    Array.isArray(meta.milestones) &&
+    meta.milestones.length > 0;
+  const milestones = (meta.milestones || []) as MilestoneItem[];
+
+  const maxDisputeAmount = useMemo(() => {
+    if (!isMilestoneOrder || !onSelectedMilestoneIndicesChange) return currentOrder?.amountValue ?? 0;
+    return selectedMilestoneIndices.reduce((sum, i) => {
+      const m = milestones[i];
+      const p = m?.price ?? m?.amount ?? 0;
+      const q = m?.noOf ?? 1;
+      return sum + p * q;
+    }, 0);
+  }, [isMilestoneOrder, milestones, selectedMilestoneIndices, currentOrder?.amountValue]);
+
+  const toggleMilestone = (index: number) => {
+    if (!onSelectedMilestoneIndicesChange) return;
+    if (selectedMilestoneIndices.includes(index)) {
+      onSelectedMilestoneIndicesChange(selectedMilestoneIndices.filter((i) => i !== index));
+    } else {
+      onSelectedMilestoneIndicesChange([...selectedMilestoneIndices, index].sort((a, b) => a - b));
+    }
+  };
+
+  const toggleAllMilestones = (checked: boolean) => {
+    if (!onSelectedMilestoneIndicesChange) return;
+    if (checked) {
+      onSelectedMilestoneIndicesChange(milestones.map((_, i) => i));
+    } else {
+      onSelectedMilestoneIndicesChange([]);
+    }
+  };
+
+  const allSelected = isMilestoneOrder && selectedMilestoneIndices.length === milestones.length;
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       onDisputeEvidenceFilesChange(Array.from(e.target.files));
@@ -46,6 +98,13 @@ export default function DisputeDialog({
   const handleRemoveFile = (index: number) => {
     onDisputeEvidenceFilesChange(disputeEvidenceFiles.filter((_, i) => i !== index));
   };
+
+  const canSubmit =
+    disputeRequirements.trim() &&
+    disputeUnmetRequirements.trim() &&
+    disputeEvidenceFiles.length > 0 &&
+    disputeOfferAmount &&
+    (!isMilestoneOrder || selectedMilestoneIndices.length > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,10 +206,58 @@ export default function DisputeDialog({
             )}
           </div>
 
+          {/* Milestone selection (custom offer + milestone payment only) */}
+          {isMilestoneOrder && onSelectedMilestoneIndicesChange && milestones.length > 0 && (
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Select milestone(s) to dispute *
+              </Label>
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
+                Choose one or more milestones. The total dispute amount will be the sum of the selected milestones.
+              </p>
+              <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(c) => toggleAllMilestones(!!c)}
+                  />
+                  Select all
+                </label>
+                {milestones.map((m, idx) => {
+                  const p = m?.price ?? m?.amount ?? 0;
+                  const noOf = m?.noOf ?? 1;
+                  const total = p * noOf;
+                  const checked = selectedMilestoneIndices.includes(idx);
+                  return (
+                    <label
+                      key={idx}
+                      className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleMilestone(idx)}
+                      />
+                      <span>
+                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {selectedMilestoneIndices.length > 0 && (
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
+                  Total dispute amount: £{maxDisputeAmount.toFixed(2)}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Offer Amount Field */}
           <div>
             <Label htmlFor="dispute-offer" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-              Offer the amount you want to receive *
+              {isMilestoneOrder && onSelectedMilestoneIndicesChange
+                ? "Total dispute amount (from selected milestones) *"
+                : "Offer the amount you want to receive *"}
             </Label>
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
@@ -160,16 +267,19 @@ export default function DisputeDialog({
                 id="dispute-offer"
                 type="number"
                 min="0"
-                max={currentOrder?.amountValue || undefined}
+                max={isMilestoneOrder && onSelectedMilestoneIndicesChange ? maxDisputeAmount : (currentOrder?.amountValue || undefined)}
                 step="0.01"
                 value={disputeOfferAmount}
-                onChange={(e) => onDisputeOfferAmountChange(e.target.value)}
+                onChange={(e) => !(isMilestoneOrder && onSelectedMilestoneIndicesChange) && onDisputeOfferAmountChange(e.target.value)}
                 placeholder="0.00"
+                readOnly={!!(isMilestoneOrder && onSelectedMilestoneIndicesChange)}
                 className="font-['Poppins',sans-serif] text-[14px] pl-10"
               />
             </div>
             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-              Must be between £0.00 and £{currentOrder?.amountValue?.toFixed(2) || '0.00'} (order amount)
+              {isMilestoneOrder && onSelectedMilestoneIndicesChange
+                ? "Amount is set from selected milestones above."
+                : `Must be between £0.00 and £${currentOrder?.amountValue?.toFixed(2) || "0.00"} (order amount)`}
             </p>
           </div>
 
@@ -191,7 +301,7 @@ export default function DisputeDialog({
             </Button>
             <Button
               onClick={onSubmit}
-              disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount || disputeEvidenceFiles.length === 0}
+              disabled={!canSubmit}
               className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <AlertTriangle className="w-4 h-4 mr-2" />

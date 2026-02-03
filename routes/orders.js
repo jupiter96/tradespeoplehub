@@ -4215,7 +4215,7 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
 router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles', 10), async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { requirements, unmetRequirements, offerAmount } = req.body;
+    const { requirements, unmetRequirements, offerAmount, milestoneIndices: rawMilestoneIndices } = req.body;
 
     // Validate required fields
     if (!requirements || !requirements.trim()) {
@@ -4243,10 +4243,43 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Validate offer amount does not exceed order amount
-    const orderTotal = order.total != null ? order.total : (order.totalAmount || 0);
-    if (parsedOfferAmount > orderTotal) {
-      return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${orderTotal.toFixed(2)})` });
+    const isMilestoneOrder = order.metadata?.fromCustomOffer &&
+      order.metadata?.paymentType === 'milestone' &&
+      Array.isArray(order.metadata?.milestones) &&
+      order.metadata.milestones.length > 0;
+    const milestones = (order.metadata?.milestones || []).map(m => ({
+      price: m.price ?? m.amount ?? 0,
+      noOf: m.noOf ?? 1,
+    }));
+
+    let milestoneIndices = null;
+    if (rawMilestoneIndices !== undefined && rawMilestoneIndices !== null && rawMilestoneIndices !== '') {
+      let arr = rawMilestoneIndices;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch { arr = []; }
+      }
+      milestoneIndices = Array.isArray(arr)
+        ? arr.map(i => parseInt(i, 10)).filter(n => !isNaN(n))
+        : [];
+      if (isMilestoneOrder && milestoneIndices.length > 0) {
+        const invalid = milestoneIndices.some(i => i < 0 || i >= milestones.length);
+        if (invalid) {
+          return res.status(400).json({ error: 'Invalid milestone selection' });
+        }
+        const maxAmount = milestoneIndices.reduce((sum, i) => sum + milestones[i].price * milestones[i].noOf, 0);
+        if (Math.abs(parsedOfferAmount - maxAmount) > 0.01) {
+          return res.status(400).json({ error: `Offer amount must equal the total of selected milestones (£${maxAmount.toFixed(2)})` });
+        }
+      } else if (isMilestoneOrder && milestoneIndices.length === 0) {
+        return res.status(400).json({ error: 'Please select at least one milestone to dispute' });
+      }
+    }
+
+    if (!milestoneIndices || milestoneIndices.length === 0) {
+      const orderTotal = order.total != null ? order.total : (order.totalAmount || 0);
+      if (parsedOfferAmount > orderTotal) {
+        return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${orderTotal.toFixed(2)})` });
+      }
     }
 
     // Check if order has been delivered or is in revision
@@ -4348,6 +4381,7 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       decisionNotes: null,
       autoClosed: false,
       finalAmount: null,
+      ...(milestoneIndices && milestoneIndices.length > 0 && { milestoneIndices }),
     });
 
     await dispute.save();

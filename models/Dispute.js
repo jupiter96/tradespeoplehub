@@ -179,6 +179,11 @@ const disputeSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    // For milestone custom-offer orders: indices of disputed milestones (0-based)
+    milestoneIndices: {
+      type: [Number],
+      default: undefined,
+    },
   },
   {
     timestamps: true,

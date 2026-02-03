@@ -147,6 +147,7 @@ function ProfessionalOrdersSection() {
   const [disputeUnmetRequirements, setDisputeUnmetRequirements] = useState("");
   const [disputeEvidenceFiles, setDisputeEvidenceFiles] = useState<File[]>([]);
   const [disputeOfferAmount, setDisputeOfferAmount] = useState("");
+  const [selectedMilestoneIndices, setSelectedMilestoneIndices] = useState<number[]>([]);
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false);
   const [extensionNewDate, setExtensionNewDate] = useState("");
   const [extensionNewTime, setExtensionNewTime] = useState("09:00");
@@ -204,6 +205,11 @@ function ProfessionalOrdersSection() {
     setRevisionAdditionalNotes("");
     setDisputeResponseMessage("");
     setReviewResponse("");
+    setDisputeRequirements("");
+    setDisputeUnmetRequirements("");
+    setDisputeEvidenceFiles([]);
+    setDisputeOfferAmount("");
+    setSelectedMilestoneIndices([]);
   };
 
   // Handle submit response to client review
@@ -805,6 +811,24 @@ function ProfessionalOrdersSection() {
     }
   };
 
+  const handleMilestoneIndicesChange = (indices: number[]) => {
+    setSelectedMilestoneIndices(indices);
+    const order = selectedOrder ? orders.find(o => o.id === selectedOrder) : null;
+    const meta = (order as any)?.metadata || {};
+    const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+    if (milestones.length > 0 && indices.length > 0) {
+      const sum = indices.reduce((s, i) => {
+        const m = milestones[i];
+        const p = m?.price ?? m?.amount ?? 0;
+        const q = m?.noOf ?? 1;
+        return s + p * q;
+      }, 0);
+      setDisputeOfferAmount(sum.toFixed(2));
+    } else {
+      setDisputeOfferAmount("");
+    }
+  };
+
   const handleCreateDispute = async () => {
     // Validate required fields
     if (!disputeRequirements.trim()) {
@@ -815,10 +839,30 @@ function ProfessionalOrdersSection() {
       toast.error("Please describe which requirements were not completed");
       return;
     }
-    
+
+    const order = selectedOrder ? orders.find(o => o.id === selectedOrder) : null;
+    const meta = (order as any)?.metadata || {};
+    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+    const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+
+    if (isMilestoneOrder && selectedMilestoneIndices.length === 0) {
+      toast.error("Please select at least one milestone to dispute");
+      return;
+    }
+
     const offerAmount = parseFloat(disputeOfferAmount);
-    const orderAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
-    
+    let maxAmount: number;
+    if (isMilestoneOrder && selectedMilestoneIndices.length > 0) {
+      maxAmount = selectedMilestoneIndices.reduce((s, i) => {
+        const m = milestones[i];
+        const p = m?.price ?? m?.amount ?? 0;
+        const q = m?.noOf ?? 1;
+        return s + p * q;
+      }, 0);
+    } else {
+      maxAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
+    }
+
     if (disputeOfferAmount === '' || isNaN(offerAmount)) {
       toast.error("Please enter a valid offer amount");
       return;
@@ -827,32 +871,33 @@ function ProfessionalOrdersSection() {
       toast.error("Offer amount cannot be negative");
       return;
     }
-    if (offerAmount > orderAmount) {
-      toast.error(`Offer amount cannot exceed the order amount (£${orderAmount.toFixed(2)})`);
+    if (offerAmount > maxAmount + 0.01) {
+      toast.error(`Offer amount cannot exceed £${maxAmount.toFixed(2)}`);
       return;
     }
     if (disputeEvidenceFiles.length === 0) {
       toast.error("Please upload at least one evidence file");
       return;
     }
-    
+
     if (selectedOrder) {
-      const order = orders.find(o => o.id === selectedOrder);
-      // Check if order is delivered
-      if (order?.status !== 'In Progress' && (!order?.deliveryFiles || order.deliveryFiles.length === 0)) {
+      const ord = orders.find(o => o.id === selectedOrder);
+      if (ord?.status !== 'In Progress' && (!ord?.deliveryFiles || ord.deliveryFiles.length === 0)) {
         toast.error("Disputes can only be opened for delivered orders");
         return;
       }
-      
+
       const reqs = disputeRequirements;
       const unmet = disputeUnmetRequirements;
       const offer = disputeOfferAmount;
       const files = disputeEvidenceFiles;
+      const milestoneInds = selectedMilestoneIndices;
       closeAllModals();
       setDisputeRequirements("");
       setDisputeUnmetRequirements("");
       setDisputeEvidenceFiles([]);
       setDisputeOfferAmount("");
+      setSelectedMilestoneIndices([]);
       toast.promise(
         (async () => {
           const formData = new FormData();
@@ -860,6 +905,9 @@ function ProfessionalOrdersSection() {
           formData.append('unmetRequirements', unmet);
           formData.append('offerAmount', offer);
           files.forEach((file) => formData.append('evidenceFiles', file));
+          if (isMilestoneOrder && milestoneInds.length > 0) {
+            formData.append('milestoneIndices', JSON.stringify(milestoneInds));
+          }
 
           const response = await fetch(resolveApiUrl(`/api/orders/${selectedOrder}/dispute`), {
             method: 'POST',
@@ -2258,8 +2306,7 @@ function ProfessionalOrdersSection() {
         <DisputeDialog
           open={isDisputeDialogOpen}
           onOpenChange={(open) => {
-	          // Close-only handler; opening is controlled via openModal('dispute')
-	          if (!open) closeAllModals();
+            if (!open) closeAllModals();
           }}
           disputeRequirements={disputeRequirements}
           onDisputeRequirementsChange={setDisputeRequirements}
@@ -2270,6 +2317,8 @@ function ProfessionalOrdersSection() {
           disputeOfferAmount={disputeOfferAmount}
           onDisputeOfferAmountChange={setDisputeOfferAmount}
           currentOrder={currentOrder}
+          selectedMilestoneIndices={selectedMilestoneIndices}
+          onSelectedMilestoneIndicesChange={handleMilestoneIndicesChange}
           onSubmit={handleCreateDispute}
           onCancel={() => {
             closeAllModals();
@@ -2277,6 +2326,7 @@ function ProfessionalOrdersSection() {
             setDisputeUnmetRequirements("");
             setDisputeEvidenceFiles([]);
             setDisputeOfferAmount("");
+            setSelectedMilestoneIndices([]);
           }}
         />
 

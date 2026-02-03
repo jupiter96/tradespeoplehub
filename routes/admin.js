@@ -17,6 +17,7 @@ import ServiceSubCategory from '../models/ServiceSubCategory.js';
 import Service from '../models/Service.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import Wallet from '../models/Wallet.js';
+import Order from '../models/Order.js';
 
 // Load environment variables
 dotenv.config();
@@ -632,6 +633,99 @@ router.get('/users/:id', requireAdmin, async (req, res) => {
   } catch (error) {
     // console.error('Get user error', error);
     return res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// Get all orders (admin list with filter, search, sort, pagination)
+router.get('/orders', requireAdmin, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const status = req.query.status; // optional: Completed, In Progress, Cancelled, disputed, etc.
+    const search = (req.query.search || '').trim();
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'desc';
+
+    const query = {};
+    if (status) {
+      if (status === 'cancel-order' || status === 'cancelled') {
+        query.status = { $in: ['Cancelled', 'Cancellation Pending'] };
+      } else {
+        query.status = status;
+      }
+    }
+
+    if (search) {
+      const searchRegex = { $regex: search, $options: 'i' };
+      const users = await User.find({
+        $or: [
+          { firstName: searchRegex },
+          { lastName: searchRegex },
+          { email: searchRegex },
+          { tradingName: searchRegex },
+        ],
+      }, '_id').lean();
+      const userIds = users.map((u) => u._id);
+      query.$or = [
+        { orderNumber: searchRegex },
+        { 'items.0.title': searchRegex },
+        ...(userIds.length ? [{ client: { $in: userIds } }, { professional: { $in: userIds } }] : []),
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortFieldMap = {
+      orderNumber: 'orderNumber',
+      createdAt: 'createdAt',
+      status: 'status',
+      total: 'total',
+      subtotal: 'subtotal',
+    };
+    const dbSortField = sortFieldMap[sortBy] || 'createdAt';
+    const sortObj = { [dbSortField]: sortDirection };
+
+    const orders = await Order.find(query)
+      .populate('client', 'firstName lastName email')
+      .populate('professional', 'firstName lastName tradingName email')
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalCount = await Order.countDocuments(query);
+
+    const transformed = orders.map((order) => {
+      const client = order.client;
+      const professional = order.professional;
+      const totalWithFee = (order.subtotal || 0) - (order.discount || 0) + (order.serviceFee || 0);
+      const serviceTitle = order.items?.[0]?.title || 'Service Order';
+      return {
+        id: order.orderNumber || order._id.toString(),
+        orderNumber: order.orderNumber,
+        clientName: client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || '—' : '—',
+        clientEmail: client?.email || '—',
+        professionalName: professional ? (professional.tradingName || `${professional.firstName || ''} ${professional.lastName || ''}`).trim() || '—' : '—',
+        professionalEmail: professional?.email || '—',
+        serviceTitle,
+        amount: totalWithFee.toFixed(2),
+        amountValue: totalWithFee,
+        status: order.status || 'In Progress',
+        createdAt: order.createdAt ? new Date(order.createdAt).toISOString() : null,
+      };
+    });
+
+    const totalPages = Math.ceil(totalCount / limit) || 1;
+
+    return res.json({
+      orders: transformed,
+      totalCount,
+      totalPages,
+      page,
+      limit,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to get orders' });
   }
 });
 
