@@ -907,9 +907,13 @@ export default function ClientOrdersSection() {
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
       if (order && order.status === "In Progress") {
+        if (cancelFiles.length === 0) {
+          toast.error("Please upload at least one attachment");
+          return;
+        }
         const orderId = selectedOrder;
         const reason = cancelReason;
-        const files = cancelFiles.length > 0 ? cancelFiles : undefined;
+        const files = cancelFiles;
         closeAllModals();
         setCancelReason("");
         setCancelFiles([]);
@@ -989,10 +993,14 @@ export default function ClientOrdersSection() {
       toast.error("Please provide a reason for the revision request");
       return;
     }
+    if (revisionFiles.length === 0) {
+      toast.error("Please upload at least one attachment");
+      return;
+    }
     const orderId = selectedOrder;
     const reason = revisionReason;
     const message = revisionMessage.trim() ? revisionMessage : undefined;
-    const files = revisionFiles.length > 0 ? revisionFiles : undefined;
+    const files = revisionFiles;
     closeAllModals();
     setRevisionReason("");
     setRevisionMessage("");
@@ -1107,6 +1115,10 @@ export default function ClientOrdersSection() {
     }
     if (offerAmount > orderAmount) {
       toast.error(`Offer amount cannot exceed the order amount (£${orderAmount.toFixed(2)})`);
+      return;
+    }
+    if (disputeEvidenceFiles.length === 0) {
+      toast.error("Please upload at least one evidence file");
       return;
     }
     
@@ -4440,7 +4452,7 @@ export default function ClientOrdersSection() {
 
               <div>
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Attachments (optional)
+                  Attachments <span className="text-red-500">*</span>
                 </Label>
                 <input
                   ref={cancelFileInputRef}
@@ -4554,7 +4566,7 @@ export default function ClientOrdersSection() {
               {/* Evidence File Upload */}
               <div>
                 <Label htmlFor="dispute-evidence-files" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case.
+                  Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case. <span className="text-red-500">*</span>
                 </Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#3D5A80] transition-colors">
                   <input
@@ -4658,7 +4670,7 @@ export default function ClientOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleCreateDispute}
-                  disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount}
+                  disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount || disputeEvidenceFiles.length === 0}
                   className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />
@@ -4724,7 +4736,7 @@ export default function ClientOrdersSection() {
               </div>
               <div>
                 <Label className="font-['Poppins',sans-serif] text-[14px] mb-2 block">
-                  Attachments (Optional)
+                  Attachments <span className="text-red-500">*</span>
                 </Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#3D78CB] transition-colors">
                   <input
@@ -4787,8 +4799,8 @@ export default function ClientOrdersSection() {
               </Button>
               <Button
                 onClick={handleRequestRevision}
-                disabled={!revisionReason.trim() || !selectedOrder}
-                className="font-['Poppins',sans-serif] bg-[#3D78CB] hover:bg-[#2D5FA3] text-white"
+                disabled={!revisionReason.trim() || !selectedOrder || revisionFiles.length === 0}
+                className="font-['Poppins',sans-serif] bg-[#3D78CB] hover:bg-[#2D5FA3] text-white disabled:opacity-50"
               >
                 Submit Revision Request
               </Button>

@@ -38,8 +38,8 @@ export default function CompletionDialog({
   };
 
   const handleSubmit = async () => {
-    if (!completionMessage.trim() && completionFiles.length === 0) {
-      toast.error("Please add a completion message or upload verification files");
+    if (completionFiles.length === 0) {
+      toast.error("Please upload at least one verification file");
       return;
     }
     await onSubmit();
@@ -157,7 +157,7 @@ export default function CompletionDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={(!completionMessage.trim() && completionFiles.length === 0)}
+              disabled={completionFiles.length === 0}
               className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="w-4 h-4 mr-2" />

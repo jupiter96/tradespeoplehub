@@ -31,7 +31,11 @@ export default function CancellationRequestDialog({
       toast.error("Please provide a reason for cancellation");
       return;
     }
-    await onSubmit(cancellationFiles.length > 0 ? cancellationFiles : undefined);
+    if (cancellationFiles.length === 0) {
+      toast.error("Please upload at least one attachment");
+      return;
+    }
+    await onSubmit(cancellationFiles);
     setCancellationFiles([]);
   };
 
@@ -84,7 +88,7 @@ export default function CancellationRequestDialog({
           </div>
           <div>
             <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-              Attachments (optional)
+              Attachments <span className="text-red-500">*</span>
             </Label>
             <input
               ref={fileInputRef}
@@ -123,7 +127,7 @@ export default function CancellationRequestDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!cancellationReason.trim()}
+              disabled={!cancellationReason.trim() || cancellationFiles.length === 0}
               className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50"
             >
               Submit Request

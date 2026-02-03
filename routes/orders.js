@@ -2428,8 +2428,9 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       // Determine service name from first item
       const serviceName = order.items?.[0]?.title || 'Service Order';
       
-      // Format amount
-      const amount = `£${order.total.toFixed(2)}`;
+      // Format amount - total must include service fee (subtotal - discount + serviceFee)
+      const totalWithServiceFee = (order.subtotal || 0) - (order.discount || 0) + (order.serviceFee || 0);
+      const amount = `£${totalWithServiceFee.toFixed(2)}`;
       
       // Map status
       let status = order.status || 'In Progress';
@@ -2489,7 +2490,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         date,
         status,
         amount,
-        amountValue: order.total,
+        amountValue: totalWithServiceFee,
         professional: professional?.tradingName || 'Professional',
         professionalId: professional?._id ? professional._id.toString() : undefined,
         clientId: client?._id ? client._id.toString() : undefined,

@@ -99,7 +99,7 @@ export default function DisputeDialog({
           {/* Evidence File Upload */}
           <div>
             <Label htmlFor="dispute-evidence-files" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-              Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case.
+              Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case. <span className="text-red-500">*</span>
             </Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#3D5A80] transition-colors">
               <input
@@ -191,7 +191,7 @@ export default function DisputeDialog({
             </Button>
             <Button
               onClick={onSubmit}
-              disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount}
+              disabled={!disputeRequirements.trim() || !disputeUnmetRequirements.trim() || !disputeOfferAmount || disputeEvidenceFiles.length === 0}
               className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <AlertTriangle className="w-4 h-4 mr-2" />

@@ -661,8 +661,8 @@ function ProfessionalOrdersSection() {
   };
 
   const handleMarkAsDelivered = async () => {
-    if (!deliveryMessage.trim() && (!deliveryFiles || deliveryFiles.length === 0)) {
-      toast.error("Please add a delivery message or upload files");
+    if ((!deliveryFiles || deliveryFiles.length === 0)) {
+      toast.error("Please upload at least one attachment");
       return;
     }
     if (selectedOrder) {
@@ -713,8 +713,8 @@ function ProfessionalOrdersSection() {
 
   const handleProfessionalComplete = async () => {
     if (!selectedOrder) return;
-    if (!completionMessage.trim() && completionFiles.length === 0) {
-      toast.error("Please add a completion message or upload verification files");
+    if (completionFiles.length === 0) {
+      toast.error("Please upload at least one verification file");
       return;
     }
     closeAllModals();
@@ -815,6 +815,10 @@ function ProfessionalOrdersSection() {
     }
     if (offerAmount > orderAmount) {
       toast.error(`Offer amount cannot exceed the order amount (£${orderAmount.toFixed(2)})`);
+      return;
+    }
+    if (disputeEvidenceFiles.length === 0) {
+      toast.error("Please upload at least one evidence file");
       return;
     }
     
@@ -2225,7 +2229,7 @@ function ProfessionalOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleMarkAsDelivered}
-                  disabled={(!deliveryMessage.trim() && deliveryFiles.length === 0)}
+                  disabled={deliveryFiles.length === 0}
                   className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Truck className="w-4 h-4 mr-2" />

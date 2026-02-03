@@ -61,15 +61,15 @@ export default function AddInfoDialog({
   };
 
   const handleSubmit = async () => {
-    if (!message.trim() && files.length === 0) {
-      toast.error("Please add a message or upload files");
+    if (files.length === 0) {
+      toast.error("Please upload at least one attachment");
       return;
     }
     if (!order) return;
 
     const orderId = order.id;
     const msg = message;
-    const filesToSend = files.length > 0 ? files : undefined;
+    const filesToSend = files;
     onOpenChange(false);
     setMessage("");
     setFiles([]);
@@ -144,7 +144,7 @@ export default function AddInfoDialog({
                 {/* File Upload */}
                 <div>
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Attachments (Optional) - Max 10 files
+                    Attachments <span className="text-red-500">*</span> - Max 10 files
                   </Label>
                   <div
                     className="border-2 border-dashed border-[#3D78CB] rounded-lg p-4 text-center hover:bg-blue-50 transition-colors cursor-pointer"
@@ -208,8 +208,8 @@ export default function AddInfoDialog({
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif]"
+                  disabled={isSubmitting || files.length === 0}
+                  className="bg-[#3D78CB] hover:bg-[#2D5CA3] text-white font-['Poppins',sans-serif] disabled:opacity-50"
                 >
                   {isSubmitting ? "Submitting..." : "Done"}
                 </Button>
