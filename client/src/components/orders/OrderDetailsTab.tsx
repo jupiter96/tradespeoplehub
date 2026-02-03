@@ -97,7 +97,8 @@ export default function OrderDetailsTab({
   const unitPrice = primaryItem?.price ?? 0;
   const subtotal = order.subtotal ?? order.amountValue ?? unitPrice * quantity;
   const discount = order.discount ?? 0;
-  const serviceFee = order.serviceFee ?? 0;
+  // Use order.serviceFee; fallback to metadata.serviceFee for legacy orders
+  const serviceFee = order.serviceFee ?? (meta as any).serviceFee ?? 0;
   const total = order.amountValue ?? order.amount ?? subtotal - discount + serviceFee;
   const promoCode = meta.promoCode || (order as any).promoCode?.code;
 

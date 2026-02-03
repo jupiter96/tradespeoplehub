@@ -1756,10 +1756,11 @@ export default function CartPage() {
       }
 
       // Recalculate amounts for bulk (regular items only)
+      // Service fee threshold is applied to regularSubtotal (matches backend logic)
       const regularSubtotal = orderRequests.reduce((s, r) => s + r.subtotal, 0);
       const regularDiscount = orderRequests.reduce((s, r) => s + (r.discount || 0), 0);
       const regularTotalBeforeFee = regularSubtotal - regularDiscount;
-      const regularServiceFee = subtotal > 0 ? (actualServiceFee / subtotal) * regularSubtotal : 0;
+      const regularServiceFee = (serviceFeeThreshold > 0 && regularSubtotal >= serviceFeeThreshold) ? 0 : serviceFee;
       const regularTotal = regularTotalBeforeFee + regularServiceFee;
       let bulkWalletAmount = Math.min(walletBalance, regularTotal);
       let bulkRemainderAmount = Math.max(0, regularTotal - walletBalance);
