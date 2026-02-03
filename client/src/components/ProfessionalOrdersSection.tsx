@@ -487,7 +487,7 @@ function ProfessionalOrdersSection() {
   }, [currentOrder]);
 
   // Calculate appointment deadline for countdown
-  // Priority: effective expected delivery > booking date/time > scheduled date
+  // Priority: effective expected delivery > booking date/time > scheduled date > createdAt + deliveryDays (online services)
   const appointmentDeadline = useMemo(() => {
     if (!currentOrder) return null;
     
@@ -509,9 +509,23 @@ function ProfessionalOrdersSection() {
       return deadline;
     }
     
-    // Fallback to scheduled date
+    // Third priority: scheduled date
     if (currentOrder.scheduledDate) {
       return new Date(currentOrder.scheduledDate);
+    }
+    
+    // Fourth priority: For online services without booking - calculate from createdAt + deliveryDays (same as client)
+    if (currentOrder.date && currentOrder.items && currentOrder.items.length > 0) {
+      const deliveryDays = (currentOrder as any).metadata?.deliveryDays ||
+                          (currentOrder as any).metadata?.scheduledDate ||
+                          7;
+      if (typeof deliveryDays === 'number') {
+        const createdDate = new Date(currentOrder.date);
+        const deadline = new Date(createdDate);
+        deadline.setDate(deadline.getDate() + deliveryDays);
+        deadline.setHours(23, 59, 59, 999);
+        return deadline;
+      }
     }
     
     return null;

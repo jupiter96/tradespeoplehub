@@ -124,8 +124,10 @@ export default function OrderDetailsTab({
         }, 0)
       : 0;
   const displaySubtotal = isMilestoneCustomOffer ? milestoneSubtotal : subtotal;
-  // Total must include service fee: subtotal - discount + serviceFee
-  const total = displaySubtotal - discount + serviceFee;
+  // Total: when hideServiceFee (professional view), total = subtotal - discount; otherwise include service fee
+  const total = hideServiceFee
+    ? displaySubtotal - discount
+    : displaySubtotal - discount + serviceFee;
 
   const serviceTitle = order.service || primaryItem?.title || "Service";
 
