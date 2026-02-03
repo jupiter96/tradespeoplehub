@@ -18,6 +18,7 @@ import Service from '../models/Service.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import Wallet from '../models/Wallet.js';
 import Order from '../models/Order.js';
+import Dispute from '../models/Dispute.js';
 
 // Load environment variables
 dotenv.config();
@@ -703,6 +704,7 @@ router.get('/orders', requireAdmin, async (req, res) => {
       return {
         id: order.orderNumber || order._id.toString(),
         orderNumber: order.orderNumber,
+        disputeId: order.disputeId || undefined,
         clientName: client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || '—' : '—',
         clientEmail: client?.email || '—',
         professionalName: professional ? (professional.tradingName || `${professional.firstName || ''} ${professional.lastName || ''}`).trim() || '—' : '—',
@@ -726,6 +728,97 @@ router.get('/orders', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to get orders' });
+  }
+});
+
+// Get single dispute by disputeId (admin observer view)
+router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
+  try {
+    const { disputeId } = req.params;
+    const dispute = await Dispute.findOne({ disputeId })
+      .populate({
+        path: 'order',
+        select: 'orderNumber client professional items subtotal discount serviceFee',
+        populate: [
+          { path: 'client', select: 'firstName lastName avatar' },
+          { path: 'professional', select: 'firstName lastName tradingName avatar' },
+        ],
+      })
+      .populate('claimantId', 'firstName lastName tradingName avatar')
+      .populate('respondentId', 'firstName lastName tradingName avatar')
+      .lean();
+
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+
+    const order = dispute.order;
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found for this dispute' });
+    }
+
+    const client = order.client && typeof order.client === 'object' ? order.client : null;
+    const professional = order.professional && typeof order.professional === 'object' ? order.professional : null;
+    const claimant = dispute.claimantId;
+    const respondent = dispute.respondentId;
+
+    const claimantName = claimant
+      ? (claimant._id?.toString() === client?._id?.toString()
+        ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client'
+        : (claimant.tradingName || `${claimant.firstName || ''} ${claimant.lastName || ''}`.trim() || 'Professional'))
+      : undefined;
+    const respondentName = respondent
+      ? (respondent._id?.toString() === client?._id?.toString()
+        ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client'
+        : (respondent.tradingName || `${respondent.firstName || ''} ${respondent.lastName || ''}`.trim() || 'Professional'))
+      : undefined;
+    const claimantAvatar = claimant?.avatar || '';
+    const respondentAvatar = respondent?.avatar || '';
+
+    const amount = dispute.amount != null ? dispute.amount : (order.subtotal || 0) - (order.discount || 0);
+
+    const disputePayload = {
+      id: dispute.disputeId,
+      orderId: order._id.toString(),
+      orderNumber: order.orderNumber,
+      status: dispute.status || 'open',
+      requirements: dispute.requirements,
+      unmetRequirements: dispute.unmetRequirements,
+      evidenceFiles: dispute.evidenceFiles || [],
+      claimantId: dispute.claimantId?._id?.toString() || dispute.claimantId?.toString(),
+      respondentId: dispute.respondentId?._id?.toString() || dispute.respondentId?.toString(),
+      claimantName,
+      respondentName,
+      claimantAvatar: claimantAvatar || '',
+      respondentAvatar: respondentAvatar || '',
+      amount,
+      messages: (dispute.messages || []).map((msg) => ({
+        id: msg.id,
+        userId: msg.userId?.toString?.() || msg.userId,
+        userName: msg.userName,
+        userAvatar: msg.userAvatar,
+        message: msg.message,
+        timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
+        isTeamResponse: msg.isTeamResponse || false,
+        attachments: (msg.attachments || []).map((att) => ({
+          url: att.url,
+          fileName: att.fileName,
+          fileType: att.fileType,
+        })),
+      })),
+      clientOffer: dispute.offers?.clientOffer != null ? dispute.offers.clientOffer : undefined,
+      professionalOffer: dispute.offers?.professionalOffer != null ? dispute.offers.professionalOffer : undefined,
+      responseDeadline: dispute.responseDeadline ? new Date(dispute.responseDeadline).toISOString() : undefined,
+      respondedAt: dispute.respondedAt ? new Date(dispute.respondedAt).toISOString() : undefined,
+      negotiationDeadline: dispute.negotiationDeadline ? new Date(dispute.negotiationDeadline).toISOString() : undefined,
+      createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : undefined,
+      closedAt: dispute.closedAt ? new Date(dispute.closedAt).toISOString() : undefined,
+      milestoneIndices: dispute.milestoneIndices,
+    };
+
+    return res.json({ dispute: disputePayload, order: { id: order._id.toString(), orderNumber: order.orderNumber } });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Failed to get dispute' });
   }
 });
 

@@ -68,7 +68,12 @@ export function useAdminPermissions() {
     if (route === "/admin/sub-admins") {
       return false;
     }
-    
+
+    // Admin dispute view (observer) - same permission as dispute list
+    if (route.startsWith("/admin/dispute/") && route !== "/admin/dispute-list") {
+      return hasPermission("dispute-management");
+    }
+
     // Map routes to permissions
     const routePermissionMap: Record<string, string> = {
       "/admin/dashboard": "dashboard", // Dashboard is always accessible (but tabs are super admin only)
