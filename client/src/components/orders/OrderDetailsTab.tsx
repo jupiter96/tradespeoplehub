@@ -99,7 +99,6 @@ export default function OrderDetailsTab({
   const discount = order.discount ?? 0;
   // Use order.serviceFee; fallback to metadata.serviceFee for legacy orders
   const serviceFee = order.serviceFee ?? (meta as any).serviceFee ?? 0;
-  const total = order.amountValue ?? order.amount ?? subtotal - discount + serviceFee;
   const promoCode = meta.promoCode || (order as any).promoCode?.code;
 
   const isMilestoneCustomOffer =
@@ -125,6 +124,8 @@ export default function OrderDetailsTab({
         }, 0)
       : 0;
   const displaySubtotal = isMilestoneCustomOffer ? milestoneSubtotal : subtotal;
+  // Total must include service fee: subtotal - discount + serviceFee
+  const total = displaySubtotal - discount + serviceFee;
 
   const serviceTitle = order.service || primaryItem?.title || "Service";
 
