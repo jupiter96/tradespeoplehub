@@ -1513,9 +1513,25 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     await order.save();
     
     const savedOrder = await Order.findById(order._id);
-    // Update payment transaction with order ID if exists
-    if (paymentTransactionId) {
-      await Wallet.findByIdAndUpdate(paymentTransactionId, { orderId: order._id });
+    // Create Wallet transaction for card payment (so it appears in billing history)
+    if (remainderAmount > 0 && paymentMethod === 'card' && paymentTransactionId) {
+      const cardPaymentTx = await Wallet.create({
+        userId: user._id,
+        type: 'payment',
+        amount: remainderAmount,
+        balance: newBalance,
+        status: 'completed',
+        paymentMethod: 'card',
+        stripePaymentIntentId: paymentTransactionId,
+        description: `Order payment - ${orderNumber}`,
+        orderId: order._id,
+        metadata: { orderNumber },
+      });
+      paymentTransactionId = cardPaymentTx._id.toString();
+    }
+    // Update wallet transaction with order ID (for wallet-only or split)
+    if (walletTransactionId) {
+      await Wallet.findByIdAndUpdate(walletTransactionId, { orderId: order._id });
     }
 
     // Populate professional and client info for response
@@ -2127,6 +2143,29 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       createdOrders.push(order.toObject());
     }
 
+    // Create Wallet transaction for card payment (so it appears in billing history)
+    if (remainderAmount > 0 && paymentMethod === 'card' && paymentTransactionId && createdOrders.length > 0) {
+      const firstOrderId = createdOrders[0]._id;
+      const cardPaymentTx = await Wallet.create({
+        userId: user._id,
+        type: 'payment',
+        amount: remainderAmount,
+        balance: newBalance,
+        status: 'completed',
+        paymentMethod: 'card',
+        stripePaymentIntentId: paymentTransactionId,
+        description: `Order payment (${createdOrders.length} order${createdOrders.length > 1 ? 's' : ''})`,
+        orderId: firstOrderId,
+        metadata: { bulkOrderCount: createdOrders.length, orderNumbers: createdOrders.map(o => o.orderNumber) },
+      });
+      paymentTransactionId = cardPaymentTx._id.toString();
+    }
+
+    // Update wallet transaction with first order ID (for wallet-only or split payments)
+    if (walletTransactionId && createdOrders.length > 0) {
+      await Wallet.findByIdAndUpdate(walletTransactionId, { orderId: createdOrders[0]._id });
+    }
+
     return res.json({
       orders: createdOrders,
       orderIds: createdOrders.map(o => o.orderNumber),
@@ -2198,6 +2237,7 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       }
 
       const captureId = capture.result.purchase_units[0].payments.captures[0].id;
+      const captureAmount = parseFloat(capture.result.purchase_units[0].payments.captures[0].amount?.value || 0);
 
       // Get user
       const user = await User.findById(req.user.id);
@@ -2217,6 +2257,23 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
           order,
           clientUser: user,
           professionalUser,
+        });
+      }
+
+      // Create Wallet transaction for billing history
+      if (captureAmount > 0 && orders.length > 0) {
+        await Wallet.create({
+          userId: user._id,
+          type: 'payment',
+          amount: captureAmount,
+          balance: user.walletBalance || 0,
+          status: 'completed',
+          paymentMethod: 'paypal',
+          paypalOrderId: paypalOrderId,
+          paypalCaptureId: captureId,
+          description: `Order payment (${orders.length} order${orders.length > 1 ? 's' : ''})`,
+          orderId: orders[0]._id,
+          metadata: { orderCount: orders.length, orderNumbers: orders.map(o => o.orderNumber) },
         });
       }
 
@@ -2253,6 +2310,7 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
     }
 
     const captureId = capture.result.purchase_units[0].payments.captures[0].id;
+    const captureAmount = parseFloat(capture.result.purchase_units[0].payments.captures[0].amount?.value || 0);
 
     // Get user
     const user = await User.findById(req.user.id);
@@ -2272,6 +2330,23 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
         order,
         clientUser: user,
         professionalUser,
+      });
+    }
+
+    // Create Wallet transaction for billing history
+    if (captureAmount > 0 && orders.length > 0) {
+      await Wallet.create({
+        userId: user._id,
+        type: 'payment',
+        amount: captureAmount,
+        balance: user.walletBalance || 0,
+        status: 'completed',
+        paymentMethod: 'paypal',
+        paypalOrderId: paypalOrderId,
+        paypalCaptureId: captureId,
+        description: `Order payment (${orders.length} order${orders.length > 1 ? 's' : ''})`,
+        orderId: orders[0]._id,
+        metadata: { orderCount: orders.length, orderNumbers: orders.map(o => o.orderNumber) },
       });
     }
 
