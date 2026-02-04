@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAccount } from "./AccountContext";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
@@ -55,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Card, CardContent } from "./ui/card";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
 import { allServices } from "./servicesData";
+import ServiceCard from "./ServiceCard";
 
 interface PortfolioItem {
   id: string;
@@ -83,6 +85,7 @@ const resolveMediaUrl = (url: string | undefined): string => {
 };
 
 export default function ProfileSection() {
+  const navigate = useNavigate();
   const { userInfo, updateProfile, uploadAvatar } = useAccount();
   const [bio, setBio] = useState("");
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
@@ -1985,40 +1988,18 @@ export default function ProfileSection() {
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           My Services
                         </h3>
-                        <div className="space-y-3 md:space-y-4">
+                        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:gap-6 justify-items-center">
                           {professionalServices.length > 0 ? (
                             professionalServices.map((service) => (
-                              <div
+                              <ServiceCard
                                 key={service.id}
-                                className="flex gap-3 md:gap-4 p-3 md:p-4 border border-gray-200 rounded-xl hover:border-[#FE8A0F] hover:shadow-md transition-all cursor-pointer"
-                              >
-                                <ImageWithFallback
-                                  src={resolveMediaUrl(service.image)}
-                                  alt={service.description}
-                                  className="w-16 h-16 md:w-20 md:h-20 rounded-lg object-cover flex-shrink-0"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-[#003D82] font-semibold mb-1 text-[13px] md:text-[15px] line-clamp-2 break-words">
-                                    {service.description}
-                                  </h4>
-                                  <p className="text-gray-600 text-[11px] md:text-[14px] mb-2 leading-relaxed break-words">
-                                    {service.category}
-                                  </p>
-                                  <div className="flex items-center gap-2 md:gap-3">
-                                    <span className="text-[#FE8A0F] font-semibold text-[14px] md:text-[18px]">
-                                      £{service.price}
-                                    </span>
-                                    {service.badges && service.badges.length > 0 && (
-                                      <Badge className="bg-green-500 text-white text-[10px] md:text-[11px]">
-                                        {service.badges[0]}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
+                                service={service}
+                                onClick={() => navigate(`/service/${service.slug || service._id || service.id}`)}
+                                showHeart={false}
+                              />
                             ))
                           ) : (
-                            <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">
+                            <p className="col-span-2 text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">
                               No services available yet
                             </p>
                           )}

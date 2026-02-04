@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, ShoppingCart, Star, Zap, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Award, CheckCircle2, FileText, IdCard, MapPin, MessageCircle, Phone, ShieldCheck, Star, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
@@ -8,10 +8,10 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useMessenger } from "./MessengerContext";
 import { useCategories, useSectors, useServiceCategories } from "../hooks/useSectorsAndCategories";
 import InviteToQuoteModal from "./InviteToQuoteModal";
-import { useCart } from "./CartContext";
 import type { Service as ServiceDataType } from "./servicesData";
 import ServiceAreaMap from "./ServiceAreaMap";
 import { Skeleton } from "./ui/skeleton";
+import ServiceCard from "./ServiceCard";
 import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
 import { SEOHead } from "./SEOHead";
@@ -153,7 +153,6 @@ export default function ProfilePage() {
     return sectors.find((s) => s.name === name)?._id;
   }, [sectors, profile?.sector]);
   const { categories } = useCategories(sectorId, undefined, true);
-  const { addToCart } = useCart();
 
   // Fetch services for this professional
   const [homeServiceCards, setHomeServiceCards] = useState<any[]>([]);
@@ -173,76 +172,123 @@ export default function ProfilePage() {
         
         if (response.ok) {
           const data = await response.json();
-          const transformed = (data.services || []).map((s: any) => ({
-            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
-            image: s.images?.[0] || s.portfolioImages?.[0] || "",
-            providerName: typeof s.professional === 'object' 
-              ? (s.professional.tradingName || 'Professional')
-              : "",
-            tradingName: typeof s.professional === 'object' 
-              ? s.professional.tradingName || ""
-              : "",
-            providerImage: typeof s.professional === 'object' 
-              ? s.professional.avatar || ""
-              : "",
-            description: s.title || "",
-            category: typeof s.serviceCategory === 'object' && typeof s.serviceCategory.sector === 'object'
-              ? s.serviceCategory.sector.name || ""
-              : "",
-            subcategory: typeof s.serviceCategory === 'object'
-              ? s.serviceCategory.name || ""
-              : "",
-            detailedSubcategory: typeof s.serviceSubCategory === 'object'
-              ? s.serviceSubCategory.name || ""
-              : undefined,
-            rating: s.rating || 0,
-            reviewCount: s.reviewCount || 0,
-            completedTasks: s.completedTasks || 0,
-            price: `£${s.price?.toFixed(2) || '0.00'}`,
-            // Only use originalPrice if discount is still valid (within date range)
-            originalPrice: (s.originalPrice && (
-              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
-              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
-            ))
-              ? `£${s.originalPrice.toFixed(2)}`
-              : undefined,
-            originalPriceValidFrom: s.originalPriceValidFrom || null,
-            originalPriceValidUntil: s.originalPriceValidUntil || null,
-            priceUnit: s.priceUnit || "fixed",
-            badges: s.badges || [],
-            deliveryType: s.deliveryType || "standard",
-            postcode: s.postcode || "",
-            location: s.location || "",
-            latitude: s.latitude,
-            longitude: s.longitude,
-            highlights: s.highlights || [],
-            addons: s.addons?.map((a: any) => ({
-              id: a.id || a._id,
-              name: a.name,
-              description: a.description || "",
-              price: a.price,
-            })) || [],
-            idealFor: s.idealFor || [],
-            specialization: "",
-            packages: s.packages?.map((p: any) => ({
-              id: p.id || p._id,
-              name: p.name,
-              price: `£${p.price?.toFixed(2) || '0.00'}`,
-              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
-              originalPriceValidFrom: p.originalPriceValidFrom || null,
-              originalPriceValidUntil: p.originalPriceValidUntil || null,
-              priceUnit: "fixed",
-              description: p.description || "",
-              highlights: [],
-              features: p.features || [],
-              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
-              revisions: p.revisions || "",
-            })) || [],
-            skills: s.skills || [],
-            responseTime: s.responseTime || "",
-            portfolioImages: s.portfolioImages || [],
-            _id: s._id,
-          }));
+          const transformed = (data.services || []).map((s: any) => {
+            const townCityValue = (() => {
+              if (s.professional && typeof s.professional === "object" && s.professional !== null) {
+                const value = s.professional.townCity;
+                return value !== undefined && value !== null ? String(value) : "";
+              }
+              return "";
+            })();
+
+            let thumbnailImage = "";
+            let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+            if (s.gallery && Array.isArray(s.gallery) && s.gallery.length > 0) {
+              const firstItem = s.gallery[0];
+              if (firstItem.type === "video" && firstItem.url) {
+                thumbnailVideo = {
+                  url: firstItem.url,
+                  thumbnail: firstItem.thumbnail,
+                };
+                thumbnailImage = firstItem.thumbnail || "";
+              } else if (firstItem.type === "image" && firstItem.url) {
+                thumbnailImage = firstItem.url;
+              }
+            }
+
+            if (!thumbnailImage && !thumbnailVideo) {
+              thumbnailImage = s.images?.[0] || s.portfolioImages?.[0] || "";
+            }
+
+            return {
+              id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+              _id: s._id,
+              slug: s.slug,
+              image: thumbnailImage,
+              thumbnailVideo,
+              professionalId:
+                typeof s.professional === "object"
+                  ? (s.professional._id || s.professional.id || s.professional)
+                  : (typeof s.professional === "string" ? s.professional : null),
+              providerName: typeof s.professional === "object"
+                ? (s.professional.tradingName || "Professional")
+                : "",
+              tradingName: typeof s.professional === "object"
+                ? s.professional.tradingName || ""
+                : "",
+              providerImage: typeof s.professional === "object"
+                ? s.professional.avatar || ""
+                : "",
+              providerRating: typeof s.professional === "object"
+                ? s.professional.rating || 0
+                : 0,
+              providerReviewCount: typeof s.professional === "object"
+                ? s.professional.reviewCount || 0
+                : 0,
+              providerIsVerified: (() => {
+                if (typeof s.professional !== "object") return false;
+                return s.professional.isVerified || false;
+              })(),
+              description: s.title || "",
+              category: typeof s.serviceCategory === "object" && typeof s.serviceCategory.sector === "object"
+                ? s.serviceCategory.sector.name || ""
+                : "",
+              subcategory: typeof s.serviceCategory === "object"
+                ? s.serviceCategory.name || ""
+                : "",
+              serviceCategory: s.serviceCategory,
+              detailedSubcategory: typeof s.serviceSubCategory === "object"
+                ? s.serviceSubCategory.name || ""
+                : undefined,
+              rating: s.rating || 0,
+              reviewCount: s.reviewCount || 0,
+              completedTasks: s.completedTasks || 0,
+              price: `£${s.price?.toFixed(2) || "0.00"}`,
+              // Only use originalPrice if discount is still valid (within date range)
+              originalPrice: (s.originalPrice && (
+                (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+                (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+              ))
+                ? `£${s.originalPrice.toFixed(2)}`
+                : undefined,
+              originalPriceValidFrom: s.originalPriceValidFrom || null,
+              originalPriceValidUntil: s.originalPriceValidUntil || null,
+              priceUnit: s.priceUnit || "fixed",
+              badges: s.badges || [],
+              deliveryType: s.deliveryType || "standard",
+              postcode: s.postcode || "",
+              location: s.location || "",
+              townCity: townCityValue,
+              latitude: s.latitude,
+              longitude: s.longitude,
+              highlights: s.highlights || [],
+              addons: s.addons?.map((a: any) => ({
+                id: a.id || a._id,
+                name: a.name,
+                description: a.description || "",
+                price: a.price,
+              })) || [],
+              idealFor: s.idealFor || [],
+              specialization: "",
+              packages: s.packages?.map((p: any) => ({
+                id: p.id || p._id,
+                name: p.name,
+                price: `£${p.price?.toFixed(2) || "0.00"}`,
+                originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+                originalPriceValidFrom: p.originalPriceValidFrom || null,
+                originalPriceValidUntil: p.originalPriceValidUntil || null,
+                priceUnit: "fixed",
+                description: p.description || "",
+                highlights: [],
+                features: p.features || [],
+                deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+                revisions: p.revisions || "",
+              })) || [],
+              skills: s.skills || [],
+              responseTime: s.responseTime || "",
+              portfolioImages: s.portfolioImages || [],
+            };
+          });
           setHomeServiceCards(transformed);
         } else {
           setHomeServiceCards([]);
@@ -930,10 +976,10 @@ export default function ProfilePage() {
             )}
 
             {activeTab === "services" && (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 justify-items-center">
                 {servicesLoading ? (
                   <div className="col-span-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       {[1, 2, 3, 4, 5, 6].map((i) => (
                         <div key={i} className="bg-white rounded-[16px] shadow-sm overflow-hidden">
                           <Skeleton className="w-full h-40 rounded-t-[16px]" />
@@ -952,158 +998,12 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   homeServiceCards.map((service) => (
-                    <div
+                    <ServiceCard
                       key={service._id || service.id}
-                      className="bg-white rounded-[16px] shadow-[0px_4px_12px_0px_rgba(0,0,0,0.08)] hover:shadow-[0px_4px_16px_0px_rgba(254,138,15,0.4)] overflow-hidden transition-shadow duration-300 cursor-pointer flex flex-col"
-                    >
-                    {/* Image Section */}
-                    <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: '180px' }}>
-                      <img
-                        src={resolveMediaUrl(service.image)}
-                        alt={service.description}
-                        className="w-full h-full object-cover"
-                        style={{ minWidth: '100%', minHeight: '100%', objectFit: 'cover' }}
-                      />
-                      {/* Emergency Badge - Top Right */}
-                      {service.badges && service.badges.length > 0 && (
-                        <div className="absolute top-3 right-3">
-                          <span className="bg-[#FE8A0F] text-white text-[11px] font-['Poppins',sans-serif] font-semibold px-3 py-1 rounded-[6px]">
-                            {service.badges[0]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content Section */}
-                    <div className="p-4 flex flex-col gap-2 flex-1">
-                      {/* Provider Info with Avatar */}
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={service.providerImage}
-                          alt={service.tradingName}
-                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                        />
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] leading-tight">
-                            {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
-                          </h3>
-                          {service.providerIsVerified && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[8px] font-['Poppins',sans-serif] font-medium">
-                              ✓ Verified
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#666666] leading-snug line-clamp-2">
-                        {service.description}
-                      </p>
-
-                      {/* Star Rating - only when there is at least one review or score */}
-                      {((service.rating ?? 0) > 0 || (service.reviewCount ?? 0) > 0) && (
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-4 h-4 ${
-                                star <= Math.floor(service.rating || 0)
-                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                  : "fill-[#E5E5E5] text-[#E5E5E5]"
-                              }`}
-                            />
-                          ))}
-                          <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] ml-1">
-                            {service.rating || 0}
-                          </span>
-                          <span className="font-['Poppins',sans-serif] text-[13px] text-[#999999]">
-                            ({service.reviewCount || 0})
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Price and Delivery Badge */}
-                      <div className="flex items-start justify-between gap-2">
-                        {/* Price Section */}
-                        <div className="flex flex-col gap-1 min-h-[56px]">
-                          <div className="font-['Poppins',sans-serif] text-[24px] font-bold text-[#2c353f]">
-                            £{service.originalPrice || service.price}
-                            <span className="text-[14px] font-normal text-[#666666]">/{service.priceUnit}</span>
-                          </div>
-                          {service.originalPrice ? (
-                            <div className="flex items-center gap-2">
-                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#999999] line-through">
-                                £{service.price}
-                              </span>
-                              <div className="px-2 py-0.5 bg-[#E6F0FF] rounded-md">
-                                <span className="font-['Poppins',sans-serif] text-[10px] text-[#3D78CB] font-semibold">
-                                  {Math.round(((parseFloat(service.price) - parseFloat(service.originalPrice || '0')) / parseFloat(service.price)) * 100)}% OFF
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="h-[20px]">{/* Spacer to maintain height */}</div>
-                          )}
-                        </div>
-                        
-                        {/* Delivery Badge */}
-                        <div className="flex-shrink-0">
-                          {service.deliveryType === "same-day" ? (
-                            <div className="px-2 py-1 border-2 border-[#FE8A0F] rounded-[6px]">
-                              <span className="font-['Poppins',sans-serif] text-[10px] font-semibold text-[#FE8A0F] uppercase tracking-wide">
-                                ⚡ Same Day
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="px-2 py-1 border border-[#3D78CB] bg-[#E6F0FF] rounded-[6px] flex items-center gap-1">
-                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="#3D78CB" strokeWidth="2">
-                                <path d="M3 9h4l3 9 3-16 3 9h4"/>
-                              </svg>
-                              <span className="font-['Poppins',sans-serif] text-[9px] font-semibold text-[#3D78CB] uppercase tracking-wide">
-                                Standard
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col gap-2 mt-auto pt-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/service/${service.slug || service._id || service.id}`);
-                          }}
-                          className="w-full bg-[#FE8A0F] hover:bg-[#FF9A1F] text-white font-['Poppins',sans-serif] text-[14px] font-semibold py-3 rounded-[8px] transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>⚡</span>
-                          <span>Buy Now!</span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToCart(
-                              {
-                                id: String(service.id),
-                                serviceId: String(service._id || service.id),
-                                title: service.description,
-                                seller: service.tradingName,
-                                price: parseFloat(service.price),
-                                image: service.image,
-                                rating: service.rating,
-                                priceUnit: service.priceUnit || 'fixed',
-                              },
-                              1
-                            );
-                          }}
-                          className="w-full bg-white hover:bg-gray-50 text-[#FE8A0F] border-2 border-[#FE8A0F] font-['Poppins',sans-serif] text-[14px] font-semibold py-3 rounded-[8px] transition-colors flex items-center justify-center gap-2"
-                        >
-                          <span>🛒</span>
-                          <span>Add to cart</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                      service={service}
+                      onClick={() => navigate(`/service/${service.slug || service._id || service.id}`)}
+                      showHeart={false}
+                    />
                   ))
                 )}
               </div>
