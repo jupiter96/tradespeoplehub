@@ -1157,11 +1157,6 @@ export default function ClientOrdersSection() {
       toast.error(`Offer amount cannot exceed £${maxAmount.toFixed(2)}`);
       return;
     }
-    if (disputeEvidenceFiles.length === 0) {
-      toast.error("Please upload at least one evidence file");
-      return;
-    }
-
     if (selectedOrder) {
       const ord = orders.find(o => o.id === selectedOrder);
       if (ord?.status !== 'In Progress' && (!ord?.deliveryFiles || ord.deliveryFiles.length === 0)) {
@@ -4757,13 +4752,25 @@ export default function ClientOrdersSection() {
                     className="font-['Poppins',sans-serif] text-[14px] pl-10"
                   />
                 </div>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                  {(() => {
-                    const meta = (currentOrder as any)?.metadata || {};
-                    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
-                    return isMilestoneOrder ? "Amount is set from selected milestones above." : `Must be between £0.00 and £${(currentOrder?.refundableAmount ?? currentOrder?.amountValue)?.toFixed(2) || "0.00"} (refundable amount, excl. service fee)`;
-                  })()}
-                </p>
+                {(() => {
+                  const meta = (currentOrder as any)?.metadata || {};
+                  const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+                  const maxAmount = currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? 0;
+                  const offerValue = parseFloat(disputeOfferAmount);
+                  const isOverLimit = !Number.isNaN(offerValue) && offerValue > maxAmount;
+                  const helperText = isMilestoneOrder
+                    ? "Amount is set from selected milestones above."
+                    : `Must be between £0.00 and £${maxAmount.toFixed(2)} (refundable amount, excl. service fee)`;
+                  return (
+                    <p
+                      className={`font-['Poppins',sans-serif] text-[12px] mt-1 ${
+                        !isMilestoneOrder && isOverLimit ? "text-red-600 font-medium" : "text-[#6b6b6b]"
+                      }`}
+                    >
+                      {helperText}
+                    </p>
+                  );
+                })()}
               </div>
 
               {/* Caution Message */}
@@ -4795,7 +4802,6 @@ export default function ClientOrdersSection() {
                     !disputeRequirements.trim() ||
                     !disputeUnmetRequirements.trim() ||
                     !disputeOfferAmount ||
-                    disputeEvidenceFiles.length === 0 ||
                     (!!((currentOrder as any)?.metadata?.fromCustomOffer && (currentOrder as any)?.metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any)?.metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0) && selectedMilestoneIndices.length === 0)
                   }
                   className="bg-red-600 hover:bg-red-700 text-white font-['Poppins',sans-serif] disabled:opacity-50 disabled:cursor-not-allowed"

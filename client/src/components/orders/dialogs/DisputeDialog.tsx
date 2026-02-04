@@ -68,6 +68,15 @@ export default function DisputeDialog({
       return sum + p * q;
     }, 0);
   }, [isMilestoneOrder, milestones, selectedMilestoneIndices, currentOrder?.refundableAmount, currentOrder?.amountValue]);
+  const offerAmountValue = parseFloat(disputeOfferAmount);
+  const maxAllowedAmount =
+    isMilestoneOrder && onSelectedMilestoneIndicesChange
+      ? maxDisputeAmount
+      : (currentOrder?.amountValue ?? 0);
+  const showOverLimitWarning =
+    !isMilestoneOrder &&
+    !Number.isNaN(offerAmountValue) &&
+    offerAmountValue > maxAllowedAmount;
 
   const toggleMilestone = (index: number) => {
     if (!onSelectedMilestoneIndicesChange) return;
@@ -102,7 +111,6 @@ export default function DisputeDialog({
   const canSubmit =
     disputeRequirements.trim() &&
     disputeUnmetRequirements.trim() &&
-    disputeEvidenceFiles.length > 0 &&
     disputeOfferAmount &&
     (!isMilestoneOrder || selectedMilestoneIndices.length > 0);
 
@@ -276,7 +284,11 @@ export default function DisputeDialog({
                 className="font-['Poppins',sans-serif] text-[14px] pl-10"
               />
             </div>
-            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
+            <p
+              className={`font-['Poppins',sans-serif] text-[12px] mt-1 ${
+                showOverLimitWarning ? "text-red-600 font-medium" : "text-[#6b6b6b]"
+              }`}
+            >
               {isMilestoneOrder && onSelectedMilestoneIndicesChange
                 ? "Amount is set from selected milestones above."
                 : `Must be between £0.00 and £${currentOrder?.amountValue?.toFixed(2) || "0.00"} (order amount)`}

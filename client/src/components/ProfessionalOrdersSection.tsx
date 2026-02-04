@@ -876,11 +876,6 @@ function ProfessionalOrdersSection() {
       toast.error(`Offer amount cannot exceed £${maxAmount.toFixed(2)}`);
       return;
     }
-    if (disputeEvidenceFiles.length === 0) {
-      toast.error("Please upload at least one evidence file");
-      return;
-    }
-
     if (selectedOrder) {
       const ord = orders.find(o => o.id === selectedOrder);
       if (ord?.status !== 'In Progress' && (!ord?.deliveryFiles || ord.deliveryFiles.length === 0)) {
