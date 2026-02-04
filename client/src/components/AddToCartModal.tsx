@@ -47,6 +47,14 @@ const timeSlots = [
   { slot: "Evening", times: ["16:00", "16:30", "17:00", "17:30", "18:00", "18:30"] }
 ];
 
+// Format date as local YYYY-MM-DD (avoids timezone shift from toISOString)
+const formatLocalDateString = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 export default function AddToCartModal({
   isOpen,
   onClose,
@@ -141,7 +149,7 @@ export default function AddToCartModal({
     // For online services, no booking needed
     const booking = (serviceType === "online") ? null : (selectedDate && selectedTime && selectedTimeSlot
       ? { 
-          date: selectedDate.toISOString().split('T')[0], // Convert Date to YYYY-MM-DD format
+          date: formatLocalDateString(selectedDate),
           time: selectedTime, 
           timeSlot: selectedTimeSlot 
         }

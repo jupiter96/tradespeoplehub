@@ -27,6 +27,14 @@ const resolveMediaUrl = (url: string | undefined): string => {
   return url;
 };
 
+// Format date as local YYYY-MM-DD (avoids timezone shift from toISOString)
+const formatLocalDateString = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 // Join URL path segments safely (prevents accidental double slashes)
 const joinPath = (...parts: Array<string | null | undefined>) => {
   const cleaned = parts
@@ -1199,7 +1207,7 @@ export default function ServiceDetailPage() {
       rating: service.rating,
       addons: selectedAddonsData.length > 0 ? selectedAddonsData : undefined,
       booking: {
-        date: date.toISOString().split('T')[0],
+        date: formatLocalDateString(date),
         starttime: time,
         endtime: time,
         timeSlot: timeSlot
@@ -2526,7 +2534,7 @@ export default function ServiceDetailPage() {
                                             rating: service.rating,
                                             quantity: 1,
                                             booking: {
-                                              date: availabilityDate.toISOString().split('T')[0],
+                                              date: formatLocalDateString(availabilityDate),
                                               starttime: block.from,
                                               endtime: block.to,
                                               timeSlot: timeSlot

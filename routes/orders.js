@@ -2619,9 +2619,12 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           submittedAt: order.additionalInformation.submittedAt ? new Date(order.additionalInformation.submittedAt).toISOString() : undefined,
         } : undefined,
         metadata: order.metadata || {},
+        // Refundable amount (subtotal - discount); dispute max is this, service fee is not refundable
+        refundableAmount: totalWithoutServiceFee,
         disputeInfo: dispute ? {
           id: dispute.disputeId || undefined,
           status: dispute.status,
+          amount: totalWithoutServiceFee,
           requirements: dispute.requirements || undefined,
           unmetRequirements: dispute.unmetRequirements || undefined,
           evidenceFiles: dispute.evidenceFiles || [],
@@ -4276,9 +4279,10 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     }
 
     if (!milestoneIndices || milestoneIndices.length === 0) {
-      const orderTotal = order.total != null ? order.total : (order.totalAmount || 0);
-      if (parsedOfferAmount > orderTotal) {
-        return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${orderTotal.toFixed(2)})` });
+      // Refundable amount only (exclude service fee - not refundable)
+      const refundableAmount = (order.subtotal || 0) - (order.discount || 0);
+      if (parsedOfferAmount > refundableAmount) {
+        return res.status(400).json({ error: `Offer amount cannot exceed the refundable order amount (£${refundableAmount.toFixed(2)})` });
       }
     }
 
@@ -4632,9 +4636,10 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot submit offer for a closed dispute' });
     }
 
-    // Validate offer amount does not exceed order amount
-    if (parsedAmount > order.total) {
-      return res.status(400).json({ error: `Offer amount cannot exceed the order amount (£${order.total.toFixed(2)})` });
+    // Validate offer amount does not exceed refundable amount (exclude service fee - not refundable)
+    const refundableAmount = (order.subtotal || 0) - (order.discount || 0);
+    if (parsedAmount > refundableAmount) {
+      return res.status(400).json({ error: `Offer amount cannot exceed the refundable order amount (£${refundableAmount.toFixed(2)})` });
     }
 
     // Check if user is involved in the dispute

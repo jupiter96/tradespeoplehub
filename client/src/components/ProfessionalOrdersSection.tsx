@@ -860,7 +860,8 @@ function ProfessionalOrdersSection() {
         return s + p * q;
       }, 0);
     } else {
-      maxAmount = selectedOrder ? (orders.find(o => o.id === selectedOrder)?.amountValue || 0) : 0;
+      const ord = selectedOrder ? orders.find(o => o.id === selectedOrder) : null;
+      maxAmount = ord ? (ord.refundableAmount ?? ord.amountValue ?? 0) : 0;
     }
 
     if (disputeOfferAmount === '' || isNaN(offerAmount)) {

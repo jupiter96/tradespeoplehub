@@ -386,7 +386,7 @@ export default function CartPage() {
       if (item.booking && item.booking.date) {
         hasBookingData = true;
         slotsToSet[item.id] = {
-          date: new Date(item.booking.date),
+          date: parseBookingDate(item.booking.date),
           time: item.booking.starttime || '',
           endTime: item.booking.endtime || '',
           timeSlot: item.booking.timeSlot || '',
@@ -1146,6 +1146,15 @@ export default function CartPage() {
 
   // ===== Time Slot Helper Functions (from BookingModal) =====
   
+  // Parse booking date string as local date (YYYY-MM-DD = local midnight; avoids UTC shift)
+  const parseBookingDate = (dateStr: string): Date => {
+    const s = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      return new Date(s + "T00:00:00");
+    }
+    return new Date(s);
+  };
+
   // Get day name from date (lowercase, e.g., "monday")
   const getDayName = (date: Date): string => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];

@@ -114,7 +114,7 @@ export default function ProfessionalOrderTimelineTab({
     type: "image" | "pdf" | "other";
   } | null>(null);
 
-  // Helper function to check if we're within 24 hours of delivery time
+  // Helper: show "Request Time Extension" when expected delivery timer has 1 day (24h) or less left; same source as expected delivery timer (effectiveExpectedDelivery when extension approved).
   const isWithin24HoursOfDelivery = () => {
     if (!currentOrder) return false;
 
@@ -123,10 +123,10 @@ export default function ProfessionalOrderTimelineTab({
       return false;
     }
 
-    // Get the delivery date/time from booking or scheduledDate
     let deliveryDateTime: Date | null = null;
-
-    if (currentOrder.booking?.date) {
+    if (effectiveExpectedDelivery) {
+      deliveryDateTime = new Date(effectiveExpectedDelivery);
+    } else if (currentOrder.booking?.date) {
       const dateStr = currentOrder.booking.date;
       const timeStr = currentOrder.booking.starttime || "00:00";
       deliveryDateTime = new Date(`${dateStr}T${timeStr}`);
@@ -142,8 +142,7 @@ export default function ProfessionalOrderTimelineTab({
     const timeDiff = deliveryDateTime.getTime() - now.getTime();
     const hoursUntilDelivery = timeDiff / (1000 * 60 * 60);
 
-    // Show button only if between 24 hours before delivery and delivery start time
-    // Don't show if delivery time has already passed
+    // Show only when 1 day (24h) or less remaining, and not past delivery time
     return hoursUntilDelivery <= 24 && hoursUntilDelivery >= 0;
   };
 
@@ -399,7 +398,7 @@ export default function ProfessionalOrderTimelineTab({
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Chat
               </Button>
-              {isWithin24HoursOfDelivery() && (
+              {(!(currentOrder as any).extensionRequest || (currentOrder as any).extensionRequest?.status !== "pending") && isWithin24HoursOfDelivery() && (
                 <Button
                   onClick={() => {
                     const currentDate = currentOrder.scheduledDate
@@ -415,7 +414,7 @@ export default function ProfessionalOrderTimelineTab({
                   className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-orange-50 font-['Poppins',sans-serif]"
                 >
                   <Clock className="w-4 h-4 mr-2" />
-                  Extend Delivery Time
+                  Request Time Extension
                 </Button>
               )}
             </div>
@@ -545,23 +544,6 @@ export default function ProfessionalOrderTimelineTab({
                 <Truck className="w-4 h-4 mr-2" />
                 Deliver Work
               </Button>
-              {(!(currentOrder as any).extensionRequest || (currentOrder as any).extensionRequest?.status !== "pending") && isWithin24HoursOfDelivery() && (
-                <Button
-                  onClick={() => {
-                    const currentDate = currentOrder.scheduledDate ? new Date(currentOrder.scheduledDate) : new Date();
-                    currentDate.setDate(currentDate.getDate() + 7);
-                    onSetExtensionNewDate(currentDate.toISOString().split("T")[0]);
-                    onSetExtensionNewTime("09:00");
-                    onSetExtensionReason("");
-                    onOpenModal("extension");
-                  }}
-                  variant="outline"
-                  className="border-blue-500 text-blue-600 hover:bg-blue-50 font-['Poppins',sans-serif]"
-                >
-                  <Clock className="w-4 h-4 mr-2" />
-                  Request Time Extension
-                </Button>
-              )}
             </div>
           )}
         </div>
@@ -710,6 +692,7 @@ export default function ProfessionalOrderTimelineTab({
                             Time until new delivery deadline
                           </p>
                         </div>
+                        
                         {extensionCountdown.expired ? (
                           <p className="font-['Poppins',sans-serif] text-[13px] text-red-600 font-medium">
                             New delivery deadline has passed

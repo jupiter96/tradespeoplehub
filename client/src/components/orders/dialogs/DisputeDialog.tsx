@@ -60,14 +60,14 @@ export default function DisputeDialog({
   const milestones = (meta.milestones || []) as MilestoneItem[];
 
   const maxDisputeAmount = useMemo(() => {
-    if (!isMilestoneOrder || !onSelectedMilestoneIndicesChange) return currentOrder?.amountValue ?? 0;
+    if (!isMilestoneOrder || !onSelectedMilestoneIndicesChange) return currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? 0;
     return selectedMilestoneIndices.reduce((sum, i) => {
       const m = milestones[i];
       const p = m?.price ?? m?.amount ?? 0;
       const q = m?.noOf ?? 1;
       return sum + p * q;
     }, 0);
-  }, [isMilestoneOrder, milestones, selectedMilestoneIndices, currentOrder?.amountValue]);
+  }, [isMilestoneOrder, milestones, selectedMilestoneIndices, currentOrder?.refundableAmount, currentOrder?.amountValue]);
 
   const toggleMilestone = (index: number) => {
     if (!onSelectedMilestoneIndicesChange) return;

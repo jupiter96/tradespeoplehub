@@ -31,6 +31,8 @@ export interface DisputeInfo {
   reason?: string;
   requirements?: string;
   unmetRequirements?: string;
+  /** Max dispute/refundable amount (excludes service fee) */
+  amount?: number;
   offerAmount?: number;
   evidenceFiles?: OrderFile[];
   responseDeadline?: string;
@@ -70,6 +72,8 @@ export interface Order {
   date: string;
   amount: string;
   amountValue: number;
+  /** Refundable amount (subtotal - discount); dispute max is this, service fee is not refundable */
+  refundableAmount?: number;
   subtotal?: number;
   serviceFee?: number;
   discount?: number;

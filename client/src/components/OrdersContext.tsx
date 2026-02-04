@@ -860,7 +860,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           createdAt: order.disputeInfo.createdAt || new Date().toISOString(),
           messages: order.disputeInfo.messages || [],
           teamInterventionTime: order.disputeInfo.negotiationDeadline,
-          amount: order.amountValue || parseFloat(order.amount?.replace(/[^0-9.]/g, '') || '0'),
+          amount: order.disputeInfo.amount ?? order.refundableAmount ?? order.amountValue ?? parseFloat(order.amount?.replace(/[^0-9.]/g, '') || '0'),
           clientOffer: order.disputeInfo.clientOffer,
           professionalOffer: order.disputeInfo.professionalOffer,
           responseDeadline: order.disputeInfo.responseDeadline,
