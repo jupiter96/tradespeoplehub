@@ -147,6 +147,44 @@ const disputeSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    arbitrationFeeDeadline: {
+      type: Date,
+      default: null,
+    },
+    arbitrationPayments: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      amount: {
+        type: Number,
+        required: true,
+      },
+      paidAt: {
+        type: Date,
+        required: true,
+        default: Date.now,
+      },
+      paymentMethod: {
+        type: String,
+        enum: ['wallet', 'card', 'paypal'],
+        required: true,
+      },
+      paymentIntentId: {
+        type: String,
+        default: null,
+      },
+      paypalOrderId: {
+        type: String,
+        default: null,
+      },
+      transactionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Wallet',
+        default: null,
+      },
+    }],
     // Dispute 해결 정보
     closedAt: {
       type: Date,

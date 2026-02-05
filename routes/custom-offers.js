@@ -760,7 +760,16 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
 
     // Cancel the "offer created" order if it exists
     if (customOffer.order) {
-      await Order.findByIdAndUpdate(customOffer.order, { status: 'Cancelled' });
+      const order = await Order.findById(customOffer.order);
+      if (order) {
+        order.status = 'Cancelled';
+        if (!order.metadata) order.metadata = {};
+        order.metadata.customOfferStatus = 'rejected';
+        order.metadata.customOfferRejectedAt = customOffer.rejectedAt;
+        order.metadata.customOfferRejectedBy = 'client';
+        order.markModified('metadata');
+        await order.save();
+      }
     }
 
     // Update message
@@ -809,7 +818,16 @@ router.post('/:offerId/withdraw', authenticateToken, requireRole(['professional'
 
     // Set order status to Cancelled (same as client decline)
     if (customOffer.order) {
-      await Order.findByIdAndUpdate(customOffer.order, { status: 'Cancelled' });
+      const order = await Order.findById(customOffer.order);
+      if (order) {
+        order.status = 'Cancelled';
+        if (!order.metadata) order.metadata = {};
+        order.metadata.customOfferStatus = 'rejected';
+        order.metadata.customOfferRejectedAt = customOffer.rejectedAt;
+        order.metadata.customOfferRejectedBy = 'professional';
+        order.markModified('metadata');
+        await order.save();
+      }
     }
 
     const message = await Message.findById(customOffer.message);

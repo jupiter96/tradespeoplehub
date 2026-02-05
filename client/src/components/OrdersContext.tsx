@@ -189,6 +189,13 @@ export interface Order {
     arbitrationRequestedBy?: string;
     arbitrationRequestedAt?: string;
     arbitrationFeeAmount?: number;
+    arbitrationFeeDeadline?: string;
+    arbitrationPayments?: Array<{
+      userId?: string;
+      amount?: number;
+      paidAt?: string;
+      paymentMethod?: string;
+    }>;
     createdAt?: string;
     closedAt?: string;
     acceptedBy?: string;
@@ -267,7 +274,7 @@ interface OrdersContextType {
   fetchReviewForOrder: (orderId: string) => Promise<any>;
   respondToClientReview: (orderId: string, response: string) => Promise<void>;
   respondToDispute: (orderId: string, message?: string) => Promise<void>;
-  requestArbitration: (orderId: string) => Promise<void>;
+  requestArbitration: (orderId: string, payment: { paymentMethod: string; paymentMethodId?: string }) => Promise<void>;
   cancelDispute: (orderId: string) => Promise<void>;
   addAdditionalInfo: (orderId: string, message?: string, files?: File[]) => Promise<void>;
 }
@@ -871,6 +878,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           arbitrationRequested: order.disputeInfo.arbitrationRequested,
           arbitrationRequestedBy: order.disputeInfo.arbitrationRequestedBy,
           arbitrationFeeAmount: order.disputeInfo.arbitrationFeeAmount,
+          arbitrationFeeDeadline: order.disputeInfo.arbitrationFeeDeadline,
+          arbitrationPayments: order.disputeInfo.arbitrationPayments,
           winnerId: order.disputeInfo.winnerId,
           loserId: order.disputeInfo.loserId,
           adminDecision: order.disputeInfo.adminDecision,
@@ -1347,11 +1356,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   // Request Admin Arbitration
-  const requestArbitration = async (orderId: string): Promise<void> => {
+  const requestArbitration = async (orderId: string, payment: { paymentMethod: string; paymentMethodId?: string }): Promise<void> => {
     try {
       const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute/request-arbitration`), {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify(payment),
       });
 
       if (!response.ok) {
@@ -1368,9 +1379,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             ...order,
             disputeInfo: {
               ...order.disputeInfo,
-              status: 'admin_arbitration',
-              arbitrationRequested: true,
-              arbitrationRequestedAt: data.dispute.arbitrationRequestedAt,
+              status: data.dispute.status || order.disputeInfo.status,
+              arbitrationRequested: data.dispute.arbitrationRequestedAt ? true : order.disputeInfo.arbitrationRequested,
+              arbitrationRequestedAt: data.dispute.arbitrationRequestedAt || order.disputeInfo.arbitrationRequestedAt,
+              arbitrationFeeAmount: data.dispute.arbitrationFeeAmount ?? order.disputeInfo.arbitrationFeeAmount,
+              arbitrationFeeDeadline: data.dispute.arbitrationFeeDeadline ?? order.disputeInfo.arbitrationFeeDeadline,
+              arbitrationPayments: data.dispute.arbitrationPayments ?? order.disputeInfo.arbitrationPayments,
             },
           };
         }

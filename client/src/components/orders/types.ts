@@ -36,6 +36,19 @@ export interface DisputeInfo {
   offerAmount?: number;
   evidenceFiles?: OrderFile[];
   responseDeadline?: string;
+  respondedAt?: string;
+  negotiationDeadline?: string;
+  arbitrationRequested?: boolean;
+  arbitrationRequestedBy?: string;
+  arbitrationRequestedAt?: string;
+  arbitrationFeeAmount?: number;
+  arbitrationFeeDeadline?: string;
+  arbitrationPayments?: Array<{
+    userId?: string;
+    amount?: number;
+    paidAt?: string;
+    paymentMethod?: string;
+  }>;
   clientResponse?: string;
   professionalResponse?: string;
   createdAt?: string;

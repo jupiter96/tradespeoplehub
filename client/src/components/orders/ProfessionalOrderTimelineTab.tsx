@@ -279,6 +279,20 @@ export default function ProfessionalOrderTimelineTab({
       )}
 
       {/* Order Cancellation Initiated – Professional sent cancel request (pending) or already cancelled */}
+      {((currentOrder as any).metadata?.customOfferStatus === "rejected" &&
+        (currentOrder as any).metadata?.customOfferRejectedBy === "client") && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 shadow-md mb-6">
+          <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
+            Your offer was rejected!
+          </h3>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            {((currentOrder as any).metadata?.customOfferRejectedAt)
+              ? `Your custom offer was rejected on ${formatDateTime((currentOrder as any).metadata.customOfferRejectedAt)}.`
+              : "Your custom offer was rejected by the client."}
+          </p>
+        </div>
+      )}
+      {/* Order Cancellation Initiated – Professional sent cancel request (pending) or already cancelled */}
       {(() => {
         const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
         const isProfessionalRequest = cr?.requestedBy?.toString() === userInfo?.id?.toString();
@@ -632,10 +646,22 @@ export default function ProfessionalOrderTimelineTab({
       {currentOrder.status === "Completed" && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md">
           <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-            Order Completed Successfully!
+            {((currentOrder as any).disputeInfo?.autoClosed &&
+              ((currentOrder as any).disputeInfo?.winnerId?.toString?.() === userInfo?.id?.toString() ||
+               (currentOrder as any).disputeInfo?.winnerId?.toString() === userInfo?.id?.toString()))
+              ? "Dispute automatically closed & Order completed!"
+              : ((currentOrder as any).disputeInfo?.autoClosed
+                ? "Dispute automatically closed & Order completed!"
+                : "Order Completed Successfully!")}
           </h4>
-          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-            This order has been completed successfully. {currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}
+          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4 whitespace-pre-line">
+            {((currentOrder as any).disputeInfo?.autoClosed &&
+              ((currentOrder as any).disputeInfo?.winnerId?.toString?.() === userInfo?.id?.toString() ||
+               (currentOrder as any).disputeInfo?.winnerId?.toString() === userInfo?.id?.toString()))
+              ? `The dispute was automatically decided and closed, with the order marked as completed due to no response from ${(currentOrder as any).client || "the client"}.`
+              : ((currentOrder as any).disputeInfo?.autoClosed
+                ? "The dispute was automatically decided and closed, with the order marked as completed due to no response from you."
+                : `This order has been completed successfully. ${currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}`)}
           </p>
           <Button
             onClick={() => onOpenModal('professionalReview')}
@@ -657,9 +683,42 @@ export default function ProfessionalOrderTimelineTab({
                 Your order is being disputed!
               </h4>
               <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
-                {(currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString()
-                  ? `You are disputing the order. ${currentOrder.client || "The client"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
-                  : `${currentOrder.client || "The client"} is disputing the work you have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, make, reject, or accept an offer.`}
+                {(() => {
+                  const isClaimant = (currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
+                  const hasReply = Boolean((currentOrder as any).disputeInfo?.respondedAt);
+                  const disputeInfo = (currentOrder as any).disputeInfo;
+                  const arbitrationPayments = disputeInfo?.arbitrationPayments || [];
+                  const hasPaidArbitration = arbitrationPayments.some(
+                    (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
+                  );
+                  const onlyOnePaid = arbitrationPayments.length === 1;
+                  const hasOtherPaid = arbitrationPayments.some(
+                    (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
+                  );
+                  const arbitrationDeadline = disputeInfo?.arbitrationFeeDeadline
+                    ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "the deadline";
+                  if (hasPaidArbitration && onlyOnePaid) {
+                    return `The arbitration fees is paid.\nYou have paid your arbitration fees to ask our arbitration team to step in and decide the case. ${currentOrder.client || "The client"} has been notified and expected to complete payment before ${arbitrationDeadline}.`;
+                  }
+                  if (!hasPaidArbitration && onlyOnePaid && hasOtherPaid) {
+                    const clientName = currentOrder.client || "The client";
+                    return `The arbitration fees paid by ${clientName}.\n${clientName} has paid their arbitration fees to request our dispute team to review and decide the case. Please ensure you pay yours before the deadline on ${arbitrationDeadline}, as failure to do so will result in a decision in favor of ${clientName}.`;
+                  }
+                  if (isClaimant && hasReply) {
+                    return `${currentOrder.client || "The client"} has responded to your dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`;
+                  }
+                  if (!isClaimant && hasReply) {
+                    return "You have responded to the dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to  step in.";
+                  }
+                  return isClaimant
+                    ? `You are disputing the order. ${currentOrder.client || "The client"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
+                    : `${currentOrder.client || "The client"} is disputing the work you have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, make, reject, or accept an offer.`;
+                })()}
               </p>
               {((currentOrder as any).disputeInfo?.claimantId?.toString() !== userInfo?.id?.toString()) && (
                 <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">

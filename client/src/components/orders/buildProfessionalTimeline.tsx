@@ -64,6 +64,35 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
+  // Custom offer created by professional (awaiting client response)
+  if (order.status === "offer created") {
+    push(
+      {
+        at: (order as any).createdAt || order.date,
+        label: "You made an offer.",
+        description: "Custom offer sent to the client.",
+        colorClass: "bg-blue-600",
+        icon: <FileText className="w-5 h-5 text-blue-600" />,
+      },
+      "offer-created"
+    );
+  }
+  if (
+    (order as any).metadata?.customOfferStatus === "rejected" &&
+    (order as any).metadata?.customOfferRejectedBy === "client"
+  ) {
+    push(
+      {
+        at: (order as any).metadata?.customOfferRejectedAt || (order as any).updatedAt,
+        label: "Your offer was rejected.",
+        description: "The client rejected your custom offer.",
+        colorClass: "bg-red-600",
+        icon: <XCircle className="w-5 h-5 text-blue-600" />,
+      },
+      "offer-rejected"
+    );
+  }
+
   // Order accepted by professional
   if ((order as any).acceptedByProfessional && (order as any).acceptedAt) {
     push(
@@ -497,20 +526,94 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       "dispute-opened"
     );
   }
+  if (disp?.respondedAt) {
+    const claimantIdRaw = (disp as any).claimantId;
+    const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
+    const professionalId = (order as any).professionalId || (order as any).professional;
+    const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
+    if (claimantId && professionalId && claimantId.toString() === professionalId.toString()) {
+      const negotiationDeadlineStr = disp.negotiationDeadline
+        ? formatAcceptedAt(disp.negotiationDeadline).split(" ").slice(1, 4).join(" ")
+        : "the deadline";
+      const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
+        ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
+        : "";
+      push(
+        {
+          at: disp.respondedAt,
+          label: "Dispute Response Received",
+          description: `${clientDisplayName} responded to your dispute.`,
+          message: `You have until ${negotiationDeadlineStr} to negotiate and reach a settlement directly. If you are unable to reach an agreement, you may request our team to arbitrate the case by paying the required arbitration fee.${arbitrationFeeAmount}`,
+          colorClass: "bg-blue-600",
+          icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-responded"
+      );
+    }
+  }
+  if (disp?.arbitrationPayments && disp.arbitrationPayments.length === 1) {
+    const payment = disp.arbitrationPayments[0];
+    const professionalId = (order as any).professionalId || (order as any).professional;
+    const paidByProfessional = payment?.userId?.toString?.() === professionalId?.toString?.();
+    const paidAtStr = payment.paidAt ? formatAcceptedAt(payment.paidAt) : "";
+    const deadlineStr = disp.arbitrationFeeDeadline
+      ? formatAcceptedAt(disp.arbitrationFeeDeadline).split(" ").slice(1, 4).join(" ")
+      : "the deadline";
+    if (paidByProfessional) {
+      push(
+        {
+          at: payment.paidAt || disp.arbitrationRequestedAt || disp.respondedAt,
+          label: "Arbitration Fee Paid",
+          description: `You have paid your arbitration fees${paidAtStr ? ` on ${paidAtStr}` : ""}`,
+          message: `${clientDisplayName} has until ${deadlineStr} to pay arbitration fees. Failure to make the payment within this timeframe will result in the case being closed and a decision made in your favor.`,
+          colorClass: "bg-blue-600",
+          icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "arbitration-fee-paid"
+      );
+    } else {
+      push(
+        {
+          at: payment.paidAt || disp.arbitrationRequestedAt || disp.respondedAt,
+          label: "Arbitration Fee Paid",
+          description: `${clientDisplayName} has paid its arbitration fees${paidAtStr ? ` on ${paidAtStr}` : ""}.`,
+          message: `You have until ${deadlineStr} to pay arbitration fees. Failure to make the payment within this timeframe will result in the case being closed and a decision made in ${clientDisplayName}´s favor.`,
+          colorClass: "bg-blue-600",
+          icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "arbitration-fee-paid"
+      );
+    }
+  }
   if (disp && disp.closedAt) {
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
     const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
+    const winnerIdRaw = (disp as any).winnerId;
+    const winnerId = winnerIdRaw?.toString?.() || winnerIdRaw;
+    const professionalId = (order as any).professionalId || (order as any).professional;
+    const isProfessionalWinner =
+      winnerId &&
+      professionalId &&
+      winnerId.toString() === professionalId.toString();
+    const autoClosedDeadline = disp.responseDeadline
+      ? new Date(disp.responseDeadline).toISOString().split("T")[0]
+      : "the deadline";
     const disputeClosedDescription =
       disp.acceptedByRole === "professional"
         ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
         : disp.acceptedByRole === "client"
           ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
           : (disp.decisionNotes || "Dispute has been resolved and closed.");
+    const disputeClosedMessage =
+      disp.autoClosed
+        ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
+        : undefined;
     push(
       {
         at: disp.closedAt,
         label: "Dispute Closed",
         description: disputeClosedDescription,
+        message: disputeClosedMessage,
         colorClass: "bg-gray-700",
         icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
       },

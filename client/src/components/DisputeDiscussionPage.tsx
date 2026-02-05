@@ -11,7 +11,9 @@ import { Textarea } from "./ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X, XCircle } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Label } from "./ui/label";
+import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X, XCircle, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
@@ -21,7 +23,7 @@ export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
   const navigate = useNavigate();
   const { getDisputeById, getJobById, addDisputeMessage, makeDisputeOffer } = useJobs();
-  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, orders } = useOrders();
+  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, requestArbitration, orders } = useOrders();
   const { currentUser } = useAccount();
   
   // Try to get dispute from both contexts
@@ -35,6 +37,13 @@ export default function DisputeDiscussionPage() {
   const [hasReplied, setHasReplied] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [isArbitrationWarningOpen, setIsArbitrationWarningOpen] = useState(false);
+  const [isArbitrationPaymentOpen, setIsArbitrationPaymentOpen] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [selectedPayment, setSelectedPayment] = useState<string>("");
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [isPayingArbitration, setIsPayingArbitration] = useState(false);
   
   // Determine if this is an order dispute or job dispute
   const isOrderDispute = dispute && "orderId" in dispute;
@@ -54,32 +63,6 @@ export default function DisputeDiscussionPage() {
       }
     }
   }, [disputeId, getDisputeById, getOrderDisputeById, getJobById, orders]);
-
-  // Calculate time left until response deadline
-  useEffect(() => {
-    if (!dispute?.responseDeadline && !dispute?.negotiationDeadline) return;
-
-    const updateTimer = () => {
-      const now = Date.now();
-      const deadline = dispute.negotiationDeadline || dispute.responseDeadline;
-      const deadlineTime = new Date(deadline).getTime();
-      const diff = deadlineTime - now;
-
-      if (diff <= 0) {
-        setTimeLeft("Deadline passed");
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setTimeLeft(`${days} days, ${hours} hours`);
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, [dispute?.responseDeadline, dispute?.negotiationDeadline]);
 
   const handleSendMessage = async () => {
     if ((!message.trim() && selectedFiles.length === 0) || !disputeId) return;
@@ -260,6 +243,125 @@ export default function DisputeDiscussionPage() {
     }
   };
 
+  const formatDeadlineDateTime = (dateString?: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/payment/wallet-balance"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const balance = data.balance || 0;
+        setWalletBalance(balance);
+        return balance;
+      }
+    } catch (error) {
+      console.error("Error fetching wallet balance:", error);
+    }
+    return 0;
+  };
+
+  const fetchPaymentMethods = async () => {
+    setLoadingPaymentMethods(true);
+    try {
+      const response = await fetch(resolveApiUrl("/api/payment-methods"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const methods = [
+          {
+            id: "account_balance",
+            type: "account_balance",
+            isDefault: true,
+            balance: walletBalance,
+          },
+          ...(data.paymentMethods || []).map((pm: any) => ({
+            id: pm.paymentMethodId || pm.id,
+            type: "card",
+            cardNumber: pm.cardNumber || `****${pm.last4 || "****"}`,
+            cardHolder: pm.cardHolder || "Card Holder",
+            expiryDate: pm.expiryDate || "MM/YY",
+            isDefault: pm.isDefault || false,
+          })),
+        ];
+        setPaymentMethods(methods);
+        const defaultMethod = methods.find((m: any) => m.isDefault) || methods[0];
+        if (defaultMethod) {
+          setSelectedPayment(defaultMethod.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+    } finally {
+      setLoadingPaymentMethods(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isArbitrationPaymentOpen) {
+      fetchWalletBalance().then(() => fetchPaymentMethods());
+    }
+  }, [isArbitrationPaymentOpen]);
+
+  const handleRequestArbitration = async () => {
+    if (!order?.id || !isOrderDispute) return;
+    const deadline = dispute?.negotiationDeadline;
+    const deadlineTime = deadline ? new Date(deadline).getTime() : null;
+    if (deadlineTime && Date.now() < deadlineTime) {
+      setIsArbitrationWarningOpen(true);
+      return;
+    }
+    setIsArbitrationPaymentOpen(true);
+  };
+
+  const handlePayArbitrationFee = async () => {
+    if (!order?.id || !selectedPayment) return;
+    const selectedMethod = paymentMethods.find((m: any) => m.id === selectedPayment);
+    const feeAmount = typeof dispute?.arbitrationFeeAmount === "number" ? dispute.arbitrationFeeAmount : 0;
+    if (!feeAmount || feeAmount <= 0) {
+      toast.error("Arbitration fee is not available");
+      return;
+    }
+    if (selectedMethod?.type === "account_balance" && walletBalance < feeAmount) {
+      toast.error(`Insufficient wallet balance. Fee is £${feeAmount.toFixed(2)}.`);
+      return;
+    }
+    setIsPayingArbitration(true);
+    try {
+      await toast.promise(
+        requestArbitration(order.id, {
+          paymentMethod: selectedMethod?.type === "account_balance" ? "account_balance" : "card",
+          paymentMethodId: selectedMethod?.type === "card" ? selectedMethod.id : undefined,
+        }),
+        {
+          loading: "Processing...",
+          success: "Arbitration payment submitted.",
+          error: (e: any) => e?.message || "Failed to request arbitration",
+        }
+      );
+      setIsArbitrationPaymentOpen(false);
+      setDispute(getOrderDisputeById(disputeId || ""));
+    } catch (error: any) {
+      toast.error(error.message || "Failed to request arbitration");
+    } finally {
+      setIsPayingArbitration(false);
+    }
+  };
+
   const handleCancelDispute = async () => {
     if (!disputeId || !order) return;
     try {
@@ -320,6 +422,50 @@ export default function DisputeDiscussionPage() {
       return respondentIdStr && msgUserId && String(msgUserId) === String(respondentIdStr);
     }) || (isRespondent && hasReplied)
   );
+  const isNegotiationPhase = Boolean(
+    dispute?.negotiationDeadline && (dispute?.status === "negotiation" || respondentHasReplied)
+  );
+  const hasPaidArbitrationFee = Boolean(
+    (dispute?.arbitrationPayments || []).some((p: any) => p?.userId?.toString?.() === currentUser?.id)
+  );
+  const canShowArbitrationButton = Boolean(
+    isOrderDispute &&
+      order?.id &&
+      isNegotiationPhase &&
+      dispute?.status !== "admin_arbitration" &&
+      dispute?.status !== "closed" &&
+      !hasPaidArbitrationFee
+  );
+
+  // Calculate time left until response/negotiation deadline
+  useEffect(() => {
+    if (!dispute?.responseDeadline && !dispute?.negotiationDeadline) return;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const deadline = isNegotiationPhase ? dispute?.negotiationDeadline : dispute?.responseDeadline;
+      if (!deadline) {
+        setTimeLeft("");
+        return;
+      }
+      const deadlineTime = new Date(deadline).getTime();
+      const diff = deadlineTime - now;
+
+      if (diff <= 0) {
+        setTimeLeft("Deadline passed");
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      setTimeLeft(`${days} days, ${hours} hours`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.status, isNegotiationPhase]);
   // For order disputes, check order.clientId, for job disputes use claimantId
   let isCurrentUserClient = false;
   if (order) {
@@ -646,8 +792,15 @@ export default function DisputeDiscussionPage() {
                   {timeLeft}
                 </p>
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
-                  left for {isCurrentUserClient ? dispute.respondentName : dispute.claimantName} to respond
+                  {isNegotiationPhase
+                    ? "left to ask admin to step in"
+                    : `left for ${isCurrentUserClient ? dispute.respondentName : dispute.claimantName} to respond`}
                 </p>
+                {isNegotiationPhase && (
+                  <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
+                    {`If no agreement is reached, either party can ask the dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}. Both parties must pay ${typeof dispute?.arbitrationFeeAmount === "number" ? `£${dispute.arbitrationFeeAmount.toFixed(2)}` : "the required fee"}.`}
+                  </p>
+                )}
               </div>
             )}
             
@@ -792,19 +945,30 @@ export default function DisputeDiscussionPage() {
                   Enter an amount between £0 and £{dispute.amount.toFixed(2)} GBP
                 </p>
 
-                {/* Cancel Dispute Button - Only for claimant (dispute creator) */}
-                {isClaimant && isOrderDispute && (dispute.status === "open" || dispute.status === "negotiation") && (
+                {(isClaimant && isOrderDispute && (dispute.status === "open" || dispute.status === "negotiation")) || canShowArbitrationButton ? (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <Button
-                      onClick={() => setIsCancelConfirmOpen(true)}
-                      variant="outline"
-                      className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Cancel Dispute
-                    </Button>
+                    <div className={`grid gap-2 ${isClaimant && canShowArbitrationButton ? "grid-cols-2" : "grid-cols-1"}`}>
+                      {isClaimant && isOrderDispute && (dispute.status === "open" || dispute.status === "negotiation") && (
+                        <Button
+                          onClick={() => setIsCancelConfirmOpen(true)}
+                          variant="outline"
+                          className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif] text-[13px]"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Cancel Dispute
+                        </Button>
+                      )}
+                      {canShowArbitrationButton && (
+                        <Button
+                          onClick={handleRequestArbitration}
+                          className="w-full bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] text-[13px]"
+                        >
+                          Ask admin to step in
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
             </div>
@@ -836,6 +1000,100 @@ export default function DisputeDiscussionPage() {
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Yes, Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isArbitrationWarningOpen} onOpenChange={setIsArbitrationWarningOpen}>
+          <DialogContent className="w-[90vw] max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] text-center">
+                Warning
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] text-center">
+                {`You can ask our dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center mt-4">
+              <Button
+                onClick={() => setIsArbitrationWarningOpen(false)}
+                className="bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] px-8"
+              >
+                OK
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isArbitrationPaymentOpen} onOpenChange={setIsArbitrationPaymentOpen}>
+          <DialogContent className="w-[90vw] max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                Arbitration Fee Payment
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Both parties must pay the arbitration fee before the dispute team can step in.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex justify-between">
+                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Arbitration Fee:</span>
+                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    £{typeof dispute?.arbitrationFeeAmount === "number" ? dispute.arbitrationFeeAmount.toFixed(2) : "0.00"}
+                  </span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Wallet balance:</span>
+                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{walletBalance.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {loadingPaymentMethods ? (
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Loading payment methods...</p>
+              ) : (
+                <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment} className="space-y-2">
+                  {paymentMethods.map((method: any) => (
+                    <div
+                      key={method.id}
+                      className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      <RadioGroupItem value={method.id} id={`pm-${method.id}`} />
+                      <Label htmlFor={`pm-${method.id}`} className="flex items-center gap-2 text-sm">
+                        {method.type === "account_balance" ? (
+                          <>
+                            <Wallet className="w-4 h-4 text-[#3D78CB]" />
+                            <span>Wallet Balance</span>
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-4 h-4 text-[#3D78CB]" />
+                            <span>{method.cardNumber}</span>
+                          </>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setIsArbitrationPaymentOpen(false)}
+                variant="outline"
+                className="flex-1 font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePayArbitrationFee}
+                disabled={!selectedPayment || isPayingArbitration}
+                className="flex-1 bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif]"
+              >
+                Pay Fee
               </Button>
             </div>
           </DialogContent>

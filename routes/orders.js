@@ -49,6 +49,63 @@ async function emitNotificationToUser(userId, notification) {
   }
 }
 
+async function applyDisputeSettlement({ order, dispute, agreedAmount }) {
+  const refundableAmount = (order.subtotal || 0) - (order.discount || 0);
+  const payoutAmount = Math.min(agreedAmount, refundableAmount);
+  const refundAmount = Math.max(0, refundableAmount - payoutAmount);
+
+  if (!order.metadata) order.metadata = {};
+  if (order.metadata.disputePayoutProcessed) return;
+
+  const client = await User.findById(order.client?._id || order.client);
+  const professional = await User.findById(order.professional?._id || order.professional);
+
+  if (client && refundAmount > 0) {
+    client.walletBalance = (client.walletBalance || 0) + refundAmount;
+    await client.save();
+    const refundTransaction = new Wallet({
+      userId: client._id,
+      type: 'deposit',
+      amount: refundAmount,
+      balance: client.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      orderId: order._id,
+      description: `Dispute Refund - Order ${order.orderNumber}`,
+      metadata: {
+        orderNumber: order.orderNumber,
+        disputeId: dispute?.disputeId || order.disputeId,
+        reason: 'Dispute resolved by settlement offer',
+      },
+    });
+    await refundTransaction.save();
+  }
+
+  if (professional && payoutAmount > 0) {
+    professional.walletBalance = (professional.walletBalance || 0) + payoutAmount;
+    await professional.save();
+    const payoutTransaction = new Wallet({
+      userId: professional._id,
+      type: 'deposit',
+      amount: payoutAmount,
+      balance: professional.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      orderId: order._id,
+      description: `Dispute Payout - Order ${order.orderNumber}`,
+      metadata: {
+        orderNumber: order.orderNumber,
+        disputeId: dispute?.disputeId || order.disputeId,
+        reason: 'Dispute resolved by settlement offer',
+      },
+    });
+    await payoutTransaction.save();
+  }
+
+  order.metadata.disputePayoutProcessed = true;
+  order.metadata.disputePayoutProcessedAt = new Date();
+}
+
 async function sendOrderNotifications({ order, clientUser, professionalUser }) {
   try {
     const orderNumber = order.orderNumber;
@@ -2445,6 +2502,19 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       if (status === 'rejected' || status === 'Rejected') status = 'Cancelled';
       if (status === 'disputed') status = 'disputed';
       if (status === 'offer created') status = 'offer created';
+
+      // Ensure closed disputes are reflected in order status
+      if (dispute && dispute.status === 'closed') {
+        const winnerIdRaw = dispute.winnerId?._id || dispute.winnerId;
+        const winnerId = winnerIdRaw ? winnerIdRaw.toString() : null;
+        const clientId = client?._id?.toString() || client?.toString();
+        const professionalId = professional?._id?.toString() || professional?.toString();
+        if (winnerId && professionalId && winnerId === professionalId) {
+          status = 'Completed';
+        } else if (winnerId && clientId && winnerId === clientId) {
+          status = 'Completed';
+        }
+      }
       
       // Map delivery status
       let deliveryStatus = order.deliveryStatus || 'active';
@@ -2454,6 +2524,17 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       if (deliveryStatus === 'completed') deliveryStatus = 'completed';
       if (deliveryStatus === 'cancelled') deliveryStatus = 'cancelled';
       if (deliveryStatus === 'dispute') deliveryStatus = 'dispute';
+      if (dispute && dispute.status === 'closed') {
+        const winnerIdRaw = dispute.winnerId?._id || dispute.winnerId;
+        const winnerId = winnerIdRaw ? winnerIdRaw.toString() : null;
+        const clientId = client?._id?.toString() || client?.toString();
+        const professionalId = professional?._id?.toString() || professional?.toString();
+        if (winnerId && professionalId && winnerId === professionalId) {
+          deliveryStatus = 'completed';
+        } else if (winnerId && clientId && winnerId === clientId) {
+          deliveryStatus = 'completed';
+        }
+      }
       
       // Format dates
       const date = order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
@@ -2514,6 +2595,9 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           deliveryDays: order.metadata?.deliveryDays,
           scheduledDate: order.metadata?.scheduledDate,
           customOfferId: order.metadata?.customOfferId?.toString?.() || order.metadata?.customOfferId,
+          customOfferStatus: order.metadata?.customOfferStatus,
+          customOfferRejectedAt: order.metadata?.customOfferRejectedAt,
+          customOfferRejectedBy: order.metadata?.customOfferRejectedBy,
           sourceServiceId: order.metadata?.sourceServiceId || undefined,
           responseDeadline: order.metadata?.responseDeadline,
           paymentType: order.metadata?.paymentType || undefined,
@@ -2683,6 +2767,13 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           arbitrationRequestedBy: dispute.arbitrationRequestedBy ? dispute.arbitrationRequestedBy.toString() : undefined,
           arbitrationRequestedAt: dispute.arbitrationRequestedAt ? new Date(dispute.arbitrationRequestedAt).toISOString() : undefined,
           arbitrationFeeAmount: dispute.arbitrationFeeAmount || undefined,
+          arbitrationFeeDeadline: dispute.arbitrationFeeDeadline ? new Date(dispute.arbitrationFeeDeadline).toISOString() : undefined,
+          arbitrationPayments: dispute.arbitrationPayments ? dispute.arbitrationPayments.map((p) => ({
+            userId: p.userId?.toString(),
+            amount: p.amount,
+            paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : undefined,
+            paymentMethod: p.paymentMethod,
+          })) : [],
           createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : undefined,
           closedAt: dispute.closedAt ? new Date(dispute.closedAt).toISOString() : undefined,
           acceptedBy: dispute.acceptedBy ? dispute.acceptedBy.toString() : undefined,
@@ -4470,11 +4561,16 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
 
     // Get negotiation time from payment settings
     const settings = await PaymentSettings.getSettings();
+    const stepInDays = settings.stepInDays;
     const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
 
-    // Calculate negotiation deadline
+    // Calculate negotiation deadline (prefer step-in days if set)
     const negotiationDeadline = new Date();
-    negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
+    if (typeof stepInDays === 'number' && stepInDays > 0) {
+      negotiationDeadline.setDate(negotiationDeadline.getDate() + stepInDays);
+    } else {
+      negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
+    }
 
     // Get respondent user info
     const respondentUser = await User.findById(req.user.id);
@@ -4500,6 +4596,7 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     dispute.status = 'negotiation';
     dispute.respondedAt = new Date();
     dispute.negotiationDeadline = negotiationDeadline;
+    dispute.arbitrationFeeAmount = settings.stepInAmount ?? settings.arbitrationFee ?? dispute.arbitrationFeeAmount;
 
     await dispute.save();
 
@@ -4685,11 +4782,7 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
       order.status = 'Completed';
       order.deliveryStatus = 'completed';
       
-      // Process refund if needed
-      if (clientOffer < order.total) {
-        const refundAmount = order.total - clientOffer;
-        // Add refund logic here if needed
-      }
+      await applyDisputeSettlement({ order, dispute, agreedAmount: clientOffer });
     }
 
     await dispute.save();
@@ -4764,30 +4857,7 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
     order.status = 'Completed';
     order.deliveryStatus = 'completed';
 
-    // Process payment/refund if needed
-    if (agreedAmount < order.total) {
-      const refundAmount = order.total - agreedAmount;
-      // Refund to client's wallet
-      const clientWallet = await Wallet.findOne({ user: order.client });
-      if (clientWallet) {
-        clientWallet.balance += refundAmount;
-        await clientWallet.save();
-      }
-      
-      // Transfer agreed amount to professional's wallet
-      const professionalWallet = await Wallet.findOne({ user: order.professional });
-      if (professionalWallet) {
-        professionalWallet.balance += agreedAmount;
-        await professionalWallet.save();
-      }
-    } else {
-      // Transfer full amount to professional
-      const professionalWallet = await Wallet.findOne({ user: order.professional });
-      if (professionalWallet) {
-        professionalWallet.balance += agreedAmount;
-        await professionalWallet.save();
-      }
-    }
+    await applyDisputeSettlement({ order, dispute, agreedAmount });
 
     await dispute.save();
     await order.save();
@@ -4885,6 +4955,7 @@ router.post('/:orderId/dispute/reject', authenticateToken, async (req, res) => {
 router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
+    const { paymentMethod, paymentMethodId } = req.body || {};
 
     const order = await Order.findOne(await buildOrderQuery(orderId))
       .populate('client', 'walletBalance')
@@ -4894,8 +4965,13 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
     // Check if dispute exists and is in negotiation phase
-    if (!order.disputeId || order.metadata?.disputeStatus !== 'negotiation') {
+    if (dispute.status !== 'negotiation') {
       return res.status(400).json({ error: 'Dispute must be in negotiation phase to request arbitration' });
     }
 
@@ -4909,14 +4985,14 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       return res.status(403).json({ error: 'Only parties involved in the dispute can request arbitration' });
     }
 
-    // Check if arbitration already requested
-    if (order.metadata.disputeArbitrationRequested) {
-      return res.status(400).json({ error: 'Arbitration has already been requested for this dispute' });
+    if (!paymentMethod || !['account_balance', 'card'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method. Only card and account_balance are allowed.' });
     }
 
     // Get arbitration fee from settings
     const settings = await PaymentSettings.getSettings();
-    const arbitrationFee = settings.arbitrationFee || 50;
+    const arbitrationFee = settings.stepInAmount ?? settings.arbitrationFee ?? 50;
+    const feeDeadlineDays = settings.arbitrationFeeDeadlineDays || 1;
 
     // Get the user requesting arbitration
     const requestingUser = isClaimant 
@@ -4927,55 +5003,150 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check if user has sufficient balance
-    if ((requestingUser.walletBalance || 0) < arbitrationFee) {
-      return res.status(400).json({ 
-        error: `Insufficient balance. Arbitration fee is £${arbitrationFee.toFixed(2)}. Please add funds to your wallet.`,
-        requiredAmount: arbitrationFee,
-        currentBalance: requestingUser.walletBalance || 0,
-      });
+    // Prevent duplicate payment by same user
+    const existingPayment = (dispute.arbitrationPayments || []).find((p) => p.userId?.toString() === req.user.id);
+    if (existingPayment) {
+      return res.status(400).json({ error: 'You have already paid the arbitration fee for this dispute' });
     }
 
-    // Deduct arbitration fee from user's wallet
-    requestingUser.walletBalance = (requestingUser.walletBalance || 0) - arbitrationFee;
-    await requestingUser.save();
+    let feeTransaction = null;
+    let paymentIntentId = null;
 
-    // Create fee transaction
-    const feeTransaction = new Wallet({
+    if (paymentMethod === 'account_balance') {
+      if ((requestingUser.walletBalance || 0) < arbitrationFee) {
+        return res.status(400).json({ 
+          error: `Insufficient balance. Arbitration fee is £${arbitrationFee.toFixed(2)}. Please add funds to your wallet.`,
+          requiredAmount: arbitrationFee,
+          currentBalance: requestingUser.walletBalance || 0,
+        });
+      }
+      requestingUser.walletBalance = (requestingUser.walletBalance || 0) - arbitrationFee;
+      await requestingUser.save();
+
+      feeTransaction = new Wallet({
+        userId: requestingUser._id,
+        type: 'payment',
+        amount: arbitrationFee,
+        balance: requestingUser.walletBalance,
+        status: 'completed',
+        paymentMethod: 'wallet',
+        orderId: order._id,
+        description: `Arbitration Fee - Dispute ${order.disputeId}`,
+        metadata: {
+          orderNumber: order.orderNumber,
+          disputeId: order.disputeId,
+          reason: 'Admin arbitration fee payment',
+        },
+      });
+      await feeTransaction.save();
+    } else if (paymentMethod === 'card') {
+      if (!paymentMethodId) {
+        return res.status(400).json({ error: 'Payment method ID is required for card payments' });
+      }
+      try {
+        const stripe = getStripeInstance(settings);
+        const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
+        const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
+        const stripeCommission = (arbitrationFee * stripeCommissionPercentage / 100) + stripeCommissionFixed;
+        const totalChargeAmount = arbitrationFee + stripeCommission;
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(totalChargeAmount * 100),
+          currency: 'gbp',
+          payment_method: paymentMethodId,
+          customer: requestingUser.stripeCustomerId,
+          confirm: true,
+          return_url: `${req.headers.origin || 'http://localhost:5000'}/account`,
+          metadata: {
+            userId: requestingUser._id.toString(),
+            type: 'arbitration_fee',
+            disputeId: order.disputeId,
+            orderNumber: order.orderNumber,
+          },
+        });
+
+        if (paymentIntent.status !== 'succeeded') {
+          return res.status(400).json({ 
+            error: 'Payment failed',
+            status: paymentIntent.status,
+            requiresAction: paymentIntent.status === 'requires_action',
+          });
+        }
+
+        paymentIntentId = paymentIntent.id;
+        feeTransaction = new Wallet({
+          userId: requestingUser._id,
+          type: 'payment',
+          amount: arbitrationFee,
+          balance: requestingUser.walletBalance || 0,
+          status: 'completed',
+          paymentMethod: 'card',
+          orderId: order._id,
+          description: `Arbitration Fee - Dispute ${order.disputeId}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            disputeId: order.disputeId,
+            reason: 'Admin arbitration fee payment',
+            paymentIntentId,
+          },
+        });
+        await feeTransaction.save();
+      } catch (error) {
+        return res.status(500).json({ error: error.message || 'Failed to process card payment' });
+      }
+    }
+
+    if (!dispute.arbitrationPayments) dispute.arbitrationPayments = [];
+    dispute.arbitrationFeeAmount = arbitrationFee;
+    dispute.arbitrationPayments.push({
       userId: requestingUser._id,
-      type: 'payment',
       amount: arbitrationFee,
-      balance: requestingUser.walletBalance,
-      status: 'completed',
-      paymentMethod: 'wallet',
-      orderId: order._id,
-      description: `Arbitration Fee - Dispute ${order.disputeId}`,
-      metadata: {
-        orderNumber: order.orderNumber,
-        disputeId: order.disputeId,
-        reason: 'Admin arbitration fee payment',
-      },
+      paidAt: new Date(),
+      paymentMethod: paymentMethod === 'account_balance' ? 'wallet' : 'card',
+      paymentIntentId: paymentIntentId || null,
+      transactionId: feeTransaction?._id || null,
     });
-    await feeTransaction.save();
 
-    // Update dispute metadata
-    order.metadata.disputeStatus = 'admin_arbitration';
-    order.metadata.disputeArbitrationRequested = true;
-    order.metadata.disputeArbitrationRequestedBy = req.user.id;
-    order.metadata.disputeArbitrationRequestedAt = new Date();
-    order.metadata.disputeArbitrationFeePaid = true;
+    if (!dispute.arbitrationFeeDeadline && dispute.arbitrationPayments.length === 1) {
+      const feeDeadline = new Date();
+      feeDeadline.setDate(feeDeadline.getDate() + feeDeadlineDays);
+      dispute.arbitrationFeeDeadline = feeDeadline;
+    }
+
+    const paidUserIds = new Set(dispute.arbitrationPayments.map((p) => p.userId?.toString()));
+    const bothPaid = paidUserIds.has(claimantId?.toString()) && paidUserIds.has(respondentId?.toString());
+
+    if (bothPaid) {
+      dispute.status = 'admin_arbitration';
+      dispute.arbitrationRequested = true;
+      dispute.arbitrationRequestedBy = req.user.id;
+      dispute.arbitrationRequestedAt = new Date();
+      dispute.arbitrationFeeDeadline = null;
+      order.metadata.disputeStatus = 'admin_arbitration';
+      order.metadata.disputeArbitrationRequested = true;
+      order.metadata.disputeArbitrationRequestedBy = req.user.id;
+      order.metadata.disputeArbitrationRequestedAt = new Date();
+    } else {
+      order.metadata.disputeStatus = 'negotiation';
+    }
+
     order.metadata.disputeArbitrationFeeAmount = arbitrationFee;
-    order.metadata.disputeArbitrationFeeTransactionId = feeTransaction._id;
+    order.metadata.disputeArbitrationFeeDeadline = dispute.arbitrationFeeDeadline;
 
+    await dispute.save();
     await order.save();
 
     res.json({ 
-      message: 'Arbitration requested successfully. Admin will review the case.',
+      message: bothPaid
+        ? 'Arbitration requested successfully. Admin will review the case.'
+        : 'Arbitration fee paid. Waiting for the other party to pay.',
       dispute: {
-        id: order.disputeId,
-        status: order.metadata.disputeStatus,
-        arbitrationRequestedAt: order.metadata.disputeArbitrationRequestedAt,
-        feePaid: arbitrationFee,
+        id: dispute.disputeId,
+        status: dispute.status,
+        arbitrationRequestedAt: dispute.arbitrationRequestedAt,
+        arbitrationFeeDeadline: dispute.arbitrationFeeDeadline,
+        arbitrationFeeAmount: dispute.arbitrationFeeAmount,
+        arbitrationPayments: dispute.arbitrationPayments,
       },
       newBalance: requestingUser.walletBalance,
     });
@@ -5003,9 +5174,19 @@ router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['a
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
     // Check if dispute is in admin arbitration
-    if (order.metadata?.disputeStatus !== 'admin_arbitration') {
+    if (order.metadata?.disputeStatus !== 'admin_arbitration' || dispute.status !== 'admin_arbitration') {
       return res.status(400).json({ error: 'Dispute must be in admin arbitration phase' });
+    }
+
+    const paidUserIds = new Set((dispute.arbitrationPayments || []).map((p) => p.userId?.toString()));
+    if (!paidUserIds.has(dispute.claimantId?.toString()) || !paidUserIds.has(dispute.respondentId?.toString())) {
+      return res.status(400).json({ error: 'Both parties must pay the arbitration fee before a decision can be made' });
     }
 
     const claimantId = order.metadata.disputeClaimantId;
@@ -5096,8 +5277,8 @@ router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['a
     order.metadata.disputeDecisionNotes = decisionNotes || '';
     order.metadata.disputeDecidedBy = req.user.id;
     order.metadata.disputeDecidedAt = new Date();
-    order.status = 'Cancelled';
-    order.deliveryStatus = 'cancelled';
+    order.status = 'Completed';
+    order.deliveryStatus = 'completed';
 
     await order.save();
 

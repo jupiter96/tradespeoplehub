@@ -985,7 +985,7 @@ function ProfessionalOrdersSection() {
   const handleRequestArbitration = () => {
     if (!selectedOrder) return;
     toast.promise(
-      requestArbitration(selectedOrder),
+      requestArbitration(selectedOrder, { paymentMethod: 'account_balance' }),
       { loading: "Processing...", success: "Arbitration requested successfully. Admin will review the case.", error: (e: any) => e.message || "Failed to request arbitration" }
     );
   };

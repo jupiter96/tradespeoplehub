@@ -627,6 +627,35 @@ export default function ClientOrdersSection() {
       );
     }
 
+    // Custom offer received by client (awaiting response)
+    if (order.status === "offer created") {
+      push(
+        {
+          at: order.createdAt || order.date,
+          title: "You have received an offer.",
+          description: "Custom offer received from the professional.",
+          colorClass: "bg-blue-600",
+          icon: <FileText className="w-5 h-5 text-blue-600" />,
+        },
+        "offer-received"
+      );
+    }
+    if (
+      order.metadata?.customOfferStatus === "rejected" &&
+      order.metadata?.customOfferRejectedBy === "client"
+    ) {
+      push(
+        {
+          at: order.metadata?.customOfferRejectedAt || order.updatedAt || order.date,
+          title: "You rejected an offer.",
+          description: "You declined the custom offer.",
+          colorClass: "bg-red-600",
+          icon: <XCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "offer-rejected"
+      );
+    }
+
     if (order.acceptedByProfessional && order.acceptedAt) {
       push(
         {
@@ -919,20 +948,91 @@ export default function ClientOrdersSection() {
         "dispute-opened"
       );
     }
+    if (disp?.respondedAt) {
+      const claimantIdRaw = (disp as any).claimantId;
+      const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
+      const clientId = (order as any).clientId || (order as any).client;
+      const professionalDisplayName = disp.respondentName || order.professional || disp.claimantName || "Professional";
+      if (claimantId && clientId && claimantId.toString() === clientId.toString()) {
+        const negotiationDeadlineStr = disp.negotiationDeadline
+          ? formatDateOrdinal(disp.negotiationDeadline)
+          : "the deadline";
+        const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
+          ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
+          : "";
+        push(
+          {
+            at: disp.respondedAt,
+            title: "Dispute Response Received",
+            description: `${professionalDisplayName} responded to your dispute.`,
+            message: `You have until ${negotiationDeadlineStr} to negotiate and reach a settlement directly. If you are unable to reach an agreement, you may request our team to arbitrate the case by paying the required arbitration fee.${arbitrationFeeAmount}`,
+            colorClass: "bg-blue-600",
+            icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+          },
+          "dispute-responded"
+        );
+      }
+    }
+    if (disp?.arbitrationPayments && disp.arbitrationPayments.length === 1) {
+      const payment = disp.arbitrationPayments[0];
+      const clientId = (order as any).clientId || (order as any).client;
+      const paidByClient = payment?.userId?.toString?.() === clientId?.toString?.();
+      const paidAtStr = payment.paidAt ? formatAcceptedAt(payment.paidAt) : "";
+      const deadlineStr = disp.arbitrationFeeDeadline
+        ? formatDateOrdinal(disp.arbitrationFeeDeadline)
+        : "the deadline";
+      const tradingName = order.professional || "The professional";
+      if (!paidByClient) {
+        push(
+          {
+            at: payment.paidAt || disp.arbitrationRequestedAt || disp.respondedAt,
+            title: "Arbitration Fee Paid",
+            description: `${tradingName} has paid its arbitration fees${paidAtStr ? ` on ${paidAtStr}` : ""}.`,
+            message: `You have until ${deadlineStr} to pay arbitration fees. Failure to make the payment within this timeframe will result in the case being closed and a decision made in ${tradingName}´s favor.`,
+            colorClass: "bg-blue-600",
+            icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+          },
+          "arbitration-fee-paid"
+        );
+      } else {
+        push(
+          {
+            at: payment.paidAt || disp.arbitrationRequestedAt || disp.respondedAt,
+            title: "Arbitration Fee Paid",
+            description: `You have paid your arbitration fees${paidAtStr ? ` on ${paidAtStr}` : ""}.`,
+            message: `${tradingName} has until ${deadlineStr} to pay arbitration fees. Failure to make the payment within this timeframe will result in the case being closed and a decision made in your favor`,
+            colorClass: "bg-blue-600",
+            icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+          },
+          "arbitration-fee-paid"
+        );
+      }
+    }
     if (disp && disp.closedAt) {
       const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
       const professionalDisplayName = disp.respondentName || order.professional || disp.claimantName || "Professional";
+      const winnerIdRaw = (disp as any).winnerId;
+      const winnerId = winnerIdRaw?.toString?.() || winnerIdRaw;
+      const isClientWinner = winnerId && userInfo?.id?.toString && winnerId.toString() === userInfo.id.toString();
+      const autoClosedDeadline = disp.responseDeadline
+        ? new Date(disp.responseDeadline).toISOString().split("T")[0]
+        : "the deadline";
       const disputeClosedDescription =
         disp.acceptedByRole === "client"
           ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
           : disp.acceptedByRole === "professional"
             ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
             : (disp.decisionNotes || "Dispute has been resolved and closed.");
+      const disputeClosedMessage =
+        disp.autoClosed
+          ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
+          : undefined;
       push(
         {
           at: disp.closedAt,
           title: "Dispute Closed",
           description: disputeClosedDescription,
+          message: disputeClosedMessage,
           colorClass: "bg-gray-700",
           icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
         },
@@ -1116,7 +1216,7 @@ export default function ClientOrdersSection() {
   const handleRequestArbitration = () => {
     if (!selectedOrder) return;
     toast.promise(
-      requestArbitration(selectedOrder),
+      requestArbitration(selectedOrder, { paymentMethod: 'account_balance' }),
       { loading: "Processing...", success: "Arbitration requested successfully. Admin will review the case.", error: (e: any) => e.message?.includes('Insufficient balance') ? e.message : (e.message || "Failed to request arbitration") }
     );
   };
@@ -2090,8 +2190,9 @@ export default function ClientOrdersSection() {
                   currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString()) ||
                 currentOrder.status === "Cancelled";
 
-              const isWithdrawnByPro = cr?.requestedBy?.toString() !== userInfo?.id?.toString() && cr?.status === "withdrawn";
-              const isCancelledByPro = cr?.requestedBy?.toString() !== userInfo?.id?.toString() && currentOrder.status === "Cancelled";
+              const hasCancellationRequest = Boolean(cr?.requestedBy);
+              const isWithdrawnByPro = hasCancellationRequest && cr?.requestedBy?.toString() !== userInfo?.id?.toString() && cr?.status === "withdrawn";
+              const isCancelledByPro = hasCancellationRequest && cr?.requestedBy?.toString() !== userInfo?.id?.toString() && currentOrder.status === "Cancelled";
 
               if (isWithdrawnByPro || isCancelledByPro) {
                 const cancelledAt = cr?.respondedAt || cr?.updatedAt || currentOrder.updatedAt;
@@ -2590,12 +2691,49 @@ export default function ClientOrdersSection() {
                   <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <h4 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-red-700 font-semibold mb-2 break-words">
-                      Your order is being disputed!
+                      {(() => {
+                        const isClaimant = currentOrder.disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
+                        const hasReply = Boolean(currentOrder.disputeInfo?.respondedAt);
+                        return isClaimant && hasReply ? "Your order is under dispute!" : "Your order is being disputed!";
+                      })()}
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
-                      {currentOrder.disputeInfo?.claimantId?.toString() === userInfo?.id?.toString()
-                        ? `You are disputing the order. ${currentOrder.professional || "The professional"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
-                        : `${currentOrder.professional || "The professional"} is disputing the work they have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, or make, reject, or accept an offer.`}
+                      {(() => {
+                        const isClaimant = currentOrder.disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
+                        const hasReply = Boolean(currentOrder.disputeInfo?.respondedAt);
+                        const arbitrationPayments = currentOrder.disputeInfo?.arbitrationPayments || [];
+                        const hasPaidArbitration = arbitrationPayments.some(
+                          (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
+                        );
+                        const onlyOnePaid = arbitrationPayments.length === 1;
+                        const hasOtherPaid = arbitrationPayments.some(
+                          (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
+                        );
+                        const arbitrationDeadline = currentOrder.disputeInfo?.arbitrationFeeDeadline
+                          ? new Date(currentOrder.disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "the deadline";
+                        if (hasPaidArbitration && onlyOnePaid) {
+                          const tradingName = currentOrder.professional || "The professional";
+                          return `The arbitration fees paid.\nYou have paid your arbitration fees to ask our arbitration team to step in and decide the case. ${tradingName} has been notified and expected to complete payment before ${arbitrationDeadline}.`;
+                        }
+                        if (!hasPaidArbitration && onlyOnePaid && hasOtherPaid) {
+                          const tradingName = currentOrder.professional || "The professional";
+                          return `The arbitration fees paid by ${tradingName}.\n${tradingName} has paid their arbitration fees to request our dispute team to review and decide the case. Please ensure you pay yours before the deadline on ${arbitrationDeadline}, as failure to do so will result in a decision in favor of ${tradingName}`;
+                        }
+                        if (isClaimant && hasReply) {
+                          return `${currentOrder.professional || "The professional"} has responded to your dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`;
+                        }
+                        if (!isClaimant && hasReply) {
+                          return "You have responded to the dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to step in.";
+                        }
+                        return isClaimant
+                          ? `You are disputing the order. ${currentOrder.professional || "The professional"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
+                          : `${currentOrder.professional || "The professional"} is disputing the work they have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, or make, reject, or accept an offer.`;
+                      })()}
                     </p>
                     {currentOrder.disputeInfo?.claimantId?.toString() !== userInfo?.id?.toString() && (
                       <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">
@@ -3768,7 +3906,27 @@ export default function ClientOrdersSection() {
                     <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
                       <Check className="w-8 h-8 text-green-600" />
                     </div>
-                    {currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeInfo?.acceptedByRole === "professional" ? (
+                    {currentOrder.disputeInfo?.autoClosed &&
+                      currentOrder.disputeInfo?.winnerId?.toString?.() === userInfo?.id?.toString() ? (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Dispute automatically closed &amp; Order completed!
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-line">
+                          {`The dispute was automatically decided and closed, with the order marked as completed due to no response from ${(currentOrder as any).professional || "the professional"}.`}
+                        </p>
+                      </>
+                    ) : currentOrder.disputeInfo?.autoClosed &&
+                      currentOrder.disputeInfo?.winnerId?.toString?.() !== userInfo?.id?.toString() ? (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Dispute automatically closed &amp; Order completed!
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-line">
+                          {"The dispute was automatically decided and closed, with the order marked as completed due to no response from you."}
+                        </p>
+                      </>
+                    ) : currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeInfo?.acceptedByRole === "professional" ? (
                       <>
                         <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
                           Dispute Resolved &amp; Order Completed!
