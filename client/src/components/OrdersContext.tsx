@@ -191,6 +191,9 @@ export interface Order {
     arbitrationFeeAmount?: number;
     createdAt?: string;
     closedAt?: string;
+    acceptedBy?: string;
+    acceptedByRole?: 'client' | 'professional';
+    acceptedAt?: string;
     winnerId?: string;
     loserId?: string;
     adminDecision?: boolean;

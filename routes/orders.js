@@ -2685,6 +2685,9 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           arbitrationFeeAmount: dispute.arbitrationFeeAmount || undefined,
           createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : undefined,
           closedAt: dispute.closedAt ? new Date(dispute.closedAt).toISOString() : undefined,
+          acceptedBy: dispute.acceptedBy ? dispute.acceptedBy.toString() : undefined,
+          acceptedByRole: dispute.acceptedByRole || undefined,
+          acceptedAt: dispute.acceptedAt ? new Date(dispute.acceptedAt).toISOString() : undefined,
           winnerId: dispute.winnerId ? dispute.winnerId.toString() : undefined,
           loserId: dispute.loserId ? dispute.loserId.toString() : undefined,
           adminDecision: dispute.adminDecision || false,
@@ -4754,6 +4757,9 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
     const agreedAmount = otherPartyOffer;
     dispute.status = 'closed';
     dispute.closedAt = new Date();
+    dispute.acceptedBy = req.user.id;
+    dispute.acceptedByRole = isClient ? 'client' : 'professional';
+    dispute.acceptedAt = new Date();
     dispute.finalAmount = agreedAmount;
     order.status = 'Completed';
     order.deliveryStatus = 'completed';

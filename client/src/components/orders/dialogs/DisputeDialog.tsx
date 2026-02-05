@@ -166,7 +166,7 @@ export default function DisputeDialog({
           {/* Evidence File Upload */}
           <div>
             <Label htmlFor="dispute-evidence-files" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-              Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case. <span className="text-red-500">*</span>
+              Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case. (optional)
             </Label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#3D5A80] transition-colors">
               <input

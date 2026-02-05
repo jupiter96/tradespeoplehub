@@ -584,6 +584,35 @@ export default function ClientOrdersSection() {
     const events: ClientTimelineEvent[] = [];
     const push = (event: Omit<ClientTimelineEvent, "id">, id: string) =>
       events.push({ ...event, id });
+    const formatAcceptedAt = (isoString?: string): string => {
+      if (!isoString) return "";
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return "";
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const day = date.getDate();
+      const getOrdinal = (n: number) => {
+        const s = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        return s[(v - 20) % 10] || s[v] || s[0];
+      };
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      return `${dayNames[date.getDay()]} ${day}${getOrdinal(day)} ${monthNames[date.getMonth()]}, ${date.getFullYear()} ${hours}:${minutes}`;
+    };
 
     if (order.createdAt || order.date) {
       push(
@@ -869,6 +898,45 @@ export default function ClientOrdersSection() {
           icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
         },
         "cancellation-rejected"
+      );
+    }
+
+    // Dispute events
+    const disp = order.disputeInfo;
+    if (disp && (disp.createdAt || order.deliveryStatus === "dispute")) {
+      const disputeOpenedDescription =
+        disp.reason ||
+        disp.requirements ||
+        "A dispute was opened for this order. Please review and respond.";
+      push(
+        {
+          at: disp.createdAt || order.updatedAt,
+          title: "Dispute Opened",
+          description: disputeOpenedDescription,
+          colorClass: "bg-red-700",
+          icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-opened"
+      );
+    }
+    if (disp && disp.closedAt) {
+      const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
+      const professionalDisplayName = disp.respondentName || order.professional || disp.claimantName || "Professional";
+      const disputeClosedDescription =
+        disp.acceptedByRole === "client"
+          ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
+          : disp.acceptedByRole === "professional"
+            ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
+            : (disp.decisionNotes || "Dispute has been resolved and closed.");
+      push(
+        {
+          at: disp.closedAt,
+          title: "Dispute Closed",
+          description: disputeClosedDescription,
+          colorClass: "bg-gray-700",
+          icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-closed"
       );
     }
 
@@ -1985,10 +2053,75 @@ export default function ClientOrdersSection() {
             )}
 
             {/* Order Cancellation Initiated – client sent cancel request (pending) or already cancelled */}
-            {((currentOrder.status === "Cancellation Pending" || (currentOrder as any).cancellationRequest?.status === "pending") &&
-              currentOrder.cancellationRequest?.requestedBy &&
-              currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString()) ||
-            currentOrder.status === "Cancelled" ? (
+            {(() => {
+              const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
+              const isClientRequest = cr?.requestedBy?.toString() === userInfo?.id?.toString();
+              const isWithdrawnByClient = isClientRequest && cr?.status === "withdrawn";
+              const isCancelledByClient = isClientRequest && currentOrder.status === "Cancelled";
+
+              if (isWithdrawnByClient || isCancelledByClient) {
+                const cancelledAt = cr?.respondedAt || cr?.updatedAt || currentOrder.updatedAt;
+                const cancelledAtStr = cancelledAt ? (() => {
+                  const date = new Date(cancelledAt);
+                  if (isNaN(date.getTime())) return "";
+                  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                  const day = date.getDate();
+                  const dayName = dayNames[date.getDay()];
+                  const month = monthNames[date.getMonth()];
+                  const year = date.getFullYear();
+                  const hours = String(date.getHours()).padStart(2, "0");
+                  const minutes = String(date.getMinutes()).padStart(2, "0");
+                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                  return `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+                })() : "";
+                return (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                    <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] whitespace-pre-line">
+                      {`You have cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}\nOrder payment dispute has been cancelled and withdrawn by you.`}
+                    </p>
+                  </div>
+                );
+              }
+
+              const isPendingClientCancellation =
+                ((currentOrder.status === "Cancellation Pending" || (currentOrder as any).cancellationRequest?.status === "pending") &&
+                  currentOrder.cancellationRequest?.requestedBy &&
+                  currentOrder.cancellationRequest.requestedBy.toString() === userInfo?.id?.toString()) ||
+                currentOrder.status === "Cancelled";
+
+              const isWithdrawnByPro = cr?.requestedBy?.toString() !== userInfo?.id?.toString() && cr?.status === "withdrawn";
+              const isCancelledByPro = cr?.requestedBy?.toString() !== userInfo?.id?.toString() && currentOrder.status === "Cancelled";
+
+              if (isWithdrawnByPro || isCancelledByPro) {
+                const cancelledAt = cr?.respondedAt || cr?.updatedAt || currentOrder.updatedAt;
+                const cancelledAtStr = cancelledAt ? (() => {
+                  const date = new Date(cancelledAt);
+                  if (isNaN(date.getTime())) return "";
+                  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                  const day = date.getDate();
+                  const dayName = dayNames[date.getDay()];
+                  const month = monthNames[date.getMonth()];
+                  const year = date.getFullYear();
+                  const hours = String(date.getHours()).padStart(2, "0");
+                  const minutes = String(date.getMinutes()).padStart(2, "0");
+                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                  return `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+                })() : "";
+                const proName = currentOrder.professional || "The professional";
+                return (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                    <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] whitespace-pre-line">
+                      {`${proName} has cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}\nOrder payment dispute has been cancelled and withdrawn by ${proName}.`}
+                    </p>
+                  </div>
+                );
+              }
+
+              if (!isPendingClientCancellation) return null;
+
+              return (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                   Order Cancellation Initiated
@@ -2003,7 +2136,8 @@ export default function ClientOrdersSection() {
                     : `You have initiated the cancellation of your order. Please wait for the Pro to respond. If they fail to respond before the deadline, the order will be automatically canceled in your favor.`}
                 </p>
               </div>
-            ) : null}
+              );
+            })()}
 
             {/* Order Cancellation Initiated – pro sent cancel request (status message card at top of Timeline tab) */}
             {currentOrder.cancellationRequest?.status === "pending" &&
@@ -2549,7 +2683,7 @@ export default function ClientOrdersSection() {
                           {/* 1. Reason (description) - for Cancellation Requested show first */}
                           {event.description && (
                             <div className="mb-3 bg-gray-50 border-l-4 border-blue-500 rounded p-3">
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed whitespace-pre-line">
                                 {event.description}
                               </p>
                             </div>
@@ -3618,12 +3752,25 @@ export default function ClientOrdersSection() {
                     <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
                       <Check className="w-8 h-8 text-green-600" />
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                      Order Completed
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      This order has been completed and accepted.
-                    </p>
+                    {currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeInfo?.acceptedByRole === "professional" ? (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Dispute Resolved &amp; Order Completed!
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          The dispute was resolved through acceptance of a settlement offer, and the order has been marked as completed.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Order Completed
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          This order has been completed and accepted.
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   {currentOrder.rating && (
@@ -3688,13 +3835,15 @@ export default function ClientOrdersSection() {
 	                      (currentOrder as any).cancellationRequest?.status === "pending" ||
 	                      (currentOrder as any).metadata?.cancellationRequest?.status === "pending";
 	
-	                    const canCancel = (statusNormalized === "in progress" || statusNormalized === "active") && !isPendingCancellation;
+                      const canCancel = (statusNormalized === "in progress" || statusNormalized === "active") && !isPendingCancellation;
+                      const isDisputed = statusNormalized === "disputed";
 	                    // Dispute is available once work is delivered or in revision (but not after completion)
 	                    const canDispute =
 	                      (hasDeliveredSignals ||
 	                      statusNormalized === "delivered" ||
 	                      statusNormalized === "revision") &&
-	                      statusNormalized !== "completed";
+                        statusNormalized !== "completed" &&
+                        !isDisputed;
 	
 	                    const isCancelled = statusNormalized === "cancelled";
 	                    const isCancellationPending = statusNormalized === "cancellation pending";
@@ -4606,7 +4755,7 @@ export default function ClientOrdersSection() {
               {/* Evidence File Upload */}
               <div>
                 <Label htmlFor="dispute-evidence-files" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                  Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case. <span className="text-red-500">*</span>
+                  Please include evidence of how the order requirements we communicated, as well as any other evidence that supports your case. (optional)
                 </Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#3D5A80] transition-colors">
                   <input

@@ -152,6 +152,20 @@ const disputeSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    acceptedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    acceptedByRole: {
+      type: String,
+      enum: ['client', 'professional'],
+      default: null,
+    },
+    acceptedAt: {
+      type: Date,
+      default: null,
+    },
     winnerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

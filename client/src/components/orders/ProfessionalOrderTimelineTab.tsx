@@ -284,10 +284,36 @@ export default function ProfessionalOrderTimelineTab({
         const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
         const isProfessionalRequest = cr?.requestedBy?.toString() === userInfo?.id?.toString();
         const isPending = cr?.status === "pending";
+        const isWithdrawn = cr?.status === "withdrawn";
         const isCancelled = currentOrder.status === "Cancelled";
+        const showDeliveredMessage = isWithdrawn || isCancelled;
         
         if (((currentOrder.status === "Cancellation Pending" || isPending) && isProfessionalRequest) ||
-            (isCancelled && isProfessionalRequest)) {
+            (showDeliveredMessage && isProfessionalRequest)) {
+          if (showDeliveredMessage) {
+            const cancelledAt = cr?.respondedAt || cr?.updatedAt || currentOrder.updatedAt;
+            const cancelledAtStr = cancelledAt ? (() => {
+              const date = new Date(cancelledAt);
+              if (isNaN(date.getTime())) return "";
+              const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+              const day = date.getDate();
+              const dayName = dayNames[date.getDay()];
+              const month = monthNames[date.getMonth()];
+              const year = date.getFullYear();
+              const hours = String(date.getHours()).padStart(2, "0");
+              const minutes = String(date.getMinutes()).padStart(2, "0");
+              const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+              return `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+            })() : "";
+            return (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 shadow-md mb-6">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] whitespace-pre-line">
+                  {`You have cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}\nOrder payment dispute has been cancelled and withdrawn by you.`}
+                </p>
+              </div>
+            );
+          }
           return (
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 shadow-md mb-6">
               <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
@@ -309,7 +335,36 @@ export default function ProfessionalOrderTimelineTab({
         const cr = (currentOrder as any).cancellationRequest ?? (currentOrder as any).metadata?.cancellationRequest;
         const isClientRequest = cr?.requestedBy && cr.requestedBy.toString() !== userInfo?.id?.toString();
         const isPending = cr?.status === "pending";
+        const isWithdrawn = cr?.status === "withdrawn";
+        const isCancelled = currentOrder.status === "Cancelled";
+        const showDeliveredMessage = isWithdrawn || (isCancelled && cr?.status === "approved");
         
+        if (isClientRequest && showDeliveredMessage) {
+          const cancelledAt = cr?.respondedAt || cr?.updatedAt || (currentOrder as any).updatedAt;
+          const cancelledAtStr = cancelledAt ? (() => {
+            const date = new Date(cancelledAt);
+            if (isNaN(date.getTime())) return "";
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const day = date.getDate();
+            const dayName = dayNames[date.getDay()];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, "0");
+            const minutes = String(date.getMinutes()).padStart(2, "0");
+            const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+            return `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+          })() : "";
+          const clientName = (currentOrder as any).client || "Client";
+          return (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 shadow-md mb-6">
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] whitespace-pre-line">
+                {`${clientName} has cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}\n${clientName} has cancelled the order payment dispute.`}
+              </p>
+            </div>
+          );
+        }
+
         if (isPending && isClientRequest) {
           return (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 shadow-md mb-6">
@@ -677,7 +732,7 @@ export default function ProfessionalOrderTimelineTab({
                     {/* Description */}
                     {event.description && (
                       <div className="mb-3 bg-gray-50 border-l-4 border-blue-500 rounded p-3">
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed whitespace-pre-line">
                           {event.description}
                         </p>
                       </div>

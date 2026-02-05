@@ -125,6 +125,7 @@ export default function ProfessionalOrderDetailSidebar({
           </h3>
           {/* Three Dots Menu */}
           {order.status !== "Cancelled" && order.status !== "Cancellation Pending" && order.status !== "Completed" &&
+           order.status?.toLowerCase() !== "disputed" &&
            (order.deliveryStatus === "pending" || order.deliveryStatus === "active" || order.status === "Revision") && 
            (!cancellationRequest?.status || cancellationRequest.status !== "pending") && (
             <DropdownMenu>

@@ -20,6 +20,35 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   const push = (event: Omit<TimelineEvent, "id">, id: string) => {
     events.push({ ...event, id });
   };
+  const formatAcceptedAt = (isoString?: string): string => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    const day = date.getDate();
+    const getOrdinal = (n: number) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return s[(v - 20) % 10] || s[v] || s[0];
+    };
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${dayNames[date.getDay()]} ${day}${getOrdinal(day)} ${monthNames[date.getMonth()]}, ${date.getFullYear()} ${hours}:${minutes}`;
+  };
 
   // Order placed
   if (order.date) {
@@ -452,28 +481,38 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
 
   // Dispute events
   const disp = order.disputeInfo;
-  if (disp && ((disp as any).createdAt || order.deliveryStatus === "dispute")) {
+  if (disp && (disp.createdAt || order.deliveryStatus === "dispute")) {
+    const disputeOpenedDescription =
+      disp.reason ||
+      disp.requirements ||
+      "A dispute was opened for this order. Please review and respond.";
     push(
       {
-        at: (disp as any).createdAt,
+        at: disp.createdAt || (order as any).updatedAt,
         label: "Dispute Opened",
-        description:
-          disp.reason ||
-          "A dispute was opened for this order. Please review and respond.",
+        description: disputeOpenedDescription,
         colorClass: "bg-red-700",
         icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
       },
       "dispute-opened"
     );
   }
-  if (disp && (disp as any).closedAt) {
+  if (disp && disp.closedAt) {
+    const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
+    const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
+    const disputeClosedDescription =
+      disp.acceptedByRole === "professional"
+        ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
+        : disp.acceptedByRole === "client"
+          ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
+          : (disp.decisionNotes || "Dispute has been resolved and closed.");
     push(
       {
-        at: (disp as any).closedAt,
+        at: disp.closedAt,
         label: "Dispute Closed",
-        description: (disp as any).decisionNotes || "Dispute has been resolved.",
+        description: disputeClosedDescription,
         colorClass: "bg-gray-700",
-        icon: <FileText className="w-5 h-5 text-blue-600" />,
+        icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
       },
       "dispute-closed"
     );

@@ -69,6 +69,7 @@ export default function AdminPaymentSettingsPage() {
     stepInAmount: 5.00,
     stepInDays: 1,
     arbitrationFeeDeadlineDays: 1,
+    disputeResponseTimeHours: 48,
     searchApiKey: "",
     serviceFees: 0,
     serviceFeeThreshold: 0,
@@ -982,6 +983,24 @@ export default function AdminPaymentSettingsPage() {
                           className="font-['Poppins',sans-serif]"
                           min="0"
                         />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="disputeResponseTimeHours" className="font-['Poppins',sans-serif]">
+                        Dispute initial response time:
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="disputeResponseTimeHours"
+                          type="number"
+                          value={settings.disputeResponseTimeHours || 0}
+                          onChange={(e) => updateField("disputeResponseTimeHours", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
+                          Hour(s)
+                        </span>
                       </div>
                     </div>
 

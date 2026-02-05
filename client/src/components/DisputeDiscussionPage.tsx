@@ -182,13 +182,25 @@ export default function DisputeDiscussionPage() {
 
   const handleMakeOffer = async () => {
     if (!newOffer || !disputeId || !dispute) return;
+    if (isRespondent && !respondentHasReplied) {
+      toast.error("You cannot submit an offer without first replying to the dispute.");
+      return;
+    }
     const amount = parseFloat(newOffer);
     if (isNaN(amount) || amount < 0) {
       toast.error("Please enter a valid amount");
       return;
     }
-    if (amount > dispute.amount) {
-      toast.error(`Offer cannot exceed ${isOrderDispute ? "order" : "milestone"} amount of £${dispute.amount.toFixed(2)}`);
+    if (!isCurrentUserClient && typeof userOffer === "number" && amount > userOffer) {
+      toast.error("You cannot make an offer higher than your initial offer.");
+      return;
+    }
+    if (isCurrentUserClient && typeof userOffer === "number" && amount < userOffer) {
+      toast.error("You cannot make an offer lower than your initial offer.");
+      return;
+    }
+    if (amount > maxOfferAmount) {
+      toast.error(`Offer cannot exceed ${isOrderDispute ? "order" : "milestone"} amount of £${maxOfferAmount.toFixed(2)}`);
       return;
     }
     try {
@@ -213,11 +225,18 @@ export default function DisputeDiscussionPage() {
   const handleAcceptOffer = async () => {
     if (!disputeId) return;
     try {
-      if (isOrderDispute) {
-        await acceptDisputeOffer(disputeId);
+      const acceptAction = isOrderDispute ? acceptDisputeOffer(disputeId) : Promise.resolve();
+      await toast.promise(acceptAction, {
+        loading: "Processing...",
+        success: "Dispute resolved successfully",
+        error: (e: any) => e?.message || "Failed to accept offer",
+      });
+      if (isOrderDispute && order?.id) {
+        navigate(`/account?tab=orders&orderId=${order.id}`);
+      } else {
+        const jobId = (job as any)?.id || (job as any)?._id;
+        navigate(jobId ? `/account?tab=jobs&jobId=${jobId}` : "/account?tab=jobs");
       }
-      toast.success("Dispute resolved successfully");
-      navigate(isOrderDispute ? "/account?tab=orders" : "/account?tab=jobs");
     } catch (error: any) {
       toast.error(error.message || "Failed to accept offer");
     }
@@ -288,7 +307,19 @@ export default function DisputeDiscussionPage() {
   const claimantIdStr = typeof dispute.claimantId === 'object'
     ? (dispute.claimantId as any)?._id?.toString() || dispute.claimantId?.toString()
     : dispute.claimantId;
+  const respondentIdStr = typeof dispute.respondentId === 'object'
+    ? (dispute.respondentId as any)?._id?.toString() || dispute.respondentId?.toString()
+    : dispute.respondentId;
   const isClaimant = currentUser?.id === claimantIdStr;
+  const isRespondent = currentUser?.id === respondentIdStr;
+  const respondentHasReplied = Boolean(
+    (dispute.messages || []).some((msg: any) => {
+      const msgUserId = typeof msg.userId === "object"
+        ? (msg.userId as any)?._id?.toString() || msg.userId?.toString()
+        : msg.userId;
+      return respondentIdStr && msgUserId && String(msgUserId) === String(respondentIdStr);
+    }) || (isRespondent && hasReplied)
+  );
   // For order disputes, check order.clientId, for job disputes use claimantId
   let isCurrentUserClient = false;
   if (order) {
@@ -305,6 +336,11 @@ export default function DisputeDiscussionPage() {
   // Client's offer = what they want to pay, Professional's offer = what they want to receive
   const userOffer = isCurrentUserClient ? (dispute as any).clientOffer : (dispute as any).professionalOffer;
   const otherOffer = isCurrentUserClient ? (dispute as any).professionalOffer : (dispute as any).clientOffer;
+  const maxOfferAmount = isOrderDispute
+    ? (order?.refundableAmount ?? dispute.amount)
+    : dispute.amount;
+  const newOfferValue = parseFloat(newOffer);
+  const isOfferOverLimit = !Number.isNaN(newOfferValue) && newOfferValue > maxOfferAmount;
 
   const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
@@ -666,9 +702,26 @@ export default function DisputeDiscussionPage() {
                       {isCurrentUserClient ? "Professional" : "Client"}<br />{isCurrentUserClient ? "want to receive:" : "wants to pay:"}
                     </p>
                     {hasOtherMadeOffer && otherOffer !== undefined ? (
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
-                        £{otherOffer.toFixed(2)}
-                      </p>
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
+                          £{otherOffer.toFixed(2)}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          <Button
+                            onClick={handleAcceptOffer}
+                            className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                          >
+                            Accept and close
+                          </Button>
+                          <Button
+                            onClick={handleRejectOffer}
+                            variant="outline"
+                            className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </>
                     ) : (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">
                         No offer yet
@@ -682,28 +735,6 @@ export default function DisputeDiscussionPage() {
             {/* Offer Input Card - Only show if dispute is open or in negotiation */}
             {(dispute.status === "open" || dispute.status === "negotiation") && (
               <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                {/* Show accept/reject buttons if other party has made an offer */}
-                {hasOtherMadeOffer && otherOffer !== undefined && (
-                  <div className="mb-4 space-y-2">
-                    <Button
-                      onClick={handleAcceptOffer}
-                      className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-                    >
-                      Accept and close
-                    </Button>
-                    <Button
-                      onClick={handleRejectOffer}
-                      variant="outline"
-                      className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
-                    >
-                      Reject
-                    </Button>
-                    <p className="text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      or
-                    </p>
-                  </div>
-                )}
-                
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3">
                   Make a new offer you wish to {isCurrentUserClient ? "pay" : "receive"}:
                 </p>
@@ -732,7 +763,7 @@ export default function DisputeDiscussionPage() {
                       className="pl-7 font-['Poppins',sans-serif] text-[14px]"
                       step="0.01"
                       min="0"
-                      max={dispute.amount}
+                      max={maxOfferAmount}
                     />
                   </div>
                   <Button
@@ -743,6 +774,13 @@ export default function DisputeDiscussionPage() {
                     SUBMIT
                   </Button>
                 </div>
+                <p
+                  className={`mt-2 font-['Poppins',sans-serif] text-[12px] ${
+                    isOfferOverLimit ? "text-red-600 font-medium" : "text-[#6b6b6b]"
+                  }`}
+                >
+                  {`Must be between £0.00 and £${maxOfferAmount.toFixed(2)}`}
+                </p>
                 
                 {hasUserMadeOffer && (
                   <p className="font-['Poppins',sans-serif] text-[11px] text-green-600 mt-2 text-center">

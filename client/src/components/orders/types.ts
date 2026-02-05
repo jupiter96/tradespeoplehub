@@ -38,6 +38,13 @@ export interface DisputeInfo {
   responseDeadline?: string;
   clientResponse?: string;
   professionalResponse?: string;
+  createdAt?: string;
+  closedAt?: string;
+  acceptedBy?: string;
+  acceptedByRole?: 'client' | 'professional';
+  acceptedAt?: string;
+  decisionNotes?: string;
+  autoClosed?: boolean;
 }
 
 export interface AdditionalInformation {
