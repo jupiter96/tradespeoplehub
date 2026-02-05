@@ -2593,8 +2593,24 @@ export default function ClientOrdersSection() {
                       Your order is being disputed!
                     </h4>
                     <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
-                      {currentOrder.professional || "The professional"} is disputing your order. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, or make, reject, or accept an offer.
+                      {currentOrder.disputeInfo?.claimantId?.toString() === userInfo?.id?.toString()
+                        ? `You are disputing the order. ${currentOrder.professional || "The professional"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
+                        : `${currentOrder.professional || "The professional"} is disputing the work they have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, or make, reject, or accept an offer.`}
                     </p>
+                    {currentOrder.disputeInfo?.claimantId?.toString() !== userInfo?.id?.toString() && (
+                      <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
+                          You have until {currentOrder.disputeInfo?.responseDeadline ? formatDateOrdinal(currentOrder.disputeInfo.responseDeadline) : "the deadline"} to respond. Not responding within the time frame will result in closing the case and deciding in {(currentOrder.professional || "the professional") + "´s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.
+                        </p>
+                      </div>
+                    )}
+                    {currentOrder.disputeInfo?.claimantId?.toString() === userInfo?.id?.toString() && (
+                      <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
+                          {(currentOrder.professional || "The professional")} has until {currentOrder.disputeInfo?.responseDeadline ? formatDateOrdinal(currentOrder.disputeInfo.responseDeadline) : "the deadline"} to respond. Not responding within the time frame will result in closing the case and deciding in your favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.
+                        </p>
+                      </div>
+                    )}
                     <Button
                       onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
                       className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
