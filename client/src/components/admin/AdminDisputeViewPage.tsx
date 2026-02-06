@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Textarea } from "../ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { MessageCircle, Paperclip, ArrowLeft } from "lucide-react";
 import { resolveApiUrl } from "../../config/api";
@@ -74,6 +77,12 @@ export default function AdminDisputeViewPage() {
   const [dispute, setDispute] = useState<AdminDispute | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState("");
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [isDecisionOpen, setIsDecisionOpen] = useState(false);
+  const [replyFavor, setReplyFavor] = useState<string>("");
+  const [replyComment, setReplyComment] = useState("");
+  const [decisionFavor, setDecisionFavor] = useState<string>("");
+  const [decisionComment, setDecisionComment] = useState("");
 
   useEffect(() => {
     if (!disputeId) {
@@ -126,6 +135,72 @@ export default function AdminDisputeViewPage() {
   const professionalOffer = dispute?.professionalOffer;
   const hasClientOffer = clientOffer !== undefined && clientOffer !== null;
   const hasProfessionalOffer = professionalOffer !== undefined && professionalOffer !== null;
+  const favorOptions = dispute
+    ? [
+        { id: dispute.claimantId, label: dispute.claimantName || "Claimant" },
+        { id: dispute.respondentId, label: dispute.respondentName || "Respondent" },
+      ]
+    : [];
+
+  const handleSubmitReply = async () => {
+    if (!dispute || !replyFavor) {
+      toast.error("Please select who the reply is in favor of.");
+      return;
+    }
+    try {
+      const res = await fetch(resolveApiUrl(`/api/admin/disputes/${encodeURIComponent(dispute.id)}/reply`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          inFavorOf: replyFavor,
+          comment: replyComment,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to send reply");
+      }
+      const data = await res.json();
+      setDispute(data.dispute || dispute);
+      setReplyComment("");
+      setReplyFavor("");
+      setIsReplyOpen(false);
+      toast.success("Reply sent");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send reply");
+    }
+  };
+
+  const handleSubmitDecision = async () => {
+    if (!dispute || !decisionFavor) {
+      toast.error("Please select who the decision is in favor of.");
+      return;
+    }
+    try {
+      const res = await fetch(resolveApiUrl(`/api/admin/disputes/${encodeURIComponent(dispute.id)}/decide`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          winnerId: decisionFavor,
+          decisionNotes: decisionComment,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to submit decision");
+      }
+      const data = await res.json();
+      setDispute(data.dispute || dispute);
+      setDecisionComment("");
+      setDecisionFavor("");
+      setIsDecisionOpen(false);
+      toast.success("Final decision submitted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to submit decision");
+    }
+  };
 
   if (loading) {
     return (
@@ -358,6 +433,21 @@ export default function AdminDisputeViewPage() {
                 </div>
               )}
             </div>
+            <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-end">
+              <Button
+                onClick={() => setIsDecisionOpen(true)}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+              >
+                Make Final Decision
+              </Button>
+              <Button
+                onClick={() => setIsReplyOpen(true)}
+                variant="outline"
+                className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif]"
+              >
+                Reply
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -419,6 +509,95 @@ export default function AdminDisputeViewPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isReplyOpen} onOpenChange={setIsReplyOpen}>
+        <DialogContent className="w-[90vw] max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Reply on Dispute
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
+              <Select value={replyFavor} onValueChange={setReplyFavor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {favorOptions.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
+              <Textarea
+                value={replyComment}
+                onChange={(e) => setReplyComment(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setIsReplyOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={handleSubmitReply} className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white">
+              Submit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDecisionOpen} onOpenChange={setIsDecisionOpen}>
+        <DialogContent className="w-[90vw] max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Make Final Decision
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              Select who the decision is in favor of and provide a comment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
+              <Select value={decisionFavor} onValueChange={setDecisionFavor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  {favorOptions.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
+              <Textarea
+                value={decisionComment}
+                onChange={(e) => setDecisionComment(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setIsDecisionOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={handleSubmitDecision} className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white">
+              Submit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -585,6 +585,26 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       );
     }
   }
+  if (disp?.arbitrationPayments && disp.arbitrationPayments.length >= 2) {
+    const uniquePayers = new Set(disp.arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+    if (uniquePayers.size >= 2) {
+      const latestPayment = disp.arbitrationPayments
+        .filter((p: any) => p?.paidAt)
+        .sort((a: any, b: any) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
+      const paidAtStr = latestPayment?.paidAt ? formatAcceptedAt(latestPayment.paidAt) : "";
+      push(
+        {
+          at: latestPayment?.paidAt || disp.arbitrationRequestedAt || disp.respondedAt,
+          label: "Arbitration Fees Paid",
+          description: `Both have paid arbitration fees.${paidAtStr ? ` ${paidAtStr}` : ""}`,
+          message: "The dispute team will now step in, review and decide on the case.",
+          colorClass: "bg-blue-600",
+          icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "arbitration-fees-paid"
+      );
+    }
+  }
   if (disp && disp.closedAt) {
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
     const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
@@ -604,10 +624,20 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         : disp.acceptedByRole === "client"
           ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
           : (disp.decisionNotes || "Dispute has been resolved and closed.");
-    const disputeClosedMessage =
-      disp.autoClosed
-        ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
-        : undefined;
+    const isArbUnpaidAutoClose =
+      disp.autoClosed &&
+      !isProfessionalWinner &&
+      typeof disp.decisionNotes === "string" &&
+      disp.decisionNotes.includes("unpaid arbitration fee");
+    const disputeClosedMessage = disp.adminDecision
+      ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
+      : (isArbUnpaidAutoClose
+        ? (isProfessionalWinner
+          ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${clientDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
+          : `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\nYou have failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in the favor of ${clientDisplayName}.`)
+        : (disp.autoClosed
+          ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
+          : undefined));
     push(
       {
         at: disp.closedAt,

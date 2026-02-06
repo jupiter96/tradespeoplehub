@@ -85,7 +85,7 @@ export default function CustomOfferModal({
   const [offerDescription, setOfferDescription] = useState("");
   const [paymentType, setPaymentType] = useState<"single" | "milestone">("single");
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: "1", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1 }
+    { id: "1", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1, description: "" }
   ]);
   const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -208,11 +208,11 @@ export default function CustomOfferModal({
     // Validate milestones if milestone payment is selected
     if (paymentType === "milestone") {
       const hasEmptyFields = milestones.some(
-        m => m.deliveryInDays <= 0 || m.price <= 0 || m.noOf <= 0
+        m => m.deliveryInDays <= 0 || m.price <= 0 || m.noOf <= 0 || !m.description?.trim()
       );
       
       if (hasEmptyFields) {
-        toast.error("Please fill in all milestone fields (Delivery In, Price, No of)");
+        toast.error("Please fill in all milestone fields (Delivery In, Price, No of, Description)");
         return;
       }
     }
@@ -224,7 +224,7 @@ export default function CustomOfferModal({
   const addMilestone = () => {
     const newId = (milestones.length + 1).toString();
     const lastChargePer = milestones[milestones.length - 1]?.chargePer || "per hour";
-    setMilestones([...milestones, { id: newId, deliveryInDays: 1, price: 0, chargePer: lastChargePer, noOf: 1 }]);
+    setMilestones([...milestones, { id: newId, deliveryInDays: 1, price: 0, chargePer: lastChargePer, noOf: 1, description: "" }]);
   };
 
   const removeMilestone = (id: string) => {
@@ -304,7 +304,7 @@ export default function CustomOfferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[70vw] h-[85vh] p-0 flex flex-col gap-0">
+      <DialogContent className="w-[60vw] max-w-[840px] sm:max-w-[840px] h-[85vh] p-0 flex flex-col gap-0">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
           <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-[#FE8A0F]" />
@@ -498,7 +498,7 @@ export default function CustomOfferModal({
                               )}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-4 gap-3">
                               <div>
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Delivery In (days)
@@ -530,13 +530,7 @@ export default function CustomOfferModal({
                                     Base: £{selectedService.basePrice}
                                   </p>
                                 )}
-                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F] font-medium mt-1">
-                                  Total: £{(milestone.price * (milestone.noOf || 1)).toFixed(2)}
-                                </p>
                               </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                   Charge Per
@@ -568,6 +562,18 @@ export default function CustomOfferModal({
                                   min="1"
                                 />
                               </div>
+                            </div>
+
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Description *
+                              </Label>
+                              <Textarea
+                                value={milestone.description || ""}
+                                onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
+                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[80px]"
+                                placeholder="Describe what this milestone includes"
+                              />
                             </div>
                           </div>
                         ))}
@@ -707,80 +713,80 @@ export default function CustomOfferModal({
                   </h4>
 
                   {paymentType === "single" && (
-                    <>
-                  {/* Delivery expected (days) - same as order delivery expected time */}
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
-                      Delivery In (days)
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder="Delivery expected time in days"
-                      value={deliveryDays}
-                      onChange={(e) => setDeliveryDays(e.target.value)}
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
-                      min="1"
-                      step="1"
-                    />
-                  </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {/* Delivery expected (days) - same as order delivery expected time */}
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                          Delivery In (days)
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Delivery expected time in days"
+                          value={deliveryDays}
+                          onChange={(e) => setDeliveryDays(e.target.value)}
+                          className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                          min="1"
+                          step="1"
+                        />
+                      </div>
 
-                  {/* Price (total) */}
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
-                      Price (£)
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder="Enter total price"
-                      value={customPrice}
-                      onChange={(e) => setCustomPrice(e.target.value)}
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
-                      min="0"
-                      step="0.01"
-                    />
-                    {selectedService && (
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
-                        Base: £{selectedService.basePrice}
-                      </p>
-                    )}
-                  </div>
+                      {/* Price (total) */}
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                          Price (£)
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter total price"
+                          value={customPrice}
+                          onChange={(e) => setCustomPrice(e.target.value)}
+                          className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                          min="0"
+                          step="0.01"
+                        />
+                        {selectedService && (
+                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
+                            Base: £{selectedService.basePrice}
+                          </p>
+                        )}
+                      </div>
 
-                  {/* Charge Per */}
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
-                      Charge Per
-                    </Label>
-                    <select
-                      value={chargePer}
-                      onChange={(e) => setChargePer(e.target.value)}
-                      className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-input-background px-3 py-2 text-sm font-['Poppins',sans-serif] border-gray-200 focus:border-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/20 cursor-pointer"
-                    >
-                      <option value="service">Service</option>
-                      <option value="per hour">Per hour</option>
-                      <option value="per day">Per day</option>
-                      <option value="per item">Per item</option>
-                      {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
-                        <option value={selectedService.priceUnit}>{selectedService.priceUnit}</option>
-                      )}
-                    </select>
-                  </div>
+                      {/* Charge Per */}
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                          Charge Per
+                        </Label>
+                        <select
+                          value={chargePer}
+                          onChange={(e) => setChargePer(e.target.value)}
+                          className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-input-background px-3 py-2 text-sm font-['Poppins',sans-serif] border-gray-200 focus:border-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/20 cursor-pointer"
+                        >
+                          <option value="service">Service</option>
+                          <option value="per hour">Per hour</option>
+                          <option value="per day">Per day</option>
+                          <option value="per item">Per item</option>
+                          {selectedService?.priceUnit && !["service", "fixed", "per hour", "per day", "per item"].includes(selectedService.priceUnit) && (
+                            <option value={selectedService.priceUnit}>{selectedService.priceUnit}</option>
+                          )}
+                        </select>
+                      </div>
 
-                  {/* No of ${price unit} - quantity for order */}
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
-                      {getQuantityLabel()}
-                    </Label>
-                    <Input
-                      type="number"
-                      placeholder={`Enter ${getQuantityLabel().toLowerCase()}`}
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
-                      min="1"
-                      step="1"
-                    />
-                  </div>
-                    </>
+                      {/* No of ${price unit} - quantity for order */}
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                          {getQuantityLabel()}
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder={`Enter ${getQuantityLabel().toLowerCase()}`}
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F]"
+                          min="1"
+                          step="1"
+                        />
+                      </div>
+                    </div>
                   )}
 
                   {/* Attributes (from service features) */}
@@ -876,7 +882,7 @@ export default function CustomOfferModal({
                             )}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-4 gap-3">
                             <div>
                               <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Delivery In (days)
@@ -908,13 +914,7 @@ export default function CustomOfferModal({
                                   Base: £{selectedService.basePrice}
                                 </p>
                               )}
-                              <p className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F] font-medium mt-1">
-                                Total: £{(milestone.price * (milestone.noOf || 1)).toFixed(2)}
-                              </p>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3">
                             <div>
                               <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
                                 Charge Per
@@ -946,6 +946,18 @@ export default function CustomOfferModal({
                                 min="1"
                               />
                             </div>
+                          </div>
+
+                          <div>
+                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                              Description *
+                            </Label>
+                            <Textarea
+                              value={milestone.description || ""}
+                              onChange={(e) => updateMilestone(milestone.id, "description", e.target.value)}
+                              className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F] min-h-[80px]"
+                              placeholder="Describe what this milestone includes"
+                            />
                           </div>
                         </div>
                       ))}

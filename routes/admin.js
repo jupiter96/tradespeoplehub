@@ -822,6 +822,139 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
   }
 });
 
+router.post('/disputes/:disputeId/reply', requireAdmin, async (req, res) => {
+  try {
+    const { disputeId } = req.params;
+    const { inFavorOf, comment } = req.body || {};
+    const dispute = await Dispute.findOne({ disputeId });
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    const adminName = req.adminUser?.fullname || 'Dispute Team';
+    const replyText = [
+      inFavorOf ? `In Favor of: ${inFavorOf}` : null,
+      comment ? `Comment: ${comment}` : null,
+    ].filter(Boolean).join('\n');
+    if (!replyText) {
+      return res.status(400).json({ error: 'Reply content is required' });
+    }
+    dispute.messages.push({
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: dispute.claimantId,
+      userName: adminName,
+      userAvatar: req.adminUser?.avatar || '',
+      message: replyText,
+      timestamp: new Date(),
+      isTeamResponse: true,
+      attachments: [],
+    });
+    await dispute.save();
+    return res.json({ dispute });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Failed to send reply' });
+  }
+});
+
+router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
+  try {
+    const { disputeId } = req.params;
+    const { winnerId, decisionNotes } = req.body || {};
+    if (!winnerId) {
+      return res.status(400).json({ error: 'Winner ID is required' });
+    }
+    const dispute = await Dispute.findOne({ disputeId });
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    const order = await Order.findById(dispute.order)
+      .populate('client', 'walletBalance')
+      .populate('professional', 'walletBalance');
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    const claimantId = dispute.claimantId?.toString();
+    const respondentId = dispute.respondentId?.toString();
+    if (winnerId !== claimantId && winnerId !== respondentId) {
+      return res.status(400).json({ error: 'Winner must be either the claimant or respondent' });
+    }
+    const loserId = winnerId === claimantId ? respondentId : claimantId;
+    const professionalPayoutAmount = order.metadata?.professionalPayoutAmount || order.subtotal;
+    const orderTotal = order.total;
+    const isWinnerClient = order.client?._id?.toString() === winnerId || order.client?.toString() === winnerId;
+
+    if (isWinnerClient) {
+      const client = await User.findById(order.client?._id || order.client);
+      if (client) {
+        client.walletBalance = (client.walletBalance || 0) + orderTotal;
+        await client.save();
+        const refundTransaction = new Wallet({
+          userId: client._id,
+          type: 'deposit',
+          amount: orderTotal,
+          balance: client.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          orderId: order._id,
+          description: `Dispute Resolution - Order ${order.orderNumber}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            disputeId: dispute.disputeId,
+            reason: 'Admin arbitration decision - client won',
+          },
+        });
+        await refundTransaction.save();
+      }
+    } else {
+      const professional = await User.findById(order.professional?._id || order.professional);
+      if (professional) {
+        professional.walletBalance = (professional.walletBalance || 0) + professionalPayoutAmount;
+        await professional.save();
+        const payoutTransaction = new Wallet({
+          userId: professional._id,
+          type: 'deposit',
+          amount: professionalPayoutAmount,
+          balance: professional.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          orderId: order._id,
+          description: `Dispute Resolution - Order ${order.orderNumber}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            disputeId: dispute.disputeId,
+            reason: 'Admin arbitration decision - professional won',
+          },
+        });
+        await payoutTransaction.save();
+      }
+    }
+
+    dispute.status = 'closed';
+    dispute.closedAt = new Date();
+    dispute.winnerId = winnerId;
+    dispute.loserId = loserId || null;
+    dispute.adminDecision = true;
+    dispute.decisionNotes = decisionNotes || '';
+    await dispute.save();
+
+    if (!order.metadata) order.metadata = {};
+    order.metadata.disputeStatus = 'closed';
+    order.metadata.disputeClosedAt = new Date();
+    order.metadata.disputeWinnerId = winnerId;
+    order.metadata.disputeLoserId = loserId;
+    order.metadata.disputeAdminDecision = true;
+    order.metadata.disputeDecisionNotes = decisionNotes || '';
+    order.metadata.disputeDecidedBy = req.adminUser?._id;
+    order.metadata.disputeDecidedAt = new Date();
+    order.status = 'Completed';
+    order.deliveryStatus = 'completed';
+    await order.save();
+
+    return res.json({ dispute, order: { id: order._id.toString(), orderNumber: order.orderNumber } });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Failed to decide dispute' });
+  }
+});
+
 // Create user
 router.post('/users', requireAdmin, async (req, res) => {
   try {

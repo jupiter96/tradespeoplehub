@@ -245,7 +245,7 @@ export default function AdminDisputeListPage() {
                               onClick={() => handleViewDispute(order.disputeId!)}
                             >
                               <Eye className="w-4 h-4 mr-1" />
-                              View
+                              Resolve
                             </Button>
                           ) : (
                             "—"

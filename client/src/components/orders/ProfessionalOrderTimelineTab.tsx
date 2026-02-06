@@ -646,22 +646,65 @@ export default function ProfessionalOrderTimelineTab({
       {currentOrder.status === "Completed" && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md">
           <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
-            {((currentOrder as any).disputeInfo?.autoClosed &&
-              ((currentOrder as any).disputeInfo?.winnerId?.toString?.() === userInfo?.id?.toString() ||
-               (currentOrder as any).disputeInfo?.winnerId?.toString() === userInfo?.id?.toString()))
-              ? "Dispute automatically closed & Order completed!"
-              : ((currentOrder as any).disputeInfo?.autoClosed
-                ? "Dispute automatically closed & Order completed!"
-                : "Order Completed Successfully!")}
+            {(() => {
+              const disputeInfo = (currentOrder as any).disputeInfo;
+              const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
+              const isWinnerPro = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
+              const feeDeadline = disputeInfo?.arbitrationFeeDeadline
+                ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "the deadline";
+              const isArbUnpaidAutoClose =
+                disputeInfo?.autoClosed &&
+                !isWinnerPro &&
+                typeof disputeInfo?.decisionNotes === "string" &&
+                disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+              if (disputeInfo?.adminDecision) {
+                return "Dispute Resolved and Order Completed!";
+              }
+              if (isArbUnpaidAutoClose) {
+                return "Dispute automatically closed. Order completed!";
+              }
+              return disputeInfo?.autoClosed ? "Dispute automatically closed & Order completed!" : "Order Completed Successfully!";
+            })()}
           </h4>
           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4 whitespace-pre-line">
-            {((currentOrder as any).disputeInfo?.autoClosed &&
-              ((currentOrder as any).disputeInfo?.winnerId?.toString?.() === userInfo?.id?.toString() ||
-               (currentOrder as any).disputeInfo?.winnerId?.toString() === userInfo?.id?.toString()))
-              ? `The dispute was automatically decided and closed, with the order marked as completed due to no response from ${(currentOrder as any).client || "the client"}.`
-              : ((currentOrder as any).disputeInfo?.autoClosed
-                ? "The dispute was automatically decided and closed, with the order marked as completed due to no response from you."
-                : `This order has been completed successfully. ${currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}`)}
+            {(() => {
+              const disputeInfo = (currentOrder as any).disputeInfo;
+              const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
+              const isWinnerPro = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
+              const feeDeadline = disputeInfo?.arbitrationFeeDeadline
+                ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "the deadline";
+              const isArbUnpaidAutoClose =
+                disputeInfo?.autoClosed &&
+                !isWinnerPro &&
+                typeof disputeInfo?.decisionNotes === "string" &&
+                disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+              if (disputeInfo?.adminDecision) {
+                return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+              }
+              if (isArbUnpaidAutoClose) {
+                const opponentName = (currentOrder as any).client || "The client";
+                return isWinnerPro
+                  ? `The dispute was automatically decided and closed, with the order marked as completed due to ${opponentName} not paying the arbitration fees before ${feeDeadline}.`
+                  : `The dispute was automatically decided and closed, with the order marked as completed due to you not paying the arbitration fees before ${feeDeadline}.`;
+              }
+              if (disputeInfo?.autoClosed && isWinnerPro) {
+                return `The dispute was automatically decided and closed, with the order marked as completed due to no response from ${(currentOrder as any).client || "the client"}.`;
+              }
+              if (disputeInfo?.autoClosed) {
+                return "The dispute was automatically decided and closed, with the order marked as completed due to no response from you.";
+              }
+              return `This order has been completed successfully. ${currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}`;
+            })()}
           </p>
           <Button
             onClick={() => onOpenModal('professionalReview')}
@@ -695,6 +738,8 @@ export default function ProfessionalOrderTimelineTab({
                   const hasOtherPaid = arbitrationPayments.some(
                     (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
                   );
+                  const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+                  const bothPaid = paidUserIds.size >= 2;
                   const arbitrationDeadline = disputeInfo?.arbitrationFeeDeadline
                     ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
                         day: "numeric",
@@ -702,6 +747,9 @@ export default function ProfessionalOrderTimelineTab({
                         year: "numeric",
                       })
                     : "the deadline";
+                  if (bothPaid) {
+                    return "Arbitration Fees Paid by Both Parties!\nBoth parties have now paid the required arbitration fees to request a review by our dispute resolution team. We will proceed with evaluating the information you have provided and issue a decision on the case. Please note that all decisions rendered are final and binding.";
+                  }
                   if (hasPaidArbitration && onlyOnePaid) {
                     return `The arbitration fees is paid.\nYou have paid your arbitration fees to ask our arbitration team to step in and decide the case. ${currentOrder.client || "The client"} has been notified and expected to complete payment before ${arbitrationDeadline}.`;
                   }

@@ -92,6 +92,12 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     let offerPrice = price;
     let offerDeliveryDays = deliveryDays;
     if (paymentType === 'milestone' && milestones && milestones.length > 0) {
+      const missingDescription = milestones.some(m => !m?.description || String(m.description).trim().length === 0);
+      if (missingDescription) {
+        return res.status(400).json({
+          error: 'Each milestone must include a description'
+        });
+      }
       offerPrice = milestones.reduce((sum, m) => {
         const unitPrice = m.price ?? m.amount ?? 0;
         const qty = m.noOf ?? 1;

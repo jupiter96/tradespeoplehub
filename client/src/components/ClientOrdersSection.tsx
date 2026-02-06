@@ -1008,6 +1008,26 @@ export default function ClientOrdersSection() {
         );
       }
     }
+    if (disp?.arbitrationPayments && disp.arbitrationPayments.length >= 2) {
+      const uniquePayers = new Set(disp.arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+      if (uniquePayers.size >= 2) {
+        const latestPayment = disp.arbitrationPayments
+          .filter((p: any) => p?.paidAt)
+          .sort((a: any, b: any) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
+        const paidAtStr = latestPayment?.paidAt ? formatAcceptedAt(latestPayment.paidAt) : "";
+        push(
+          {
+            at: latestPayment?.paidAt || disp.arbitrationRequestedAt || disp.respondedAt,
+            title: "Arbitration Fees Paid",
+            description: `Both have paid arbitration fees.${paidAtStr ? ` ${paidAtStr}` : ""}`,
+            message: "The dispute team will now step in, review and decide on the case.",
+            colorClass: "bg-blue-600",
+            icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+          },
+          "arbitration-fees-paid"
+        );
+      }
+    }
     if (disp && disp.closedAt) {
       const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
       const professionalDisplayName = disp.respondentName || order.professional || disp.claimantName || "Professional";
@@ -1017,16 +1037,25 @@ export default function ClientOrdersSection() {
       const autoClosedDeadline = disp.responseDeadline
         ? new Date(disp.responseDeadline).toISOString().split("T")[0]
         : "the deadline";
+      const isArbUnpaidAutoClose =
+        disp.autoClosed &&
+        typeof disp.decisionNotes === "string" &&
+        disp.decisionNotes.includes("unpaid arbitration fee");
       const disputeClosedDescription =
         disp.acceptedByRole === "client"
           ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
           : disp.acceptedByRole === "professional"
             ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
             : (disp.decisionNotes || "Dispute has been resolved and closed.");
-      const disputeClosedMessage =
-        disp.autoClosed
-          ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
-          : undefined;
+      const disputeClosedMessage = disp.adminDecision
+        ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
+        : (isArbUnpaidAutoClose
+          ? (isClientWinner
+            ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${professionalDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
+            : `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\nYou failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in ${professionalDisplayName}'s favour.`)
+          : (disp.autoClosed
+            ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
+            : undefined));
       push(
         {
           at: disp.closedAt,
@@ -2709,6 +2738,8 @@ export default function ClientOrdersSection() {
                         const hasOtherPaid = arbitrationPayments.some(
                           (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
                         );
+                        const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+                        const bothPaid = paidUserIds.size >= 2;
                         const arbitrationDeadline = currentOrder.disputeInfo?.arbitrationFeeDeadline
                           ? new Date(currentOrder.disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
                               day: "numeric",
@@ -2716,6 +2747,9 @@ export default function ClientOrdersSection() {
                               year: "numeric",
                             })
                           : "the deadline";
+                        if (bothPaid) {
+                          return "Arbitration Fees Paid by Both Parties!\nBoth parties have now paid the required arbitration fees to request a review by our dispute resolution team. We will proceed with evaluating the information you have provided and issue a decision on the case. Please note that all decisions rendered are final and binding.";
+                        }
                         if (hasPaidArbitration && onlyOnePaid) {
                           const tradingName = currentOrder.professional || "The professional";
                           return `The arbitration fees paid.\nYou have paid your arbitration fees to ask our arbitration team to step in and decide the case. ${tradingName} has been notified and expected to complete payment before ${arbitrationDeadline}.`;
@@ -3913,7 +3947,28 @@ export default function ClientOrdersSection() {
                           Dispute automatically closed &amp; Order completed!
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-line">
-                          {`The dispute was automatically decided and closed, with the order marked as completed due to no response from ${(currentOrder as any).professional || "the professional"}.`}
+                          {(() => {
+                            const disputeInfo = currentOrder.disputeInfo;
+                            const isArbUnpaidAutoClose =
+                              disputeInfo?.autoClosed &&
+                              typeof disputeInfo?.decisionNotes === "string" &&
+                              disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+                            if (disputeInfo?.adminDecision) {
+                              return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+                            }
+                            if (isArbUnpaidAutoClose) {
+                              const tradingName = (currentOrder as any).professional || "the professional";
+                              const feeDeadline = disputeInfo?.arbitrationFeeDeadline
+                                ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "the deadline";
+                              return `The dispute was automatically decided and closed, with the order marked as completed due to ${tradingName} not paying the arbitration fees before ${feeDeadline}.`;
+                            }
+                            return `The dispute was automatically decided and closed, with the order marked as completed due to no response from ${(currentOrder as any).professional || "the professional"}.`;
+                          })()}
                         </p>
                       </>
                     ) : currentOrder.disputeInfo?.autoClosed &&
@@ -3923,7 +3978,27 @@ export default function ClientOrdersSection() {
                           Dispute automatically closed &amp; Order completed!
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-line">
-                          {"The dispute was automatically decided and closed, with the order marked as completed due to no response from you."}
+                          {(() => {
+                            const disputeInfo = currentOrder.disputeInfo;
+                            const isArbUnpaidAutoClose =
+                              disputeInfo?.autoClosed &&
+                              typeof disputeInfo?.decisionNotes === "string" &&
+                              disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+                            if (disputeInfo?.adminDecision) {
+                              return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+                            }
+                            if (isArbUnpaidAutoClose) {
+                              const feeDeadline = disputeInfo?.arbitrationFeeDeadline
+                                ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "the deadline";
+                              return `The dispute was automatically decided and closed, with the order marked as completed due to you not paying the arbitration fees before ${feeDeadline}.`;
+                            }
+                            return "The dispute was automatically decided and closed, with the order marked as completed due to no response from you.";
+                          })()}
                         </p>
                       </>
                     ) : currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeInfo?.acceptedByRole === "professional" ? (
@@ -4987,7 +5062,7 @@ export default function ClientOrdersSection() {
               {(() => {
                 const meta = (currentOrder as any)?.metadata || {};
                 const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
-                const milestones = (meta.milestones || []) as Array<{ name?: string; price?: number; amount?: number; noOf?: number }>;
+                const milestones = (meta.milestones || []) as Array<{ name?: string; description?: string; price?: number; amount?: number; noOf?: number }>;
                 if (!isMilestoneOrder || milestones.length === 0) return null;
                 const toggleMilestone = (index: number) => {
                   if (selectedMilestoneIndices.includes(index)) {
@@ -5031,7 +5106,12 @@ export default function ClientOrdersSection() {
                               checked={selectedMilestoneIndices.includes(idx)}
                               onCheckedChange={() => toggleMilestone(idx)}
                             />
-                            <span>Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}</span>
+                            <span>
+                              Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                              {m?.description && (
+                                <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
+                              )}
+                            </span>
                           </label>
                         );
                       })}

@@ -13,6 +13,7 @@ interface MilestoneItem {
   price?: number;
   amount?: number;
   noOf?: number;
+  description?: string;
 }
 
 interface DisputeDialogProps {
@@ -247,6 +248,9 @@ export default function DisputeDialog({
                       />
                       <span>
                         Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                        {m?.description && (
+                          <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
+                        )}
                       </span>
                     </label>
                   );
