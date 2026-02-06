@@ -955,6 +955,217 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
   }
 });
 
+// Get all disputes list
+router.get('/disputes-list', requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc', search = '' } = req.query;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Get all disputes
+    let disputes = await Dispute.find({})
+      .populate({
+        path: 'order',
+        select: 'orderNumber client professional items subtotal discount serviceFee total createdAt',
+        populate: [
+          { path: 'client', select: 'firstName lastName email avatar' },
+          { path: 'professional', select: 'firstName lastName tradingName email avatar' },
+        ],
+      })
+      .populate('claimantId', 'firstName lastName tradingName email avatar')
+      .populate('respondentId', 'firstName lastName tradingName email avatar')
+      .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
+      .lean();
+    
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase().trim();
+      disputes = disputes.filter(d => {
+        const order = d.order;
+        const clientName = order?.client ? `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim() : '';
+        const clientEmail = order?.client?.email || '';
+        const professionalName = order?.professional?.tradingName || `${order?.professional?.firstName || ''} ${order?.professional?.lastName || ''}`.trim();
+        const professionalEmail = order?.professional?.email || '';
+        const disputeId = d.disputeId || '';
+        const claimantName = d.claimantId ? `${d.claimantId.firstName || ''} ${d.claimantId.lastName || ''}`.trim() : '';
+        const respondentName = d.respondentId ? `${d.respondentId.firstName || ''} ${d.respondentId.lastName || ''}`.trim() : '';
+        
+        return (
+          clientName.toLowerCase().includes(searchLower) ||
+          clientEmail.toLowerCase().includes(searchLower) ||
+          professionalName.toLowerCase().includes(searchLower) ||
+          professionalEmail.toLowerCase().includes(searchLower) ||
+          disputeId.toLowerCase().includes(searchLower) ||
+          claimantName.toLowerCase().includes(searchLower) ||
+          respondentName.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    const totalCount = disputes.length;
+    const totalPages = Math.ceil(totalCount / limitNum);
+    const paginatedDisputes = disputes.slice(skip, skip + limitNum);
+    
+    // Format response
+    const formattedDisputes = paginatedDisputes.map(dispute => {
+      const order = dispute.order || {};
+      const client = order.client || {};
+      const professional = order.professional || {};
+      
+      // Calculate total amount
+      const subtotal = order.subtotal || 0;
+      const discount = order.discount || 0;
+      const serviceFee = order.serviceFee || 0;
+      const total = order.total || (subtotal - discount + serviceFee);
+      
+      return {
+        id: dispute._id.toString(),
+        disputeId: dispute.disputeId,
+        clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Unknown',
+        clientEmail: client.email || '',
+        professionalName: professional.tradingName || `${professional.firstName || ''} ${professional.lastName || ''}`.trim() || 'Unknown',
+        professionalEmail: professional.email || '',
+        amount: total.toFixed(2),
+        amountValue: total,
+        disputeStatus: dispute.status,
+        reason: dispute.reason || dispute.requirements || '',
+        createdAt: dispute.createdAt,
+        respondedAt: dispute.respondedAt || null,
+        claimantName: dispute.claimantId ? `${dispute.claimantId.firstName || ''} ${dispute.claimantId.lastName || ''}`.trim() : '',
+        respondentName: dispute.respondentId ? `${dispute.respondentId.firstName || ''} ${dispute.respondentId.lastName || ''}`.trim() : '',
+      };
+    });
+    
+    return res.json({
+      disputes: formattedDisputes,
+      totalCount,
+      totalPages,
+      currentPage: pageNum,
+    });
+  } catch (error) {
+    console.error('Error fetching disputes list:', error);
+    return res.status(500).json({ error: 'Failed to fetch disputes' });
+  }
+});
+
+// Get disputes where both parties have paid arbitration fees (Ask Step In)
+router.get('/disputes-ask-step-in', requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, sortBy = 'updatedAt', sortOrder = 'desc', search = '' } = req.query;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Build query - disputes with at least 2 arbitration payments (both parties paid)
+    const query = {
+      'arbitrationPayments.1': { $exists: true }, // Has at least 2 payments
+      status: { $nin: ['closed'] } // Exclude closed disputes
+    };
+    
+    // First get all matching disputes to apply search filter after populate
+    let disputes = await Dispute.find(query)
+      .populate({
+        path: 'order',
+        select: 'orderNumber client professional items subtotal discount serviceFee total createdAt',
+        populate: [
+          { path: 'client', select: 'firstName lastName email avatar' },
+          { path: 'professional', select: 'firstName lastName tradingName email avatar' },
+        ],
+      })
+      .populate('claimantId', 'firstName lastName tradingName email avatar')
+      .populate('respondentId', 'firstName lastName tradingName email avatar')
+      .sort({ [sortBy]: sortOrder === 'asc' ? 1 : -1 })
+      .lean();
+    
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase().trim();
+      disputes = disputes.filter(d => {
+        const order = d.order;
+        if (!order) return false;
+        const orderNumber = order.orderNumber || '';
+        const clientName = order.client ? `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim() : '';
+        const clientEmail = order.client?.email || '';
+        const professionalName = order.professional?.tradingName || `${order.professional?.firstName || ''} ${order.professional?.lastName || ''}`.trim();
+        const professionalEmail = order.professional?.email || '';
+        const disputeId = d.disputeId || '';
+        
+        return (
+          orderNumber.toLowerCase().includes(searchLower) ||
+          clientName.toLowerCase().includes(searchLower) ||
+          clientEmail.toLowerCase().includes(searchLower) ||
+          professionalName.toLowerCase().includes(searchLower) ||
+          professionalEmail.toLowerCase().includes(searchLower) ||
+          disputeId.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    const totalCount = disputes.length;
+    const totalPages = Math.ceil(totalCount / limitNum);
+    const paginatedDisputes = disputes.slice(skip, skip + limitNum);
+    
+    // Format response
+    const formattedDisputes = paginatedDisputes.map(dispute => {
+      const order = dispute.order || {};
+      const client = order.client || {};
+      const professional = order.professional || {};
+      
+      // Calculate total amount
+      const subtotal = order.subtotal || 0;
+      const discount = order.discount || 0;
+      const serviceFee = order.serviceFee || 0;
+      const total = order.total || (subtotal - discount + serviceFee);
+      
+      // Get arbitration payment info
+      const arbitrationPayments = dispute.arbitrationPayments || [];
+      const bothPaid = arbitrationPayments.length >= 2;
+      const lastPaymentDate = arbitrationPayments.length > 0 
+        ? arbitrationPayments.reduce((latest, p) => {
+            const paidAt = p.paidAt ? new Date(p.paidAt) : null;
+            return paidAt && (!latest || paidAt > latest) ? paidAt : latest;
+          }, null)
+        : null;
+      
+      return {
+        id: dispute._id.toString(),
+        disputeId: dispute.disputeId,
+        orderId: order._id?.toString() || '',
+        orderNumber: order.orderNumber || '',
+        clientId: client._id?.toString() || '',
+        clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Unknown',
+        clientEmail: client.email || '',
+        professionalId: professional._id?.toString() || '',
+        professionalName: professional.tradingName || `${professional.firstName || ''} ${professional.lastName || ''}`.trim() || 'Unknown',
+        professionalEmail: professional.email || '',
+        amount: total.toFixed(2),
+        amountValue: total,
+        disputeStatus: dispute.status,
+        reason: dispute.reason || dispute.requirements || '',
+        createdAt: dispute.createdAt,
+        updatedAt: dispute.updatedAt,
+        respondedAt: dispute.respondedAt || null,
+        bothPaid,
+        lastPaymentDate,
+        arbitrationFeeAmount: dispute.arbitrationFeeAmount || 0,
+        claimantName: dispute.claimantId ? `${dispute.claimantId.firstName || ''} ${dispute.claimantId.lastName || ''}`.trim() : '',
+        respondentName: dispute.respondentId ? `${dispute.respondentId.firstName || ''} ${dispute.respondentId.lastName || ''}`.trim() : '',
+      };
+    });
+    
+    return res.json({
+      disputes: formattedDisputes,
+      totalCount,
+      totalPages,
+      currentPage: pageNum,
+    });
+  } catch (error) {
+    console.error('Error fetching ask-step-in disputes:', error);
+    return res.status(500).json({ error: 'Failed to fetch disputes' });
+  }
+});
+
 // Create user
 router.post('/users', requireAdmin, async (req, res) => {
   try {
@@ -1618,8 +1829,20 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       affiliate: affiliateCount || 0,
       affiliateNew: affiliateNew || 0, // New affiliates (not viewed by admin) for badge
       affiliateDailyChange: affiliateDailyChange || 0,
-      askToStepIn: 0, // Dispute model not implemented yet
-      askToStepInDailyChange: 0,
+      askToStepIn: await Dispute.countDocuments({
+        status: { $in: ['admin_arbitration', 'negotiation'] },
+        'arbitrationPayments.1': { $exists: true } // Has at least 2 payments
+      }) || 0,
+      askToStepInDailyChange: await (async () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        return await Dispute.countDocuments({
+          status: { $in: ['admin_arbitration', 'negotiation'] },
+          'arbitrationPayments.1': { $exists: true },
+          updatedAt: { $gte: yesterday }
+        }) || 0;
+      })(),
       serviceListing: serviceListingCount || 0,
       serviceListingDailyChange: serviceListingDailyChange || 0,
       customOrders: 0, // CustomOrder model not implemented yet

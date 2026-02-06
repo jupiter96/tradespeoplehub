@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Eye, AlertTriangle, Clock, MessageSquare, Gavel, CheckCircle2 } from "lucide-react";
+import { Search, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Eye, Gavel, AlertTriangle, Clock, MessageSquare, CheckCircle2 } from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -17,7 +17,7 @@ import { resolveApiUrl } from "../../config/api";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 import { toast } from "sonner";
 
-interface AdminDispute {
+interface AskStepInDispute {
   id: string;
   disputeId: string;
   clientName: string;
@@ -29,7 +29,11 @@ interface AdminDispute {
   disputeStatus: string;
   reason: string;
   createdAt: string | null;
+  updatedAt: string | null;
   respondedAt: string | null;
+  bothPaid: boolean;
+  lastPaymentDate: string | null;
+  arbitrationFeeAmount: number;
   claimantName: string;
   respondentName: string;
 }
@@ -64,7 +68,7 @@ function SortableHeader({
 }
 
 // Dispute stages: Initial, Respondent, Negotiation, Arbitration, Final
-const getDisputeStage = (dispute: AdminDispute) => {
+const getDisputeStage = (dispute: AskStepInDispute) => {
   const status = dispute.disputeStatus?.toLowerCase() || '';
   
   if (status === 'closed') {
@@ -82,7 +86,7 @@ const getDisputeStage = (dispute: AdminDispute) => {
   return { stage: 'Initial', color: 'red', icon: AlertTriangle };
 };
 
-const getStageBadge = (dispute: AdminDispute) => {
+const getStageBadge = (dispute: AskStepInDispute) => {
   const { stage, color, icon: Icon } = getDisputeStage(dispute);
   
   const colorClasses: Record<string, string> = {
@@ -101,13 +105,13 @@ const getStageBadge = (dispute: AdminDispute) => {
   );
 };
 
-export default function AdminDisputeListPage() {
+export default function AdminAskStepInPage() {
   useAdminRouteGuard();
   const navigate = useNavigate();
-  const [disputes, setDisputes] = useState<AdminDispute[]>([]);
+  const [disputes, setDisputes] = useState<AskStepInDispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortField, setSortField] = useState<string>("updatedAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -126,7 +130,7 @@ export default function AdminDisputeListPage() {
         params.append("search", searchQuery.trim());
       }
 
-      const response = await fetch(resolveApiUrl(`/api/admin/disputes-list?${params.toString()}`), {
+      const response = await fetch(resolveApiUrl(`/api/admin/disputes-ask-step-in?${params.toString()}`), {
         credentials: "include",
       });
 
@@ -171,43 +175,51 @@ export default function AdminDisputeListPage() {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   };
 
+  const formatDateTime = (iso: string | null) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-GB", { 
+      day: "numeric", 
+      month: "short", 
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
   const handleViewDispute = (disputeId: string) => {
     navigate(`/admin/dispute/${encodeURIComponent(disputeId)}`);
   };
 
   return (
     <AdminPageLayout
-      title="Dispute List"
-      description="View all disputes. The dispute system comprises 5 stages: Initial, Respondent, Negotiation, Arbitration, and Final."
+      title="Ask Step In"
+      description="Disputes where both parties have paid arbitration fees and are awaiting admin resolution (Arbitration Stage)."
     >
       <div className="space-y-6">
-        {/* Stage Legend */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <p className="font-['Poppins',sans-serif] text-[12px] text-gray-500 mb-2">Dispute Stages:</p>
-          <div className="flex flex-wrap gap-3">
-            <Badge className="bg-red-100 text-red-700 border-red-200 border text-xs">
-              <AlertTriangle className="w-3 h-3 mr-1" /> Initial
-            </Badge>
-            <Badge className="bg-amber-100 text-amber-700 border-amber-200 border text-xs">
-              <Clock className="w-3 h-3 mr-1" /> Respondent
-            </Badge>
-            <Badge className="bg-blue-100 text-blue-700 border-blue-200 border text-xs">
-              <MessageSquare className="w-3 h-3 mr-1" /> Negotiation
-            </Badge>
-            <Badge className="bg-purple-100 text-purple-700 border-purple-200 border text-xs">
-              <Gavel className="w-3 h-3 mr-1" /> Arbitration
-            </Badge>
-            <Badge className="bg-gray-100 text-gray-700 border-gray-200 border text-xs">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Final
-            </Badge>
+        {/* Summary Card */}
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Gavel className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[14px] text-purple-800 font-medium">
+                {totalCount} dispute{totalCount !== 1 ? 's' : ''} in Arbitration Stage
+              </p>
+              <p className="font-['Poppins',sans-serif] text-[12px] text-purple-600">
+                Both parties have paid the arbitration fee - awaiting admin decision
+              </p>
+            </div>
           </div>
         </div>
 
+        {/* Search */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
-              placeholder="Search by dispute ID, client, or professional..."
+              placeholder="Search by dispute ID, claimant, or respondent..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && setPage(1)}
@@ -216,6 +228,7 @@ export default function AdminDisputeListPage() {
           </div>
         </div>
 
+        {/* Table */}
         <div className="rounded-3xl border-0 bg-white p-6 shadow-xl shadow-[#FE8A0F]/20">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -224,8 +237,11 @@ export default function AdminDisputeListPage() {
             </div>
           ) : disputes.length === 0 ? (
             <div className="text-center py-12">
-              <AlertTriangle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-black">No disputes found</p>
+              <Gavel className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-black font-medium">No disputes awaiting resolution</p>
+              <p className="text-gray-500 text-sm mt-1">
+                Disputes will appear here when both parties pay the arbitration fee
+              </p>
             </div>
           ) : (
             <>
@@ -237,12 +253,13 @@ export default function AdminDisputeListPage() {
                       <TableHead className="text-[#FE8A0F] font-semibold">Claimant</TableHead>
                       <TableHead className="text-[#FE8A0F] font-semibold">Respondent</TableHead>
                       <SortableHeader
-                        column="amount"
+                        column="amountValue"
                         label="Amount"
                         currentSort={sortField}
                         sortDirection={sortDirection}
                         onSort={handleSort}
                       />
+                      <TableHead className="text-[#FE8A0F] font-semibold">Arb. Fee</TableHead>
                       <TableHead className="text-[#FE8A0F] font-semibold">Stage</TableHead>
                       <SortableHeader
                         column="createdAt"
@@ -277,25 +294,26 @@ export default function AdminDisputeListPage() {
                         </TableCell>
                         <TableCell className="text-black font-medium">£{dispute.amount}</TableCell>
                         <TableCell className="text-black">
+                          <span className="text-sm text-purple-600 font-medium">
+                            £{(dispute.arbitrationFeeAmount * 2).toFixed(2)}
+                          </span>
+                          <p className="text-xs text-gray-500">Both paid</p>
+                        </TableCell>
+                        <TableCell className="text-black">
                           {getStageBadge(dispute)}
                         </TableCell>
                         <TableCell className="text-black text-sm text-gray-600">
                           {formatDate(dispute.createdAt)}
                         </TableCell>
                         <TableCell className="text-black">
-                          {dispute.disputeId ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10"
-                              onClick={() => handleViewDispute(dispute.disputeId!)}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Button>
-                          ) : (
-                            "—"
-                          )}
+                          <Button
+                            size="sm"
+                            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                            onClick={() => handleViewDispute(dispute.disputeId)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Resolve
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -2950,7 +2950,7 @@ export default function ClientOrdersSection() {
             })()}
 
             {/* Timeline Events */}
-            <div className="space-y-0">
+            <div className="space-y-0 mt-6">
               {timelineEvents.length === 0 && (
                 <div className="text-center py-6 text-[#6b6b6b] text-[13px] font-['Poppins',sans-serif]">
                   No timeline events yet.

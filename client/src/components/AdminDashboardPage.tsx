@@ -60,6 +60,7 @@ import AdminEmailCampaignPage from "./admin/AdminEmailCampaignPage";
 import AdminServicesPage from "./admin/AdminServicesPage";
 import AdminOrdersPage from "./admin/AdminOrdersPage";
 import AdminDisputeListPage from "./admin/AdminDisputeListPage";
+import AdminAskStepInPage from "./admin/AdminAskStepInPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
 import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
 import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
@@ -399,6 +400,8 @@ export default function AdminDashboardPage() {
         );
       case "dispute-list":
         return <AdminDisputeListPage key={activeSection} />;
+      case "ask-step-in":
+        return <AdminAskStepInPage key={activeSection} />;
       default:
         return (
           <AdminGenericPage
