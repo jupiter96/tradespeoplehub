@@ -515,11 +515,38 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       disp.reason ||
       disp.requirements ||
       "A dispute was opened for this order. Please review and respond.";
+    
+    // Determine if professional is claimant or respondent
+    const claimantIdRaw = (disp as any).claimantId;
+    const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
+    const professionalId = (order as any).professionalId || (order as any).professional;
+    const isProfessionalClaimant = claimantId && professionalId && claimantId.toString() === professionalId.toString();
+    const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
+    
+    // Build warning message based on dispute state
+    let disputeWarningMessage = "";
+    const hasReply = Boolean(disp.respondedAt);
+    
+    if (!hasReply) {
+      const responseDeadlineStr = disp.responseDeadline
+        ? formatAcceptedAt(disp.responseDeadline)
+        : "the deadline";
+      
+      if (isProfessionalClaimant) {
+        // Professional opened the dispute, waiting for client response
+        disputeWarningMessage = `⏳ Awaiting Response\n${clientDisplayName} has until ${responseDeadlineStr} to respond. If they don't respond within the time frame, the case will be closed in your favour.`;
+      } else {
+        // Client opened the dispute, professional needs to respond
+        disputeWarningMessage = `⚠️ Response Required\nYou have until ${responseDeadlineStr} to respond. Not responding within the time frame will result in closing the case and deciding in ${clientDisplayName}'s favour. Any decision reached is final and irrevocable.`;
+      }
+    }
+    
     push(
       {
         at: disp.createdAt || (order as any).updatedAt,
         label: "Dispute Opened",
         description: disputeOpenedDescription,
+        message: disputeWarningMessage || undefined,
         colorClass: "bg-red-700",
         icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
       },

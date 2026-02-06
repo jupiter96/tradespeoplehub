@@ -878,8 +878,14 @@ function ProfessionalOrdersSection() {
     }
     if (selectedOrder) {
       const ord = orders.find(o => o.id === selectedOrder);
-      if (ord?.status !== 'In Progress' && (!ord?.deliveryFiles || ord.deliveryFiles.length === 0)) {
-        toast.error("Disputes can only be opened for delivered orders");
+      const statusLower = (ord?.status || '').toLowerCase();
+      const deliveryStatusLower = (ord?.deliveryStatus || '').toLowerCase();
+      const canOpenDispute = deliveryStatusLower === 'delivered' || 
+                            statusLower === 'delivered' ||
+                            statusLower === 'revision' || 
+                            statusLower === 'in progress';
+      if (!canOpenDispute) {
+        toast.error("Disputes can only be opened for delivered orders or orders in revision");
         return;
       }
 

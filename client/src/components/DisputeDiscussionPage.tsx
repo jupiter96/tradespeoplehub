@@ -374,6 +374,53 @@ export default function DisputeDiscussionPage() {
     }
   };
 
+  // Calculate time left until response/negotiation deadline
+  // This useEffect must be before early returns to satisfy Rules of Hooks
+  useEffect(() => {
+    if (!dispute?.responseDeadline && !dispute?.negotiationDeadline) return;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      // Compute isNegotiationPhase locally to avoid dependency issues
+      const respondentIdStrLocal = typeof dispute?.respondentId === 'object'
+        ? (dispute?.respondentId as any)?._id?.toString() || dispute?.respondentId?.toString()
+        : dispute?.respondentId;
+      const respondentHasRepliedLocal = Boolean(
+        (dispute?.messages || []).some((msg: any) => {
+          const msgUserId = typeof msg.userId === "object"
+            ? (msg.userId as any)?._id?.toString() || msg.userId?.toString()
+            : msg.userId;
+          return respondentIdStrLocal && msgUserId && String(msgUserId) === String(respondentIdStrLocal);
+        }) || (currentUser?.id === respondentIdStrLocal && hasReplied)
+      );
+      const isNegotiationPhaseLocal = Boolean(
+        dispute?.negotiationDeadline && (dispute?.status === "negotiation" || respondentHasRepliedLocal)
+      );
+      
+      const deadline = isNegotiationPhaseLocal ? dispute?.negotiationDeadline : dispute?.responseDeadline;
+      if (!deadline) {
+        setTimeLeft("");
+        return;
+      }
+      const deadlineTime = new Date(deadline).getTime();
+      const diff = deadlineTime - now;
+
+      if (diff <= 0) {
+        setTimeLeft("Deadline passed");
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      setTimeLeft(`${days} days, ${hours} hours`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.status, dispute?.respondentId, dispute?.messages, currentUser?.id, hasReplied]);
+
   if (!dispute || (!job && !order)) {
     return (
       <>
@@ -437,35 +484,6 @@ export default function DisputeDiscussionPage() {
       !hasPaidArbitrationFee
   );
 
-  // Calculate time left until response/negotiation deadline
-  useEffect(() => {
-    if (!dispute?.responseDeadline && !dispute?.negotiationDeadline) return;
-
-    const updateTimer = () => {
-      const now = Date.now();
-      const deadline = isNegotiationPhase ? dispute?.negotiationDeadline : dispute?.responseDeadline;
-      if (!deadline) {
-        setTimeLeft("");
-        return;
-      }
-      const deadlineTime = new Date(deadline).getTime();
-      const diff = deadlineTime - now;
-
-      if (diff <= 0) {
-        setTimeLeft("Deadline passed");
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setTimeLeft(`${days} days, ${hours} hours`);
-    };
-
-    updateTimer();
-    const interval = setInterval(updateTimer, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.status, isNegotiationPhase]);
   // For order disputes, check order.clientId, for job disputes use claimantId
   let isCurrentUserClient = false;
   if (order) {

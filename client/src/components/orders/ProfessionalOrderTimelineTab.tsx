@@ -716,76 +716,77 @@ export default function ProfessionalOrderTimelineTab({
         </div>
       )}
 
-      {/* Disputed Status Alert */}
-      {currentOrder.status === "disputed" && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6 shadow-md">
-          <div className="flex items-start gap-3 mb-3">
-            <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <h4 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-red-700 font-semibold mb-2 break-words">
-                Your order is being disputed!
-              </h4>
-              <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words">
-                {(() => {
-                  const isClaimant = (currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
-                  const hasReply = Boolean((currentOrder as any).disputeInfo?.respondedAt);
-                  const disputeInfo = (currentOrder as any).disputeInfo;
-                  const arbitrationPayments = disputeInfo?.arbitrationPayments || [];
-                  const hasPaidArbitration = arbitrationPayments.some(
-                    (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
-                  );
-                  const onlyOnePaid = arbitrationPayments.length === 1;
-                  const hasOtherPaid = arbitrationPayments.some(
-                    (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
-                  );
-                  const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
-                  const bothPaid = paidUserIds.size >= 2;
-                  const arbitrationDeadline = disputeInfo?.arbitrationFeeDeadline
-                    ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "the deadline";
-                  if (bothPaid) {
-                    return "Arbitration Fees Paid by Both Parties!\nBoth parties have now paid the required arbitration fees to request a review by our dispute resolution team. We will proceed with evaluating the information you have provided and issue a decision on the case. Please note that all decisions rendered are final and binding.";
-                  }
-                  if (hasPaidArbitration && onlyOnePaid) {
-                    return `The arbitration fees is paid.\nYou have paid your arbitration fees to ask our arbitration team to step in and decide the case. ${currentOrder.client || "The client"} has been notified and expected to complete payment before ${arbitrationDeadline}.`;
-                  }
-                  if (!hasPaidArbitration && onlyOnePaid && hasOtherPaid) {
-                    const clientName = currentOrder.client || "The client";
-                    return `The arbitration fees paid by ${clientName}.\n${clientName} has paid their arbitration fees to request our dispute team to review and decide the case. Please ensure you pay yours before the deadline on ${arbitrationDeadline}, as failure to do so will result in a decision in favor of ${clientName}.`;
-                  }
-                  if (isClaimant && hasReply) {
-                    return `${currentOrder.client || "The client"} has responded to your dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`;
-                  }
-                  if (!isClaimant && hasReply) {
-                    return "You have responded to the dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to  step in.";
-                  }
-                  return isClaimant
-                    ? `You are disputing the order. ${currentOrder.client || "The client"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
-                    : `${currentOrder.client || "The client"} is disputing the work you have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, make, reject, or accept an offer.`;
-                })()}
-              </p>
-              {((currentOrder as any).disputeInfo?.claimantId?.toString() !== userInfo?.id?.toString()) && (
-                <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
-                    You have until {currentOrder.disputeInfo?.responseDeadline ? formatDateOrdinal(currentOrder.disputeInfo.responseDeadline) : "the deadline"} to respond. Not responding within the time frame will result in closing the case and deciding in {(currentOrder.client || "The client") + "´s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.
-                  </p>
-                </div>
-              )}
-              <Button
-                onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
-                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                View Dispute
-              </Button>
+      {/* Disputed Status Alert - Above Timeline */}
+      {currentOrder.status === "disputed" && (() => {
+        const isClaimant = (currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
+        const hasReply = Boolean((currentOrder as any).disputeInfo?.respondedAt);
+        const disputeInfo = (currentOrder as any).disputeInfo;
+        const arbitrationPayments = disputeInfo?.arbitrationPayments || [];
+        const hasPaidArbitration = arbitrationPayments.some(
+          (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
+        );
+        const onlyOnePaid = arbitrationPayments.length === 1;
+        const hasOtherPaid = arbitrationPayments.some(
+          (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
+        );
+        const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+        const bothPaid = paidUserIds.size >= 2;
+        const arbitrationDeadline = disputeInfo?.arbitrationFeeDeadline
+          ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "the deadline";
+        
+        // Determine status title and message
+        let statusTitle = "Your order is being disputed!";
+        let statusMessage = "";
+        
+        if (bothPaid) {
+          statusTitle = "Arbitration in Progress";
+          statusMessage = "Both parties have now paid the required arbitration fees to request a review by our dispute resolution team. We will proceed with evaluating the information you have provided and issue a decision on the case. Please note that all decisions rendered are final and binding.";
+        } else if (hasPaidArbitration && onlyOnePaid) {
+          statusTitle = "Awaiting Other Party's Arbitration Fee";
+          statusMessage = `You have paid your arbitration fees to ask our arbitration team to step in and decide the case. ${currentOrder.client || "The client"} has been notified and expected to complete payment before ${arbitrationDeadline}.`;
+        } else if (!hasPaidArbitration && onlyOnePaid && hasOtherPaid) {
+          statusTitle = "Arbitration Fee Required";
+          statusMessage = `${currentOrder.client || "The client"} has paid their arbitration fees to request our dispute team to review and decide the case. Please ensure you pay yours before the deadline on ${arbitrationDeadline}, as failure to do so will result in a decision in favor of ${currentOrder.client || "the client"}.`;
+        } else if (hasReply) {
+          statusTitle = "Negotiation Period";
+          statusMessage = isClaimant
+            ? `${currentOrder.client || "The client"} has responded to your dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`
+            : "You have responded to the dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to step in.";
+        } else {
+          statusTitle = isClaimant ? "Awaiting Response" : "Response Required";
+          statusMessage = isClaimant
+            ? `You are disputing the order. ${currentOrder.client || "The client"} has been notified and is currently reviewing the issue. Please wait for their response. Click "View Dispute" to reply, add additional information, make an offer, or even cancel the dispute.`
+            : `${currentOrder.client || "The client"} is disputing the work you have delivered. They are currently waiting for your response. Please respond before the deadline. Click "View Dispute" to reply, add additional information, make, reject, or accept an offer.`;
+        }
+        
+        return (
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-6 shadow-md">
+            <div className="flex items-start gap-3 mb-3">
+              <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h4 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-red-700 font-semibold mb-2 break-words">
+                  {statusTitle}
+                </h4>
+                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words whitespace-pre-line">
+                  {statusMessage}
+                </p>
+                <Button
+                  onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] w-full sm:w-auto"
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  View Dispute
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Timeline Events */}
       <div className="space-y-0">
@@ -898,17 +899,27 @@ export default function ProfessionalOrderTimelineTab({
                       </div>
                     )}
                     
-                    {/* Message/Reason - Highlighted */}
-                    {event.message && (
-                      <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-blue-700 font-medium mb-1">
-                          Message:
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed">
-                          {event.message}
-                        </p>
-                      </div>
-                    )}
+                    {/* Message/Reason - Highlighted with dynamic styling for warnings */}
+                    {event.message && (() => {
+                      const isWarningMessage = event.message.includes("⚠️") || event.message.includes("⏳") || 
+                                               event.message.includes("Response Required") || event.message.includes("Awaiting Response");
+                      
+                      const bgColor = isWarningMessage ? "bg-red-50" : "bg-blue-50";
+                      const borderColor = isWarningMessage ? "border-red-300" : "border-blue-200";
+                      const labelColor = isWarningMessage ? "text-red-700" : "text-blue-700";
+                      const label = isWarningMessage ? "⚠️ Warning:" : "Message:";
+                      
+                      return (
+                        <div className={`mb-3 ${bgColor} border ${borderColor} rounded-lg p-4 shadow-sm`}>
+                          <p className={`font-['Poppins',sans-serif] text-[12px] ${labelColor} font-medium mb-1`}>
+                            {label}
+                          </p>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed whitespace-pre-line">
+                            {event.message.replace(/^[⚠️⏳]\s*/, "").replace(/^(Response Required|Awaiting Response)\n?/, "")}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   
                     {/* Attachments - for Cancellation Requested show after reason, before warning (order: reason → attachments → warning → withdraw) */}
                     {event.label === "Cancellation Requested" && event.id === "cancellation-requested" && event.files && event.files.length > 0 && (
@@ -1282,6 +1293,134 @@ export default function ProfessionalOrderTimelineTab({
         </div>
 
       </div>
+
+      {/* Dispute Warning Messages - Below Timeline */}
+      {currentOrder.status === "disputed" && (() => {
+        const isClaimant = (currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
+        const hasReply = Boolean((currentOrder as any).disputeInfo?.respondedAt);
+        const disputeInfo = (currentOrder as any).disputeInfo;
+        const arbitrationPayments = disputeInfo?.arbitrationPayments || [];
+        const hasPaidArbitration = arbitrationPayments.some(
+          (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
+        );
+        const onlyOnePaid = arbitrationPayments.length === 1;
+        const hasOtherPaid = arbitrationPayments.some(
+          (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
+        );
+        const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+        const bothPaid = paidUserIds.size >= 2;
+        
+        const warnings: { title: string; message: string; type: 'danger' | 'warning' | 'info' }[] = [];
+        
+        // Warning 1: Response deadline (for respondent who hasn't replied yet)
+        if (!isClaimant && !hasReply) {
+          const responseDeadline = disputeInfo?.responseDeadline 
+            ? formatDateOrdinal(disputeInfo.responseDeadline) 
+            : "the deadline";
+          warnings.push({
+            title: "Response Deadline",
+            message: `You have until ${responseDeadline} to respond. Not responding within the time frame will result in closing the case and deciding in ${(currentOrder.client || "the client") + "'s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.`,
+            type: 'danger'
+          });
+        }
+        
+        // Warning 2: Claimant waiting for response
+        if (isClaimant && !hasReply) {
+          const responseDeadline = disputeInfo?.responseDeadline 
+            ? formatDateOrdinal(disputeInfo.responseDeadline) 
+            : "the deadline";
+          warnings.push({
+            title: "Awaiting Response",
+            message: `${currentOrder.client || "The client"} has until ${responseDeadline} to respond. If they don't respond within the time frame, the case will be closed in your favour.`,
+            type: 'info'
+          });
+        }
+        
+        // Warning 3: Negotiation deadline
+        if (hasReply && !bothPaid && disputeInfo?.negotiationDeadline) {
+          const negotiationDeadline = new Date(disputeInfo.negotiationDeadline).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          warnings.push({
+            title: "Negotiation Deadline",
+            message: `Both parties have until ${negotiationDeadline} to reach a settlement. If no agreement is reached, either party can request arbitration to decide the case.`,
+            type: 'warning'
+          });
+        }
+        
+        // Warning 4: Arbitration fee deadline (for party who hasn't paid)
+        if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
+          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          warnings.push({
+            title: "Arbitration Fee Deadline",
+            message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${(currentOrder.client || "the client") + "'s"} favour.`,
+            type: 'danger'
+          });
+        }
+        
+        // Warning 5: Waiting for other party to pay arbitration fee
+        if (onlyOnePaid && hasPaidArbitration && !hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
+          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          warnings.push({
+            title: "Waiting for Other Party",
+            message: `${currentOrder.client || "The client"} has until ${arbitrationDeadline} to pay their arbitration fee. If they don't pay, the case will be decided in your favour.`,
+            type: 'info'
+          });
+        }
+        
+        if (warnings.length === 0) return null;
+        
+        return (
+          <div className="mt-4 space-y-3">
+            {warnings.map((warning, index) => (
+              <div 
+                key={index}
+                className={`rounded-lg p-4 border-2 ${
+                  warning.type === 'danger' 
+                    ? 'bg-red-50 border-red-300' 
+                    : warning.type === 'warning'
+                    ? 'bg-amber-50 border-amber-300'
+                    : 'bg-blue-50 border-blue-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                    warning.type === 'danger' 
+                      ? 'text-red-600' 
+                      : warning.type === 'warning'
+                      ? 'text-amber-600'
+                      : 'text-blue-600'
+                  }`} />
+                  <div className="flex-1">
+                    <h5 className={`font-['Poppins',sans-serif] text-[14px] font-semibold mb-1 ${
+                      warning.type === 'danger' 
+                        ? 'text-red-700' 
+                        : warning.type === 'warning'
+                        ? 'text-amber-700'
+                        : 'text-blue-700'
+                    }`}>
+                      {warning.title}
+                    </h5>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      {warning.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Attachment Preview Modal - Inline React Modal (not Radix UI) */}
       {previewAttachment && (
