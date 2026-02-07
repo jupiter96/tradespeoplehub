@@ -25,6 +25,14 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+function runBackgroundTask(task, label) {
+  Promise.resolve()
+    .then(task)
+    .catch((error) => {
+      console.error(`[Orders] Background task failed${label ? ` (${label})` : ''}:`, error);
+    });
+}
+
 // Helper function to emit notification to user via Socket.io
 async function emitNotificationToUser(userId, notification) {
   try {
@@ -1599,11 +1607,14 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
 
     // Notifications + emails (client + professional)
     const professionalUser = await User.findById(professionalId);
-    await sendOrderNotifications({
-      order,
-      clientUser: user,
-      professionalUser,
-    });
+    runBackgroundTask(
+      () => sendOrderNotifications({
+        order,
+        clientUser: user,
+        professionalUser,
+      }),
+      'order-created'
+    );
 
     const responseData = {
       orderId: order.orderNumber,
@@ -2191,11 +2202,14 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
       ]);
 
       const professionalUser = await User.findById(professionalId);
-      await sendOrderNotifications({
-        order,
-        clientUser: user,
-        professionalUser,
-      });
+      runBackgroundTask(
+        () => sendOrderNotifications({
+          order,
+          clientUser: user,
+          professionalUser,
+        }),
+        'order-created-bulk'
+      );
 
       createdOrders.push(order.toObject());
     }
@@ -2310,11 +2324,14 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
         order.paypalCaptureId = captureId;
         await order.save();
         const professionalUser = await User.findById(order.professional);
-        await sendOrderNotifications({
-          order,
-          clientUser: user,
-          professionalUser,
-        });
+        runBackgroundTask(
+          () => sendOrderNotifications({
+            order,
+            clientUser: user,
+            professionalUser,
+          }),
+          'order-created-paypal'
+        );
       }
 
       // Create Wallet transaction for billing history
@@ -2383,11 +2400,14 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
       order.paypalCaptureId = captureId;
       await order.save();
       const professionalUser = await User.findById(order.professional);
-      await sendOrderNotifications({
-        order,
-        clientUser: user,
-        professionalUser,
-      });
+      runBackgroundTask(
+        () => sendOrderNotifications({
+          order,
+          clientUser: user,
+          professionalUser,
+        }),
+        'order-created-paypal-capture'
+      );
     }
 
     // Create Wallet transaction for billing history
@@ -2857,11 +2877,14 @@ router.post('/:orderId/extension-request', authenticateToken, requireRole(['prof
 
     const clientUser = await User.findById(order.client).select('firstName lastName email').lean();
     const professionalUser = await User.findById(order.professional).select('firstName lastName tradingName email').lean();
-    await sendExtensionRequestNotifications({
-      order,
-      clientUser: clientUser ? { _id: order.client, ...clientUser } : null,
-      professionalUser: professionalUser ? { _id: order.professional, ...professionalUser } : null,
-    });
+    runBackgroundTask(
+      () => sendExtensionRequestNotifications({
+        order,
+        clientUser: clientUser ? { _id: order.client, ...clientUser } : null,
+        professionalUser: professionalUser ? { _id: order.professional, ...professionalUser } : null,
+      }),
+      'extension-request'
+    );
 
     res.json({ 
       message: 'Extension request submitted successfully',
@@ -2916,12 +2939,15 @@ router.put('/:orderId/extension-request', authenticateToken, requireRole(['clien
 
     const clientUser = await User.findById(order.client).select('firstName lastName email').lean();
     const professionalUser = await User.findById(order.professional).select('firstName lastName tradingName email').lean();
-    await sendExtensionResponseNotifications({
-      order,
-      clientUser: clientUser ? { _id: order.client, ...clientUser } : null,
-      professionalUser: professionalUser ? { _id: order.professional, ...professionalUser } : null,
-      action,
-    });
+    runBackgroundTask(
+      () => sendExtensionResponseNotifications({
+        order,
+        clientUser: clientUser ? { _id: order.client, ...clientUser } : null,
+        professionalUser: professionalUser ? { _id: order.professional, ...professionalUser } : null,
+        action,
+      }),
+      'extension-response'
+    );
 
     res.json({ 
       message: `Extension request ${action}d successfully`,
@@ -3026,12 +3052,15 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
 
     await order.save();
 
-    await sendCancellationRequestNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      requestedByUserId: req.user.id,
-    });
+    runBackgroundTask(
+      () => sendCancellationRequestNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        requestedByUserId: req.user.id,
+      }),
+      'cancellation-request'
+    );
 
     const cr = order.cancellationRequest.toObject ? order.cancellationRequest.toObject() : order.cancellationRequest;
     res.json({ 
@@ -3104,12 +3133,15 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
 
     await order.save();
 
-    await sendCancellationResponseNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      action,
-    });
+    runBackgroundTask(
+      () => sendCancellationResponseNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        action,
+      }),
+      'cancellation-response'
+    );
 
     res.json({ 
       message: `Cancellation request ${action}d successfully`,
@@ -3154,12 +3186,15 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
 
     await order.save();
 
-    await sendCancellationWithdrawnNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      withdrawnByUserId: req.user.id,
-    });
+    runBackgroundTask(
+      () => sendCancellationWithdrawnNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        withdrawnByUserId: req.user.id,
+      }),
+      'cancellation-withdrawn'
+    );
 
     res.json({ 
       message: 'Cancellation request withdrawn successfully',
@@ -3371,11 +3406,14 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
 
     await order.save();
 
-    await sendOrderDeliveredNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-    });
+    runBackgroundTask(
+      () => sendOrderDeliveredNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+      }),
+      'order-delivered'
+    );
 
     res.json({ 
       message: 'Order marked as delivered successfully',
@@ -3546,12 +3584,15 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
 
     await order.save();
 
-    await sendOrderDeliveryRejectedNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      reason: reason.trim(),
-    });
+    runBackgroundTask(
+      () => sendOrderDeliveryRejectedNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        reason: reason.trim(),
+      }),
+      'order-delivery-rejected'
+    );
 
     res.json({ 
       message: 'Revision request submitted successfully',
@@ -3975,11 +4016,14 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
 
     await order.save();
 
-    await sendOrderDeliveryApprovedNotifications({
-      order,
-      clientUser: client,
-      professionalUser: professional,
-    });
+    runBackgroundTask(
+      () => sendOrderDeliveryApprovedNotifications({
+        order,
+        clientUser: client,
+        professionalUser: professional,
+      }),
+      'order-delivery-approved'
+    );
 
     res.json({ 
       message: 'Order completed successfully. Funds have been released to the professional.',
@@ -4490,13 +4534,16 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     order.disputeId = disputeId;
     await order.save();
 
-    await sendDisputeInitiatedNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      claimantId: req.user.id,
-      responseDeadline,
-    });
+    runBackgroundTask(
+      () => sendDisputeInitiatedNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        claimantId: req.user.id,
+        responseDeadline,
+      }),
+      'dispute-initiated'
+    );
 
     res.json({ 
       message: 'Dispute created successfully',
@@ -4600,12 +4647,15 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
 
     await dispute.save();
 
-    await sendDisputeRespondedNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      respondentId: req.user.id,
-    });
+    runBackgroundTask(
+      () => sendDisputeRespondedNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        respondentId: req.user.id,
+      }),
+      'dispute-responded'
+    );
 
     res.json({ 
       message: 'Dispute response submitted successfully',
@@ -4862,12 +4912,15 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
     await dispute.save();
     await order.save();
 
-    await sendDisputeResolvedNotifications({
-      order,
-      clientUser: order.client,
-      professionalUser: order.professional,
-      agreedAmount,
-    });
+    runBackgroundTask(
+      () => sendDisputeResolvedNotifications({
+        order,
+        clientUser: order.client,
+        professionalUser: order.professional,
+        agreedAmount,
+      }),
+      'dispute-resolved'
+    );
 
     res.json({ 
       message: 'Dispute resolved successfully',
