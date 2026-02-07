@@ -176,6 +176,15 @@ function ProfessionalOrdersSection() {
   const [reviewResponse, setReviewResponse] = useState("");
   const [isSubmittingResponse, setIsSubmittingResponse] = useState(false);
 
+  const parseOnlineDeliveryDays = (value?: string): number | null => {
+    if (!value) return null;
+    const matches = value.match(/\d+(\.\d+)?/g);
+    if (!matches || matches.length === 0) return null;
+    const maxValue = Math.max(...matches.map((v) => Number(v)));
+    if (!Number.isFinite(maxValue)) return null;
+    return Math.ceil(maxValue);
+  };
+
   // Function to close all modals and reset related states
   const closeAllModals = () => {
     setIsViewDialogOpen(false);
@@ -515,17 +524,29 @@ function ProfessionalOrdersSection() {
       return deadline;
     }
     
-    // Third priority: scheduled date
+    // Third priority: online delivery days (online services)
+    if (currentOrder.date) {
+      const onlineDeliveryDays = parseOnlineDeliveryDays((currentOrder as any).metadata?.onlineDeliveryDays);
+      if (typeof onlineDeliveryDays === "number") {
+        const createdDate = new Date(currentOrder.date);
+        const deadline = new Date(createdDate);
+        deadline.setDate(deadline.getDate() + onlineDeliveryDays);
+        deadline.setHours(23, 59, 59, 999);
+        return deadline;
+      }
+    }
+    
+    // Fourth priority: scheduled date
     if (currentOrder.scheduledDate) {
       return new Date(currentOrder.scheduledDate);
     }
     
-    // Fourth priority: For online services without booking - calculate from createdAt + deliveryDays (same as client)
+    // Fifth priority: fallback to deliveryDays
     if (currentOrder.date && currentOrder.items && currentOrder.items.length > 0) {
-      const deliveryDays = (currentOrder as any).metadata?.deliveryDays ||
-                          (currentOrder as any).metadata?.scheduledDate ||
-                          7;
-      if (typeof deliveryDays === 'number') {
+      const deliveryDays = typeof (currentOrder as any).metadata?.deliveryDays === "number"
+        ? (currentOrder as any).metadata.deliveryDays
+        : null;
+      if (typeof deliveryDays === "number") {
         const createdDate = new Date(currentOrder.date);
         const deadline = new Date(createdDate);
         deadline.setDate(deadline.getDate() + deliveryDays);

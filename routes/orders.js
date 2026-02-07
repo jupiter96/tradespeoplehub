@@ -1562,6 +1562,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
         professionalPayoutAmount, // Store professional payout amount
         promoCodeType: promoCodeData?.type || null,
         deliveryDays: deliveryDays, // Store delivery days for countdown calculation
+        onlineDeliveryDays: service?.onlineDeliveryDays || undefined,
         scheduledDate: scheduledDate, // Store calculated delivery deadline
         ...(service && {
           serviceDescription: service.description || undefined,
@@ -1955,6 +1956,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
               professionalPayoutAmount: subtotal - discount,
               walletAmount,
               remainderAmount,
+              onlineDeliveryDays: service?.onlineDeliveryDays || undefined,
             },
           });
 
@@ -2190,6 +2192,7 @@ router.post('/bulk', authenticateToken, requireRole(['client']), async (req, res
           createdAt: new Date(),
           bulkOrderId: `BULK-${Date.now()}`,
           professionalPayoutAmount: subtotal - discount,
+          onlineDeliveryDays: service?.onlineDeliveryDays || undefined,
         },
       });
 
@@ -2613,6 +2616,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         metadata: {
           fromCustomOffer: order.metadata?.fromCustomOffer,
           deliveryDays: order.metadata?.deliveryDays,
+          onlineDeliveryDays: order.metadata?.onlineDeliveryDays,
           scheduledDate: order.metadata?.scheduledDate,
           customOfferId: order.metadata?.customOfferId?.toString?.() || order.metadata?.customOfferId,
           customOfferStatus: order.metadata?.customOfferStatus,
@@ -5064,6 +5068,9 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
 
     let feeTransaction = null;
     let paymentIntentId = null;
+    const isClientPayer = (order.client?._id || order.client)?.toString() === requestingUser._id.toString();
+    const payerRoleLabel = isClientPayer ? 'Client' : 'Professional';
+    const arbitrationFeeDescription = `Dispute Arbitration Fee (${payerRoleLabel}) - Order ${order.orderNumber}`;
 
     if (paymentMethod === 'account_balance') {
       if ((requestingUser.walletBalance || 0) < arbitrationFee) {
@@ -5084,11 +5091,13 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
         status: 'completed',
         paymentMethod: 'wallet',
         orderId: order._id,
-        description: `Arbitration Fee - Dispute ${order.disputeId}`,
+        description: arbitrationFeeDescription,
         metadata: {
           orderNumber: order.orderNumber,
           disputeId: order.disputeId,
-          reason: 'Admin arbitration fee payment',
+          reason: 'Dispute arbitration fee payment',
+          payerRole: payerRoleLabel,
+          paymentMethod: 'wallet',
         },
       });
       await feeTransaction.save();
@@ -5135,11 +5144,13 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
           status: 'completed',
           paymentMethod: 'card',
           orderId: order._id,
-          description: `Arbitration Fee - Dispute ${order.disputeId}`,
+          description: arbitrationFeeDescription,
           metadata: {
             orderNumber: order.orderNumber,
             disputeId: order.disputeId,
-            reason: 'Admin arbitration fee payment',
+            reason: 'Dispute arbitration fee payment',
+            payerRole: payerRoleLabel,
+            paymentMethod: 'card',
             paymentIntentId,
           },
         });

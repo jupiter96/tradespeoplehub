@@ -237,6 +237,15 @@ export default function ClientOrdersSection() {
   const [revisionMessage, setRevisionMessage] = useState("");
   const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
+
+  const parseOnlineDeliveryDays = (value?: string): number | null => {
+    if (!value) return null;
+    const matches = value.match(/\d+(\.\d+)?/g);
+    if (!matches || matches.length === 0) return null;
+    const maxValue = Math.max(...matches.map((v) => Number(v)));
+    if (!Number.isFinite(maxValue)) return null;
+    return Math.ceil(maxValue);
+  };
   const [disputeResponseMessage, setDisputeResponseMessage] = useState("");
   const [isAddInfoDialogOpen, setIsAddInfoDialogOpen] = useState(false);
   const [isAcceptOfferConfirmOpen, setIsAcceptOfferConfirmOpen] = useState(false);
@@ -1726,25 +1735,33 @@ export default function ClientOrdersSection() {
       return deadline;
     }
     
-    // Third priority: scheduled date
+    // Third priority: online delivery days (online services)
+    if (currentOrder.date) {
+      const onlineDeliveryDays = parseOnlineDeliveryDays(currentOrder.metadata?.onlineDeliveryDays);
+      if (typeof onlineDeliveryDays === "number") {
+        const createdDate = new Date(currentOrder.date);
+        const deadline = new Date(createdDate);
+        deadline.setDate(deadline.getDate() + onlineDeliveryDays);
+        deadline.setHours(23, 59, 59, 999);
+        return deadline;
+      }
+    }
+
+    // Fourth priority: scheduled date
     if (currentOrder.scheduledDate) {
       return new Date(currentOrder.scheduledDate);
     }
     
-    // Fourth priority: For online services without booking - calculate from createdAt + deliveryDays
-    // Extract deliveryDays from the first item's package or service
+    // Fifth priority: fallback to deliveryDays
     if (currentOrder.date && currentOrder.items && currentOrder.items.length > 0) {
-      const firstItem = currentOrder.items[0];
-      // Try to get deliveryDays from metadata or calculate default
-      const deliveryDays = currentOrder.metadata?.deliveryDays || 
-                          currentOrder.metadata?.scheduledDate ||
-                          7; // Default to 7 days if not specified
-      
-      if (typeof deliveryDays === 'number') {
+      const deliveryDays = typeof currentOrder.metadata?.deliveryDays === "number"
+        ? currentOrder.metadata.deliveryDays
+        : null;
+      if (typeof deliveryDays === "number") {
         const createdDate = new Date(currentOrder.date);
         const deadline = new Date(createdDate);
         deadline.setDate(deadline.getDate() + deliveryDays);
-        deadline.setHours(23, 59, 59, 999); // Set to end of day
+        deadline.setHours(23, 59, 59, 999);
         return deadline;
       }
     }
