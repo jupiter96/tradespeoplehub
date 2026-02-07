@@ -651,6 +651,34 @@ function ProfessionalOrdersSection() {
 
   const workElapsedTime = useElapsedTime(workStartTime, pauseTime, resumeTime);
 
+  const deliveryDeadline = useMemo(() => {
+    if (!currentOrder) return null;
+    if (effectiveExpectedDelivery) return new Date(effectiveExpectedDelivery);
+
+    const bookingDate = currentOrder.booking?.date;
+    const bookingStart = currentOrder.booking?.starttime || currentOrder.booking?.timeSlot;
+    const bookingEnd = currentOrder.booking?.endtime || currentOrder.booking?.endTime;
+    if (bookingDate) {
+      const [hours, minutes] = (bookingEnd || bookingStart || "17:00").split(":").map(Number);
+      const deadline = new Date(bookingDate);
+      if (!isNaN(hours)) deadline.setHours(hours);
+      if (!isNaN(minutes)) deadline.setMinutes(minutes);
+      deadline.setSeconds(0, 0);
+      return deadline;
+    }
+
+    if (currentOrder.scheduledDate) {
+      const deadline = new Date(currentOrder.scheduledDate);
+      deadline.setHours(23, 59, 59, 999);
+      return deadline;
+    }
+
+    return appointmentDeadline ? new Date(appointmentDeadline) : null;
+  }, [currentOrder, effectiveExpectedDelivery, appointmentDeadline]);
+
+  const overdueElapsedTime = useElapsedTime(deliveryDeadline, pauseTime, resumeTime);
+  const isDeliveryOverdue = Boolean(deliveryDeadline && overdueElapsedTime.started);
+
   // Poll for latest order updates while viewing details
   useEffect(() => {
     if (!selectedOrder) return;
@@ -1268,27 +1296,36 @@ function ProfessionalOrdersSection() {
 
             {/* Work In Progress Timer - Auto starts at booking time */}
             {workElapsedTime.started && (
-          <div className="bg-[#EAF2FF] rounded-2xl p-6 shadow-lg border border-blue-200">
+          <div className={`${isDeliveryOverdue ? "bg-red-50 border-red-200" : "bg-[#EAF2FF] border-blue-200"} rounded-2xl p-6 shadow-lg border`}>
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-blue-600" />
+              <div className={`w-10 h-10 rounded-full ${isDeliveryOverdue ? "bg-red-100" : "bg-blue-100"} flex items-center justify-center`}>
+                <Clock className={`w-5 h-5 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`} />
               </div>
               <div>
-                <p className="font-['Poppins',sans-serif] text-[12px] text-blue-600 uppercase tracking-wider">
-                  Work In Progress
+                <p className={`font-['Poppins',sans-serif] text-[12px] uppercase tracking-wider ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
+                  {isDeliveryOverdue ? "Delivery overdue by" : "Work In Progress"}
                 </p>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                  Started: {workStartTime
-                    ? workStartTime.toLocaleString('en-GB', {
+                  {isDeliveryOverdue
+                    ? `Deadline: ${deliveryDeadline ? deliveryDeadline.toLocaleString('en-GB', {
                         weekday: 'short',
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
                         hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : "N/A"}
+                        minute: '2-digit',
+                      }) : "N/A"}`
+                    : `Started: ${workStartTime
+                        ? workStartTime.toLocaleString('en-GB', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : "N/A"}`}
                 </p>
               </div>
             </div>
@@ -1296,41 +1333,41 @@ function ProfessionalOrdersSection() {
             {/* Elapsed Time Display */}
             <div className="grid grid-cols-4 gap-3">
               {/* Days */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
-                  {String(workElapsedTime.days).padStart(2, '0')}
+              <div className={`bg-white rounded-xl p-4 text-center border shadow-md ${isDeliveryOverdue ? "border-red-200" : "border-blue-200"}`}>
+                <div className={`font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium leading-none ${isDeliveryOverdue ? "text-red-700" : "text-blue-700"}`}>
+                  {String((isDeliveryOverdue ? overdueElapsedTime.days : workElapsedTime.days)).padStart(2, '0')}
                 </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                <div className={`font-['Poppins',sans-serif] text-[11px] md:text-[12px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
                   Days
                 </div>
               </div>
 
               {/* Hours */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
-                  {String(workElapsedTime.hours).padStart(2, '0')}
+              <div className={`bg-white rounded-xl p-4 text-center border shadow-md ${isDeliveryOverdue ? "border-red-200" : "border-blue-200"}`}>
+                <div className={`font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium leading-none ${isDeliveryOverdue ? "text-red-700" : "text-blue-700"}`}>
+                  {String((isDeliveryOverdue ? overdueElapsedTime.hours : workElapsedTime.hours)).padStart(2, '0')}
                 </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                <div className={`font-['Poppins',sans-serif] text-[11px] md:text-[12px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
                   Hours
                 </div>
               </div>
 
               {/* Minutes */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
-                  {String(workElapsedTime.minutes).padStart(2, '0')}
+              <div className={`bg-white rounded-xl p-4 text-center border shadow-md ${isDeliveryOverdue ? "border-red-200" : "border-blue-200"}`}>
+                <div className={`font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium leading-none ${isDeliveryOverdue ? "text-red-700" : "text-blue-700"}`}>
+                  {String((isDeliveryOverdue ? overdueElapsedTime.minutes : workElapsedTime.minutes)).padStart(2, '0')}
                 </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                <div className={`font-['Poppins',sans-serif] text-[11px] md:text-[12px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
                   Minutes
                 </div>
               </div>
 
               {/* Seconds */}
-              <div className="bg-white rounded-xl p-4 text-center border border-blue-200 shadow-md">
-                <div className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium text-blue-700 leading-none">
-                  {String(workElapsedTime.seconds).padStart(2, '0')}
+              <div className={`bg-white rounded-xl p-4 text-center border shadow-md ${isDeliveryOverdue ? "border-red-200" : "border-blue-200"}`}>
+                <div className={`font-['Poppins',sans-serif] text-[28px] md:text-[32px] font-medium leading-none ${isDeliveryOverdue ? "text-red-700" : "text-blue-700"}`}>
+                  {String((isDeliveryOverdue ? overdueElapsedTime.seconds : workElapsedTime.seconds)).padStart(2, '0')}
                 </div>
-                <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-blue-600 uppercase tracking-wider mt-1">
+                <div className={`font-['Poppins',sans-serif] text-[11px] md:text-[12px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
                   Seconds
                 </div>
               </div>
@@ -1338,9 +1375,9 @@ function ProfessionalOrdersSection() {
 
             {/* Status Indicator */}
             <div className="mt-4 flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              <span className="font-['Poppins',sans-serif] text-[12px] text-blue-600">
-                Timer running until you complete the order
+              <div className={`w-2 h-2 rounded-full animate-pulse ${isDeliveryOverdue ? "bg-red-500" : "bg-blue-500"}`} />
+              <span className={`font-['Poppins',sans-serif] text-[12px] ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
+                {isDeliveryOverdue ? "Delivery is overdue. Please complete the order." : "Timer running until you complete the order"}
               </span>
             </div>
           </div>

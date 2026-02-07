@@ -85,7 +85,7 @@ export default function CustomOfferModal({
   const [offerDescription, setOfferDescription] = useState("");
   const [paymentType, setPaymentType] = useState<"single" | "milestone">("single");
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: "1", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1, description: "" }
+    { id: "1", name: "", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1, description: "" }
   ]);
   const [professionalServices, setProfessionalServices] = useState<ProfessionalService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(false);
@@ -155,7 +155,7 @@ export default function CustomOfferModal({
     setDeliveryDays("");
     setOfferDescription("");
     setPaymentType("single");
-    setMilestones([{ id: "1", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1 }]);
+    setMilestones([{ id: "1", name: "", deliveryInDays: 1, price: 0, chargePer: "per hour", noOf: 1, description: "" }]);
     setChargePer("service");
     setQuantity("1");
     setSelectedAttributes([]);
@@ -208,11 +208,11 @@ export default function CustomOfferModal({
     // Validate milestones if milestone payment is selected
     if (paymentType === "milestone") {
       const hasEmptyFields = milestones.some(
-        m => m.deliveryInDays <= 0 || m.price <= 0 || m.noOf <= 0 || !m.description?.trim()
+        m => !m.name?.trim() || m.deliveryInDays <= 0 || m.price <= 0 || m.noOf <= 0
       );
       
       if (hasEmptyFields) {
-        toast.error("Please fill in all milestone fields (Delivery In, Price, No of, Description)");
+        toast.error("Please fill in all required milestone fields (Name, Delivery In, Price, No of)");
         return;
       }
     }
@@ -224,7 +224,7 @@ export default function CustomOfferModal({
   const addMilestone = () => {
     const newId = (milestones.length + 1).toString();
     const lastChargePer = milestones[milestones.length - 1]?.chargePer || "per hour";
-    setMilestones([...milestones, { id: newId, deliveryInDays: 1, price: 0, chargePer: lastChargePer, noOf: 1, description: "" }]);
+    setMilestones([...milestones, { id: newId, name: "", deliveryInDays: 1, price: 0, chargePer: lastChargePer, noOf: 1, description: "" }]);
   };
 
   const removeMilestone = (id: string) => {
@@ -304,7 +304,7 @@ export default function CustomOfferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[60vw] max-w-[840px] sm:max-w-[840px] h-[85vh] p-0 flex flex-col gap-0">
+      <DialogContent className="w-[78vw] max-w-[1092px] sm:max-w-[1092px] h-[85vh] p-0 flex flex-col gap-0">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-200">
           <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] flex items-center gap-2">
             <ShoppingBag className="w-6 h-6 text-[#FE8A0F]" />
@@ -498,6 +498,19 @@ export default function CustomOfferModal({
                               )}
                             </div>
 
+                            <div>
+                              <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                                Milestone Name *
+                              </Label>
+                              <Input
+                                type="text"
+                                placeholder="e.g., Design draft"
+                                value={milestone.name || ""}
+                                onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
+                                className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                              />
+                            </div>
+
                             <div className="grid grid-cols-4 gap-3">
                               <div>
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
@@ -566,7 +579,7 @@ export default function CustomOfferModal({
 
                             <div>
                               <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                Description *
+                                Description (optional)
                               </Label>
                               <Textarea
                                 value={milestone.description || ""}
@@ -882,6 +895,19 @@ export default function CustomOfferModal({
                             )}
                           </div>
 
+                        <div>
+                          <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
+                            Milestone Name *
+                          </Label>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Design draft"
+                            value={milestone.name || ""}
+                            onChange={(e) => updateMilestone(milestone.id, "name", e.target.value)}
+                            className="font-['Poppins',sans-serif] text-[13px] border-gray-200 focus:border-[#FE8A0F]"
+                          />
+                        </div>
+
                           <div className="grid grid-cols-4 gap-3">
                             <div>
                               <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
@@ -950,7 +976,7 @@ export default function CustomOfferModal({
 
                           <div>
                             <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                              Description *
+                            Description (optional)
                             </Label>
                             <Textarea
                               value={milestone.description || ""}

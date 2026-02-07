@@ -1217,7 +1217,7 @@ export default function ProfessionalOrderTimelineTab({
                       const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
                       return (
                         <tr key={idx} className="border-b border-gray-100 last:border-b-0">
-                          <td className="py-3 px-4 text-[#2c353f]">{m.name || `Milestone ${idx + 1}`}</td>
+                          <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
                           <td className="py-3 px-4 text-[#2c353f]">{formatDateOrdinal(deliveryDate.toISOString())}</td>
                           <td className="py-3 px-4 text-[#2c353f]">{typeof noOfVal === "number" ? noOfVal : "—"}</td>
                           <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || (m.chargePer ? `${m.chargePer} x${noOfVal}` : "—")}</td>
