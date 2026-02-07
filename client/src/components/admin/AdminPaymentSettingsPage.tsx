@@ -142,6 +142,12 @@ export default function AdminPaymentSettingsPage() {
     }));
   };
 
+  const parseNumberInput = (value: string, type: "int" | "float") => {
+    if (value === "") return "";
+    const parsed = type === "int" ? parseInt(value, 10) : parseFloat(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
   const updateBankField = (field: string, value: string) => {
     setSettings((prev) => ({
       ...prev,
@@ -909,9 +915,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="feedbackReviewValidityDays"
                           type="number"
-                          value={settings.feedbackReviewValidityDays || 0}
-                          onChange={(e) => updateField("feedbackReviewValidityDays", parseInt(e.target.value) || 0)}
-                          className="pr-16 font-['Poppins',sans-serif]"
+                          value={settings.feedbackReviewValidityDays === "" ? "" : settings.feedbackReviewValidityDays ?? 0}
+                          onChange={(e) => updateField("feedbackReviewValidityDays", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
@@ -942,9 +948,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="stepInAmount"
                           type="number"
-                          value={settings.stepInAmount || 0}
-                          onChange={(e) => updateField("stepInAmount", parseFloat(e.target.value) || 0)}
-                          className="pl-8 font-['Poppins',sans-serif]"
+                          value={settings.stepInAmount === "" ? "" : settings.stepInAmount ?? 0}
+                          onChange={(e) => updateField("stepInAmount", parseNumberInput(e.target.value, "float"))}
+                          className="pl-8 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                           step="0.01"
                         />
@@ -959,9 +965,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="arbitrationFeeDeadlineDays"
                           type="number"
-                          value={settings.arbitrationFeeDeadlineDays || 0}
-                          onChange={(e) => updateField("arbitrationFeeDeadlineDays", parseInt(e.target.value) || 0)}
-                          className="pr-16 font-['Poppins',sans-serif]"
+                          value={settings.arbitrationFeeDeadlineDays === "" ? "" : settings.arbitrationFeeDeadlineDays ?? 0}
+                          onChange={(e) => updateField("arbitrationFeeDeadlineDays", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
@@ -979,9 +985,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="waitingTimeToAcceptOffer"
                           type="number"
-                          value={settings.waitingTimeToAcceptOffer || 0}
-                          onChange={(e) => updateField("waitingTimeToAcceptOffer", parseInt(e.target.value) || 0)}
-                          className="font-['Poppins',sans-serif]"
+                          value={settings.waitingTimeToAcceptOffer === "" ? "" : settings.waitingTimeToAcceptOffer ?? 0}
+                          onChange={(e) => updateField("waitingTimeToAcceptOffer", parseNumberInput(e.target.value, "int"))}
+                          className="font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
                       </div>
@@ -994,9 +1000,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="waitingTimeToApproveOrder"
                           type="number"
-                          value={settings.waitingTimeToApproveOrder || 0}
-                          onChange={(e) => updateField("waitingTimeToApproveOrder", parseInt(e.target.value) || 0)}
-                          className="pr-16 font-['Poppins',sans-serif]"
+                          value={settings.waitingTimeToApproveOrder === "" ? "" : settings.waitingTimeToApproveOrder ?? 0}
+                          onChange={(e) => updateField("waitingTimeToApproveOrder", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
@@ -1012,9 +1018,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="disputeResponseTimeHours"
                           type="number"
-                          value={settings.disputeResponseTimeHours || 0}
-                          onChange={(e) => updateField("disputeResponseTimeHours", parseInt(e.target.value) || 0)}
-                          className="pr-16 font-['Poppins',sans-serif]"
+                          value={settings.disputeResponseTimeHours === "" ? "" : settings.disputeResponseTimeHours ?? 0}
+                          onChange={(e) => updateField("disputeResponseTimeHours", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
@@ -1031,9 +1037,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="stepInDays"
                           type="number"
-                          value={settings.stepInDays || 0}
-                          onChange={(e) => updateField("stepInDays", parseInt(e.target.value) || 0)}
-                          className="pr-16 font-['Poppins',sans-serif]"
+                          value={settings.stepInDays === "" ? "" : settings.stepInDays ?? 0}
+                          onChange={(e) => updateField("stepInDays", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
@@ -1063,9 +1069,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="serviceFees"
                           type="number"
-                          value={settings.serviceFees || 0.01}
-                          onChange={(e) => updateField("serviceFees", parseFloat(e.target.value) || 0)}
-                          className="pl-8 font-['Poppins',sans-serif]"
+                          value={settings.serviceFees === "" ? "" : settings.serviceFees ?? 0.01}
+                          onChange={(e) => updateField("serviceFees", parseNumberInput(e.target.value, "float"))}
+                          className="pl-8 font-['Poppins',sans-serif] no-spinner"
                           min="0.01"
                           step="0.01"
                         />
@@ -1081,9 +1087,9 @@ export default function AdminPaymentSettingsPage() {
                         <Input
                           id="serviceFeeThreshold"
                           type="number"
-                          value={settings.serviceFeeThreshold || 0.01}
-                          onChange={(e) => updateField("serviceFeeThreshold", parseFloat(e.target.value) || 0)}
-                          className="pl-8 font-['Poppins',sans-serif]"
+                          value={settings.serviceFeeThreshold === "" ? "" : settings.serviceFeeThreshold ?? 0.01}
+                          onChange={(e) => updateField("serviceFeeThreshold", parseNumberInput(e.target.value, "float"))}
+                          className="pl-8 font-['Poppins',sans-serif] no-spinner"
                           min="0.01"
                           step="0.01"
                         />
