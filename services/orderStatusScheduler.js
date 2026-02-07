@@ -2,6 +2,9 @@ import cron from 'node-cron';
 import Order from '../models/Order.js';
 import Review from '../models/Review.js';
 import Notification from '../models/Notification.js';
+import PaymentSettings from '../models/PaymentSettings.js';
+import User from '../models/User.js';
+import Wallet from '../models/Wallet.js';
 import { sendTemplatedEmail } from './notifier.js';
 import { getIO } from './socket.js';
 
@@ -97,6 +100,89 @@ async function processDeliveryReminders() {
 }
 
 const REVIEW_REMINDER_HOURS_AFTER = 24;
+
+async function processAutoCompleteDeliveredOrders() {
+  try {
+    const settings = await PaymentSettings.getSettings();
+    const waitingDays = typeof settings.waitingTimeToApproveOrder === 'number'
+      ? settings.waitingTimeToApproveOrder
+      : 0;
+
+    if (waitingDays <= 0) return;
+
+    const now = new Date();
+    const threshold = new Date(now.getTime() - waitingDays * 24 * 60 * 60 * 1000);
+
+    const orders = await Order.find({
+      status: { $in: ['delivered', 'Delivered'] },
+      deliveryStatus: 'delivered',
+      deliveredDate: { $lte: threshold },
+    });
+
+    for (const order of orders) {
+      try {
+        if (order.status === 'Completed' || order.deliveryStatus === 'completed') continue;
+        if (order.disputeId || order.metadata?.disputeStatus) continue;
+        if (order.status === 'Revision') continue;
+
+        const revisionRequests = order.revisionRequest
+          ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
+          : [];
+        const hasActiveRevision = revisionRequests.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+        if (hasActiveRevision) continue;
+
+        const professional = await User.findById(order.professional);
+        if (!professional) continue;
+
+        const professionalPayoutAmount = order.metadata?.professionalPayoutAmount || order.subtotal;
+        if (professionalPayoutAmount > 0) {
+          professional.walletBalance = (professional.walletBalance || 0) + professionalPayoutAmount;
+          await professional.save();
+
+          const payoutTransaction = new Wallet({
+            userId: professional._id,
+            type: 'deposit',
+            amount: professionalPayoutAmount,
+            balance: professional.walletBalance,
+            status: 'completed',
+            paymentMethod: 'wallet',
+            orderId: order._id,
+            description: `Auto-approved payment for Order ${order.orderNumber}`,
+            metadata: {
+              orderNumber: order.orderNumber,
+              orderSubtotal: order.subtotal,
+              discount: order.discount || 0,
+              promoCode: order.promoCode || null,
+              promoCodeType: order.metadata?.promoCodeType || null,
+              autoApproved: true,
+            },
+          });
+          await payoutTransaction.save();
+        }
+
+        if (!order.metadata) order.metadata = {};
+        const baseDate = order.deliveredDate
+          ? new Date(order.deliveredDate)
+          : (order.metadata?.professionalCompleteRequest?.requestedAt ? new Date(order.metadata.professionalCompleteRequest.requestedAt) : new Date());
+        const deadlineDate = new Date(baseDate);
+        deadlineDate.setDate(deadlineDate.getDate() + waitingDays);
+        deadlineDate.setHours(23, 59, 59, 999);
+
+        order.status = 'Completed';
+        order.deliveryStatus = 'completed';
+        order.completedDate = new Date();
+        order.metadata.autoApprovedAt = new Date();
+        order.metadata.autoApprovedDeadlineAt = deadlineDate;
+        order.metadata.autoApprovedReason = 'no_client_response';
+        await order.save();
+      } catch (orderErr) {
+        console.error(`[Order Status Scheduler] Error auto-completing order ${order.orderNumber}:`, orderErr);
+      }
+    }
+  } catch (error) {
+    console.error('[Order Status Scheduler] Error in processAutoCompleteDeliveredOrders:', error);
+  }
+}
 
 /**
  * Send reminder to client to leave a review/rating for a completed order.
@@ -234,6 +320,13 @@ export function startOrderStatusScheduler() {
   // Run every minute to check for orders that need status update
   cron.schedule('* * * * *', async () => {
     await processOrderStatusUpdates();
+  }, {
+    scheduled: true,
+    timezone: 'UTC',
+  });
+  // Run every hour to auto-complete delivered orders after waiting time
+  cron.schedule('10 * * * *', async () => {
+    await processAutoCompleteDeliveredOrders();
   }, {
     scheduled: true,
     timezone: 'UTC',

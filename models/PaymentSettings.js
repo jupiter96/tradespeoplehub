@@ -212,6 +212,11 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 2,
       min: 0,
     },
+    waitingTimeToApproveOrder: {
+      type: Number,
+      default: 2,
+      min: 0,
+    },
     stepInAmount: {
       type: Number,
       default: 5.00,

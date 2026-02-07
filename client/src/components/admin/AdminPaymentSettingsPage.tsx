@@ -66,6 +66,7 @@ export default function AdminPaymentSettingsPage() {
     feedbackReviewValidityDays: 90,
     inviteToReview: "Activated",
     waitingTimeToAcceptOffer: 2,
+    waitingTimeToApproveOrder: 2,
     stepInAmount: 5.00,
     stepInDays: 1,
     arbitrationFeeDeadlineDays: 1,
@@ -983,6 +984,24 @@ export default function AdminPaymentSettingsPage() {
                           className="font-['Poppins',sans-serif]"
                           min="0"
                         />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="waitingTimeToApproveOrder" className="font-['Poppins',sans-serif]">
+                        Waiting time to approve order:
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="waitingTimeToApproveOrder"
+                          type="number"
+                          value={settings.waitingTimeToApproveOrder || 0}
+                          onChange={(e) => updateField("waitingTimeToApproveOrder", parseInt(e.target.value) || 0)}
+                          className="pr-16 font-['Poppins',sans-serif]"
+                          min="0"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
+                          Day(s)
+                        </span>
                       </div>
                     </div>
                     <div>

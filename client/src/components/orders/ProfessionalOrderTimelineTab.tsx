@@ -647,6 +647,12 @@ export default function ProfessionalOrderTimelineTab({
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md">
           <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
             {(() => {
+              const autoApprovedAt =
+                (currentOrder as any).metadata?.autoApprovedAt ||
+                (currentOrder as any).metadata?.autoApprovedDeadlineAt;
+              if (autoApprovedAt) {
+                return "Your order has been completed automatically.";
+              }
               const disputeInfo = (currentOrder as any).disputeInfo;
               const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
               const isWinnerPro = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
@@ -673,6 +679,13 @@ export default function ProfessionalOrderTimelineTab({
           </h4>
           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4 whitespace-pre-line">
             {(() => {
+              const autoDeadline =
+                (currentOrder as any).metadata?.autoApprovedDeadlineAt ||
+                (currentOrder as any).metadata?.autoApprovedAt;
+              if (autoDeadline) {
+                const deadlineStr = formatDateOrdinal(autoDeadline);
+                return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response from the client before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the client in the form of feedback.`;
+              }
               const disputeInfo = (currentOrder as any).disputeInfo;
               const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
               const isWinnerPro = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
