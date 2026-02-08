@@ -388,7 +388,7 @@ export default function AccountPage() {
       badge: verificationPendingCount > 0 ? verificationPendingCount.toString() : undefined
     },
     { id: "details", label: "My Details", icon: Settings },
-    { id: "withdraw", label: "Withdraw", icon: Wallet },
+    { id: "withdraw", label: "Billing", icon: Wallet },
     { id: "security", label: "Security", icon: Lock },
     { 
       id: "messenger", 
