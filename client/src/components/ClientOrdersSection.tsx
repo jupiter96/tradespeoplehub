@@ -1991,27 +1991,20 @@ export default function ClientOrdersSection() {
                 <p className={`font-['Poppins',sans-serif] text-[12px] uppercase tracking-wider ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
                   {isDeliveryOverdue ? "Delivery overdue by" : "Work In Progress"}
                 </p>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                  {isDeliveryOverdue
-                    ? `Deadline: ${deliveryDeadline ? deliveryDeadline.toLocaleString('en-GB', {
-                        weekday: 'short',
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) : "N/A"}`
-                    : `Started: ${workStartTime
-                        ? workStartTime.toLocaleString('en-GB', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : "N/A"}`}
-                </p>
+                {!isDeliveryOverdue && (
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                    {`Started: ${workStartTime
+                      ? workStartTime.toLocaleString('en-GB', {
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : "N/A"}`}
+                  </p>
+                )}
               </div>
             </div>
 

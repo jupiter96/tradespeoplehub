@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import BankVerificationModal from "./BankVerificationModal";
 import PhoneInput from "./PhoneInput";
 import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
@@ -81,28 +82,27 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
   };
 
   // Fetch verification status from API
-  useEffect(() => {
-    const fetchVerificationStatus = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/verification`, {
-          credentials: "include",
-        });
+  const refreshVerificationStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verification`, {
+        credentials: "include",
+      });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch verification status");
-        }
-
-        const data = await response.json();
-        setVerificationData(data.verification);
-      } catch (error) {
-        // console.error("Error fetching verification status:", error);
-        toast.error("Failed to load verification status");
-      } finally {
-        setLoadingVerification(false);
+      if (!response.ok) {
+        throw new Error("Failed to fetch verification status");
       }
-    };
 
-    fetchVerificationStatus();
+      const data = await response.json();
+      setVerificationData(data.verification);
+    } catch (error) {
+      toast.error("Failed to load verification status");
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshVerificationStatus();
   }, []);
 
   // Build verification items from API data
@@ -139,8 +139,8 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
     },
     {
       id: "payment",
-      title: "Payment Method",
-      description: "Verify your bank account to receive earnings",
+      title: "Bank Account Details",
+      description: "Provide bank details and a recent statement to verify your identity",
       icon: CreditCard,
       status: (verificationData?.paymentMethod?.status as VerificationItem["status"]) || "not-started",
       type: "upload",
@@ -179,14 +179,6 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
   const [formData, setFormData] = useState({
     email: userInfo?.email || "",
     phone: userInfo?.phone || "",
-    // Payment method form data
-    firstName: userInfo?.firstName || "",
-    lastName: userInfo?.lastName || "",
-    address: userInfo?.address || "",
-    sortCode: "",
-    accountNumber: "",
-    bankStatementFile: null as File | null,
-    bankStatementDate: "",
   });
 
   const currentItem = verificationItems.find((item) => item.id === selectedItem);
@@ -276,16 +268,9 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       const data = await response.json();
       
       // Refresh verification status
-      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
-        credentials: "include",
-      });
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        setVerificationData(statusData.verification);
-        // Notify parent component of status change
-        if (onVerificationStatusChange) {
-          onVerificationStatusChange();
-        }
+      await refreshVerificationStatus();
+      if (onVerificationStatusChange) {
+        onVerificationStatusChange();
       }
 
       toast.success("Document uploaded successfully! Under review...");
@@ -346,16 +331,9 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       }
 
       // Refresh verification status
-      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
-        credentials: "include",
-      });
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        setVerificationData(statusData.verification);
-        // Notify parent component of status change
-        if (onVerificationStatusChange) {
-          onVerificationStatusChange();
-        }
+      await refreshVerificationStatus();
+      if (onVerificationStatusChange) {
+        onVerificationStatusChange();
       }
 
       toast.success("Verification successful!");
@@ -369,132 +347,6 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       toast.error(error instanceof Error ? error.message : "Failed to verify");
     }
   };
-
-  const handleSubmitPaymentMethod = async () => {
-    // Validate required fields
-    if (!formData.firstName.trim()) {
-      toast.error("First name is required");
-      return;
-    }
-    if (!formData.lastName.trim()) {
-      toast.error("Last name is required");
-      return;
-    }
-    if (!formData.address.trim()) {
-      toast.error("Address is required");
-      return;
-    }
-    if (!formData.sortCode.trim()) {
-      toast.error("Sort code is required");
-      return;
-    }
-    // Validate sort code format (6 digits, can be formatted as XX-XX-XX or XXXXXX)
-    const sortCodeDigits = formData.sortCode.replace(/\D/g, "");
-    if (sortCodeDigits.length !== 6 || !/^\d+$/.test(sortCodeDigits)) {
-      toast.error("Please enter a valid 6-digit sort code");
-      return;
-    }
-    if (!formData.accountNumber.trim()) {
-      toast.error("Account number is required");
-      return;
-    }
-    // Validate account number (8-10 digits)
-    const accountNumberDigits = formData.accountNumber.replace(/\D/g, "");
-    if (accountNumberDigits.length < 8 || accountNumberDigits.length > 10 || !/^\d+$/.test(accountNumberDigits)) {
-      toast.error("Please enter a valid account number (8-10 digits)");
-      return;
-    }
-    if (!formData.bankStatementFile) {
-      toast.error("Please upload a bank statement");
-      return;
-    }
-    if (!formData.bankStatementDate) {
-      toast.error("Please enter the bank statement issue date");
-      return;
-    }
-
-    // Validate bank statement date (must be within 3 months)
-    const statementDate = new Date(formData.bankStatementDate);
-    const today = new Date();
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(today.getMonth() - 3);
-    
-    if (statementDate > today) {
-      toast.error("Bank statement date cannot be in the future");
-      return;
-    }
-    if (statementDate < threeMonthsAgo) {
-      toast.error("Bank statement must be issued within the last 3 months");
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (formData.bankStatementFile.size > 10 * 1024 * 1024) {
-      toast.error("File size must be less than 10MB");
-      return;
-    }
-
-    // Validate file type
-    const validTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
-    if (!validTypes.includes(formData.bankStatementFile.type)) {
-      toast.error("Please upload a PDF, JPG, or PNG file");
-      return;
-    }
-
-    setUploadingFile(true);
-    try {
-      const uploadFormData = new FormData();
-      uploadFormData.append("document", formData.bankStatementFile);
-      uploadFormData.append("firstName", formData.firstName.trim());
-      uploadFormData.append("lastName", formData.lastName.trim());
-      uploadFormData.append("address", formData.address.trim());
-      uploadFormData.append("sortCode", sortCodeDigits);
-      uploadFormData.append("accountNumber", accountNumberDigits);
-      uploadFormData.append("bankStatementDate", formData.bankStatementDate);
-
-      const response = await fetch(`${API_BASE_URL}/api/auth/verification/paymentMethod/upload`, {
-        method: "POST",
-        credentials: "include",
-        body: uploadFormData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload payment method verification");
-      }
-
-      // Refresh verification status
-      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
-        credentials: "include",
-      });
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        setVerificationData(statusData.verification);
-        if (onVerificationStatusChange) {
-          onVerificationStatusChange();
-        }
-      }
-
-      toast.success("Payment method verification submitted! Under review...");
-      setIsDialogOpen(false);
-      
-      // Reset payment form
-      setFormData(prev => ({
-        ...prev,
-        sortCode: "",
-        accountNumber: "",
-        bankStatementFile: null,
-        bankStatementDate: "",
-      }));
-    } catch (error) {
-      // console.error("Payment method verification error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to submit payment method verification");
-    } finally {
-      setUploadingFile(false);
-    }
-  };
-
-
 
   const handleDeleteDocument = async (itemId: string) => {
     const verificationType = verificationTypeMap[itemId];
@@ -515,13 +367,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       }
 
       // Refresh verification status
-      const statusResponse = await fetch(`${API_BASE_URL}/api/auth/verification`, {
-        credentials: "include",
-      });
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        setVerificationData(statusData.verification);
-      }
+      await refreshVerificationStatus();
 
       toast.success("Document removed");
     } catch (error) {
@@ -797,7 +643,28 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
       </div>
 
       {/* Verification Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+      {currentItem?.id === "payment" && (
+        <BankVerificationModal
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setVerificationStep("input");
+              setVerificationCode("");
+              setCodeSent(false);
+            }
+          }}
+          initialData={verificationData?.paymentMethod || null}
+          onSubmitted={async () => {
+            await refreshVerificationStatus();
+            if (onVerificationStatusChange) {
+              onVerificationStatusChange();
+            }
+          }}
+          description={currentItem?.description}
+        />
+      )}
+      <Dialog open={isDialogOpen && currentItem?.id !== "payment"} onOpenChange={(open) => {
         setIsDialogOpen(open);
         if (!open) {
           setVerificationStep("input");
@@ -811,7 +678,7 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
               {currentItem?.type === "upload" 
                 ? "Upload Document" 
                 : currentItem?.id === "payment"
-                ? "Add Payment Method"
+                ? "Add Bank Account Details"
                 : verificationStep === "code"
                 ? "Enter Verification Code"
                 : "Verify Information"}
@@ -822,202 +689,8 @@ export default function AccountVerificationSection({ onVerificationStatusChange 
           </DialogHeader>
 
           <div className="py-4">
-            {/* Payment Method - Special handling with account details */}
-            {currentItem?.id === "payment" ? (
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-blue-800">
-                      Please upload a bank statement issued within the last 3 months. The statement should show your account number and sort code.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                      First Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      placeholder="John"
-                      value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
-                      className="font-['Poppins',sans-serif]"
-                    />
-                  </div>
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                      Last Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      placeholder="Doe"
-                      value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
-                      className="font-['Poppins',sans-serif]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                    Address <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    placeholder="123 Main Street, City"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    className="font-['Poppins',sans-serif]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                      Sort Code <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      placeholder="12-34-56"
-                      value={formData.sortCode}
-                      onChange={(e) => {
-                        let value = e.target.value.replace(/\D/g, "");
-                        if (value.length <= 6) {
-                          // Format as XX-XX-XX
-                          if (value.length > 2) {
-                            value = value.slice(0, 2) + "-" + value.slice(2);
-                          }
-                          if (value.length > 5) {
-                            value = value.slice(0, 5) + "-" + value.slice(5, 7);
-                          }
-                          setFormData({ ...formData, sortCode: value });
-                        }
-                      }}
-                      maxLength={8}
-                      className="font-['Poppins',sans-serif]"
-                    />
-                  </div>
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                      Account Number <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      placeholder="12345678"
-                      value={formData.accountNumber}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        if (value.length <= 10) {
-                          setFormData({ ...formData, accountNumber: value });
-                        }
-                      }}
-                      maxLength={10}
-                      className="font-['Poppins',sans-serif]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                    Bank Statement Issue Date <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="date"
-                    value={formData.bankStatementDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankStatementDate: e.target.value })
-                    }
-                    max={new Date().toISOString().split('T')[0]}
-                    className="font-['Poppins',sans-serif]"
-                  />
-                  <p className="font-['Poppins',sans-serif] text-[11px] text-gray-500 mt-1">
-                    Must be within the last 3 months
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[14px] mb-2">
-                    Upload Bank Statement <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[#FE8A0F] transition-colors">
-                    <input
-                      type="file"
-                      id="bank-statement-upload"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setFormData({ ...formData, bankStatementFile: file });
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="bank-statement-upload"
-                      className="cursor-pointer flex flex-col items-center gap-2"
-                    >
-                      <Upload className="w-8 h-8 text-gray-400" />
-                      {formData.bankStatementFile ? (
-                        <div className="text-center">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                            {formData.bankStatementFile.name}
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-gray-500 mt-1">
-                            Click to change file
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-gray-600">
-                            Click to upload or drag and drop
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-gray-500 mt-1">
-                            PDF, JPG, or PNG (max 10MB)
-                          </p>
-                        </div>
-                      )}
-                    </label>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                  <div className="flex items-start gap-2">
-                    <Shield className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-green-800">
-                      Your bank account information is encrypted and secure. Documents are reviewed within 24-48 hours.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    className="flex-1 font-['Poppins',sans-serif]"
-                    disabled={uploadingFile}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSubmitPaymentMethod}
-                    disabled={uploadingFile}
-                    className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] disabled:opacity-50"
-                  >
-                    {uploadingFile ? "Uploading..." : "Submit"}
-                  </Button>
-                </div>
-              </div>
-            ) : /* Document Upload - for other upload types */
-            currentItem?.type === "upload" ? (
+            {/* Document Upload - for other upload types */}
+            {currentItem?.type === "upload" ? (
               <div>
                 <Label className="font-['Poppins',sans-serif] text-[14px] mb-3 block">
                   Upload {currentItem.title}

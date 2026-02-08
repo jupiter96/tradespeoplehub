@@ -89,6 +89,7 @@ import ProfessionalJobsSection from "./ProfessionalJobsSection";
 import ProfessionalOrdersSection from "./ProfessionalOrdersSection";
 import ClientOrdersSection from "./ClientOrdersSection";
 import AccountVerificationSection from "./AccountVerificationSection";
+import BankVerificationModal from "./BankVerificationModal";
 import CustomOfferModal from "./CustomOfferModal";
 import CustomOfferPaymentModal from "./CustomOfferPaymentModal";
 import AddServiceSection from "./AddServiceSection";
@@ -4615,8 +4616,8 @@ function TransactionHistoryTab() {
 function WithdrawSection() {
   const { userInfo } = useAccount();
   const [withdrawTab, setWithdrawTab] = useState<"balance" | "accounts" | "withdraw" | "history">("balance");
-  const [showAddBankAccount, setShowAddBankAccount] = useState(false);
   const [showAddPayPal, setShowAddPayPal] = useState(false);
+  const [showBankVerificationModal, setShowBankVerificationModal] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [selectedWithdrawMethod, setSelectedWithdrawMethod] = useState("");
@@ -4626,6 +4627,8 @@ function WithdrawSection() {
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(true);
+  const [verificationPaymentMethod, setVerificationPaymentMethod] = useState<any | null>(null);
+  const [loadingVerification, setLoadingVerification] = useState(true);
   const [historySearch, setHistorySearch] = useState("");
   const [historyTypeFilter, setHistoryTypeFilter] = useState("all");
   const [historyStatusFilter, setHistoryStatusFilter] = useState("all");
@@ -4696,6 +4699,29 @@ function WithdrawSection() {
     }
   };
 
+  const fetchVerificationPaymentMethod = async () => {
+    setLoadingVerification(true);
+    try {
+      const response = await fetch(resolveApiUrl("/api/auth/verification"), {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setVerificationPaymentMethod(data.verification?.paymentMethod || null);
+      }
+    } catch (error) {
+      console.error("Failed to fetch verification details:", error);
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
+
+  useEffect(() => {
+    if (withdrawTab === "accounts" || withdrawTab === "withdraw") {
+      fetchVerificationPaymentMethod();
+    }
+  }, [withdrawTab]);
+
   const creditTypes = ["payment", "deposit", "manual_transfer"];
   const debitTypes = ["withdrawal", "refund"];
 
@@ -4711,9 +4737,71 @@ function WithdrawSection() {
       .reduce((sum, tx) => sum + (tx.amount || 0), 0);
   }, [transactions]);
 
-  // Filter bank accounts and PayPal from payment methods
-  const bankAccounts = paymentMethods.filter(method => method.type === 'bank');
+  // Filter PayPal from payment methods
   const paypalMethods = paymentMethods.filter(method => method.type === 'paypal');
+
+  const formatSortCode = (sortCode?: string) => {
+    const digits = (sortCode || "").replace(/\D/g, "");
+    if (digits.length !== 6) return sortCode || "—";
+    return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}`;
+  };
+
+  const maskAccountNumber = (accountNumber?: string) => {
+    const digits = (accountNumber || "").replace(/\D/g, "");
+    if (!digits) return "—";
+    return `****${digits.slice(-4)}`;
+  };
+
+  const verificationBankDetails = useMemo(() => {
+    if (!verificationPaymentMethod) return null;
+    const accountNumber = verificationPaymentMethod.accountNumber?.toString() || "";
+    const sortCode = verificationPaymentMethod.sortCode?.toString() || "";
+    const firstName = verificationPaymentMethod.firstName?.toString() || "";
+    const lastName = verificationPaymentMethod.lastName?.toString() || "";
+    if (!accountNumber && !sortCode && !firstName && !lastName) return null;
+    return {
+      accountNumber,
+      sortCode,
+      firstName,
+      lastName,
+      status: verificationPaymentMethod.status,
+    };
+  }, [verificationPaymentMethod]);
+
+  const renderVerificationStatusBadge = (status?: string) => {
+    if (status === "verified") {
+      return <Badge className="bg-green-100 text-green-700 border-green-200 text-[11px]">Verified</Badge>;
+    }
+    if (status === "pending") {
+      return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[11px]">Pending</Badge>;
+    }
+    if (status === "rejected") {
+      return <Badge className="bg-red-100 text-red-700 border-red-200 text-[11px]">Rejected</Badge>;
+    }
+    return <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-[11px]">Not Started</Badge>;
+  };
+
+  const canUseVerifiedBank = Boolean(verificationBankDetails && verificationBankDetails.status === "verified");
+  const initialBankVerificationData = useMemo(() => {
+    if (!verificationPaymentMethod && !userInfo) return null;
+    const formattedAddress = [
+      userInfo?.address,
+      userInfo?.county,
+      userInfo?.townCity,
+      userInfo?.postcode,
+    ]
+      .map((value) => value?.toString().trim())
+      .filter(Boolean)
+      .join(", ");
+    return {
+      firstName: verificationPaymentMethod?.firstName || userInfo?.firstName,
+      lastName: verificationPaymentMethod?.lastName || userInfo?.lastName,
+      address: verificationPaymentMethod?.address || formattedAddress,
+      sortCode: verificationPaymentMethod?.sortCode,
+      accountNumber: verificationPaymentMethod?.accountNumber,
+      bankStatementDate: verificationPaymentMethod?.bankStatementDate,
+    };
+  }, [verificationPaymentMethod, userInfo]);
 
   const formatMethodLabel = (tx: any) => {
     const method = tx.paymentMethod || tx.method;
@@ -5027,68 +5115,91 @@ function WithdrawSection() {
       {withdrawTab === "accounts" && (
         <div>
           <div className="mb-6">
-            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
-              Bank Accounts
-            </h3>
-            <div className="space-y-3 mb-4">
-              {bankAccounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="border border-gray-200 rounded-xl p-3 sm:p-5 hover:border-[#FE8A0F] transition-all"
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                Bank Accounts
+              </h3>
+              {!loadingVerification && !verificationBankDetails && (
+                <Button
+                  onClick={() => setShowBankVerificationModal(true)}
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#EFF6FF] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-[#3B82F6]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h4 className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] text-[#2c353f]">
-                            {account.bankName}
-                          </h4>
-                          {account.isDefault && (
-                            <Badge className="bg-[#FE8A0F] text-white border-0 text-[10px] sm:text-[11px]">
-                              Default
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
-                          {account.accountName}
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[13px] text-[#8d8d8d] truncate">
-                          Account: {account.accountNumber} • Sort: {account.sortCode}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 ml-[52px] sm:ml-0">
-                      {!account.isDefault && (
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Add Bank Account
+                </Button>
+              )}
+            </div>
+            <div className="overflow-x-auto border border-gray-200 rounded-xl">
+              <table className="min-w-full text-left">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Account Holder
+                    </th>
+                    <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Sort Code
+                    </th>
+                    <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Account Number
+                    </th>
+                    <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingVerification ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-4 text-center font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"
+                      >
+                        Loading bank details...
+                      </td>
+                    </tr>
+                  ) : verificationBankDetails ? (
+                    <tr className="border-t border-gray-100">
+                      <td className="px-4 py-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                        {(verificationBankDetails.firstName || verificationBankDetails.lastName)
+                          ? `${verificationBankDetails.firstName} ${verificationBankDetails.lastName}`.trim()
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-4 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        {formatSortCode(verificationBankDetails.sortCode)}
+                      </td>
+                      <td className="px-4 py-4 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        {maskAccountNumber(verificationBankDetails.accountNumber)}
+                      </td>
+                      <td className="px-4 py-4">
+                        {renderVerificationStatusBadge(verificationBankDetails.status)}
+                      </td>
+                      <td className="px-4 py-4">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-[#3B82F6] border-[#3B82F6] hover:bg-[#EFF6FF] font-['Poppins',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3"
+                          onClick={() => setShowBankVerificationModal(true)}
+                          className="font-['Poppins',sans-serif] text-[#3B82F6] border-[#3B82F6] hover:bg-[#EFF6FF]"
                         >
-                          Set Default
+                          Update
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 font-['Poppins',sans-serif] text-[11px] sm:text-[12px] h-8 px-2 sm:px-3"
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-4 text-center font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"
                       >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                        No bank details on file. Upload them in Account Verification.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-            <Button
-              onClick={() => setShowAddBankAccount(true)}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Add Bank Account
-            </Button>
           </div>
 
           <Separator className="my-6" />
@@ -5099,7 +5210,7 @@ function WithdrawSection() {
               Other Payment Methods
             </h3>
             <div className="space-y-3 mb-4">
-              {paymentMethods.map((method) => (
+              {paypalMethods.map((method) => (
                 <div
                   key={method.id}
                   className="border border-gray-200 rounded-xl p-3 sm:p-5 hover:border-[#FE8A0F] transition-all"
@@ -5207,18 +5318,27 @@ function WithdrawSection() {
                   Select Withdrawal Method
                 </label>
                 <div className="space-y-2">
-                  {bankAccounts.length === 0 && !loadingPaymentMethods && (
+                  {loadingVerification && (
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center py-4">
-                      No bank accounts added. Please add a bank account first.
+                      Loading bank details...
                     </p>
                   )}
-                  {bankAccounts.map((account) => (
+                  {!loadingVerification && !verificationBankDetails && (
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center py-4">
+                      No bank details found. Please complete Account Verification.
+                    </p>
+                  )}
+                  {!loadingVerification && verificationBankDetails && !canUseVerifiedBank && (
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center py-4">
+                      Bank details are {verificationBankDetails.status || "not started"}. Withdrawals are available once verified.
+                    </p>
+                  )}
+                  {canUseVerifiedBank && (
                     <button
-                      key={account.id}
                       type="button"
-                      onClick={() => setSelectedWithdrawMethod(`bank-${account.id}`)}
+                      onClick={() => setSelectedWithdrawMethod("verified-bank")}
                       className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
-                        selectedWithdrawMethod === `bank-${account.id}`
+                        selectedWithdrawMethod === "verified-bank"
                           ? "border-[#FE8A0F] bg-[#FFF5EB]"
                           : "border-gray-200 hover:border-[#FE8A0F]/50"
                       }`}
@@ -5226,25 +5346,23 @@ function WithdrawSection() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Building2 className={`w-5 h-5 ${
-                            selectedWithdrawMethod === `bank-${account.id}` ? "text-[#FE8A0F]" : "text-[#6b6b6b]"
+                            selectedWithdrawMethod === "verified-bank" ? "text-[#FE8A0F]" : "text-[#6b6b6b]"
                           }`} />
                           <div>
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                              {account.bankName} {account.accountNumber}
+                              Bank Account {maskAccountNumber(verificationBankDetails.accountNumber)}
                             </p>
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
                               2-3 business days
                             </p>
                           </div>
                         </div>
-                        {account.isDefault && (
-                          <Badge className="bg-[#FE8A0F] text-white border-0 text-[11px]">
-                            Default
-                          </Badge>
-                        )}
+                        <Badge className="bg-[#FE8A0F] text-white border-0 text-[11px]">
+                          Verified
+                        </Badge>
                       </div>
                     </button>
-                  ))}
+                  )}
                   {paypalMethods.map((method) => (
                     <button
                       key={method.id}
@@ -5458,79 +5576,14 @@ function WithdrawSection() {
         </div>
       )}
 
-      {/* Add Bank Account Dialog */}
-      <Dialog open={showAddBankAccount} onOpenChange={setShowAddBankAccount}>
-        <DialogContent className="w-[70vw]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
-              Add Bank Account
-            </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              Enter your bank account details to add a new withdrawal method
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                Account Holder Name
-              </label>
-              <input
-                type="text"
-                placeholder="John Doe"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
-              />
-            </div>
-            <div>
-              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                Bank Name
-              </label>
-              <input
-                type="text"
-                placeholder="Barclays"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
-              />
-            </div>
-            <div>
-              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                Account Number
-              </label>
-              <input
-                type="text"
-                placeholder="12345678"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
-              />
-            </div>
-            <div>
-              <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                Sort Code
-              </label>
-              <input
-                type="text"
-                placeholder="20-00-00"
-                className="w-full h-10 px-4 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] outline-none"
-              />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button
-                onClick={() => {
-                  alert("Bank account added successfully!");
-                  setShowAddBankAccount(false);
-                }}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
-              >
-                Add Account
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowAddBankAccount(false)}
-                className="flex-1 font-['Poppins',sans-serif]"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <BankVerificationModal
+        open={showBankVerificationModal}
+        onOpenChange={setShowBankVerificationModal}
+        initialData={initialBankVerificationData}
+        onSubmitted={async () => {
+          await fetchVerificationPaymentMethod();
+        }}
+      />
 
       {/* Add PayPal Dialog */}
       <Dialog open={showAddPayPal} onOpenChange={setShowAddPayPal}>
