@@ -315,7 +315,7 @@ router.get('/', async (req, res) => {
     const services = await queryBuilder
       .populate([
         { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity completedJobs verification' },
-        { path: 'serviceCategory', select: 'name slug icon bannerImage sector' },
+        { path: 'serviceCategory', select: 'name slug icon bannerImage sector pricePerUnit' },
         { path: 'serviceSubCategory', select: 'name slug icon' },
       ])
       .lean();
