@@ -380,9 +380,6 @@ export default function ClientOrdersSection() {
       if (foundOrder) {
         setSelectedOrder(orderId);
         setPendingOrderId(null);
-        // Clear the orderId from URL after opening
-        const newUrl = window.location.pathname + "?tab=orders";
-        window.history.replaceState({}, "", newUrl);
       }
     }
   }, [location.search]);
@@ -395,9 +392,6 @@ export default function ClientOrdersSection() {
         setSelectedOrder(pendingOrderId);
         setPendingOrderId(null);
         setRetryCount(0);
-        // Clear the orderId from URL after opening
-        const newUrl = window.location.pathname + "?tab=orders";
-        window.history.replaceState({}, "", newUrl);
       }
     }
   }, [orders, pendingOrderId]);
@@ -1128,10 +1122,18 @@ export default function ClientOrdersSection() {
   const handleViewOrder = (orderId: string) => {
     setSelectedOrder(orderId);
     setOrderDetailTab("timeline");
+    // Add orderId to URL so refresh keeps the detail page
+    const params = new URLSearchParams(window.location.search);
+    params.set("orderId", orderId);
+    window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
   };
 
   const handleBackToList = () => {
     setSelectedOrder(null);
+    // Remove orderId from URL when going back to list
+    const params = new URLSearchParams(window.location.search);
+    params.delete("orderId");
+    window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
   };
 
   const handleCancelOrder = async () => {
@@ -2623,6 +2625,18 @@ export default function ClientOrdersSection() {
                             const unitPrice = m.price ?? m.amount ?? 0;
                             const noOfVal = m.noOf ?? m.hours ?? 1;
                             const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
+                            const milestoneStatus = (() => {
+                              const orderStatus = currentOrder.status?.toLowerCase() || "";
+                              if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
+                              if (orderStatus === "in progress") return { label: "In Progress", color: "text-blue-600" };
+                              if (orderStatus === "delivered") return { label: "Delivered", color: "text-green-600" };
+                              if (orderStatus === "revision") return { label: "Revision", color: "text-yellow-600" };
+                              if (orderStatus === "completed") return { label: "Completed", color: "text-green-700 font-semibold" };
+                              if (orderStatus === "cancelled") return { label: "Cancelled", color: "text-red-600" };
+                              if (orderStatus === "disputed") return { label: "Disputed", color: "text-red-500" };
+                              if (orderStatus === "cancellation pending") return { label: "Cancellation Pending", color: "text-orange-500" };
+                              return { label: currentOrder.status || "Pending", color: "text-gray-500" };
+                            })();
                             return (
                               <tr key={idx} className="border-b border-gray-100 last:border-b-0">
                                 <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
@@ -2630,7 +2644,7 @@ export default function ClientOrdersSection() {
                                 <td className="py-3 px-4 text-[#2c353f]">{typeof noOfVal === "number" ? noOfVal : "—"}</td>
                                 <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || (m.chargePer ? `${m.chargePer} x${noOfVal}` : "—")}</td>
                                 <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof amt === "number" ? amt.toFixed(2) : "0.00"}</td>
-                                <td className="py-3 px-4 text-[#2c353f]">Offer created</td>
+                                <td className={`py-3 px-4 ${milestoneStatus.color}`}>{milestoneStatus.label}</td>
                               </tr>
                             );
                           })}

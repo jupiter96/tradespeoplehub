@@ -19,6 +19,8 @@ import PaymentSettings from '../models/PaymentSettings.js';
 import Wallet from '../models/Wallet.js';
 import Order from '../models/Order.js';
 import Dispute from '../models/Dispute.js';
+import Message from '../models/Message.js';
+import CustomOffer from '../models/CustomOffer.js';
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +36,27 @@ if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
     api_key: CLOUDINARY_API_KEY,
     api_secret: CLOUDINARY_API_SECRET,
   });
+}
+
+/** Sync order status to the associated custom offer message in chat */
+async function syncCustomOfferMessageStatus(order) {
+  if (!order?.metadata?.fromCustomOffer || !order.metadata.customOfferId) return;
+  try {
+    const customOffer = await CustomOffer.findById(order.metadata.customOfferId);
+    if (!customOffer?.message) return;
+    const message = await Message.findById(customOffer.message);
+    if (!message || !message.orderDetails) return;
+    const statusMap = {
+      'offer created': 'pending', 'In Progress': 'in progress', 'delivered': 'delivered',
+      'Revision': 'revision', 'Completed': 'completed', 'Cancelled': 'cancelled',
+      'Cancellation Pending': 'cancellation pending', 'disputed': 'disputed',
+    };
+    message.orderDetails.status = statusMap[order.status] || order.status.toLowerCase();
+    message.markModified('orderDetails');
+    await message.save();
+  } catch (err) {
+    console.error('[Admin] Failed to sync custom offer message status:', err);
+  }
 }
 
 // Helper function to extract public ID from Cloudinary URL
@@ -948,6 +971,7 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
     order.status = 'Completed';
     order.deliveryStatus = 'completed';
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     return res.json({ dispute, order: { id: order._id.toString(), orderNumber: order.orderNumber } });
   } catch (error) {

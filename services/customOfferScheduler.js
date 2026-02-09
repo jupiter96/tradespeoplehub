@@ -24,6 +24,7 @@ async function processExpiredCustomOffers() {
         const message = await Message.findById(offer.message);
         if (message && message.orderDetails) {
           message.orderDetails.status = 'expired';
+          message.markModified('orderDetails');
           await message.save();
         }
 

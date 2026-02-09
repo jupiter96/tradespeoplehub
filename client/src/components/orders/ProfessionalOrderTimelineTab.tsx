@@ -44,6 +44,7 @@ interface ProfessionalOrderTimelineTabProps {
   showDisputeSection: boolean;
   getOrderDisputeById: (disputeId: string) => any;
   onOpenModal: (modalName: 'delivery' | 'extension' | 'completion' | 'dispute' | 'disputeResponse' | 'revisionResponse' | 'withdrawCancellation' | 'acceptCancellation' | 'rejectCancellation' | 'professionalReview') => void;
+  onOpenDeliveryForMilestone?: (milestoneIndex: number) => void;
   onStartConversation: (params: {
     id: string;
     name: string;
@@ -85,6 +86,7 @@ export default function ProfessionalOrderTimelineTab({
   showDisputeSection,
   getOrderDisputeById,
   onOpenModal,
+  onOpenDeliveryForMilestone,
   onStartConversation,
   onRespondToCancellation,
   onRespondToRevision,
@@ -439,7 +441,8 @@ export default function ProfessionalOrderTimelineTab({
                   : "TBD"}
             </span> Feel free to reach out if you have any questions using the chat button.
           </p>
-          {currentOrder.deliveryStatus !== "delivered" && (
+          {currentOrder.deliveryStatus !== "delivered" &&
+            !((currentOrder as any).metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any).metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0) && (
             <div className="flex gap-3 flex-wrap">
               <Button
                 onClick={() => onOpenModal('delivery')}
@@ -599,7 +602,8 @@ export default function ProfessionalOrderTimelineTab({
               </p>
             </div>
           )}
-          {currentOrder.deliveryStatus !== "delivered" && (
+          {currentOrder.deliveryStatus !== "delivered" &&
+            !((currentOrder as any).metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any).metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0) && (
             <div className="flex gap-3 flex-wrap">
               <Button
                 onClick={() => {
@@ -1194,6 +1198,7 @@ export default function ProfessionalOrderTimelineTab({
                       <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Description</th>
                       <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Amount</th>
                       <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Status</th>
+                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1215,6 +1220,24 @@ export default function ProfessionalOrderTimelineTab({
                       const unitPrice = m.price ?? m.amount ?? 0;
                       const noOfVal = m.noOf ?? m.hours ?? 1;
                       const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
+                      const milestoneDeliveries = (currentOrder as any).metadata?.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+                      const isMilestoneDelivered = Array.isArray(milestoneDeliveries) && milestoneDeliveries.some((d: { milestoneIndex: number }) => d.milestoneIndex === idx);
+                      const milestoneStatus = (() => {
+                        if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
+                        const orderStatus = currentOrder.status?.toLowerCase() || "";
+                        if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
+                        if (orderStatus === "in progress") return { label: "Active", color: "text-blue-600" };
+                        if (orderStatus === "delivered") return { label: "Delivered", color: "text-green-600" };
+                        if (orderStatus === "revision") return { label: "Revision", color: "text-yellow-600" };
+                        if (orderStatus === "completed") return { label: "Completed", color: "text-green-700 font-semibold" };
+                        if (orderStatus === "cancelled") return { label: "Cancelled", color: "text-red-600" };
+                        if (orderStatus === "disputed") return { label: "Disputed", color: "text-red-500" };
+                        if (orderStatus === "cancellation pending") return { label: "Cancellation Pending", color: "text-orange-500" };
+                        return { label: "Active", color: "text-gray-500" };
+                      })();
+                      const canDeliver = !isMilestoneDelivered &&
+                        (currentOrder.status === "In Progress" || currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") &&
+                        currentOrder.status !== "Cancelled" && currentOrder.status !== "Completed";
                       return (
                         <tr key={idx} className="border-b border-gray-100 last:border-b-0">
                           <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
@@ -1222,7 +1245,21 @@ export default function ProfessionalOrderTimelineTab({
                           <td className="py-3 px-4 text-[#2c353f]">{typeof noOfVal === "number" ? noOfVal : "—"}</td>
                           <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || (m.chargePer ? `${m.chargePer} x${noOfVal}` : "—")}</td>
                           <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof amt === "number" ? amt.toFixed(2) : "0.00"}</td>
-                          <td className="py-3 px-4 text-[#2c353f]">Offer created</td>
+                          <td className={`py-3 px-4 ${milestoneStatus.color}`}>{milestoneStatus.label}</td>
+                          <td className="py-3 px-4">
+                            {canDeliver && onOpenDeliveryForMilestone ? (
+                              <Button
+                                size="sm"
+                                onClick={() => onOpenDeliveryForMilestone(idx)}
+                                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
+                              >
+                                <Truck className="w-3.5 h-3.5 mr-1 inline" />
+                                Deliver Work
+                              </Button>
+                            ) : isMilestoneDelivered ? (
+                              <span className="text-[12px] text-green-600 font-medium">Delivered</span>
+                            ) : null}
+                          </td>
                         </tr>
                       );
                     })}

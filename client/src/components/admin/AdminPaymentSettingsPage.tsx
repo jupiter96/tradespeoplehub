@@ -987,9 +987,10 @@ export default function AdminPaymentSettingsPage() {
                           type="number"
                           value={settings.waitingTimeToAcceptOffer === "" ? "" : settings.waitingTimeToAcceptOffer ?? 0}
                           onChange={(e) => updateField("waitingTimeToAcceptOffer", parseNumberInput(e.target.value, "int"))}
-                          className="font-['Poppins',sans-serif] no-spinner"
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                         />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
                     </div>
                     <div>

@@ -15,6 +15,8 @@ import Review from '../models/Review.js';
 import { updateServiceReviewStats } from '../utils/reviewService.js';
 import Dispute from '../models/Dispute.js';
 import Notification from '../models/Notification.js';
+import Message from '../models/Message.js';
+import CustomOffer from '../models/CustomOffer.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
 import { sendTemplatedEmail } from '../services/notifier.js';
@@ -31,6 +33,38 @@ function runBackgroundTask(task, label) {
     .catch((error) => {
       console.error(`[Orders] Background task failed${label ? ` (${label})` : ''}:`, error);
     });
+}
+
+/**
+ * Sync order status to the associated custom offer message in chat.
+ * Maps order.status to a lowercase status string stored in message.orderDetails.status.
+ */
+async function syncCustomOfferMessageStatus(order) {
+  if (!order?.metadata?.fromCustomOffer || !order.metadata.customOfferId) return;
+  try {
+    const customOffer = await CustomOffer.findById(order.metadata.customOfferId);
+    if (!customOffer?.message) return;
+    const message = await Message.findById(customOffer.message);
+    if (!message || !message.orderDetails) return;
+
+    // Map order status to message status
+    const statusMap = {
+      'offer created': 'pending',
+      'In Progress': 'in progress',
+      'delivered': 'delivered',
+      'Revision': 'revision',
+      'Completed': 'completed',
+      'Cancelled': 'cancelled',
+      'Cancellation Pending': 'cancellation pending',
+      'disputed': 'disputed',
+    };
+    const newStatus = statusMap[order.status] || order.status.toLowerCase();
+    message.orderDetails.status = newStatus;
+    message.markModified('orderDetails');
+    await message.save();
+  } catch (err) {
+    console.error('[Orders] Failed to sync custom offer message status:', err);
+  }
 }
 
 // Helper function to emit notification to user via Socket.io
@@ -2626,6 +2660,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           responseDeadline: order.metadata?.responseDeadline,
           paymentType: order.metadata?.paymentType || undefined,
           milestones: order.metadata?.milestones || undefined,
+          milestoneDeliveries: order.metadata?.milestoneDeliveries || undefined,
           serviceDescription: order.metadata?.serviceDescription || undefined,
           attributes: order.metadata?.attributes || undefined,
           idealFor: order.metadata?.idealFor || undefined,
@@ -2661,7 +2696,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           fileName: file.fileName,
           fileType: file.fileType,
           uploadedAt: file.uploadedAt ? new Date(file.uploadedAt).toISOString() : undefined,
-          deliveryNumber: file.deliveryNumber || 1, // Include deliveryNumber field
+          deliveryNumber: file.deliveryNumber || 1,
+          milestoneIndex: file.milestoneIndex != null ? file.milestoneIndex : undefined,
         })) : [],
         deliveryMessage: order.deliveryMessage || undefined,
         cancellationRequest: order.cancellationRequest ? {
@@ -3055,6 +3091,7 @@ router.post('/:orderId/cancellation-request', authenticateToken, requireRole(['c
     order.status = 'Cancellation Pending';
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendCancellationRequestNotifications({
@@ -3136,6 +3173,7 @@ router.put('/:orderId/cancellation-request', authenticateToken, requireRole(['cl
     order.cancellationRequest.respondedBy = req.user.id;
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendCancellationResponseNotifications({
@@ -3189,6 +3227,7 @@ router.delete('/:orderId/cancellation-request', authenticateToken, requireRole([
     order.status = previousStatus;
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendCancellationWithdrawnNotifications({
@@ -3286,6 +3325,7 @@ router.post('/:orderId/reject', authenticateToken, requireRole(['professional'])
     // TODO: Notify client about rejection
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     res.json({ 
       message: 'Order rejected successfully',
@@ -3319,6 +3359,19 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
         });
       }
       return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Milestone orders must use per-milestone delivery (deliver-milestone endpoint)
+    const isMilestoneOrder = order.metadata?.paymentType === 'milestone' &&
+      Array.isArray(order.metadata?.milestones) &&
+      order.metadata.milestones.length > 0;
+    if (isMilestoneOrder) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+        });
+      }
+      return res.status(400).json({ error: 'This order uses milestones. Please deliver work for each milestone from the Created Milestones table.' });
     }
 
     // Check if order is in progress or revision (status 'In Progress', 'Revision' or deliveryStatus 'active', 'revision')
@@ -3409,6 +3462,7 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
     }
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendOrderDeliveredNotifications({
@@ -3444,6 +3498,140 @@ router.post('/:orderId/deliver', authenticateToken, requireRole(['professional']
     }
     console.error('Deliver order error:', error);
     res.status(500).json({ error: error.message || 'Failed to mark order as delivered' });
+  }
+});
+
+// Professional: Deliver work for a single milestone (milestone custom offers only)
+router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['professional']), deliveryUpload.array('files', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryMessage, milestoneIndex: rawMilestoneIndex } = req.body;
+
+    const milestoneIndex = rawMilestoneIndex !== undefined && rawMilestoneIndex !== null
+      ? parseInt(String(rawMilestoneIndex), 10)
+      : -1;
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id })).populate('client professional');
+
+    if (!order) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) fs.unlink(file.path).catch(err => console.error('Error deleting file:', err));
+        });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const milestones = order.metadata?.milestones || [];
+    if (order.metadata?.paymentType !== 'milestone' || !Array.isArray(milestones) || milestones.length === 0) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'This order does not use milestones' });
+    }
+
+    if (isNaN(milestoneIndex) || milestoneIndex < 0 || milestoneIndex >= milestones.length) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'Invalid milestone index' });
+    }
+
+    const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+    if (milestoneDeliveries.some(d => d.milestoneIndex === milestoneIndex)) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'This milestone has already been delivered' });
+    }
+
+    const isInProgress = order.status === 'In Progress' || order.status === 'in_progress' ||
+      order.deliveryStatus === 'active' || order.deliveryStatus === 'pending';
+    if (!isInProgress) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'Order must be in progress to deliver a milestone' });
+    }
+
+    const deliveryFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        deliveryFiles.push({
+          url: `/api/orders/deliveries/${file.filename}`,
+          fileName: file.originalname,
+          fileType,
+          uploadedAt: new Date(),
+          deliveryNumber: milestoneIndex + 1,
+          milestoneIndex,
+        });
+      }
+    }
+
+    if (deliveryFiles.length > 0) {
+      order.deliveryFiles = order.deliveryFiles ? [...order.deliveryFiles, ...deliveryFiles] : deliveryFiles;
+    }
+
+    const newDelivery = {
+      milestoneIndex,
+      deliveredAt: new Date(),
+      deliveryMessage: (deliveryMessage && String(deliveryMessage).trim()) || '',
+    };
+    if (!order.metadata) order.metadata = {};
+    order.metadata.milestoneDeliveries = order.metadata.milestoneDeliveries || [];
+    order.metadata.milestoneDeliveries.push(newDelivery);
+    order.markModified('metadata');
+
+    const allDelivered = milestones.length === order.metadata.milestoneDeliveries.length;
+    if (allDelivered) {
+      order.status = 'delivered';
+      order.deliveryStatus = 'delivered';
+      order.deliveredDate = new Date();
+      if (order.deliveryMessage) {
+        order.deliveryMessage = `${order.deliveryMessage}\n\n[All milestones delivered]\n${order.metadata.milestoneDeliveries.map((d, i) => `Milestone ${i + 1}: ${d.deliveryMessage || '(no message)'}`).join('\n')}`.trim();
+      } else {
+        order.deliveryMessage = `[All milestones delivered]\n${order.metadata.milestoneDeliveries.map((d, i) => `Milestone ${i + 1}: ${d.deliveryMessage || '(no message)'}`).join('\n')}`;
+      }
+    }
+
+    await order.save();
+    await syncCustomOfferMessageStatus(order);
+
+    if (allDelivered) {
+      runBackgroundTask(
+        () => sendOrderDeliveredNotifications({
+          order,
+          clientUser: order.client,
+          professionalUser: order.professional,
+        }),
+        'order-delivered'
+      );
+    }
+
+    res.json({
+      message: allDelivered
+        ? 'All milestones delivered. Order is now delivered for client approval.'
+        : 'Milestone delivered successfully.',
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        deliveredDate: order.deliveredDate,
+        deliveryFiles: order.deliveryFiles,
+        deliveryMessage: order.deliveryMessage,
+        milestoneDeliveries: order.metadata?.milestoneDeliveries,
+      },
+    });
+  } catch (error) {
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.path) {
+          try { unlinkSync(file.path); } catch (err) { console.error('Error deleting file:', err); }
+        }
+      });
+    }
+    console.error('Deliver milestone error:', error);
+    res.status(500).json({ error: error.message || 'Failed to deliver milestone' });
   }
 });
 
@@ -3587,6 +3775,7 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     order.deliveryStatus = 'revision';
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendOrderDeliveryRejectedNotifications({
@@ -3794,6 +3983,7 @@ router.post('/:orderId/revision-complete', authenticateToken, requireRole(['prof
     }
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     res.json({ 
       message: 'Revision completed and order re-delivered successfully',
@@ -4019,6 +4209,7 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
     }
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendOrderDeliveryApprovedNotifications({
@@ -4537,6 +4728,7 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     order.deliveryStatus = 'dispute';
     order.disputeId = disputeId;
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendDisputeInitiatedNotifications({
@@ -4841,6 +5033,7 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
 
     await dispute.save();
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     res.json({ 
       message: 'Offer submitted successfully',
@@ -4915,6 +5108,7 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
 
     await dispute.save();
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     runBackgroundTask(
       () => sendDisputeResolvedNotifications({
@@ -5345,6 +5539,7 @@ router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['a
     order.deliveryStatus = 'completed';
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     res.json({ 
       message: 'Dispute decided successfully',
@@ -5464,6 +5659,7 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     }
 
     await order.save();
+    await syncCustomOfferMessageStatus(order);
 
     res.json({ 
       message: 'Dispute cancelled successfully. Order restored to delivered status.',

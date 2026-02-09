@@ -101,6 +101,7 @@ export default function CustomOfferModal({
   const [offerExpiresEnabled, setOfferExpiresEnabled] = useState(false);
   const [offerExpiresInDays, setOfferExpiresInDays] = useState<string>("3");
   const [categoryPriceUnits, setCategoryPriceUnits] = useState<PriceUnitOption[]>([]);
+  const [savedMilestones, setSavedMilestones] = useState<Set<string>>(new Set());
 
   const selectedService = professionalServices.find(s => s.id === selectedServiceId);
 
@@ -170,6 +171,7 @@ export default function CustomOfferModal({
     setOfferExpiresEnabled(false);
     setOfferExpiresInDays("3");
     setCategoryPriceUnits([]);
+    setSavedMilestones(new Set());
     onClose();
   };
 
@@ -303,12 +305,33 @@ export default function CustomOfferModal({
       return;
     }
     setMilestones(milestones.filter(m => m.id !== id));
+    setSavedMilestones(prev => { const next = new Set(prev); next.delete(id); return next; });
   };
 
   const updateMilestone = (id: string, field: keyof Milestone, value: string | number) => {
     setMilestones(milestones.map(m => 
       m.id === id ? { ...m, [field]: value } : m
     ));
+  };
+
+  const saveMilestone = (id: string) => {
+    const m = milestones.find(ms => ms.id === id);
+    if (!m) return;
+    const errors: string[] = [];
+    if (!m.name?.trim()) errors.push("Milestone Name");
+    if (!m.deliveryInDays || m.deliveryInDays <= 0) errors.push("Delivery In");
+    if (!m.price || m.price <= 0) errors.push("Price");
+    if (!m.chargePer?.trim()) errors.push("Charge Per");
+    if (!m.noOf || m.noOf <= 0) errors.push("No of");
+    if (errors.length > 0) {
+      toast.error(`Please fill in: ${errors.join(", ")}`);
+      return;
+    }
+    setSavedMilestones(prev => new Set(prev).add(id));
+  };
+
+  const expandMilestone = (id: string) => {
+    setSavedMilestones(prev => { const next = new Set(prev); next.delete(id); return next; });
   };
 
   const handleSendOffer = async () => {
@@ -552,11 +575,49 @@ export default function CustomOfferModal({
                       </div>
 
                       <div className="space-y-4">
-                        {milestones.map((milestone, index) => (
+                        {milestones.map((milestone, index) => {
+                          const isSaved = savedMilestones.has(milestone.id);
+                          const milestoneTotal = milestone.price * (milestone.noOf || 1);
+                          return (
                           <div
                             key={milestone.id}
-                            className="p-4 bg-white border-2 border-gray-200 rounded-lg space-y-3"
+                            className={`p-4 bg-white border-2 rounded-lg ${isSaved ? "border-[#FE8A0F]/30 bg-[#FFF5EB]/20" : "border-gray-200"} transition-all`}
                           >
+                            {isSaved ? (
+                              <div
+                                className="flex items-center justify-between cursor-pointer"
+                                onClick={() => expandMilestone(milestone.id)}
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[13px] font-semibold shrink-0">
+                                    {index + 1}
+                                  </div>
+                                  <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium truncate">
+                                    {milestone.name}
+                                  </span>
+                                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] shrink-0">
+                                    {milestone.deliveryInDays} {milestone.deliveryInDays === 1 ? "day" : "days"}
+                                  </span>
+                                  <span className="font-['Poppins',sans-serif] text-[15px] text-[#FE8A0F] font-semibold shrink-0">
+                                    £{milestoneTotal.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {milestones.length > 1 && (
+                                    <Button
+                                      onClick={(ev: React.MouseEvent) => { ev.stopPropagation(); removeMilestone(milestone.id); }}
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F]">Edit</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
                             <div className="flex items-center justify-between">
                               <h6 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                                 Milestone {index + 1}
@@ -588,7 +649,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[14%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Delivery In (days)
+                                  Delivery In (days) *
                                 </Label>
                                 <Input
                                   type="number"
@@ -601,7 +662,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[16%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  {getPriceLabel(milestone.chargePer)}
+                                  {getPriceLabel(milestone.chargePer)} *
                                 </Label>
                                 <Input
                                   type="number"
@@ -620,7 +681,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[22%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Charge Per
+                                  Charge Per *
                                 </Label>
                                 <select
                                   value={milestone.chargePer}
@@ -634,7 +695,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[12%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  {getMilestoneNoOfLabel(milestone.chargePer)}
+                                  {getMilestoneNoOfLabel(milestone.chargePer)} *
                                 </Label>
                                 <Input
                                   type="number"
@@ -658,8 +719,21 @@ export default function CustomOfferModal({
                                 placeholder="Describe what this milestone includes"
                               />
                             </div>
+
+                            <div className="flex justify-end mt-2">
+                              <Button
+                                onClick={() => saveMilestone(milestone.id)}
+                                size="sm"
+                                className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] text-[12px] px-4"
+                              >
+                                Save
+                              </Button>
+                            </div>
+                              </>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Total Validation - sum of (price × noOf) per milestone */}
@@ -940,11 +1014,53 @@ export default function CustomOfferModal({
                     </div>
 
                     <div className="space-y-4">
-                      {milestones.map((milestone, index) => (
+                      {milestones.map((milestone, index) => {
+                        const isSaved = savedMilestones.has(milestone.id);
+                        const milestoneTotal = milestone.price * (milestone.noOf || 1);
+                        return (
                         <div
                           key={milestone.id}
-                          className="p-4 bg-white border-2 border-gray-200 rounded-lg space-y-3"
+                          className={`p-4 bg-white border-2 rounded-lg ${isSaved ? "border-[#FE8A0F]/30 bg-[#FFF5EB]/20" : "border-gray-200"} transition-all`}
                         >
+                          {isSaved ? (
+                            <div
+                              className="flex items-center justify-between cursor-pointer"
+                              onClick={() => expandMilestone(milestone.id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[12px] font-semibold">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
+                                    {milestone.name}
+                                  </span>
+                                  <div className="flex items-center gap-3 mt-0.5">
+                                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                      {milestone.deliveryInDays} {milestone.deliveryInDays === 1 ? "day" : "days"}
+                                    </span>
+                                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F] font-semibold">
+                                      £{milestoneTotal.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {milestones.length > 1 && (
+                                  <Button
+                                    onClick={(ev: React.MouseEvent) => { ev.stopPropagation(); removeMilestone(milestone.id); }}
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <span className="font-['Poppins',sans-serif] text-[11px] text-[#FE8A0F]">Edit</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
                           <div className="flex items-center justify-between">
                             <h6 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                               Milestone {index + 1}
@@ -976,7 +1092,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[14%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Delivery In (days)
+                                  Delivery In (days) *
                                 </Label>
                                 <Input
                                   type="number"
@@ -989,7 +1105,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[16%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  {getPriceLabel(milestone.chargePer)}
+                                  {getPriceLabel(milestone.chargePer)} *
                                 </Label>
                                 <Input
                                   type="number"
@@ -1008,7 +1124,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[22%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  Charge Per
+                                  Charge Per *
                                 </Label>
                                 <select
                                   value={milestone.chargePer}
@@ -1022,7 +1138,7 @@ export default function CustomOfferModal({
                               </div>
                               <div className="w-[12%]">
                                 <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                                  {getMilestoneNoOfLabel(milestone.chargePer)}
+                                  {getMilestoneNoOfLabel(milestone.chargePer)} *
                                 </Label>
                                 <Input
                                   type="number"
@@ -1046,8 +1162,21 @@ export default function CustomOfferModal({
                               placeholder="Describe what this milestone includes"
                             />
                           </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              onClick={() => saveMilestone(milestone.id)}
+                              size="sm"
+                              className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif] text-[12px] px-4"
+                            >
+                              Save
+                            </Button>
+                          </div>
+                            </>
+                          )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Total Validation - sum of (price × noOf) per milestone */}

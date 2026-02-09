@@ -267,11 +267,41 @@ router.get('/conversations/:conversationId/messages', requireAuth, async (req, r
     conversation.unreadCount.set(userId.toString(), 0);
     await conversation.save();
 
+    // Enrich custom_offer message orderDetails with current order status
+    const orderStatusMap = {
+      'offer created': 'pending',
+      'Pending Payment': 'pending',
+      'In Progress': 'in progress',
+      'delivered': 'delivered',
+      'Revision': 'revision',
+      'Completed': 'completed',
+      'Cancelled': 'cancelled',
+      'Cancellation Pending': 'cancellation pending',
+      'Rejected': 'rejected',
+      'disputed': 'disputed',
+    };
+    const customOfferOrderIds = messages
+      .filter((m) => m.type === 'custom_offer' && m.orderDetails?.orderId)
+      .map((m) => m.orderDetails.orderId);
+    const ordersByNumber = customOfferOrderIds.length
+      ? (await Order.find({ orderNumber: { $in: customOfferOrderIds } }).select('orderNumber status').lean()).reduce(
+          (acc, o) => {
+            acc[o.orderNumber] = orderStatusMap[o.status] || (o.status && o.status.toLowerCase());
+            return acc;
+          },
+          {}
+        )
+      : {};
+
     // Format messages (include orderId from orderDetails for custom_offer when top-level orderId is missing)
     const formattedMessages = messages.reverse().map((msg) => {
       const orderId = msg.orderId != null
         ? (typeof msg.orderId === 'object' && msg.orderId._id ? msg.orderId._id.toString() : String(msg.orderId))
         : (msg.orderDetails?.orderId ?? null);
+      let orderDetails = msg.orderDetails;
+      if (msg.type === 'custom_offer' && orderDetails?.orderId && ordersByNumber[orderDetails.orderId] != null) {
+        orderDetails = { ...orderDetails, status: ordersByNumber[orderDetails.orderId] };
+      }
       return {
         id: msg._id.toString(),
         senderId: msg.sender._id.toString(),
@@ -286,7 +316,7 @@ router.get('/conversations/:conversationId/messages', requireAuth, async (req, r
         fileUrl: msg.fileUrl,
         fileName: msg.fileName,
         orderId: orderId,
-        orderDetails: msg.orderDetails,
+        orderDetails,
       };
     });
 

@@ -253,6 +253,7 @@ interface OrdersContextType {
   rejectOrder: (orderId: string, reason?: string) => Promise<void>;
   startWork: (orderId: string) => void;
   deliverWork: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
+  deliverMilestone: (orderId: string, milestoneIndex: number, deliveryMessage?: string, files?: File[]) => Promise<void>;
   professionalComplete: (orderId: string, completionMessage?: string, files?: File[]) => Promise<void>;
   acceptDelivery: (orderId: string) => Promise<void>;
   extendDeliveryTime: (orderId: string, days: number) => void;
@@ -571,6 +572,48 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Deliver work error:', error);
+      throw error;
+    }
+  };
+
+  const deliverMilestone = async (orderId: string, milestoneIndex: number, deliveryMessage?: string, files?: File[]) => {
+    try {
+      const formData = new FormData();
+      formData.append('milestoneIndex', String(milestoneIndex));
+      if (deliveryMessage && deliveryMessage.trim()) {
+        formData.append('deliveryMessage', deliveryMessage.trim());
+      }
+      if (files && files.length > 0) {
+        files.forEach((file) => formData.append('files', file));
+      }
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/deliver-milestone`), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to deliver milestone');
+      }
+      const data = await response.json();
+      setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order;
+        return {
+          ...order,
+          status: data.order?.status ?? order.status,
+          deliveryStatus: data.order?.deliveryStatus ?? order.deliveryStatus,
+          deliveredDate: data.order?.deliveredDate ? new Date(data.order.deliveredDate).toISOString() : order.deliveredDate,
+          deliveryFiles: data.order?.deliveryFiles ?? order.deliveryFiles,
+          deliveryMessage: data.order?.deliveryMessage ?? order.deliveryMessage,
+          metadata: {
+            ...order.metadata,
+            milestoneDeliveries: data.order?.milestoneDeliveries ?? order.metadata?.milestoneDeliveries,
+          },
+        };
+      }));
+      scheduleDeferredRefresh();
+    } catch (error: any) {
+      console.error('Deliver milestone error:', error);
       throw error;
     }
   };
@@ -1565,6 +1608,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         rejectOrder,
         startWork,
         deliverWork,
+        deliverMilestone,
         professionalComplete,
         acceptDelivery,
         extendDeliveryTime,

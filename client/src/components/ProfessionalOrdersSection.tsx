@@ -114,7 +114,7 @@ import {
 function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, deliverWork, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
+  const { orders, cancelOrder, deliverWork, deliverMilestone, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation, refreshMessages } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -137,6 +137,7 @@ function ProfessionalOrdersSection() {
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
   const [deliveryFiles, setDeliveryFiles] = useState<File[]>([]);
+  const [deliveryForMilestoneIndex, setDeliveryForMilestoneIndex] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
@@ -246,6 +247,7 @@ function ProfessionalOrdersSection() {
         setIsDisputeDialogOpen(true);
         break;
       case 'delivery':
+        setDeliveryForMilestoneIndex(null);
         setIsDeliveryDialogOpen(true);
         break;
       case 'disputeResponse':
@@ -277,6 +279,13 @@ function ProfessionalOrdersSection() {
         break;
     }
   };
+  const openDeliveryForMilestone = (milestoneIndex: number) => {
+    closeAllModals();
+    setDeliveryForMilestoneIndex(milestoneIndex);
+    setDeliveryMessage("");
+    setDeliveryFiles([]);
+    setIsDeliveryDialogOpen(true);
+  };
   const [serviceThumbnails, setServiceThumbnails] = useState<{[orderId: string]: { type: 'image' | 'video', url: string, thumbnail?: string }}>({});
 
 
@@ -300,9 +309,6 @@ function ProfessionalOrdersSection() {
       if (foundOrder) {
         setSelectedOrder(orderId);
         setPendingOrderId(null);
-        // Clear the orderId from URL after opening
-        const newUrl = window.location.pathname + "?tab=orders";
-        window.history.replaceState({}, "", newUrl);
       }
     }
   }, [location.search]);
@@ -315,9 +321,6 @@ function ProfessionalOrdersSection() {
         setSelectedOrder(pendingOrderId);
         setPendingOrderId(null);
         setRetryCount(0);
-        // Clear the orderId from URL after opening
-        const newUrl = window.location.pathname + "?tab=orders";
-        window.history.replaceState({}, "", newUrl);
       }
     }
   }, [orders, pendingOrderId]);
@@ -723,10 +726,18 @@ function ProfessionalOrdersSection() {
   const handleViewOrder = (orderId: string) => {
     setSelectedOrder(orderId);
     setOrderDetailTab("timeline");
+    // Add orderId to URL so refresh keeps the detail page
+    const params = new URLSearchParams(window.location.search);
+    params.set("orderId", orderId);
+    window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
   };
 
   const handleBackToList = () => {
     setSelectedOrder(null);
+    // Remove orderId from URL when going back to list
+    const params = new URLSearchParams(window.location.search);
+    params.delete("orderId");
+    window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
   };
 
   const handleMarkAsDelivered = async () => {
@@ -741,7 +752,17 @@ function ProfessionalOrdersSection() {
         ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
         : [];
       const hasInProgressRevision = revisionRequests.some(rr => rr && rr.status === 'in_progress');
-      if (hasInProgressRevision) {
+      if (deliveryForMilestoneIndex !== null) {
+        closeAllModals();
+        setDeliveryMessage("");
+        setDeliveryFiles([]);
+        const idx = deliveryForMilestoneIndex;
+        setDeliveryForMilestoneIndex(null);
+        toast.promise(
+          deliverMilestone(selectedOrder, idx, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
+          { loading: "Delivering milestone...", success: "Milestone delivered successfully!", error: (e: any) => e.message || "Failed to deliver milestone" }
+        );
+      } else if (hasInProgressRevision) {
         closeAllModals();
         setDeliveryMessage("");
         setDeliveryFiles([]);
@@ -1439,6 +1460,7 @@ function ProfessionalOrdersSection() {
                   showDisputeSection={showDisputeSection}
                   getOrderDisputeById={getOrderDisputeById}
                   onOpenModal={openModal}
+                  onOpenDeliveryForMilestone={openDeliveryForMilestone}
                   onStartConversation={startConversation}
                   onRespondToCancellation={handleRespondToCancellation}
                   onRespondToRevision={(action) => {
@@ -2226,17 +2248,21 @@ function ProfessionalOrdersSection() {
 	      <Dialog
 	        open={isDeliveryDialogOpen}
 	        onOpenChange={(open) => {
-	          // Close-only handler; opening is controlled via openModal('delivery')
-	          if (!open) closeAllModals();
+	          if (!open) {
+	            setDeliveryForMilestoneIndex(null);
+	            closeAllModals();
+	          }
 	        }}
 	      >
           <DialogContent className="w-[45vw] min-w-[280px] max-w-[320px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                Deliver Work
+                {deliveryForMilestoneIndex !== null ? `Deliver Work – Milestone ${deliveryForMilestoneIndex + 1}` : "Deliver Work"}
               </DialogTitle>
               <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                Upload images or videos of your completed work along with remarks to deliver this order.
+                {deliveryForMilestoneIndex !== null
+                  ? "Upload images or videos and add remarks for this milestone."
+                  : "Upload images or videos of your completed work along with remarks to deliver this order."}
               </DialogDescription>
             </DialogHeader>
 
@@ -2334,17 +2360,18 @@ function ProfessionalOrdersSection() {
                 <Button
                   variant="outline"
                   onClick={() => {
+                    setDeliveryForMilestoneIndex(null);
                     closeAllModals();
                     setDeliveryMessage("");
                     setDeliveryFiles([]);
                   }}
                   className="font-['Poppins',sans-serif] text-[13px]"
                 >
-                  Cancel
+                Cancel
                 </Button>
                 <Button
                   onClick={handleMarkAsDelivered}
-                  disabled={deliveryFiles.length === 0}
+                  disabled={deliveryForMilestoneIndex !== null ? (deliveryFiles.length === 0 && !deliveryMessage?.trim()) : deliveryFiles.length === 0}
                   className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Truck className="w-4 h-4 mr-2" />

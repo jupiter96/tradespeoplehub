@@ -157,9 +157,12 @@ import {
 export default function AccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userRole, userInfo, logout, isLoggedIn } = useAccount();
+  const { userRole, userInfo, logout, isLoggedIn, authReady } = useAccount();
   const { contacts } = useMessenger();
-  const [activeSection, setActiveSection] = useState<string>("overview");
+  const [activeSection, setActiveSection] = useState<string>(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("tab") || "overview";
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [verificationPendingCount, setVerificationPendingCount] = useState(0);
@@ -173,22 +176,34 @@ export default function AccountPage() {
     return contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0);
   }, [contacts]);
 
-  // Check for URL parameters to navigate to specific section/order
+  // Sync activeSection from URL when location.search changes (e.g. back/forward navigation)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab");
-    if (tab) {
+    if (tab && tab !== activeSection) {
       setActiveSection(tab);
+    } else if (!tab) {
+      // If no tab in URL, add current activeSection to URL so refresh works
+      params.set("tab", activeSection);
+      navigate(`/account?${params.toString()}`, { replace: true });
     }
   }, [location.search]);
 
-  // Redirect to login if not logged in
+  // Helper: update activeSection and sync URL
+  const changeSection = (section: string) => {
+    setActiveSection(section);
+    // Preserve other query params (e.g. orderId)
+    const params = new URLSearchParams(location.search);
+    params.set("tab", section);
+    navigate(`/account?${params.toString()}`, { replace: true });
+  };
+
+  // Redirect to login only after auth check is complete
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (authReady && !isLoggedIn) {
       navigate("/login");
-      return;
     }
-  }, [isLoggedIn, navigate, userInfo, location.search]);
+  }, [authReady, isLoggedIn, navigate]);
 
   // If redirected here after PRO login with incomplete verification, show a centered modal.
   // This works for both regular login (via sessionStorage flag) and social login (direct check).
@@ -403,6 +418,15 @@ export default function AccountPage() {
 
   const menuItems = userRole === "client" ? clientMenu : professionalMenu;
 
+  // Show nothing until auth check completes to prevent flash redirect
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-[#f0f0f0] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE8A0F]" />
+      </div>
+    );
+  }
+
   return (
     <>
       <SEOHead
@@ -417,8 +441,7 @@ export default function AccountPage() {
         verification={verificationModalData || verificationData}
         onGoToVerification={() => {
           setShowVerificationModal(false);
-          setActiveSection("verification");
-          navigate("/account?tab=verification");
+          changeSection("verification");
         }}
         onCancel={() => setShowVerificationModal(false)}
       />
@@ -448,7 +471,7 @@ export default function AccountPage() {
                 className={`p-6 bg-gradient-to-br from-[#3D78CB] to-[#2c5aa0] text-white ${userRole === "professional" ? "cursor-pointer hover:from-[#4a8ddb] hover:to-[#3a6ab0] transition-all" : ""}`}
                 onClick={() => {
                   if (userRole === "professional") {
-                    setActiveSection("profile");
+                    changeSection("profile");
                     setIsSidebarOpen(false);
                   }
                 }}
@@ -499,7 +522,7 @@ export default function AccountPage() {
                     <button
                       key={item.id}
                       onClick={() => {
-                        setActiveSection(item.id);
+                        changeSection(item.id);
                         setIsSidebarOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all mb-1 ${
@@ -6657,18 +6680,27 @@ function MessengerSection() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                   <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Status:</span>
-                                  <Badge
-                                    variant={
-                                      message.orderDetails.status === "completed"
-                                        ? "default"
-                                        : message.orderDetails.status === "pending"
-                                        ? "secondary"
-                                        : "outline"
-                                    }
-                                    className="font-['Poppins',sans-serif] text-[11px] capitalize"
-                                  >
-                                    {message.orderDetails.status}
-                                  </Badge>
+                                  {(() => {
+                                    const s = (message.orderDetails.status || "pending").toLowerCase();
+                                    const badgeMap: Record<string, string> = {
+                                      pending: "bg-yellow-100 text-yellow-700",
+                                      accepted: "bg-blue-100 text-blue-700",
+                                      "in progress": "bg-blue-500 text-white",
+                                      delivered: "bg-green-500 text-white",
+                                      revision: "bg-yellow-500 text-white",
+                                      completed: "bg-green-600 text-white",
+                                      cancelled: "bg-red-500 text-white",
+                                      rejected: "bg-red-100 text-red-700",
+                                      expired: "bg-gray-100 text-gray-600",
+                                      disputed: "bg-red-100 text-red-600",
+                                      "cancellation pending": "bg-orange-100 text-orange-700",
+                                    };
+                                    return (
+                                      <Badge className={`${badgeMap[s] || "bg-blue-500 text-white"} font-['Poppins',sans-serif] text-[11px] capitalize`}>
+                                        {message.orderDetails.status || "pending"}
+                                      </Badge>
+                                    );
+                                  })()}
                                 </div>
                                 {message.type === "custom_offer" && message.orderDetails.description && (
                                   <div className="pt-2 border-t border-gray-100">
@@ -6790,7 +6822,7 @@ function MessengerSection() {
                                 </Button>
                               ) : null}
                               <p className="font-['Poppins',sans-serif] text-[10px] text-[#8d8d8d] text-center mt-2">
-                                {message.timestamp}
+                                {formatTimestamp(message.timestamp)}
                               </p>
                             </div>
                           </div>

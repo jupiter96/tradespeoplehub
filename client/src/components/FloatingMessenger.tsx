@@ -687,9 +687,27 @@ export default function FloatingMessenger() {
                                         <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                                           Status:
                                         </span>
-                                        <Badge className="bg-blue-500 text-white text-[10px] h-5">
-                                          {(message.orderDetails.status || "pending").toUpperCase()}
-                                        </Badge>
+                                        {(() => {
+                                          const s = (message.orderDetails.status || "pending").toLowerCase();
+                                          const badgeMap: Record<string, string> = {
+                                            pending: "bg-yellow-100 text-yellow-700",
+                                            accepted: "bg-blue-100 text-blue-700",
+                                            "in progress": "bg-blue-500 text-white",
+                                            delivered: "bg-green-500 text-white",
+                                            revision: "bg-yellow-500 text-white",
+                                            completed: "bg-green-600 text-white",
+                                            cancelled: "bg-red-500 text-white",
+                                            rejected: "bg-red-100 text-red-700",
+                                            expired: "bg-gray-100 text-gray-600",
+                                            disputed: "bg-red-100 text-red-600",
+                                            "cancellation pending": "bg-orange-100 text-orange-700",
+                                          };
+                                          return (
+                                            <Badge className={`${badgeMap[s] || "bg-blue-500 text-white"} text-[10px] h-5`}>
+                                              {(message.orderDetails.status || "pending").toUpperCase()}
+                                            </Badge>
+                                          );
+                                        })()}
                                       </div>
                                     </div>
                                     {message.type === "custom_offer" && message.orderDetails.description && (

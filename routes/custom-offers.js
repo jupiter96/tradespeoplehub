@@ -111,14 +111,21 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       }
     }
 
-    // Response deadline: use offerExpiresInDays (days) if provided, else from payment settings (hours)
+    // Response deadline: use offerExpiresInDays if provided, else waitingTimeToAcceptOffer (hours), else fallback to hours
     const settings = await PaymentSettings.getSettings();
     const responseDeadline = new Date();
     if (typeof offerExpiresInDays === 'number' && offerExpiresInDays > 0) {
       responseDeadline.setDate(responseDeadline.getDate() + offerExpiresInDays);
     } else {
-      const responseTimeHours = settings.customOfferResponseTimeHours || 48;
-      responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+      const waitingHours = typeof settings.waitingTimeToAcceptOffer === 'number'
+        ? settings.waitingTimeToAcceptOffer
+        : 0;
+      if (waitingHours > 0) {
+        responseDeadline.setHours(responseDeadline.getHours() + waitingHours);
+      } else {
+        const responseTimeHours = settings.customOfferResponseTimeHours || 48;
+        responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+      }
     }
 
     const offerNumber = generateOfferNumber();
@@ -699,12 +706,13 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
     customOffer.order = order._id;
     await customOffer.save();
 
-    // Update message
+    // Update message - sync status with order status
     const message = await Message.findById(customOffer.message);
     if (message) {
       if (message.orderDetails) {
-        message.orderDetails.status = 'accepted';
+        message.orderDetails.status = 'in progress';
         message.orderDetails.orderId = order.orderNumber;
+        message.markModified('orderDetails');
         await message.save();
       }
     }
@@ -778,10 +786,11 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
       }
     }
 
-    // Update message
+    // Update message - sync status with order status
     const message = await Message.findById(customOffer.message);
     if (message && message.orderDetails) {
-      message.orderDetails.status = 'rejected';
+      message.orderDetails.status = 'cancelled';
+      message.markModified('orderDetails');
       await message.save();
     }
 
@@ -838,7 +847,8 @@ router.post('/:offerId/withdraw', authenticateToken, requireRole(['professional'
 
     const message = await Message.findById(customOffer.message);
     if (message && message.orderDetails) {
-      message.orderDetails.status = 'rejected';
+      message.orderDetails.status = 'cancelled';
+      message.markModified('orderDetails');
       await message.save();
     }
 
@@ -996,11 +1006,12 @@ router.post('/paypal/capture', authenticateToken, requireRole(['client']), async
     customOffer.order = order._id;
     await customOffer.save();
 
-    // Update message
+    // Update message - sync status with order status
     const message = await Message.findById(customOffer.message);
     if (message && message.orderDetails) {
-      message.orderDetails.status = 'accepted';
+      message.orderDetails.status = 'in progress';
       message.orderDetails.orderId = order.orderNumber;
+      message.markModified('orderDetails');
       await message.save();
     }
 
