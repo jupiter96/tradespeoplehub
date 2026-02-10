@@ -2678,14 +2678,17 @@ export default function ClientOrdersSection() {
                             const milestoneDeliveries = (currentOrder as any).metadata?.milestoneDeliveries as
                               | Array<{ milestoneIndex: number }>
                               | undefined;
+                            const disputeResolvedIndices = (currentOrder as any).metadata?.disputeResolvedMilestoneIndices as number[] | undefined;
                             const isMilestoneDelivered =
                               Array.isArray(milestoneDeliveries) &&
                               milestoneDeliveries.some(
                                 (d: { milestoneIndex: number }) => d.milestoneIndex === idx
                               );
+                            const isMilestoneResolvedByDispute = Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx);
 
                             const milestoneStatus = (() => {
                               if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
+                              if (isMilestoneResolvedByDispute) return { label: "Resolved (dispute)", color: "text-green-600" };
                               const orderStatus = currentOrder.status?.toLowerCase() || "";
                               if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
                               if (orderStatus === "in progress") return { label: "In Progress", color: "text-blue-600" };
@@ -4388,17 +4391,19 @@ export default function ClientOrdersSection() {
                         Array.isArray(meta.milestones) &&
                         meta.milestones.length > 0;
                       const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+                      const disputeResolvedIndices = (meta.disputeResolvedMilestoneIndices || []) as number[];
                       const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
                         ? milestoneDeliveries
                             .map(d => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
                             .filter(idx => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length)
                         : [];
+                      const completeMilestoneIndices = [...new Set([...deliveredMilestoneIndices, ...disputeResolvedIndices.filter(i => typeof i === "number" && i >= 0 && Array.isArray(meta.milestones) && i < meta.milestones.length)])];
                       const hasDeliveredMilestone =
                         isMilestoneOrder && deliveredMilestoneIndices.length > 0;
                       const hasUndeliveredMilestone =
                         isMilestoneOrder &&
                         Array.isArray(meta.milestones) &&
-                        meta.milestones.length > deliveredMilestoneIndices.length;
+                        meta.milestones.length > completeMilestoneIndices.length;
 
                       // Client can cancel:
                       // - normal orders: while in progress/active and no pending cancellation
@@ -5271,14 +5276,16 @@ export default function ClientOrdersSection() {
                   noOf?: number;
                 }>;
                 const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+                const disputeResolvedIndices = (meta.disputeResolvedMilestoneIndices || []) as number[];
                 const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
                   ? milestoneDeliveries
                       .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
                       .filter((idx) => idx >= 0 && idx < milestones.length)
                   : [];
+                const doneIndices = [...new Set([...deliveredMilestoneIndices, ...disputeResolvedIndices.filter((i) => i >= 0 && i < milestones.length)])];
                 const cancellableIndices: number[] = milestones
                   .map((_, idx) => idx)
-                  .filter((idx) => !deliveredMilestoneIndices.includes(idx));
+                  .filter((idx) => !doneIndices.includes(idx));
 
                 if (cancellableIndices.length === 0) return null;
 

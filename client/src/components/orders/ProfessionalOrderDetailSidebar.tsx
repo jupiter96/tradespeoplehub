@@ -124,17 +124,19 @@ export default function ProfessionalOrderDetailSidebar({
     Array.isArray(meta.milestones) &&
     meta.milestones.length > 0;
   const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+  const disputeResolvedIndices = (meta.disputeResolvedMilestoneIndices || []) as number[];
   const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
     ? milestoneDeliveries
         .map(d => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
         .filter(idx => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length)
     : [];
+  const completeMilestoneIndices = [...new Set([...deliveredMilestoneIndices, ...disputeResolvedIndices.filter(i => typeof i === "number" && i >= 0 && Array.isArray(meta.milestones) && i < meta.milestones.length)])];
   const hasDeliveredMilestone =
     isMilestoneOrder && deliveredMilestoneIndices.length > 0;
   const hasUndeliveredMilestone =
     isMilestoneOrder &&
     Array.isArray(meta.milestones) &&
-    meta.milestones.length > deliveredMilestoneIndices.length;
+    meta.milestones.length > completeMilestoneIndices.length;
 
   return (
     <div className="lg:col-span-1">

@@ -2662,6 +2662,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           paymentType: order.metadata?.paymentType || undefined,
           milestones: order.metadata?.milestones || undefined,
           milestoneDeliveries: order.metadata?.milestoneDeliveries || undefined,
+          disputeResolvedMilestoneIndices: order.metadata?.disputeResolvedMilestoneIndices || undefined,
           serviceDescription: order.metadata?.serviceDescription || undefined,
           attributes: order.metadata?.attributes || undefined,
           idealFor: order.metadata?.idealFor || undefined,
@@ -4119,19 +4120,22 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
       order.metadata.milestones.length > 0;
 
     if (isMilestoneOrder) {
-      // For milestone custom offers: all milestones must be delivered by the professional
+      // For milestone custom offers: all milestones must be delivered or resolved by dispute
       // before the client can mark the order as completed.
       const milestones = order.metadata?.milestones || [];
       const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
-      const allMilestonesDelivered =
+      const disputeResolved = order.metadata?.disputeResolvedMilestoneIndices || [];
+      const allMilestonesComplete =
         Array.isArray(milestones) &&
         milestones.length > 0 &&
-        Array.isArray(milestoneDeliveries) &&
-        milestoneDeliveries.length === milestones.length;
+        milestones.every(
+          (_, idx) =>
+            milestoneDeliveries.some((d) => d.milestoneIndex === idx) || disputeResolved.includes(idx)
+        );
 
-      if (!allMilestonesDelivered) {
+      if (!allMilestonesComplete) {
         return res.status(400).json({
-          error: 'All milestones must be delivered before completing this order',
+          error: 'All milestones must be delivered or resolved before completing this order',
         });
       }
     } else {
@@ -5128,8 +5132,35 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
     dispute.acceptedByRole = isClient ? 'client' : 'professional';
     dispute.acceptedAt = new Date();
     dispute.finalAmount = agreedAmount;
-    order.status = 'Completed';
-    order.deliveryStatus = 'completed';
+
+    const isMilestoneOrder = order.metadata?.milestones?.length > 0;
+    const disputedIndices = dispute.milestoneIndices && Array.isArray(dispute.milestoneIndices) ? dispute.milestoneIndices : [];
+
+    if (isMilestoneOrder && disputedIndices.length > 0) {
+      // Milestone dispute: only the disputed milestone(s) are resolved by this dispute
+      if (!order.metadata) order.metadata = {};
+      const resolved = order.metadata.disputeResolvedMilestoneIndices || [];
+      disputedIndices.forEach((idx) => {
+        if (!resolved.includes(idx)) resolved.push(idx);
+      });
+      order.metadata.disputeResolvedMilestoneIndices = resolved;
+      order.markModified('metadata');
+
+      const milestones = order.metadata.milestones || [];
+      const milestoneDeliveries = order.metadata.milestoneDeliveries || [];
+      const allMilestonesComplete = milestones.length > 0 && milestones.every((_, idx) =>
+        milestoneDeliveries.some((d) => d.milestoneIndex === idx) || resolved.includes(idx)
+      );
+      if (allMilestonesComplete) {
+        order.status = 'Completed';
+        order.deliveryStatus = 'completed';
+      }
+      // Otherwise leave order status as is (e.g. In Progress) until all milestones are delivered or dispute-resolved
+    } else {
+      // Full order dispute or non-milestone order: mark entire order completed
+      order.status = 'Completed';
+      order.deliveryStatus = 'completed';
+    }
 
     await applyDisputeSettlement({ order, dispute, agreedAmount });
 

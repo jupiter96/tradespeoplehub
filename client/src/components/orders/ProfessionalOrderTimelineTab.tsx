@@ -1233,9 +1233,12 @@ export default function ProfessionalOrderTimelineTab({
                       const noOfVal = m.noOf ?? m.hours ?? 1;
                       const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
                       const milestoneDeliveries = (currentOrder as any).metadata?.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+                      const disputeResolvedIndices = (currentOrder as any).metadata?.disputeResolvedMilestoneIndices as number[] | undefined;
                       const isMilestoneDelivered = Array.isArray(milestoneDeliveries) && milestoneDeliveries.some((d: { milestoneIndex: number }) => d.milestoneIndex === idx);
+                      const isMilestoneResolvedByDispute = Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx);
                       const milestoneStatus = (() => {
                         if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
+                        if (isMilestoneResolvedByDispute) return { label: "Resolved (dispute)", color: "text-green-600" };
                         const orderStatus = currentOrder.status?.toLowerCase() || "";
                         if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
                         if (orderStatus === "in progress") return { label: "Active", color: "text-blue-600" };
@@ -1247,7 +1250,7 @@ export default function ProfessionalOrderTimelineTab({
                         if (orderStatus === "cancellation pending") return { label: "Cancellation Pending", color: "text-orange-500" };
                         return { label: "Active", color: "text-gray-500" };
                       })();
-                      const canDeliver = !isMilestoneDelivered &&
+                      const canDeliver = !isMilestoneDelivered && !isMilestoneResolvedByDispute &&
                         currentOrder.status === "In Progress" &&
                         (currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") &&
                         currentOrder.status !== "Cancelled" && currentOrder.status !== "Completed";
@@ -1271,6 +1274,8 @@ export default function ProfessionalOrderTimelineTab({
                               </Button>
                             ) : isMilestoneDelivered ? (
                               <span className="text-[12px] text-green-600 font-medium">Delivered</span>
+                            ) : isMilestoneResolvedByDispute ? (
+                              <span className="text-[12px] text-green-600 font-medium">Resolved (dispute)</span>
                             ) : null}
                           </td>
                         </tr>
