@@ -59,9 +59,17 @@ export default function DisputeDialog({
     Array.isArray(meta.milestones) &&
     meta.milestones.length > 0;
   const milestones = (meta.milestones || []) as MilestoneItem[];
+  const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+  const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
+    ? milestoneDeliveries
+        .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+        .filter((idx) => idx >= 0 && idx < milestones.length)
+    : [];
 
   const maxDisputeAmount = useMemo(() => {
-    if (!isMilestoneOrder || !onSelectedMilestoneIndicesChange) return currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? 0;
+    if (!isMilestoneOrder || !onSelectedMilestoneIndicesChange) {
+      return currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? 0;
+    }
     return selectedMilestoneIndices.reduce((sum, i) => {
       const m = milestones[i];
       const p = m?.price ?? m?.amount ?? 0;
@@ -81,6 +89,7 @@ export default function DisputeDialog({
 
   const toggleMilestone = (index: number) => {
     if (!onSelectedMilestoneIndicesChange) return;
+    if (!deliveredMilestoneIndices.includes(index)) return; // Only delivered milestones can be toggled
     if (selectedMilestoneIndices.includes(index)) {
       onSelectedMilestoneIndicesChange(selectedMilestoneIndices.filter((i) => i !== index));
     } else {
@@ -91,13 +100,17 @@ export default function DisputeDialog({
   const toggleAllMilestones = (checked: boolean) => {
     if (!onSelectedMilestoneIndicesChange) return;
     if (checked) {
-      onSelectedMilestoneIndicesChange(milestones.map((_, i) => i));
+      // Select only delivered milestones
+      onSelectedMilestoneIndicesChange(deliveredMilestoneIndices);
     } else {
       onSelectedMilestoneIndicesChange([]);
     }
   };
 
-  const allSelected = isMilestoneOrder && selectedMilestoneIndices.length === milestones.length;
+  const allSelected =
+    isMilestoneOrder &&
+    deliveredMilestoneIndices.length > 0 &&
+    deliveredMilestoneIndices.every((idx) => selectedMilestoneIndices.includes(idx));
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -215,24 +228,29 @@ export default function DisputeDialog({
             )}
           </div>
 
-          {/* Milestone selection (custom offer + milestone payment only) */}
+          {/* Milestone selection (custom offer + milestone payment only) – only delivered milestones are selectable */}
           {isMilestoneOrder && onSelectedMilestoneIndicesChange && milestones.length > 0 && (
             <div>
               <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Select milestone(s) to dispute *
               </Label>
               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
-                Choose one or more milestones. The total dispute amount will be the sum of the selected milestones.
+                Choose one or more delivered milestones. The total dispute amount will be the sum of the selected milestones.
               </p>
               <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                  <Checkbox
-                    checked={allSelected}
-                    onCheckedChange={(c) => toggleAllMilestones(!!c)}
-                  />
-                  Select all
-                </label>
+                {deliveredMilestoneIndices.length > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(c) => toggleAllMilestones(!!c)}
+                    />
+                    Select all delivered milestones
+                  </label>
+                )}
                 {milestones.map((m, idx) => {
+                  if (!deliveredMilestoneIndices.includes(idx)) {
+                    return null;
+                  }
                   const p = m?.price ?? m?.amount ?? 0;
                   const noOf = m?.noOf ?? 1;
                   const total = p * noOf;

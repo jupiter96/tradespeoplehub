@@ -116,6 +116,26 @@ export default function ProfessionalOrderDetailSidebar({
 
   const cancellationRequest = (order as any).cancellationRequest ?? order.metadata?.cancellationRequest;
 
+  // Milestone custom-offer helpers – used to decide when "Open Dispute" should be available
+  const meta = (order as any).metadata || {};
+  const isMilestoneOrder =
+    meta.fromCustomOffer &&
+    meta.paymentType === "milestone" &&
+    Array.isArray(meta.milestones) &&
+    meta.milestones.length > 0;
+  const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+  const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
+    ? milestoneDeliveries
+        .map(d => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+        .filter(idx => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length)
+    : [];
+  const hasDeliveredMilestone =
+    isMilestoneOrder && deliveredMilestoneIndices.length > 0;
+  const hasUndeliveredMilestone =
+    isMilestoneOrder &&
+    Array.isArray(meta.milestones) &&
+    meta.milestones.length > deliveredMilestoneIndices.length;
+
   return (
     <div className="lg:col-span-1">
       <div className="bg-white rounded-xl p-6 sticky top-6 shadow-md">
@@ -138,8 +158,11 @@ export default function ProfessionalOrderDetailSidebar({
                   <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {(order.deliveryFiles && order.deliveryFiles.length > 0) || order.status === "Revision" ? (
+              <DropdownMenuContent align="end" className="w-56">
+                {/* Open Dispute: when there is any delivered work (full or milestone) or in Revision */}
+                {(((order.deliveryFiles && order.deliveryFiles.length > 0) ||
+                   order.status === "Revision" ||
+                   hasDeliveredMilestone) && (
                   <DropdownMenuItem
                     onClick={onOpenDisputeModal}
                     className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
@@ -147,7 +170,13 @@ export default function ProfessionalOrderDetailSidebar({
                     <AlertTriangle className="w-4 h-4 mr-2" />
                     Open Dispute
                   </DropdownMenuItem>
-                ) : onOpenCancellationRequest ? (
+                ))}
+
+                {/* Request Cancellation: for remaining undelivered milestones (milestone orders) or normal pending work */}
+                {onOpenCancellationRequest && (
+                  (!isMilestoneOrder && (order.deliveryStatus === "pending" || order.deliveryStatus === "active")) ||
+                  (isMilestoneOrder && hasUndeliveredMilestone)
+                ) && (
                   <DropdownMenuItem
                     onClick={onOpenCancellationRequest}
                     className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
@@ -155,7 +184,7 @@ export default function ProfessionalOrderDetailSidebar({
                     <XCircle className="w-4 h-4 mr-2" />
                     Request Cancellation
                   </DropdownMenuItem>
-                ) : null}
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

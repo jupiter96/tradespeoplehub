@@ -156,6 +156,7 @@ function ProfessionalOrdersSection() {
   const [extensionReason, setExtensionReason] = useState("");
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [selectedCancellationMilestoneIndices, setSelectedCancellationMilestoneIndices] = useState<number[]>([]);
   const [isWithdrawCancellationDialogOpen, setIsWithdrawCancellationDialogOpen] = useState(false);
   const [isAcceptCancellationDialogOpen, setIsAcceptCancellationDialogOpen] = useState(false);
   const [isRejectCancellationDialogOpen, setIsRejectCancellationDialogOpen] = useState(false);
@@ -912,12 +913,29 @@ function ProfessionalOrdersSection() {
 
     const order = selectedOrder ? orders.find(o => o.id === selectedOrder) : null;
     const meta = (order as any)?.metadata || {};
-    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+    const isMilestoneOrder =
+      meta.fromCustomOffer &&
+      meta.paymentType === "milestone" &&
+      Array.isArray(meta.milestones) &&
+      meta.milestones.length > 0;
     const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+    const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+    const hasDeliveredMilestone =
+      isMilestoneOrder &&
+      Array.isArray(milestoneDeliveries) &&
+      milestoneDeliveries.some(
+        (d) => d && typeof d.milestoneIndex === "number"
+      );
 
-    if (isMilestoneOrder && selectedMilestoneIndices.length === 0) {
-      toast.error("Please select at least one milestone to dispute");
-      return;
+    if (isMilestoneOrder) {
+      if (!hasDeliveredMilestone) {
+        toast.error("Disputes can only be opened for delivered milestones");
+        return;
+      }
+      if (selectedMilestoneIndices.length === 0) {
+        toast.error("Please select at least one delivered milestone to dispute");
+        return;
+      }
     }
 
     const offerAmount = parseFloat(disputeOfferAmount);
@@ -950,12 +968,23 @@ function ProfessionalOrdersSection() {
       const ord = orders.find(o => o.id === selectedOrder);
       const statusLower = (ord?.status || '').toLowerCase();
       const deliveryStatusLower = (ord?.deliveryStatus || '').toLowerCase();
-      const canOpenDispute = deliveryStatusLower === 'delivered' || 
-                            statusLower === 'delivered' ||
-                            statusLower === 'revision' || 
-                            statusLower === 'in progress';
+      let canOpenDispute: boolean;
+      if (isMilestoneOrder) {
+        // For milestone custom-offer orders, at least one milestone must be delivered
+        canOpenDispute = !!hasDeliveredMilestone;
+      } else {
+        canOpenDispute =
+          deliveryStatusLower === 'delivered' ||
+          statusLower === 'delivered' ||
+          statusLower === 'revision' ||
+          statusLower === 'in progress';
+      }
       if (!canOpenDispute) {
-        toast.error("Disputes can only be opened for delivered orders or orders in revision");
+        toast.error(
+          isMilestoneOrder
+            ? "Disputes can only be opened for delivered milestones"
+            : "Disputes can only be opened for delivered orders or orders in revision"
+        );
         return;
       }
 
@@ -1014,10 +1043,28 @@ function ProfessionalOrdersSection() {
 
   const handleRequestCancellation = (files?: File[]) => {
     if (!selectedOrder) return;
+
+    const order = orders.find(o => o.id === selectedOrder);
+    const meta = (order as any)?.metadata || {};
+    const isMilestoneOrder =
+      meta.fromCustomOffer &&
+      meta.paymentType === "milestone" &&
+      Array.isArray(meta.milestones) &&
+      meta.milestones.length > 0;
+
+    let reason = cancellationReason;
+    if (isMilestoneOrder && selectedCancellationMilestoneIndices.length > 0) {
+      const list = selectedCancellationMilestoneIndices
+        .map((idx) => `#${idx + 1}`)
+        .join(", ");
+      reason = `[Milestones to cancel: ${list}]\n${cancellationReason}`;
+    }
+
     closeAllModals();
     setCancellationReason("");
+    setSelectedCancellationMilestoneIndices([]);
     toast.promise(
-      requestCancellation(selectedOrder, cancellationReason, files),
+      requestCancellation(selectedOrder, reason, files),
       { loading: "Processing...", success: "Cancellation request submitted. Waiting for response.", error: (e: any) => e.message || "Failed to request cancellation" }
     );
   };
@@ -2423,7 +2470,11 @@ function ProfessionalOrdersSection() {
           onCancel={() => {
             closeAllModals();
             setCancellationReason("");
+            setSelectedCancellationMilestoneIndices([]);
           }}
+          currentOrder={currentOrder}
+          selectedMilestoneIndices={selectedCancellationMilestoneIndices}
+          onSelectedMilestoneIndicesChange={setSelectedCancellationMilestoneIndices}
         />
 
         {/* Dispute Response Dialog */}

@@ -230,6 +230,7 @@ export default function ClientOrdersSection() {
   const [disputeEvidenceFiles, setDisputeEvidenceFiles] = useState<File[]>([]);
   const [disputeOfferAmount, setDisputeOfferAmount] = useState("");
   const [selectedMilestoneIndices, setSelectedMilestoneIndices] = useState<number[]>([]);
+  const [selectedCancellationMilestoneIndices, setSelectedCancellationMilestoneIndices] = useState<number[]>([]);
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
@@ -630,8 +631,8 @@ export default function ClientOrdersSection() {
       );
     }
 
-    // Custom offer received by client (awaiting response)
-    if (order.status === "offer created") {
+    // Custom offer received by client (awaiting response) / expired
+    if (order.status === "offer created" || order.status === "offer expired") {
       push(
         {
           at: order.createdAt || order.date,
@@ -642,6 +643,25 @@ export default function ClientOrdersSection() {
         },
         "offer-received"
       );
+      // Expected response time / expiration hint as a timeline event
+      const rd = (order as any).metadata?.responseDeadline;
+      if (rd) {
+        const deadline = new Date(rd);
+        const now = new Date();
+        const expired = order.status === "offer expired" || deadline.getTime() <= now.getTime();
+        push(
+          {
+            at: deadline.toISOString(),
+            title: expired ? "Offer has been expired!" : "Expected Response Time",
+            description: expired
+              ? "This custom offer expired because the response time has passed."
+              : "Please respond to this custom offer before the expected response time.",
+            colorClass: expired ? "bg-red-600" : "bg-amber-500",
+            icon: <Clock className="w-5 h-5 text-blue-600" />,
+          },
+          "offer-response-deadline"
+        );
+      }
     }
     if (
       order.metadata?.customOfferStatus === "rejected" &&
@@ -1143,17 +1163,34 @@ export default function ClientOrdersSection() {
     }
     if (selectedOrder) {
       const order = orders.find(o => o.id === selectedOrder);
-      if (order && order.status === "In Progress") {
+      if (!order) return;
+
+      const meta = (order as any)?.metadata || {};
+      const isMilestoneOrder =
+        meta.fromCustomOffer &&
+        meta.paymentType === "milestone" &&
+        Array.isArray(meta.milestones) &&
+        meta.milestones.length > 0;
+
+      let reason = cancelReason;
+      if (isMilestoneOrder && selectedCancellationMilestoneIndices.length > 0) {
+        const list = selectedCancellationMilestoneIndices
+          .map((idx) => `#${idx + 1}`)
+          .join(", ");
+        reason = `[Milestones to cancel: ${list}]\n${cancelReason}`;
+      }
+
+      if (order.status === "In Progress") {
         if (cancelFiles.length === 0) {
           toast.error("Please upload at least one attachment");
           return;
         }
         const orderId = selectedOrder;
-        const reason = cancelReason;
         const files = cancelFiles;
         closeAllModals();
         setCancelReason("");
         setCancelFiles([]);
+        setSelectedCancellationMilestoneIndices([]);
         toast.promise(
           requestCancellation(orderId, reason, files),
           { loading: "Processing...", success: "Cancellation request submitted. Waiting for professional approval.", error: (e: any) => e.message || "Failed to request cancellation" }
@@ -1164,6 +1201,7 @@ export default function ClientOrdersSection() {
         setIsCancelDialogOpen(false);
         setCancelReason("");
         setCancelFiles([]);
+        setSelectedCancellationMilestoneIndices([]);
         setSelectedOrder(null);
       }
     }
@@ -2145,8 +2183,8 @@ export default function ClientOrdersSection() {
 
           {/* Timeline Tab */}
           <TabsContent value="timeline" className="mt-4 md:mt-6 space-y-4 md:space-y-6 px-4 md:px-6">
-            {/* Custom Offer Received – offer created status (client) */}
-            {currentOrder.status === "offer created" && (
+            {/* Custom Offer Received – offer created status (client). Hide when expired. */}
+            {currentOrder.status === "offer created" && !offerResponseCountdown?.expired && (
               <>
                 <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
                   <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
@@ -2261,6 +2299,18 @@ export default function ClientOrdersSection() {
                   )}
                 </div>
               </>
+            )}
+
+            {/* Custom Offer Expired – client-side status message card */}
+            {((currentOrder as any).status === "offer expired") && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+                  Offer has been expired!
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+                  This custom offer expired because the response time has passed.
+                </p>
+              </div>
             )}
 
             {/* Order Cancellation Initiated – client sent cancel request (pending) or already cancelled */}
@@ -2618,14 +2668,27 @@ export default function ClientOrdersSection() {
                             noOf?: number;
                             chargePer?: string;
                           }>).map((m, idx) => {
-                            const orderDate = (currentOrder.date || currentOrder.createdAt) ? new Date(currentOrder.date || currentOrder.createdAt || "") : new Date();
+                            const orderDate = (currentOrder.date || currentOrder.createdAt)
+                              ? new Date(currentOrder.date || currentOrder.createdAt || "")
+                              : new Date();
                             const deliveryDate = new Date(orderDate);
                             const days = m.deliveryInDays ?? m.dueInDays ?? 0;
                             deliveryDate.setDate(deliveryDate.getDate() + (typeof days === "number" ? days : 0));
                             const unitPrice = m.price ?? m.amount ?? 0;
                             const noOfVal = m.noOf ?? m.hours ?? 1;
                             const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
+
+                            const milestoneDeliveries = (currentOrder as any).metadata?.milestoneDeliveries as
+                              | Array<{ milestoneIndex: number }>
+                              | undefined;
+                            const isMilestoneDelivered =
+                              Array.isArray(milestoneDeliveries) &&
+                              milestoneDeliveries.some(
+                                (d: { milestoneIndex: number }) => d.milestoneIndex === idx
+                              );
+
                             const milestoneStatus = (() => {
+                              if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
                               const orderStatus = currentOrder.status?.toLowerCase() || "";
                               if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
                               if (orderStatus === "in progress") return { label: "In Progress", color: "text-blue-600" };
@@ -4315,18 +4378,50 @@ export default function ClientOrdersSection() {
 	                      hasDeliveryFiles ||
 	                      !!currentOrder.deliveredDate ||
 	                      !!currentOrder.deliveryMessage;
-
+	
 	                    const isPendingCancellation =
 	                      (currentOrder as any).cancellationRequest?.status === "pending" ||
 	                      (currentOrder as any).metadata?.cancellationRequest?.status === "pending";
 	
-                      const canCancel = (statusNormalized === "in progress" || statusNormalized === "active") && !isPendingCancellation;
+                      // Milestone custom-offer helpers
+                      const meta = (currentOrder as any)?.metadata || {};
+                      const isMilestoneOrder =
+                        meta.fromCustomOffer &&
+                        meta.paymentType === "milestone" &&
+                        Array.isArray(meta.milestones) &&
+                        meta.milestones.length > 0;
+                      const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+                      const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
+                        ? milestoneDeliveries
+                            .map(d => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+                            .filter(idx => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length)
+                        : [];
+                      const hasDeliveredMilestone =
+                        isMilestoneOrder && deliveredMilestoneIndices.length > 0;
+                      const hasUndeliveredMilestone =
+                        isMilestoneOrder &&
+                        Array.isArray(meta.milestones) &&
+                        meta.milestones.length > deliveredMilestoneIndices.length;
+
+                      // Client can cancel:
+                      // - normal orders: while in progress/active and no pending cancellation
+                      // - milestone orders: when there is at least one undelivered milestone and no pending cancellation
+                      const canCancel =
+                        !isPendingCancellation &&
+                        (
+                          (!isMilestoneOrder && (statusNormalized === "in progress" || statusNormalized === "active")) ||
+                          (isMilestoneOrder && hasUndeliveredMilestone)
+                        );
                       const isDisputed = statusNormalized === "disputed";
 	                    // Dispute is available once work is delivered or in revision (but not after completion)
 	                    const canDispute =
-	                      (hasDeliveredSignals ||
-	                      statusNormalized === "delivered" ||
-	                      statusNormalized === "revision") &&
+	                      (
+                          hasDeliveredSignals ||
+	                        statusNormalized === "delivered" ||
+	                        statusNormalized === "revision" ||
+                          // For milestone orders, any delivered milestone enables dispute
+                          hasDeliveredMilestone
+                        ) &&
                         statusNormalized !== "completed" &&
                         !isDisputed;
 	
@@ -4338,36 +4433,37 @@ export default function ClientOrdersSection() {
 	                    if (!showMenu) return null;
 	
 	                    return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-	                        {canDispute ? (
-                          <DropdownMenuItem
-                            onClick={() => openModal('dispute')}
-                            className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
-                          >
-                            <AlertTriangle className="w-4 h-4 mr-2" />
-                            Open Dispute
-                          </DropdownMenuItem>
-	                        ) : canCancel ? (
-                          <DropdownMenuItem
-                            onClick={() => openModal('cancel')}
-                            className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
-                          >
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Cancel Order
-                          </DropdownMenuItem>
-                        ) : null}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+	                  <DropdownMenu>
+	                    <DropdownMenuTrigger asChild>
+	                      <Button
+	                        variant="ghost"
+	                        size="icon"
+	                        className="h-8 w-8"
+	                      >
+	                        <MoreVertical className="w-5 h-5 text-[#6b6b6b]" />
+	                      </Button>
+	                    </DropdownMenuTrigger>
+	                    <DropdownMenuContent align="end" className="w-52">
+	                      {canDispute && (
+	                        <DropdownMenuItem
+	                          onClick={() => openModal('dispute')}
+	                          className="text-orange-600 focus:text-orange-700 focus:bg-orange-50 cursor-pointer"
+	                        >
+	                          <AlertTriangle className="w-4 h-4 mr-2" />
+	                          Open Dispute
+	                        </DropdownMenuItem>
+	                      )}
+	                      {canCancel && (
+	                        <DropdownMenuItem
+	                          onClick={() => openModal('cancel')}
+	                          className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
+	                        >
+	                          <XCircle className="w-4 h-4 mr-2" />
+	                          Cancel Order
+	                        </DropdownMenuItem>
+	                      )}
+	                    </DropdownMenuContent>
+	                  </DropdownMenu>
 	                    );
 	                  })()}
                 </div>
@@ -5159,6 +5255,100 @@ export default function ClientOrdersSection() {
                   </ul>
                 )}
               </div>
+
+              {/* Milestone selection (client-side cancel) for milestone custom-offer orders */}
+              {(() => {
+                const meta = (currentOrder as any)?.metadata || {};
+                const isMilestoneOrder =
+                  meta.fromCustomOffer &&
+                  meta.paymentType === "milestone" &&
+                  Array.isArray(meta.milestones) &&
+                  meta.milestones.length > 0;
+                if (!isMilestoneOrder) return null;
+
+                const milestones = (meta.milestones || []) as Array<{
+                  name?: string;
+                  description?: string;
+                  price?: number;
+                  amount?: number;
+                  noOf?: number;
+                }>;
+                const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+                const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
+                  ? milestoneDeliveries
+                      .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+                      .filter((idx) => idx >= 0 && idx < milestones.length)
+                  : [];
+                const cancellableIndices: number[] = milestones
+                  .map((_, idx) => idx)
+                  .filter((idx) => !deliveredMilestoneIndices.includes(idx));
+
+                if (cancellableIndices.length === 0) return null;
+
+                const allSelected =
+                  cancellableIndices.length > 0 &&
+                  cancellableIndices.every((idx) => selectedCancellationMilestoneIndices.includes(idx));
+
+                const toggleAll = (checked: boolean) => {
+                  if (checked) {
+                    setSelectedCancellationMilestoneIndices(cancellableIndices);
+                  } else {
+                    setSelectedCancellationMilestoneIndices([]);
+                  }
+                };
+
+                const toggleOne = (idx: number) => {
+                  setSelectedCancellationMilestoneIndices((prev) =>
+                    prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx].sort((a, b) => a - b)
+                  );
+                };
+
+                return (
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                      Select milestone(s) to cancel *
+                    </Label>
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
+                      Only milestones that have not yet been delivered can be cancelled.
+                    </p>
+                    <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                      <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={(e) => toggleAll(e.target.checked)}
+                        />
+                        Select all cancellable milestones
+                      </label>
+                      {cancellableIndices.map((idx) => {
+                        const m = milestones[idx];
+                        const p = m?.price ?? m?.amount ?? 0;
+                        const noOf = m?.noOf ?? 1;
+                        const total = p * noOf;
+                        const checked = selectedCancellationMilestoneIndices.includes(idx);
+                        return (
+                          <label
+                            key={idx}
+                            className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleOne(idx)}
+                            />
+                            <span>
+                              Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                              {m?.description && (
+                                <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
+                              )}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-3">
                 <Button

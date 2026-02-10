@@ -44,6 +44,10 @@ export default function DisputeDiscussionPage() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [isPayingArbitration, setIsPayingArbitration] = useState(false);
+  // Controls whether Accept/Reject buttons are expanded in Current Offer Status card
+  const [showRespondActions, setShowRespondActions] = useState(false);
+  const [isAcceptConfirmOpen, setIsAcceptConfirmOpen] = useState(false);
+  const [isRejectConfirmOpen, setIsRejectConfirmOpen] = useState(false);
   
   // Determine if this is an order dispute or job dispute
   const isOrderDispute = dispute && "orderId" in dispute;
@@ -243,6 +247,16 @@ export default function DisputeDiscussionPage() {
     }
   };
 
+  const handleConfirmAccept = async () => {
+    setIsAcceptConfirmOpen(false);
+    await handleAcceptOffer();
+  };
+
+  const handleConfirmReject = async () => {
+    setIsRejectConfirmOpen(false);
+    await handleRejectOffer();
+  };
+
   const formatDeadlineDateTime = (dateString?: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -412,7 +426,8 @@ export default function DisputeDiscussionPage() {
 
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setTimeLeft(`${days} days, ${hours} hours`);
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      setTimeLeft(`${days} days ${hours} hours ${minutes} mins`);
     };
 
     updateTimer();
@@ -472,6 +487,12 @@ export default function DisputeDiscussionPage() {
   const isNegotiationPhase = Boolean(
     dispute?.negotiationDeadline && (dispute?.status === "negotiation" || respondentHasReplied)
   );
+  // For the label under the timer we want to switch to \"ask admin to step in\"
+  // as soon as the other side has replied or the dispute is in negotiation status,
+  // regardless of other conditions.
+  const showAdminStepInLabel = Boolean(
+    dispute?.status === "negotiation" || respondentHasReplied
+  );
   const hasPaidArbitrationFee = Boolean(
     (dispute?.arbitrationPayments || []).some((p: any) => p?.userId?.toString?.() === currentUser?.id)
   );
@@ -510,6 +531,18 @@ export default function DisputeDiscussionPage() {
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
 
   const milestone = job?.milestones?.find((m) => m.id === (dispute as any).milestoneId);
+
+  // Parse \"X days: Y hours: Z mins\" into parts so we can style numbers vs labels differently.
+  const timeParts = (() => {
+    if (!timeLeft) return null;
+    const match = timeLeft.match(/(\d+)\\s+days:\\s+(\\d+)\\s+hours:\\s+(\\d+)\\s+mins/);
+    if (!match) return null;
+    return {
+      days: match[1],
+      hours: match[2],
+      minutes: match[3],
+    };
+  })();
 
   return (
     <>
@@ -806,13 +839,36 @@ export default function DisputeDiscussionPage() {
             {/* Response Timeline Card */}
             {(dispute.status === "open" || dispute.status === "negotiation") && timeLeft && (
               <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                <p className="font-['Poppins',sans-serif] text-[32px] text-[#2c353f] font-bold text-center mb-2">
-                  {timeLeft}
-                </p>
+                {timeParts ? (
+                  <div className="flex flex-wrap justify-center items-baseline gap-1 mb-2">
+                    <span className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold">
+                      {timeParts.days}
+                    </span>
+                    <span className="font-['Poppins',sans-serif] text-[5px] text-[#6b6b6b]">
+                      days
+                    </span>
+                    <span className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold">
+                      {timeParts.hours}
+                    </span>
+                    <span className="font-['Poppins',sans-serif] text-[5px] text-[#6b6b6b]">
+                      hours
+                    </span>
+                    <span className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold">
+                      {timeParts.minutes}
+                    </span>
+                    <span className="font-['Poppins',sans-serif] text-[5px] text-[#6b6b6b]">
+                      mins
+                    </span>
+                  </div>
+                ) : (
+                  <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold text-center mb-2">
+                    {timeLeft}
+                  </p>
+                )}
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
-                  {isNegotiationPhase
+                  {showAdminStepInLabel
                     ? "left to ask admin to step in"
-                    : `left for ${isCurrentUserClient ? dispute.respondentName : dispute.claimantName} to respond`}
+                    : `left for ${dispute.respondentName} to respond`}
                 </p>
                 {isNegotiationPhase && (
                   <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
@@ -851,6 +907,7 @@ export default function DisputeDiscussionPage() {
                   Current Offer Status
                 </p>
                 <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Left Column – Current user (Client/Pro) */}
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       {isCurrentUserClient ? "Client (you)" : "Professional (you)"}<br />{isCurrentUserClient ? "wants to pay:" : "want to receive:"}
@@ -868,6 +925,7 @@ export default function DisputeDiscussionPage() {
                       </Button>
                     )}
                   </div>
+                  {/* Right Column – Other party (Pro/Client) */}
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       {isCurrentUserClient ? "Professional" : "Client"}<br />{isCurrentUserClient ? "want to receive:" : "wants to pay:"}
@@ -878,19 +936,30 @@ export default function DisputeDiscussionPage() {
                           £{otherOffer.toFixed(2)}
                         </p>
                         <div className="mt-3 space-y-2">
-                          <Button
-                            onClick={handleAcceptOffer}
-                            className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-                          >
-                            Accept and close
-                          </Button>
-                          <Button
-                            onClick={handleRejectOffer}
-                            variant="outline"
-                            className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
-                          >
-                            Reject
-                          </Button>
+                          {!showRespondActions ? (
+                            <Button
+                              onClick={() => setShowRespondActions(true)}
+                              className="w-full bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] text-[13px]"
+                            >
+                              Respond
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                onClick={() => setIsAcceptConfirmOpen(true)}
+                                className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                              >
+                                Accept and close
+                              </Button>
+                              <Button
+                                onClick={() => setIsRejectConfirmOpen(true)}
+                                variant="outline"
+                                className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
+                              >
+                                Reject
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </>
                     ) : (
@@ -920,6 +989,65 @@ export default function DisputeDiscussionPage() {
                     </Button>
                   </div>
                 )}
+
+        {/* Accept Offer Confirmation Dialog */}
+        <Dialog open={isAcceptConfirmOpen} onOpenChange={setIsAcceptConfirmOpen}>
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+                Accept and close dispute?
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                This will accept the current offer and close the dispute. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsAcceptConfirmOpen(false)}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmAccept}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+              >
+                Yes, accept and close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reject Offer Confirmation Dialog */}
+        <Dialog open={isRejectConfirmOpen} onOpenChange={setIsRejectConfirmOpen}>
+          <DialogContent className="w-[400px] sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
+                Reject this offer?
+              </DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                Are you sure you want to reject this offer? You can continue negotiating by sending a new offer.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsRejectConfirmOpen(false)}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmReject}
+                variant="destructive"
+                className="font-['Poppins',sans-serif]"
+              >
+                Yes, reject
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
                 
                 <div className="flex gap-2">
                   <div className="flex-1 relative">

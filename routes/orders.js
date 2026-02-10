@@ -50,6 +50,7 @@ async function syncCustomOfferMessageStatus(order) {
     // Map order status to message status
     const statusMap = {
       'offer created': 'pending',
+      'offer expired': 'expired',
       'In Progress': 'in progress',
       'delivered': 'delivered',
       'Revision': 'revision',
@@ -4110,14 +4111,40 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if order is in delivered status or has delivery files/message
-    const isDelivered = order.deliveryStatus === 'delivered' || 
-                        (order.deliveryFiles && order.deliveryFiles.length > 0) ||
-                        order.deliveryMessage ||
-                        order.metadata?.professionalCompleteRequest;
-    
-    if (!isDelivered && order.status !== 'In Progress') {
-      return res.status(400).json({ error: 'Order must be delivered before completing' });
+    // Milestone vs non-milestone orders have slightly different completion rules.
+    const isMilestoneOrder =
+      order.metadata?.fromCustomOffer &&
+      order.metadata?.paymentType === 'milestone' &&
+      Array.isArray(order.metadata?.milestones) &&
+      order.metadata.milestones.length > 0;
+
+    if (isMilestoneOrder) {
+      // For milestone custom offers: all milestones must be delivered by the professional
+      // before the client can mark the order as completed.
+      const milestones = order.metadata?.milestones || [];
+      const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+      const allMilestonesDelivered =
+        Array.isArray(milestones) &&
+        milestones.length > 0 &&
+        Array.isArray(milestoneDeliveries) &&
+        milestoneDeliveries.length === milestones.length;
+
+      if (!allMilestonesDelivered) {
+        return res.status(400).json({
+          error: 'All milestones must be delivered before completing this order',
+        });
+      }
+    } else {
+      // Non-milestone orders: keep existing delivered checks
+      const isDelivered =
+        order.deliveryStatus === 'delivered' ||
+        (order.deliveryFiles && order.deliveryFiles.length > 0) ||
+        order.deliveryMessage ||
+        order.metadata?.professionalCompleteRequest;
+
+      if (!isDelivered && order.status !== 'In Progress') {
+        return res.status(400).json({ error: 'Order must be delivered before completing' });
+      }
     }
 
     // Get professional user

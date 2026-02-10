@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Button } from "../../ui/button";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
 import { toast } from "sonner";
 import { Paperclip, X } from "lucide-react";
+import { Order } from "../types";
 
 interface CancellationRequestDialogProps {
   open: boolean;
@@ -13,6 +14,11 @@ interface CancellationRequestDialogProps {
   onCancellationReasonChange: (reason: string) => void;
   onSubmit: (files?: File[]) => void | Promise<void>;
   onCancel: () => void;
+  /** For milestone custom-offer orders: current order (to derive milestones & deliveries) */
+  currentOrder?: Order | null;
+  /** For milestone custom-offer orders: selected milestone indices (0-based) to cancel. */
+  selectedMilestoneIndices?: number[];
+  onSelectedMilestoneIndicesChange?: (indices: number[]) => void;
 }
 
 export default function CancellationRequestDialog({
@@ -22,14 +28,59 @@ export default function CancellationRequestDialog({
   onCancellationReasonChange,
   onSubmit,
   onCancel,
+  currentOrder,
+  selectedMilestoneIndices = [],
+  onSelectedMilestoneIndicesChange,
 }: CancellationRequestDialogProps) {
   const [cancellationFiles, setCancellationFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const meta = (currentOrder as any)?.metadata || {};
+  const isMilestoneOrder =
+    !!currentOrder &&
+    meta.fromCustomOffer &&
+    meta.paymentType === "milestone" &&
+    Array.isArray(meta.milestones) &&
+    meta.milestones.length > 0;
+  const milestones = (meta.milestones || []) as Array<{
+    name?: string;
+    description?: string;
+    price?: number;
+    amount?: number;
+    noOf?: number;
+  }>;
+  const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+  const deliveredMilestoneIndices: number[] = useMemo(
+    () =>
+      Array.isArray(milestoneDeliveries)
+        ? milestoneDeliveries
+            .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+            .filter((idx) => idx >= 0 && idx < milestones.length)
+        : [],
+    [milestoneDeliveries, milestones.length]
+  );
+  const cancellableMilestoneIndices: number[] = useMemo(
+    () =>
+      isMilestoneOrder
+        ? milestones.map((_, idx) => idx).filter((idx) => !deliveredMilestoneIndices.includes(idx))
+        : [],
+    [isMilestoneOrder, milestones, deliveredMilestoneIndices]
+  );
 
   const handleSubmit = async () => {
     if (!cancellationReason.trim()) {
       toast.error("Please provide a reason for cancellation");
       return;
+    }
+    if (isMilestoneOrder && onSelectedMilestoneIndicesChange) {
+      if (cancellableMilestoneIndices.length === 0) {
+        toast.error("There are no cancellable milestones remaining.");
+        return;
+      }
+      if (selectedMilestoneIndices.length === 0) {
+        toast.error("Please select at least one milestone to cancel");
+        return;
+      }
     }
     if (cancellationFiles.length === 0) {
       toast.error("Please upload at least one attachment");
@@ -40,6 +91,9 @@ export default function CancellationRequestDialog({
   };
 
   const handleCancelClick = () => {
+    if (onSelectedMilestoneIndicesChange) {
+      onSelectedMilestoneIndicesChange([]);
+    }
     setCancellationFiles([]);
     onCancel();
   };
@@ -121,6 +175,71 @@ export default function CancellationRequestDialog({
               </ul>
             )}
           </div>
+          {/* Milestone selection for milestone custom-offer orders – only undelivered milestones are cancellable */}
+          {isMilestoneOrder && onSelectedMilestoneIndicesChange && cancellableMilestoneIndices.length > 0 && (
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Select milestone(s) to cancel *
+              </Label>
+              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
+                Only milestones that have not yet been delivered can be cancelled.
+              </p>
+              <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                  <input
+                    type="checkbox"
+                    checked={
+                      cancellableMilestoneIndices.length > 0 &&
+                      cancellableMilestoneIndices.every((idx) => selectedMilestoneIndices.includes(idx))
+                    }
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        onSelectedMilestoneIndicesChange(cancellableMilestoneIndices);
+                      } else {
+                        onSelectedMilestoneIndicesChange([]);
+                      }
+                    }}
+                  />
+                  Select all cancellable milestones
+                </label>
+                {cancellableMilestoneIndices.map((idx) => {
+                  const m = milestones[idx];
+                  const p = m?.price ?? m?.amount ?? 0;
+                  const noOf = m?.noOf ?? 1;
+                  const total = p * noOf;
+                  const checked = selectedMilestoneIndices.includes(idx);
+                  return (
+                    <label
+                      key={idx}
+                      className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          if (checked) {
+                            onSelectedMilestoneIndicesChange(
+                              selectedMilestoneIndices.filter((i) => i !== idx)
+                            );
+                          } else {
+                            onSelectedMilestoneIndicesChange(
+                              [...selectedMilestoneIndices, idx].sort((a, b) => a - b)
+                            );
+                          }
+                        }}
+                      />
+                      <span>
+                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                        {m?.description && (
+                          <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={handleCancelClick} className="font-['Poppins',sans-serif] text-[13px]">
               Cancel

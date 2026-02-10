@@ -154,7 +154,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Pending Payment', 'In Progress', 'Completed', 'Cancelled', 'Cancellation Pending', 'Rejected', 'disputed', 'delivered', 'Revision', 'offer created'],
+      enum: ['Pending Payment', 'In Progress', 'Completed', 'Cancelled', 'Cancellation Pending', 'Rejected', 'disputed', 'delivered', 'Revision', 'offer created', 'offer expired'],
       default: 'In Progress',
       index: true,
     },

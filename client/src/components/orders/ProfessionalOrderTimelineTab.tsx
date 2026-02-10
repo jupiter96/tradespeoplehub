@@ -175,8 +175,8 @@ export default function ProfessionalOrderTimelineTab({
     <div className="space-y-4 md:space-y-6 px-4 md:px-6">
       {/* STATUS MESSAGE CARDS - Display above timeline (No action buttons) */}
 
-      {/* Custom Offer Awaiting Response – offer created status (professional) */}
-      {currentOrder.status === "offer created" && (
+      {/* Custom Offer Awaiting Response – offer created status (professional). Hide when expired. */}
+      {currentOrder.status === "offer created" && !offerResponseCountdown?.expired && (
         <>
           <div className="bg-[#EFF6FF] border border-[#3B82F6]/30 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
             <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
@@ -278,6 +278,18 @@ export default function ProfessionalOrderTimelineTab({
             )}
           </div>
         </>
+      )}
+
+      {/* Custom Offer Expired – show clear status message */}
+      {((currentOrder as any).status === "offer expired") && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+          <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+            Offer has been expired!
+          </h3>
+          <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
+            This custom offer expired because the response time has passed.
+          </p>
+        </div>
       )}
 
       {/* Order Cancellation Initiated – Professional sent cancel request (pending) or already cancelled */}
@@ -1236,7 +1248,8 @@ export default function ProfessionalOrderTimelineTab({
                         return { label: "Active", color: "text-gray-500" };
                       })();
                       const canDeliver = !isMilestoneDelivered &&
-                        (currentOrder.status === "In Progress" || currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") &&
+                        currentOrder.status === "In Progress" &&
+                        (currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") &&
                         currentOrder.status !== "Cancelled" && currentOrder.status !== "Completed";
                       return (
                         <tr key={idx} className="border-b border-gray-100 last:border-b-0">

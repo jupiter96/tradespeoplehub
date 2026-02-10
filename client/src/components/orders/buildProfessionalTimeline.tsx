@@ -64,8 +64,8 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
-  // Custom offer created by professional (awaiting client response)
-  if (order.status === "offer created") {
+  // Custom offer created by professional (awaiting client response) / expired
+  if (order.status === "offer created" || order.status === "offer expired") {
     push(
       {
         at: (order as any).createdAt || order.date,
@@ -76,6 +76,25 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       },
       "offer-created"
     );
+    // Expected response time / expiration as a timeline event
+    const rd = (order as any).metadata?.responseDeadline;
+    if (rd) {
+      const deadline = new Date(rd);
+      const now = new Date();
+      const expired = order.status === "offer expired" || deadline.getTime() <= now.getTime();
+      push(
+        {
+          at: deadline.toISOString(),
+          label: expired ? "Offer has been expired!" : "Expected Response Time",
+          description: expired
+            ? "This custom offer expired because the response time has passed."
+            : "The client should respond to this offer before the expected response time.",
+          colorClass: expired ? "bg-red-600" : "bg-amber-500",
+          icon: <Clock className="w-5 h-5 text-blue-600" />,
+        },
+        "offer-response-deadline"
+      );
+    }
   }
   if (
     (order as any).metadata?.customOfferStatus === "rejected" &&
