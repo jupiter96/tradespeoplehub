@@ -524,11 +524,21 @@ export default function DisputeDiscussionPage() {
   const maxOfferAmount = isOrderDispute
     ? (order?.refundableAmount ?? dispute.amount)
     : dispute.amount;
-  const newOfferValue = parseFloat(newOffer);
-  const isOfferOverLimit = !Number.isNaN(newOfferValue) && newOfferValue > maxOfferAmount;
 
   const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
+
+  // Pro: can only lower offer → max = their last offer (or order amount if no offer yet)
+  // Client: can only raise offer → min = their last offer (or 0 if no offer yet)
+  const offerMin = isCurrentUserClient
+    ? (hasUserMadeOffer && typeof userOffer === "number" ? userOffer : 0)
+    : 0;
+  const offerMax = !isCurrentUserClient
+    ? (hasUserMadeOffer && typeof userOffer === "number" ? userOffer : maxOfferAmount)
+    : maxOfferAmount;
+
+  const newOfferValue = parseFloat(newOffer);
+  const isOfferOutOfRange = !Number.isNaN(newOfferValue) && (newOfferValue < offerMin || newOfferValue > offerMax);
 
   const milestone = job?.milestones?.find((m) => m.id === (dispute as any).milestoneId);
 
@@ -1061,8 +1071,8 @@ export default function DisputeDiscussionPage() {
                       placeholder="0.00"
                       className="pl-7 font-['Poppins',sans-serif] text-[14px]"
                       step="0.01"
-                      min="0"
-                      max={maxOfferAmount}
+                      min={offerMin}
+                      max={offerMax}
                     />
                   </div>
                   <Button
@@ -1075,10 +1085,10 @@ export default function DisputeDiscussionPage() {
                 </div>
                 <p
                   className={`mt-2 font-['Poppins',sans-serif] text-[12px] ${
-                    isOfferOverLimit ? "text-red-600 font-medium" : "text-[#6b6b6b]"
+                    isOfferOutOfRange ? "text-red-600 font-medium" : "text-[#6b6b6b]"
                   }`}
                 >
-                  {`Must be between £0.00 and £${maxOfferAmount.toFixed(2)}`}
+                  {`Must be between £${offerMin.toFixed(2)} and £${offerMax.toFixed(2)}`}
                 </p>
                 
                 {hasUserMadeOffer && (
@@ -1088,7 +1098,7 @@ export default function DisputeDiscussionPage() {
                 )}
                 
                 <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2 text-center">
-                  Enter an amount between £0 and £{dispute.amount.toFixed(2)} GBP
+                  Enter an amount between £{offerMin.toFixed(2)} and £{offerMax.toFixed(2)} GBP
                 </p>
 
                 {(isClaimant && isOrderDispute && (dispute.status === "open" || dispute.status === "negotiation")) || canShowArbitrationButton ? (
