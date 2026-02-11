@@ -4939,6 +4939,35 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
     const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
     const user = isClient ? order.client : order.professional;
 
+    // If this is the respondent's first message, treat as initial response: enforce deadline and transition to negotiation
+    if (isRespondent && !dispute.respondedAt) {
+      if (dispute.responseDeadline && new Date(dispute.responseDeadline) < new Date()) {
+        return res.status(400).json({ error: 'The response deadline has passed. You must respond before the dispute initial response time.' });
+      }
+      const settings = await PaymentSettings.getSettings();
+      const stepInDays = settings.stepInDays;
+      const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
+      const negotiationDeadline = new Date();
+      if (typeof stepInDays === 'number' && stepInDays > 0) {
+        negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInDays * 24 * 60 * 60 * 1000);
+      } else {
+        negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
+      }
+      dispute.status = 'negotiation';
+      dispute.respondedAt = new Date();
+      dispute.negotiationDeadline = negotiationDeadline;
+      dispute.arbitrationFeeAmount = settings.stepInAmount ?? settings.arbitrationFee ?? dispute.arbitrationFeeAmount;
+      runBackgroundTask(
+        () => sendDisputeRespondedNotifications({
+          order,
+          clientUser: order.client,
+          professionalUser: order.professional,
+          respondentId: req.user.id,
+        }),
+        'dispute-responded-via-message'
+      );
+    }
+
     // Process attachments
     const attachments = req.files ? req.files.map((file) => ({
       url: file.path,

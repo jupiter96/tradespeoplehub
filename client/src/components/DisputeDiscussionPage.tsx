@@ -23,7 +23,7 @@ export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
   const navigate = useNavigate();
   const { getDisputeById, getJobById, addDisputeMessage, makeDisputeOffer } = useJobs();
-  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, requestArbitration, orders } = useOrders();
+  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, requestArbitration, refreshOrders, orders } = useOrders();
   const { currentUser } = useAccount();
   
   // Try to get dispute from both contexts
@@ -100,8 +100,8 @@ export default function DisputeDiscussionPage() {
         setHasReplied(true);
         toast.success("Message sent");
         
-        // Refresh orders to get updated dispute
-        window.location.reload();
+        // Refresh orders to get updated dispute (e.g. negotiation phase when respondent replies)
+        await refreshOrders?.();
       } else {
         addDisputeMessage(disputeId, message);
         setMessage("");
