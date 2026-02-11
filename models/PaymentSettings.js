@@ -217,6 +217,12 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 2,
       min: 0,
     },
+    // Time for client to respond to delivered work (approve or request revision). After this, order auto-completes.
+    deliveredWorkResponseTimeDays: {
+      type: Number,
+      default: 2,
+      min: 0,
+    },
     stepInAmount: {
       type: Number,
       default: 5.00,

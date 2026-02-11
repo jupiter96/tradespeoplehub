@@ -104,14 +104,15 @@ const REVIEW_REMINDER_HOURS_AFTER = 24;
 async function processAutoCompleteDeliveredOrders() {
   try {
     const settings = await PaymentSettings.getSettings();
-    const waitingDays = typeof settings.waitingTimeToApproveOrder === 'number'
-      ? settings.waitingTimeToApproveOrder
-      : 0;
+    // Use delivered work response time if set, else fall back to waiting time to approve order
+    const responseTimeDays = typeof settings.deliveredWorkResponseTimeDays === 'number' && settings.deliveredWorkResponseTimeDays >= 0
+      ? settings.deliveredWorkResponseTimeDays
+      : (typeof settings.waitingTimeToApproveOrder === 'number' ? settings.waitingTimeToApproveOrder : 0);
 
-    if (waitingDays <= 0) return;
+    if (responseTimeDays <= 0) return;
 
     const now = new Date();
-    const threshold = new Date(now.getTime() - waitingDays * 24 * 60 * 60 * 1000);
+    const threshold = new Date(now.getTime() - responseTimeDays * 24 * 60 * 60 * 1000);
 
     const orders = await Order.find({
       status: { $in: ['delivered', 'Delivered'] },
@@ -164,9 +165,7 @@ async function processAutoCompleteDeliveredOrders() {
         const baseDate = order.deliveredDate
           ? new Date(order.deliveredDate)
           : (order.metadata?.professionalCompleteRequest?.requestedAt ? new Date(order.metadata.professionalCompleteRequest.requestedAt) : new Date());
-        const deadlineDate = new Date(baseDate);
-        deadlineDate.setDate(deadlineDate.getDate() + waitingDays);
-        deadlineDate.setHours(23, 59, 59, 999);
+        const deadlineDate = new Date(baseDate.getTime() + responseTimeDays * 24 * 60 * 60 * 1000);
 
         order.status = 'Completed';
         order.deliveryStatus = 'completed';

@@ -67,6 +67,7 @@ export default function AdminPaymentSettingsPage() {
     inviteToReview: "Activated",
     waitingTimeToAcceptOffer: 2,
     waitingTimeToApproveOrder: 2,
+    deliveredWorkResponseTimeDays: 2,
     stepInAmount: 5.00,
     stepInDays: 1,
     arbitrationFeeDeadlineDays: 1,
@@ -1014,6 +1015,28 @@ export default function AdminPaymentSettingsPage() {
                           Day(s)
                         </span>
                       </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="deliveredWorkResponseTimeDays" className="font-['Poppins',sans-serif]">
+                        Delivered work response time:
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="deliveredWorkResponseTimeDays"
+                          type="number"
+                          value={settings.deliveredWorkResponseTimeDays === "" ? "" : settings.deliveredWorkResponseTimeDays ?? 0}
+                          onChange={(e) => updateField("deliveredWorkResponseTimeDays", parseNumberInput(e.target.value, "float"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
+                          min="0"
+                          step="0.01"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
+                          Day(s)
+                        </span>
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        If the client does not approve or request revision within this time, the order is auto-completed.
+                      </p>
                     </div>
                     <div>
                       <Label htmlFor="disputeResponseTimeHours" className="font-['Poppins',sans-serif]">
