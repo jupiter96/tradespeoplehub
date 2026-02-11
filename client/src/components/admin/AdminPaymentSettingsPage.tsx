@@ -916,9 +916,10 @@ export default function AdminPaymentSettingsPage() {
                           id="feedbackReviewValidityDays"
                           type="number"
                           value={settings.feedbackReviewValidityDays === "" ? "" : settings.feedbackReviewValidityDays ?? 0}
-                          onChange={(e) => updateField("feedbackReviewValidityDays", parseNumberInput(e.target.value, "int"))}
+                          onChange={(e) => updateField("feedbackReviewValidityDays", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
+                          step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
                       </div>
@@ -966,9 +967,10 @@ export default function AdminPaymentSettingsPage() {
                           id="arbitrationFeeDeadlineDays"
                           type="number"
                           value={settings.arbitrationFeeDeadlineDays === "" ? "" : settings.arbitrationFeeDeadlineDays ?? 0}
-                          onChange={(e) => updateField("arbitrationFeeDeadlineDays", parseNumberInput(e.target.value, "int"))}
+                          onChange={(e) => updateField("arbitrationFeeDeadlineDays", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
+                          step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
                       </div>
@@ -986,9 +988,10 @@ export default function AdminPaymentSettingsPage() {
                           id="waitingTimeToAcceptOffer"
                           type="number"
                           value={settings.waitingTimeToAcceptOffer === "" ? "" : settings.waitingTimeToAcceptOffer ?? 0}
-                          onChange={(e) => updateField("waitingTimeToAcceptOffer", parseNumberInput(e.target.value, "int"))}
+                          onChange={(e) => updateField("waitingTimeToAcceptOffer", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
+                          step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
@@ -1002,9 +1005,10 @@ export default function AdminPaymentSettingsPage() {
                           id="waitingTimeToApproveOrder"
                           type="number"
                           value={settings.waitingTimeToApproveOrder === "" ? "" : settings.waitingTimeToApproveOrder ?? 0}
-                          onChange={(e) => updateField("waitingTimeToApproveOrder", parseNumberInput(e.target.value, "int"))}
+                          onChange={(e) => updateField("waitingTimeToApproveOrder", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
+                          step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
                           Day(s)
@@ -1020,9 +1024,10 @@ export default function AdminPaymentSettingsPage() {
                           id="disputeResponseTimeHours"
                           type="number"
                           value={settings.disputeResponseTimeHours === "" ? "" : settings.disputeResponseTimeHours ?? 0}
-                          onChange={(e) => updateField("disputeResponseTimeHours", parseNumberInput(e.target.value, "int"))}
+                          onChange={(e) => updateField("disputeResponseTimeHours", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
+                          step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
                           Hour(s)
@@ -1039,9 +1044,10 @@ export default function AdminPaymentSettingsPage() {
                           id="stepInDays"
                           type="number"
                           value={settings.stepInDays === "" ? "" : settings.stepInDays ?? 0}
-                          onChange={(e) => updateField("stepInDays", parseNumberInput(e.target.value, "int"))}
+                          onChange={(e) => updateField("stepInDays", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
+                          step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
                       </div>

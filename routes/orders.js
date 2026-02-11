@@ -4838,10 +4838,10 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     const stepInDays = settings.stepInDays;
     const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
 
-    // Calculate negotiation deadline (prefer step-in days if set)
+    // Calculate negotiation deadline (prefer step-in days if set; supports decimal days e.g. 0.01 = 14.4 mins)
     const negotiationDeadline = new Date();
     if (typeof stepInDays === 'number' && stepInDays > 0) {
-      negotiationDeadline.setDate(negotiationDeadline.getDate() + stepInDays);
+      negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInDays * 24 * 60 * 60 * 1000);
     } else {
       negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
     }
@@ -5425,7 +5425,7 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
 
     if (!dispute.arbitrationFeeDeadline && dispute.arbitrationPayments.length === 1) {
       const feeDeadline = new Date();
-      feeDeadline.setDate(feeDeadline.getDate() + feeDeadlineDays);
+      feeDeadline.setTime(feeDeadline.getTime() + feeDeadlineDays * 24 * 60 * 60 * 1000);
       dispute.arbitrationFeeDeadline = feeDeadline;
     }
 
