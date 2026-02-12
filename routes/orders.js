@@ -4685,13 +4685,17 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       return res.status(400).json({ error: 'A dispute already exists for this order' });
     }
 
-    // Get dispute response time from payment settings
+    // Get dispute response time from payment settings (in hours; supports decimals e.g. 0.5 = 30 mins)
     const settings = await PaymentSettings.getSettings();
-    const responseTimeHours = settings.disputeResponseTimeHours || 48;
+    const responseTimeHoursRaw = typeof settings.disputeResponseTimeHours === 'number'
+      ? settings.disputeResponseTimeHours
+      : parseFloat(settings.disputeResponseTimeHours || '0');
+    const responseTimeHours = Number.isFinite(responseTimeHoursRaw) && responseTimeHoursRaw > 0
+      ? responseTimeHoursRaw
+      : 48;
 
-    // Calculate response deadline
-    const responseDeadline = new Date();
-    responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
+    // Calculate response deadline using milliseconds to correctly handle fractional hours
+    const responseDeadline = new Date(Date.now() + responseTimeHours * 60 * 60 * 1000);
 
     // Determine claimant and respondent
     const claimantId = req.user.id;
