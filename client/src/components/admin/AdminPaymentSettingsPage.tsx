@@ -67,10 +67,14 @@ export default function AdminPaymentSettingsPage() {
     inviteToReview: "Activated",
     waitingTimeToAcceptOffer: 2,
     waitingTimeToApproveOrder: 2,
+    waitingTimeToApproveOrderHours: 48,
     deliveredWorkResponseTimeDays: 2,
+    deliveredWorkResponseTimeHours: 48,
     stepInAmount: 5.00,
     stepInDays: 1,
+    stepInHours: 24,
     arbitrationFeeDeadlineDays: 1,
+    arbitrationFeeDeadlineHours: 24,
     disputeResponseTimeHours: 48,
     searchApiKey: "",
     serviceFees: 0,
@@ -960,20 +964,20 @@ export default function AdminPaymentSettingsPage() {
                     </div>
 
                     <div>
-                      <Label htmlFor="arbitrationFeeDeadlineDays" className="font-['Poppins',sans-serif]">
-                        Arbitration fee deadline In Day(s):
+                      <Label htmlFor="arbitrationFeeDeadlineHours" className="font-['Poppins',sans-serif]">
+                        Arbitration fee deadline:
                       </Label>
                       <div className="relative mt-2">
                         <Input
-                          id="arbitrationFeeDeadlineDays"
+                          id="arbitrationFeeDeadlineHours"
                           type="number"
-                          value={settings.arbitrationFeeDeadlineDays === "" ? "" : settings.arbitrationFeeDeadlineDays ?? 0}
-                          onChange={(e) => updateField("arbitrationFeeDeadlineDays", parseNumberInput(e.target.value, "float"))}
+                          value={settings.arbitrationFeeDeadlineHours === "" ? "" : settings.arbitrationFeeDeadlineHours ?? 0}
+                          onChange={(e) => updateField("arbitrationFeeDeadlineHours", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                           step="0.01"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
                     </div>
                   </div>
@@ -998,40 +1002,40 @@ export default function AdminPaymentSettingsPage() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="waitingTimeToApproveOrder" className="font-['Poppins',sans-serif]">
+                      <Label htmlFor="waitingTimeToApproveOrderHours" className="font-['Poppins',sans-serif]">
                         Waiting time to approve order:
                       </Label>
                       <div className="relative mt-2">
                         <Input
-                          id="waitingTimeToApproveOrder"
+                          id="waitingTimeToApproveOrderHours"
                           type="number"
-                          value={settings.waitingTimeToApproveOrder === "" ? "" : settings.waitingTimeToApproveOrder ?? 0}
-                          onChange={(e) => updateField("waitingTimeToApproveOrder", parseNumberInput(e.target.value, "float"))}
+                          value={settings.waitingTimeToApproveOrderHours === "" ? "" : settings.waitingTimeToApproveOrderHours ?? 0}
+                          onChange={(e) => updateField("waitingTimeToApproveOrderHours", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                           step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
-                          Day(s)
+                          hours
                         </span>
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="deliveredWorkResponseTimeDays" className="font-['Poppins',sans-serif]">
+                      <Label htmlFor="deliveredWorkResponseTimeHours" className="font-['Poppins',sans-serif]">
                         Delivered work response time:
                       </Label>
                       <div className="relative mt-2">
                         <Input
-                          id="deliveredWorkResponseTimeDays"
+                          id="deliveredWorkResponseTimeHours"
                           type="number"
-                          value={settings.deliveredWorkResponseTimeDays === "" ? "" : settings.deliveredWorkResponseTimeDays ?? 0}
-                          onChange={(e) => updateField("deliveredWorkResponseTimeDays", parseNumberInput(e.target.value, "float"))}
+                          value={settings.deliveredWorkResponseTimeHours === "" ? "" : settings.deliveredWorkResponseTimeHours ?? 0}
+                          onChange={(e) => updateField("deliveredWorkResponseTimeHours", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                           step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
-                          Day(s)
+                          hours
                         </span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
@@ -1053,26 +1057,26 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
-                          Hour(s)
+                          hours
                         </span>
                       </div>
                     </div>
 
                     <div>
-                      <Label htmlFor="stepInDays" className="font-['Poppins',sans-serif]">
-                        Step In Day(s):
+                      <Label htmlFor="stepInHours" className="font-['Poppins',sans-serif]">
+                        Step in:
                       </Label>
                       <div className="relative mt-2">
                         <Input
-                          id="stepInDays"
+                          id="stepInHours"
                           type="number"
-                          value={settings.stepInDays === "" ? "" : settings.stepInDays ?? 0}
-                          onChange={(e) => updateField("stepInDays", parseNumberInput(e.target.value, "float"))}
+                          value={settings.stepInHours === "" ? "" : settings.stepInHours ?? 0}
+                          onChange={(e) => updateField("stepInHours", parseNumberInput(e.target.value, "float"))}
                           className="pr-16 font-['Poppins',sans-serif] no-spinner"
                           min="0"
                           step="0.01"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
                     </div>
 

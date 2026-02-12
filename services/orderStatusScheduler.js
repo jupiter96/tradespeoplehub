@@ -104,15 +104,19 @@ const REVIEW_REMINDER_HOURS_AFTER = 24;
 async function processAutoCompleteDeliveredOrders() {
   try {
     const settings = await PaymentSettings.getSettings();
-    // Use delivered work response time if set, else fall back to waiting time to approve order
-    const responseTimeDays = typeof settings.deliveredWorkResponseTimeDays === 'number' && settings.deliveredWorkResponseTimeDays >= 0
-      ? settings.deliveredWorkResponseTimeDays
-      : (typeof settings.waitingTimeToApproveOrder === 'number' ? settings.waitingTimeToApproveOrder : 0);
+    // Use delivered work response time (hours) if set, else fall back to waiting time to approve order (hours)
+    const responseTimeHours = typeof settings.deliveredWorkResponseTimeHours === 'number' && settings.deliveredWorkResponseTimeHours >= 0
+      ? settings.deliveredWorkResponseTimeHours
+      : (typeof settings.deliveredWorkResponseTimeDays === 'number' && settings.deliveredWorkResponseTimeDays >= 0
+        ? settings.deliveredWorkResponseTimeDays * 24
+        : (typeof settings.waitingTimeToApproveOrderHours === 'number' && settings.waitingTimeToApproveOrderHours >= 0
+          ? settings.waitingTimeToApproveOrderHours
+          : (typeof settings.waitingTimeToApproveOrder === 'number' ? settings.waitingTimeToApproveOrder * 24 : 0)));
 
-    if (responseTimeDays <= 0) return;
+    if (responseTimeHours <= 0) return;
 
     const now = new Date();
-    const threshold = new Date(now.getTime() - responseTimeDays * 24 * 60 * 60 * 1000);
+    const threshold = new Date(now.getTime() - responseTimeHours * 60 * 60 * 1000);
 
     const orders = await Order.find({
       status: { $in: ['delivered', 'Delivered'] },
@@ -165,7 +169,7 @@ async function processAutoCompleteDeliveredOrders() {
         const baseDate = order.deliveredDate
           ? new Date(order.deliveredDate)
           : (order.metadata?.professionalCompleteRequest?.requestedAt ? new Date(order.metadata.professionalCompleteRequest.requestedAt) : new Date());
-        const deadlineDate = new Date(baseDate.getTime() + responseTimeDays * 24 * 60 * 60 * 1000);
+        const deadlineDate = new Date(baseDate.getTime() + responseTimeHours * 60 * 60 * 1000);
 
         order.status = 'Completed';
         order.deliveryStatus = 'completed';

@@ -217,10 +217,20 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 2,
       min: 0,
     },
+    // Waiting time to approve order, in hours (overrides days if set)
+    waitingTimeToApproveOrderHours: {
+      type: Number,
+      min: 0,
+    },
     // Time for client to respond to delivered work (approve or request revision). After this, order auto-completes.
     deliveredWorkResponseTimeDays: {
       type: Number,
       default: 2,
+      min: 0,
+    },
+    // Delivered work response time, in hours (overrides days if set)
+    deliveredWorkResponseTimeHours: {
+      type: Number,
       min: 0,
     },
     stepInAmount: {
@@ -233,9 +243,19 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 1,
       min: 0,
     },
+    // Step-in / negotiation deadline, in hours (overrides days if set)
+    stepInHours: {
+      type: Number,
+      min: 0,
+    },
     arbitrationFeeDeadlineDays: {
       type: Number,
       default: 1,
+      min: 0,
+    },
+    // Arbitration fee deadline, in hours (overrides days if set)
+    arbitrationFeeDeadlineHours: {
+      type: Number,
       min: 0,
     },
     // Cancellation response time in hours (default 24 hours)

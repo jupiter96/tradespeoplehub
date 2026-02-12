@@ -4833,15 +4833,16 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
       return res.status(400).json({ error: 'The response deadline has passed' });
     }
 
-    // Get negotiation time from payment settings
+    // Get negotiation time from payment settings (step-in in hours, or days converted to hours)
     const settings = await PaymentSettings.getSettings();
-    const stepInDays = settings.stepInDays;
+    const stepInHours = typeof settings.stepInHours === 'number' && settings.stepInHours >= 0
+      ? settings.stepInHours
+      : (typeof settings.stepInDays === 'number' && settings.stepInDays > 0 ? settings.stepInDays * 24 : null);
     const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
 
-    // Calculate negotiation deadline (prefer step-in days if set; supports decimal days e.g. 0.01 = 14.4 mins)
     const negotiationDeadline = new Date();
-    if (typeof stepInDays === 'number' && stepInDays > 0) {
-      negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInDays * 24 * 60 * 60 * 1000);
+    if (typeof stepInHours === 'number' && stepInHours > 0) {
+      negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInHours * 60 * 60 * 1000);
     } else {
       negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
     }
@@ -4945,11 +4946,13 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
         return res.status(400).json({ error: 'The response deadline has passed. You must respond before the dispute initial response time.' });
       }
       const settings = await PaymentSettings.getSettings();
-      const stepInDays = settings.stepInDays;
+      const stepInHours = typeof settings.stepInHours === 'number' && settings.stepInHours >= 0
+        ? settings.stepInHours
+        : (typeof settings.stepInDays === 'number' && settings.stepInDays > 0 ? settings.stepInDays * 24 : null);
       const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
       const negotiationDeadline = new Date();
-      if (typeof stepInDays === 'number' && stepInDays > 0) {
-        negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInDays * 24 * 60 * 60 * 1000);
+      if (typeof stepInHours === 'number' && stepInHours > 0) {
+        negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInHours * 60 * 60 * 1000);
       } else {
         negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
       }
@@ -5330,7 +5333,9 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
     // Get arbitration fee from settings
     const settings = await PaymentSettings.getSettings();
     const arbitrationFee = settings.stepInAmount ?? settings.arbitrationFee ?? 50;
-    const feeDeadlineDays = settings.arbitrationFeeDeadlineDays || 1;
+    const feeDeadlineHours = typeof settings.arbitrationFeeDeadlineHours === 'number' && settings.arbitrationFeeDeadlineHours >= 0
+      ? settings.arbitrationFeeDeadlineHours
+      : ((settings.arbitrationFeeDeadlineDays || 1) * 24);
 
     // Get the user requesting arbitration
     const requestingUser = isClaimant 
@@ -5454,7 +5459,7 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
 
     if (!dispute.arbitrationFeeDeadline && dispute.arbitrationPayments.length === 1) {
       const feeDeadline = new Date();
-      feeDeadline.setTime(feeDeadline.getTime() + feeDeadlineDays * 24 * 60 * 60 * 1000);
+      feeDeadline.setTime(feeDeadline.getTime() + feeDeadlineHours * 60 * 60 * 1000);
       dispute.arbitrationFeeDeadline = feeDeadline;
     }
 

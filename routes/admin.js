@@ -3062,11 +3062,16 @@ router.post('/verification-reminders/trigger', requireAdmin, async (req, res) =>
   }
 });
 
-// Get payment settings (admin only)
+// Get payment settings (admin only). Expose hour-based fields for "Other settings" (use hours if set, else days * 24).
 router.get('/payment-settings', requireAdmin, async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
-    res.json({ settings });
+    const s = settings.toObject ? settings.toObject() : { ...settings };
+    if (s.waitingTimeToApproveOrderHours == null) s.waitingTimeToApproveOrderHours = (s.waitingTimeToApproveOrder ?? 2) * 24;
+    if (s.deliveredWorkResponseTimeHours == null) s.deliveredWorkResponseTimeHours = (s.deliveredWorkResponseTimeDays ?? 2) * 24;
+    if (s.arbitrationFeeDeadlineHours == null) s.arbitrationFeeDeadlineHours = (s.arbitrationFeeDeadlineDays ?? 1) * 24;
+    if (s.stepInHours == null) s.stepInHours = (s.stepInDays ?? 1) * 24;
+    res.json({ settings: s });
   } catch (error) {
     console.error('Error fetching payment settings:', error);
     res.status(500).json({ error: 'Failed to fetch payment settings' });
