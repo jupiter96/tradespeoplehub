@@ -66,8 +66,6 @@ export default function AdminPaymentSettingsPage() {
     feedbackReviewValidityDays: 90,
     inviteToReview: "Activated",
     waitingTimeToAcceptOffer: 2,
-    waitingTimeToApproveOrder: 2,
-    waitingTimeToApproveOrderHours: 48,
     deliveredWorkResponseTimeDays: 2,
     deliveredWorkResponseTimeHours: 48,
     stepInAmount: 5.00,
@@ -986,7 +984,7 @@ export default function AdminPaymentSettingsPage() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="waitingTimeToAcceptOffer" className="font-['Poppins',sans-serif]">
-                        Waiting time to accept offer:
+                        Waiting time to accept custom offer:
                       </Label>
                       <div className="relative mt-2">
                         <Input
@@ -999,25 +997,6 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="waitingTimeToApproveOrderHours" className="font-['Poppins',sans-serif]">
-                        Waiting time to approve order:
-                      </Label>
-                      <div className="relative mt-2">
-                        <Input
-                          id="waitingTimeToApproveOrderHours"
-                          type="number"
-                          value={settings.waitingTimeToApproveOrderHours === "" ? "" : settings.waitingTimeToApproveOrderHours ?? 0}
-                          onChange={(e) => updateField("waitingTimeToApproveOrderHours", parseNumberInput(e.target.value, "float"))}
-                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
-                          hours
-                        </span>
                       </div>
                     </div>
                     <div>

@@ -104,14 +104,12 @@ const REVIEW_REMINDER_HOURS_AFTER = 24;
 async function processAutoCompleteDeliveredOrders() {
   try {
     const settings = await PaymentSettings.getSettings();
-    // Use delivered work response time (hours) if set, else fall back to waiting time to approve order (hours)
+    // Use delivered work response time (hours) only
     const responseTimeHours = typeof settings.deliveredWorkResponseTimeHours === 'number' && settings.deliveredWorkResponseTimeHours >= 0
       ? settings.deliveredWorkResponseTimeHours
       : (typeof settings.deliveredWorkResponseTimeDays === 'number' && settings.deliveredWorkResponseTimeDays >= 0
         ? settings.deliveredWorkResponseTimeDays * 24
-        : (typeof settings.waitingTimeToApproveOrderHours === 'number' && settings.waitingTimeToApproveOrderHours >= 0
-          ? settings.waitingTimeToApproveOrderHours
-          : (typeof settings.waitingTimeToApproveOrder === 'number' ? settings.waitingTimeToApproveOrder * 24 : 0)));
+        : 48);
 
     if (responseTimeHours <= 0) return;
 

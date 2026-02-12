@@ -4758,10 +4758,16 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
 
     await dispute.save();
 
-    // Update order status to disputed
+    // Update order status and metadata so cancel/arbitration/cancel flow work for both client- and pro-initiated disputes
     order.status = 'disputed';
     order.deliveryStatus = 'dispute';
     order.disputeId = disputeId;
+    if (!order.metadata) order.metadata = {};
+    order.metadata.disputeStatus = 'open';
+    order.metadata.disputeClaimantId = claimantId;
+    order.metadata.disputeRespondentId = respondentId?.toString?.() || respondentId;
+    order.metadata.disputeResponseDeadline = responseDeadline;
+    order.metadata.disputeRespondedAt = null;
     await order.save();
     await syncCustomOfferMessageStatus(order);
 
@@ -4878,6 +4884,12 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     dispute.arbitrationFeeAmount = settings.stepInAmount ?? settings.arbitrationFee ?? dispute.arbitrationFeeAmount;
 
     await dispute.save();
+
+    // Keep order.metadata in sync for cancel/arbitration flows
+    if (!order.metadata) order.metadata = {};
+    order.metadata.disputeStatus = 'negotiation';
+    order.metadata.disputeRespondedAt = dispute.respondedAt;
+    await order.save();
 
     runBackgroundTask(
       () => sendDisputeRespondedNotifications({
@@ -4999,6 +5011,14 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
     dispute.messages.push(newMessage);
 
     await dispute.save();
+
+    // If we transitioned to negotiation (respondent's first message), keep order.metadata in sync
+    if (dispute.status === 'negotiation') {
+      if (!order.metadata) order.metadata = {};
+      order.metadata.disputeStatus = 'negotiation';
+      order.metadata.disputeRespondedAt = dispute.respondedAt;
+      await order.save();
+    }
 
     res.json({ 
       message: 'Message added successfully',
@@ -5320,9 +5340,9 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       return res.status(400).json({ error: 'Dispute must be in negotiation phase to request arbitration' });
     }
 
-    // Check if user is either claimant or respondent
-    const claimantId = order.metadata.disputeClaimantId;
-    const respondentId = order.metadata.disputeRespondentId;
+    // Check if user is either claimant or respondent (use dispute doc when metadata missing)
+    const claimantId = order.metadata?.disputeClaimantId ?? dispute.claimantId?.toString?.() ?? dispute.claimantId;
+    const respondentId = order.metadata?.disputeRespondentId ?? dispute.respondentId?.toString?.() ?? dispute.respondentId;
     const isClaimant = claimantId?.toString() === req.user.id;
     const isRespondent = respondentId?.toString() === req.user.id;
 
@@ -5341,11 +5361,8 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       ? settings.arbitrationFeeDeadlineHours
       : ((settings.arbitrationFeeDeadlineDays || 1) * 24);
 
-    // Get the user requesting arbitration
-    const requestingUser = isClaimant 
-      ? await User.findById(order.client?._id || order.client)
-      : await User.findById(order.professional?._id || order.professional);
-
+    // Requesting user is the current user (claimant or respondent)
+    const requestingUser = await User.findById(req.user.id);
     if (!requestingUser) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -5470,6 +5487,10 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
     const paidUserIds = new Set(dispute.arbitrationPayments.map((p) => p.userId?.toString()));
     const bothPaid = paidUserIds.has(claimantId?.toString()) && paidUserIds.has(respondentId?.toString());
 
+    if (!order.metadata) order.metadata = {};
+    if (order.metadata.disputeClaimantId == null) order.metadata.disputeClaimantId = claimantId?.toString?.() ?? claimantId;
+    if (order.metadata.disputeRespondentId == null) order.metadata.disputeRespondentId = respondentId?.toString?.() ?? respondentId;
+
     if (bothPaid) {
       dispute.status = 'admin_arbitration';
       dispute.arbitrationRequested = true;
@@ -5534,7 +5555,8 @@ router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['a
     }
 
     // Check if dispute is in admin arbitration
-    if (order.metadata?.disputeStatus !== 'admin_arbitration' || dispute.status !== 'admin_arbitration') {
+    const disputeStatusForOrder = order.metadata?.disputeStatus ?? dispute.status;
+    if (disputeStatusForOrder !== 'admin_arbitration' || dispute.status !== 'admin_arbitration') {
       return res.status(400).json({ error: 'Dispute must be in admin arbitration phase' });
     }
 
@@ -5543,8 +5565,8 @@ router.post('/:orderId/dispute/admin-decide', authenticateToken, requireRole(['a
       return res.status(400).json({ error: 'Both parties must pay the arbitration fee before a decision can be made' });
     }
 
-    const claimantId = order.metadata.disputeClaimantId;
-    const respondentId = order.metadata.disputeRespondentId;
+    const claimantId = order.metadata?.disputeClaimantId ?? dispute.claimantId?.toString?.() ?? dispute.claimantId;
+    const respondentId = order.metadata?.disputeRespondentId ?? dispute.respondentId?.toString?.() ?? dispute.respondentId;
     const loserId = winnerId === claimantId?.toString() ? respondentId?.toString() : claimantId?.toString();
 
     if (winnerId !== claimantId?.toString() && winnerId !== respondentId?.toString()) {
@@ -5664,20 +5686,27 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Check if dispute exists
-    if (!order.disputeId || !order.metadata?.disputeStatus) {
+    if (!order.disputeId) {
       return res.status(400).json({ error: 'No dispute found for this order' });
     }
 
+    // Use dispute document when metadata is missing (e.g. disputes created before metadata sync)
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    const disputeStatus = order.metadata?.disputeStatus ?? dispute.status;
+    const claimantId = order.metadata?.disputeClaimantId ?? dispute.claimantId?.toString?.() ?? dispute.claimantId;
+    const respondentId = order.metadata?.disputeRespondentId ?? dispute.respondentId?.toString?.() ?? dispute.respondentId;
+
     // Check if dispute is in a cancellable state (open, negotiation, or admin_arbitration)
     const cancellableStatuses = ['open', 'negotiation', 'admin_arbitration'];
-    if (!cancellableStatuses.includes(order.metadata.disputeStatus)) {
+    if (!cancellableStatuses.includes(disputeStatus)) {
       return res.status(400).json({ error: 'Dispute cannot be cancelled in its current state' });
     }
 
     // Check if user is either claimant or respondent
-    const claimantId = order.metadata.disputeClaimantId;
-    const respondentId = order.metadata.disputeRespondentId;
     const isClaimant = claimantId?.toString() === req.user.id;
     const isRespondent = respondentId?.toString() === req.user.id;
 
@@ -5724,7 +5753,10 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     order.disputeId = null;
     order.status = 'In Progress'; // Restore to In Progress (which allows delivery)
     order.deliveryStatus = 'delivered'; // Restore to delivered status
-    
+
+    // Remove dispute document so order no longer shows as disputed
+    await Dispute.deleteOne({ order: order._id });
+
     // Clear dispute metadata
     if (order.metadata) {
       delete order.metadata.disputeReason;

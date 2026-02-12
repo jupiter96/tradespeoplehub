@@ -3067,7 +3067,6 @@ router.get('/payment-settings', requireAdmin, async (req, res) => {
   try {
     const settings = await PaymentSettings.getSettings();
     const s = settings.toObject ? settings.toObject() : { ...settings };
-    if (s.waitingTimeToApproveOrderHours == null) s.waitingTimeToApproveOrderHours = (s.waitingTimeToApproveOrder ?? 2) * 24;
     if (s.deliveredWorkResponseTimeHours == null) s.deliveredWorkResponseTimeHours = (s.deliveredWorkResponseTimeDays ?? 2) * 24;
     if (s.arbitrationFeeDeadlineHours == null) s.arbitrationFeeDeadlineHours = (s.arbitrationFeeDeadlineDays ?? 1) * 24;
     if (s.stepInHours == null) s.stepInHours = (s.stepInDays ?? 1) * 24;
