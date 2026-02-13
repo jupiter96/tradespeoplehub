@@ -2416,9 +2416,30 @@ export default function ClientOrdersSection() {
             {currentOrder.status === "Completed" && (
               <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
-                  {currentOrder.metadata?.autoApprovedAt || currentOrder.metadata?.autoApprovedDeadlineAt
-                    ? "Your order has been completed automatically."
-                    : "Your order has been completed!"}
+                  {(() => {
+                    const deadline = currentOrder.metadata?.autoApprovedAt || currentOrder.metadata?.autoApprovedDeadlineAt;
+                    if (deadline) {
+                      return "Your order has been completed automatically.";
+                    }
+                    const disputeInfo = currentOrder.disputeInfo;
+                    const isArbUnpaidAutoClose =
+                      disputeInfo?.autoClosed &&
+                      typeof disputeInfo?.decisionNotes === "string" &&
+                      disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+                    if (disputeInfo?.adminDecision) {
+                      return "Dispute Resolved and Order Completed!";
+                    }
+                    if (isArbUnpaidAutoClose) {
+                      return "Dispute automatically closed. Order completed!";
+                    }
+                    if (disputeInfo?.autoClosed) {
+                      return "Dispute automatically closed & Order completed!";
+                    }
+                    if (disputeInfo?.status === "closed" && disputeInfo?.acceptedByRole === "professional") {
+                      return "Dispute Resolved & Order Completed!";
+                    }
+                    return "Your order has been completed!";
+                  })()}
                 </h3>
                 <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words whitespace-pre-line">
                   {(() => {
@@ -2428,6 +2449,38 @@ export default function ClientOrdersSection() {
                     if (deadline) {
                       const deadlineStr = formatDateOrdinal(deadline);
                       return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.`;
+                    }
+                    const disputeInfo = currentOrder.disputeInfo;
+                    const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
+                    const isWinnerClient = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
+                    const tradingName = (currentOrder as any).professional || "the professional";
+                    const feeDeadline = disputeInfo?.arbitrationFeeDeadline
+                      ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "the deadline";
+                    const isArbUnpaidAutoClose =
+                      disputeInfo?.autoClosed &&
+                      typeof disputeInfo?.decisionNotes === "string" &&
+                      disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+                    if (disputeInfo?.adminDecision) {
+                      return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+                    }
+                    if (isArbUnpaidAutoClose) {
+                      return isWinnerClient
+                        ? `The dispute was automatically decided and closed, with the order marked as completed due to ${tradingName} not paying the arbitration fees before ${feeDeadline}.`
+                        : `The dispute was automatically decided and closed, with the order marked as completed due to you not paying the arbitration fees before ${feeDeadline}.`;
+                    }
+                    if (disputeInfo?.autoClosed && isWinnerClient) {
+                      return `The dispute was automatically decided and closed, with the order marked as completed due to no response from ${tradingName}.`;
+                    }
+                    if (disputeInfo?.autoClosed) {
+                      return "The dispute was automatically decided and closed, with the order marked as completed due to no response from you.";
+                    }
+                    if (disputeInfo?.status === "closed" && disputeInfo?.acceptedByRole === "professional") {
+                      return "The dispute was resolved through acceptance of a settlement offer, and the order has been marked as completed.";
                     }
                     return "Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.";
                   })()}
