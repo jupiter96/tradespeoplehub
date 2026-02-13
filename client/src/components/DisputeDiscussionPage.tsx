@@ -13,7 +13,7 @@ import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
-import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X, XCircle, CreditCard, Wallet } from "lucide-react";
+import { MessageCircle, Clock, AlertCircle, Send, Paperclip, X, XCircle, CreditCard, Wallet, Info } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
@@ -269,6 +269,18 @@ export default function DisputeDiscussionPage() {
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  /** DD-MM-YYYY HH:MM AM/PM for arbitration warning modal */
+  const formatArbitrationDeadline = (dateString?: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    const d = date.getDate().toString().padStart(2, "0");
+    const m = (date.getMonth() + 1).toString().padStart(2, "0");
+    const y = date.getFullYear();
+    const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+    return `${d}-${m}-${y} ${time}`;
   };
 
   const fetchWalletBalance = async () => {
@@ -1163,12 +1175,17 @@ export default function DisputeDiscussionPage() {
 
         <Dialog open={isArbitrationWarningOpen} onOpenChange={setIsArbitrationWarningOpen}>
           <DialogContent className="w-[90vw] max-w-[420px]">
+            <div className="flex justify-center mb-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#b3d9f2]">
+                <Info className="h-5 w-5 text-[#3D78CB]" />
+              </div>
+            </div>
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] text-center">
                 Warning
               </DialogTitle>
               <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] text-center">
-                {`You can ask our dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}.`}
+                {`Warning! You can ask our dispute team to step in after ${formatArbitrationDeadline(dispute?.negotiationDeadline) || "the deadline"}.`}
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-center mt-4">
