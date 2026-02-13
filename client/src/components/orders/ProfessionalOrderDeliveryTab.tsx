@@ -162,12 +162,16 @@ export function ProfessionalOrderDeliveryCompletionSection({
   order,
   onOpenReviewModal,
   onStartConversation,
+  onViewDispute,
 }: {
   order: Order;
   onOpenReviewModal: () => void;
   onStartConversation: (params: { id: string; name: string; avatar?: string }) => void;
+  onViewDispute?: () => void;
 }) {
   if (order.deliveryStatus !== "completed") return null;
+
+  const showViewDispute = (order as any).disputeInfo?.status === 'closed' && (order as any).disputeId;
 
   return (
     <div className="text-center py-8 mt-6 pt-6 border-t border-gray-200">
@@ -181,12 +185,21 @@ export function ProfessionalOrderDeliveryCompletionSection({
         This order has been successfully completed
       </p>
       <div className="flex gap-3 justify-center">
-        <Button
-          onClick={onOpenReviewModal}
-          className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[13px]"
-        >
-          View Review
-        </Button>
+        {showViewDispute && onViewDispute ? (
+          <Button
+            onClick={onViewDispute}
+            className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[13px]"
+          >
+            View Dispute
+          </Button>
+        ) : (
+          <Button
+            onClick={onOpenReviewModal}
+            className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[13px]"
+          >
+            View Review
+          </Button>
+        )}
         <Button
           onClick={() => {
             if (order.client && order.clientId) {

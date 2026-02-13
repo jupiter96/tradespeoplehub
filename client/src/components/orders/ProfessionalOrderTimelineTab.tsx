@@ -735,13 +735,23 @@ export default function ProfessionalOrderTimelineTab({
               return `This order has been completed successfully. ${currentOrder.rating ? `The client has left a ${currentOrder.rating}-star review.` : 'The client may leave a review for this order.'}`;
             })()}
           </p>
-          <Button
-            onClick={() => onOpenModal('professionalReview')}
-            className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-          >
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            View Review
-          </Button>
+          {(currentOrder as any).disputeInfo?.status === 'closed' && (currentOrder as any).disputeId ? (
+            <Button
+              onClick={() => navigate(`/dispute/${(currentOrder as any).disputeId}`)}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              View Dispute
+            </Button>
+          ) : (
+            <Button
+              onClick={() => onOpenModal('professionalReview')}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              View Review
+            </Button>
+          )}
         </div>
       )}
 

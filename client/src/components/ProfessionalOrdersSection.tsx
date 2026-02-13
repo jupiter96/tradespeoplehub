@@ -1577,6 +1577,7 @@ function ProfessionalOrdersSection() {
                       setClientReviewData(null);
                     }}
                     onStartConversation={startConversation}
+                    onViewDispute={currentOrder.disputeId ? () => navigate(`/dispute/${currentOrder.disputeId}`) : undefined}
                   />
                 )}
               </TabsContent>

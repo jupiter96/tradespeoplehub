@@ -4321,6 +4321,18 @@ export default function ClientOrdersSection() {
                     )}
                   </div>
 
+                  {currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeId && (
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        View Dispute
+                      </Button>
+                    </div>
+                  )}
+
                   {currentOrder.rating && (
                     <>
                       <Separator />
