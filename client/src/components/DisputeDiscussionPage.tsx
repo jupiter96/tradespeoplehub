@@ -484,22 +484,22 @@ export default function DisputeDiscussionPage() {
       return respondentIdStr && msgUserId && String(msgUserId) === String(respondentIdStr);
     }) || (isRespondent && hasReplied)
   );
+  // Negotiation phase: respondent has replied (timer restarts from step-in time) or status is negotiation
   const isNegotiationPhase = Boolean(
     dispute?.negotiationDeadline && (dispute?.status === "negotiation" || respondentHasReplied)
   );
-  // For the label under the timer we want to switch to \"ask admin to step in\"
-  // as soon as the other side has replied or the dispute is in negotiation status,
-  // regardless of other conditions.
+  // Show "ask admin to step in" label as soon as the other side has replied
   const showAdminStepInLabel = Boolean(
     dispute?.status === "negotiation" || respondentHasReplied
   );
   const hasPaidArbitrationFee = Boolean(
     (dispute?.arbitrationPayments || []).some((p: any) => p?.userId?.toString?.() === currentUser?.id)
   );
+  // Show "Ask to admin step in" button as soon as respondent has replied (negotiation phase); no need to wait for negotiationDeadline in state
   const canShowArbitrationButton = Boolean(
     isOrderDispute &&
       order?.id &&
-      isNegotiationPhase &&
+      (isNegotiationPhase || respondentHasReplied) &&
       dispute?.status !== "admin_arbitration" &&
       dispute?.status !== "closed" &&
       !hasPaidArbitrationFee
@@ -880,7 +880,7 @@ export default function DisputeDiscussionPage() {
                     ? "left to ask admin to step in"
                     : `left for ${dispute.respondentName} to respond`}
                 </p>
-                {isNegotiationPhase && (
+                {showAdminStepInLabel && (
                   <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
                     {`If no agreement is reached, either party can ask the dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}. Both parties must pay ${typeof dispute?.arbitrationFeeAmount === "number" ? `£${dispute.arbitrationFeeAmount.toFixed(2)}` : "the required fee"}.`}
                   </p>
