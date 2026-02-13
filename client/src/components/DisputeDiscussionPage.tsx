@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs } from "./JobsContext";
 import { useOrders } from "./OrdersContext";
 import { useAccount } from "./AccountContext";
@@ -18,12 +18,46 @@ import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
+import paypalLogo from "../assets/paypal-logo.png";
+
+const getCardType = (brand?: string, cardNumber?: string): "visa" | "mastercard" | "unknown" => {
+  if (brand) {
+    const b = brand.toLowerCase();
+    if (b.includes("visa")) return "visa";
+    if (b.includes("mastercard") || b.includes("master")) return "mastercard";
+  }
+  if (cardNumber) {
+    const last4 = cardNumber.slice(-4);
+    if (last4.startsWith("4")) return "visa";
+    if (last4.startsWith("5")) return "mastercard";
+  }
+  return "visa";
+};
+
+const VisaLogo = () => (
+  <svg width="48" height="32" viewBox="0 0 56 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+    <rect width="56" height="36" rx="6" fill="white" />
+    <rect x="0.5" y="0.5" width="55" height="35" rx="5.5" stroke="#E5E7EB" strokeWidth="1" />
+    <path d="M22.5859 22.75H19.9609L21.7859 14H24.4109L22.5859 22.75ZM17.7109 14L15.2109 20.125L14.9109 18.375L14.0359 14.875C14.0359 14.875 13.8859 14 13.2859 14H9.08594V14.15C9.08594 14.15 10.2609 14.45 11.5859 15.175L13.9609 22.75H16.8359L20.9609 14H17.7109ZM37.8359 22.75H40.1859L38.2859 14H36.2859C35.8359 14 35.5359 14.3 35.3859 14.75L31.4609 22.75H34.3359L34.9359 21.3H38.3359L38.6359 22.75H37.8359ZM35.6359 19.125L36.9609 16.0625L37.6859 19.125H35.6359ZM31.5859 16.875L32.0359 14.875C32.0359 14.875 30.8609 14 29.6859 14C28.3609 14 25.3359 14.75 25.3359 17.5625C25.3359 20.1875 29.1859 20.1875 29.1859 21.3125C29.1859 22.4375 25.9609 22.1875 24.9359 21.4375L24.4859 23.4375C24.4859 23.4375 25.6609 24 27.4359 24C29.0609 24 31.8359 23.125 31.8359 20.5C31.8359 17.875 28.0359 17.625 28.0359 16.75C28.0359 15.75 30.5359 15.875 31.5859 16.875Z" fill="#1434CB" />
+  </svg>
+);
+
+const MastercardLogo = () => (
+  <svg width="48" height="32" viewBox="0 0 56 36" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+    <rect width="56" height="36" rx="6" fill="white" />
+    <rect x="0.5" y="0.5" width="55" height="35" rx="5.5" stroke="#E5E7EB" strokeWidth="1" />
+    <circle cx="21" cy="18" r="8" fill="#EB001B" />
+    <circle cx="35" cy="18" r="8" fill="#F79E1B" />
+    <path d="M28 11.5C26.25 13 25 15.35 25 18C25 20.65 26.25 23 28 24.5C29.75 23 31 20.65 31 18C31 15.35 29.75 13 28 11.5Z" fill="#FF5F00" />
+  </svg>
+);
 
 export default function DisputeDiscussionPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { getDisputeById, getJobById, addDisputeMessage, makeDisputeOffer } = useJobs();
-  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, requestArbitration, refreshOrders, orders } = useOrders();
+  const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, refreshOrders, orders } = useOrders();
   const { currentUser } = useAccount();
   
   // Try to get dispute from both contexts
@@ -303,32 +337,47 @@ export default function DisputeDiscussionPage() {
   const fetchPaymentMethods = async () => {
     setLoadingPaymentMethods(true);
     try {
-      const response = await fetch(resolveApiUrl("/api/payment-methods"), {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const methods = [
-          {
-            id: "account_balance",
-            type: "account_balance",
-            isDefault: true,
-            balance: walletBalance,
-          },
-          ...(data.paymentMethods || []).map((pm: any) => ({
-            id: pm.paymentMethodId || pm.id,
-            type: "card",
-            cardNumber: pm.cardNumber || `****${pm.last4 || "****"}`,
-            cardHolder: pm.cardHolder || "Card Holder",
-            expiryDate: pm.expiryDate || "MM/YY",
-            isDefault: pm.isDefault || false,
-          })),
-        ];
-        setPaymentMethods(methods);
-        const defaultMethod = methods.find((m: any) => m.isDefault) || methods[0];
-        if (defaultMethod) {
-          setSelectedPayment(defaultMethod.id);
-        }
+      const [methodsResponse, settingsResponse] = await Promise.all([
+        fetch(resolveApiUrl("/api/payment-methods"), { credentials: "include" }),
+        fetch(resolveApiUrl("/api/payment/publishable-key"), { credentials: "include" }),
+      ]);
+      let paypalEnabled = false;
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        paypalEnabled = Boolean(settingsData.paypalEnabled);
+      }
+      const methods: any[] = [
+        {
+          id: "account_balance",
+          type: "account_balance",
+          isDefault: true,
+          balance: walletBalance,
+        },
+      ];
+      if (methodsResponse.ok) {
+        const data = await methodsResponse.json();
+        methods.push(
+          ...(data.paymentMethods || []).map((pm: any) => {
+            const last4 = pm.card?.last4 || pm.last4 || (pm.cardNumber ? String(pm.cardNumber).slice(-4) : null);
+            return {
+              id: pm.paymentMethodId || pm.id,
+              type: "card",
+              cardNumber: last4 ? `**** **** **** ${last4}` : "**** **** **** ****",
+              cardHolder: pm.billing_details?.name || pm.cardHolder || "Card Holder",
+              expiryDate: pm.card?.exp_month && pm.card?.exp_year ? `${pm.card.exp_month}/${(pm.card.exp_year % 100)}` : pm.expiryDate || "MM/YY",
+              isDefault: pm.isDefault || false,
+              brand: pm.card?.brand || pm.brand || "visa",
+            };
+          })
+        );
+      }
+      if (paypalEnabled) {
+        methods.push({ id: "paypal", type: "paypal", isDefault: false });
+      }
+      setPaymentMethods(methods);
+      const defaultMethod = methods.find((m: any) => m.isDefault) || methods[0];
+      if (defaultMethod) {
+        setSelectedPayment(defaultMethod.id);
       }
     } catch (error) {
       console.error("Error fetching payment methods:", error);
@@ -342,6 +391,61 @@ export default function DisputeDiscussionPage() {
       fetchWalletBalance().then(() => fetchPaymentMethods());
     }
   }, [isArbitrationPaymentOpen]);
+
+  // Handle return from PayPal: capture arbitration fee and clear URL params
+  useEffect(() => {
+    const paypalCapture = searchParams.get("paypalCapture");
+    const token = searchParams.get("token");
+    const orderIdFromUrl = searchParams.get("orderId");
+    if (paypalCapture !== "1" || !token || !orderIdFromUrl) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(resolveApiUrl(`/api/orders/${orderIdFromUrl}/dispute/capture-paypal-arbitration`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ paypalOrderId: token }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!response.ok) {
+          toast.error(data.error || "Failed to complete PayPal payment");
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("paypalCapture");
+            next.delete("token");
+            next.delete("orderId");
+            return next;
+          });
+          return;
+        }
+        toast.success(data.message || "Arbitration fee paid.");
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("paypalCapture");
+          next.delete("token");
+          next.delete("orderId");
+          return next;
+        });
+        await refreshOrders();
+        if (!cancelled) setDispute(getOrderDisputeById(disputeId || ""));
+      } catch (e: any) {
+        if (!cancelled) {
+          toast.error(e?.message || "Failed to complete PayPal payment");
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("paypalCapture");
+            next.delete("token");
+            next.delete("orderId");
+            return next;
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [searchParams, disputeId, getOrderDisputeById, refreshOrders, setSearchParams]);
 
   const handleRequestArbitration = async () => {
     if (!order?.id || !isOrderDispute) return;
@@ -368,19 +472,28 @@ export default function DisputeDiscussionPage() {
     }
     setIsPayingArbitration(true);
     try {
-      await toast.promise(
-        requestArbitration(order.id, {
-          paymentMethod: selectedMethod?.type === "account_balance" ? "account_balance" : "card",
-          paymentMethodId: selectedMethod?.type === "card" ? selectedMethod.id : undefined,
-        }),
-        {
-          loading: "Processing...",
-          success: "Arbitration payment submitted.",
-          error: (e: any) => e?.message || "Failed to request arbitration",
-        }
-      );
+      const paymentPayload: { paymentMethod: string; paymentMethodId?: string } = {
+        paymentMethod: selectedMethod?.type === "account_balance" ? "account_balance" : selectedMethod?.type === "paypal" ? "paypal" : "card",
+        paymentMethodId: selectedMethod?.type === "card" ? selectedMethod.id : undefined,
+      };
+      const response = await fetch(resolveApiUrl(`/api/orders/${order.id}/dispute/request-arbitration`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(paymentPayload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to request arbitration");
+      }
+      if (data.requiresRedirect && data.approveUrl) {
+        window.location.href = data.approveUrl;
+        return;
+      }
+      toast.success(data.message || "Arbitration payment submitted.");
       setIsArbitrationPaymentOpen(false);
       setDispute(getOrderDisputeById(disputeId || ""));
+      refreshOrders();
     } catch (error: any) {
       toast.error(error.message || "Failed to request arbitration");
     } finally {
@@ -1227,26 +1340,60 @@ export default function DisputeDiscussionPage() {
               {loadingPaymentMethods ? (
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Loading payment methods...</p>
               ) : (
-                <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment} className="space-y-2">
+                <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment} className="space-y-3">
                   {paymentMethods.map((method: any) => (
                     <div
                       key={method.id}
-                      className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50"
+                      className={`relative border-2 rounded-lg p-3 transition-all ${
+                        selectedPayment === method.id ? "border-[#3B82F6] bg-blue-50/50" : "border-gray-200 hover:border-gray-300"
+                      }`}
                     >
-                      <RadioGroupItem value={method.id} id={`pm-${method.id}`} />
-                      <Label htmlFor={`pm-${method.id}`} className="flex items-center gap-2 text-sm">
-                        {method.type === "account_balance" ? (
-                          <>
-                            <Wallet className="w-4 h-4 text-[#3D78CB]" />
-                            <span>Wallet Balance</span>
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-4 h-4 text-[#3D78CB]" />
-                            <span>{method.cardNumber}</span>
-                          </>
-                        )}
-                      </Label>
+                      <div className="flex items-start gap-3">
+                        <RadioGroupItem value={method.id} id={`pm-${method.id}`} className="mt-0.5 shrink-0" />
+                        <Label htmlFor={`pm-${method.id}`} className="flex-1 min-w-0 cursor-pointer">
+                          {method.type === "account_balance" && (
+                            <div className="flex items-center gap-2">
+                              <Wallet className="w-5 h-5 text-[#3D78CB] shrink-0" />
+                              <div>
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">Wallet Balance</span>
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-0.5">£{walletBalance.toFixed(2)} available</p>
+                              </div>
+                            </div>
+                          )}
+                          {method.type === "card" && (
+                            <div className="flex items-center gap-2">
+                              <div className="shrink-0 scale-90">
+                                {getCardType(method.brand, method.cardNumber) === "visa" ? (
+                                  <VisaLogo />
+                                ) : getCardType(method.brand, method.cardNumber) === "mastercard" ? (
+                                  <MastercardLogo />
+                                ) : (
+                                  <div className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center">
+                                    <CreditCard className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">{method.cardNumber}</span>
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-0.5">
+                                  {method.cardHolder} • Exp. {method.expiryDate}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {method.type === "paypal" && (
+                            <div className="flex items-center gap-2">
+                              <div className="shrink-0">
+                                <img src={paypalLogo} alt="PayPal" className="h-8 w-auto object-contain" style={{ maxWidth: "100px" }} />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">PayPal</span>
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-0.5">Pay securely with PayPal</p>
+                              </div>
+                            </div>
+                          )}
+                        </Label>
+                      </div>
                     </div>
                   ))}
                 </RadioGroup>

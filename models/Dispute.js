@@ -185,6 +185,13 @@ const disputeSchema = new mongoose.Schema(
         default: null,
       },
     }],
+    // Pending PayPal arbitration fee (set when user chooses PayPal; cleared after capture)
+    pendingPayPalArbitration: {
+      paypalOrderId: { type: String, default: null },
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      amount: { type: Number, default: null },
+      createdAt: { type: Date, default: null },
+    },
     // Dispute 해결 정보
     closedAt: {
       type: Date,

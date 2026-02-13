@@ -5350,8 +5350,8 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       return res.status(403).json({ error: 'Only parties involved in the dispute can request arbitration' });
     }
 
-    if (!paymentMethod || !['account_balance', 'card'].includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Invalid payment method. Only card and account_balance are allowed.' });
+    if (!paymentMethod || !['account_balance', 'card', 'paypal'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method. Only card, paypal, and account_balance are allowed.' });
     }
 
     // Get arbitration fee from settings
@@ -5465,6 +5465,66 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       } catch (error) {
         return res.status(500).json({ error: error.message || 'Failed to process card payment' });
       }
+    } else if (paymentMethod === 'paypal') {
+      // Create PayPal order for arbitration fee; capture happens in separate endpoint after user approves
+      try {
+        const environment = getPayPalClient(settings);
+        const client = new paypal.core.PayPalHttpClient(environment);
+        const paypalCommissionPercentage = settings.paypalCommissionPercentage || 2.9;
+        const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
+        const paypalCommission = (arbitrationFee * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+        const totalChargeAmount = arbitrationFee + paypalCommission;
+
+        const request = new paypal.orders.OrdersCreateRequest();
+        request.prefer('return=representation');
+        const origin = req.headers.origin || 'http://localhost:5000';
+        request.requestBody({
+          intent: 'CAPTURE',
+          purchase_units: [{
+            amount: {
+              currency_code: 'GBP',
+              value: totalChargeAmount.toFixed(2),
+            },
+            description: arbitrationFeeDescription,
+            custom_id: `dispute-arbitration-${order.orderNumber}-${req.user.id}`,
+          }],
+          application_context: {
+            return_url: `${origin}/dispute/${dispute.disputeId}?paypalCapture=1&orderId=${encodeURIComponent(order.orderNumber || order._id.toString())}`,
+            cancel_url: `${origin}/dispute/${dispute.disputeId}`,
+            brand_name: 'Sortars UK',
+            locale: 'en-GB',
+          },
+        });
+
+        const paypalApiOrder = await client.execute(request);
+        if (paypalApiOrder.statusCode !== 201) {
+          return res.status(400).json({ error: 'Failed to create PayPal order' });
+        }
+
+        const paypalOrderId = paypalApiOrder.result.id;
+        const approveUrl = paypalApiOrder.result.links.find(link => link.rel === 'approve')?.href;
+        if (!approveUrl) {
+          return res.status(400).json({ error: 'Failed to get PayPal approval URL' });
+        }
+
+        dispute.pendingPayPalArbitration = {
+          paypalOrderId,
+          userId: requestingUser._id,
+          amount: arbitrationFee,
+          createdAt: new Date(),
+        };
+        await dispute.save();
+
+        return res.json({
+          message: 'Redirect to PayPal to complete arbitration fee payment.',
+          requiresRedirect: true,
+          approveUrl,
+          paypalOrderId,
+        });
+      } catch (error) {
+        console.error('PayPal arbitration order error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to create PayPal order' });
+      }
     }
 
     if (!dispute.arbitrationPayments) dispute.arbitrationPayments = [];
@@ -5528,6 +5588,119 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
   } catch (error) {
     console.error('Request arbitration error:', error);
     res.status(500).json({ error: error.message || 'Failed to request arbitration' });
+  }
+});
+
+// Capture PayPal arbitration fee (after user approves on PayPal)
+router.post('/:orderId/dispute/capture-paypal-arbitration', authenticateToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { paypalOrderId } = req.body || {};
+
+    if (!paypalOrderId) {
+      return res.status(400).json({ error: 'PayPal order ID is required' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId));
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const dispute = await Dispute.findOne({ order: order._id });
+    if (!dispute) {
+      return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    const pending = dispute.pendingPayPalArbitration;
+    if (!pending || !pending.paypalOrderId || pending.paypalOrderId !== paypalOrderId) {
+      return res.status(400).json({ error: 'No pending PayPal arbitration payment found for this order' });
+    }
+    if (pending.userId?.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to capture this payment' });
+    }
+
+    const settings = await PaymentSettings.getSettings();
+    const environment = getPayPalClient(settings);
+    const client = new paypal.core.PayPalHttpClient(environment);
+    const captureRequest = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    captureRequest.requestBody({});
+
+    const captureResponse = await client.execute(captureRequest);
+    if (captureResponse.statusCode !== 201) {
+      return res.status(400).json({ error: 'Failed to capture PayPal payment' });
+    }
+
+    const claimantId = order.metadata?.disputeClaimantId ?? dispute.claimantId?.toString?.() ?? dispute.claimantId;
+    const respondentId = order.metadata?.disputeRespondentId ?? dispute.respondentId?.toString?.() ?? dispute.respondentId;
+    const isClientPayer = (order.client?._id || order.client)?.toString() === req.user.id;
+    const payerRoleLabel = isClientPayer ? 'Client' : 'Professional';
+    const arbitrationFeeDescription = `Dispute Arbitration Fee (${payerRoleLabel}) - Order ${order.orderNumber}`;
+
+    if (!dispute.arbitrationPayments) dispute.arbitrationPayments = [];
+    dispute.arbitrationPayments.push({
+      userId: req.user.id,
+      amount: pending.amount,
+      paidAt: new Date(),
+      paymentMethod: 'paypal',
+      paypalOrderId: paypalOrderId,
+      transactionId: null,
+    });
+
+    const feeDeadlineHours = typeof settings.arbitrationFeeDeadlineHours === 'number' && settings.arbitrationFeeDeadlineHours >= 0
+      ? settings.arbitrationFeeDeadlineHours
+      : ((settings.arbitrationFeeDeadlineDays || 1) * 24);
+    if (dispute.arbitrationPayments.length === 1) {
+      const feeDeadline = new Date();
+      feeDeadline.setTime(feeDeadline.getTime() + feeDeadlineHours * 60 * 60 * 1000);
+      dispute.arbitrationFeeDeadline = feeDeadline;
+    }
+
+    const paidUserIds = new Set(dispute.arbitrationPayments.map((p) => p.userId?.toString()));
+    const bothPaid = paidUserIds.has(claimantId?.toString()) && paidUserIds.has(respondentId?.toString());
+
+    dispute.pendingPayPalArbitration = undefined;
+    dispute.arbitrationFeeAmount = pending.amount;
+
+    if (!order.metadata) order.metadata = {};
+    if (order.metadata.disputeClaimantId == null) order.metadata.disputeClaimantId = claimantId?.toString?.() ?? claimantId;
+    if (order.metadata.disputeRespondentId == null) order.metadata.disputeRespondentId = respondentId?.toString?.() ?? respondentId;
+
+    if (bothPaid) {
+      dispute.status = 'admin_arbitration';
+      dispute.arbitrationRequested = true;
+      dispute.arbitrationRequestedBy = req.user.id;
+      dispute.arbitrationRequestedAt = new Date();
+      dispute.arbitrationFeeDeadline = null;
+      order.metadata.disputeStatus = 'admin_arbitration';
+      order.metadata.disputeArbitrationRequested = true;
+      order.metadata.disputeArbitrationRequestedBy = req.user.id;
+      order.metadata.disputeArbitrationRequestedAt = new Date();
+    } else {
+      order.metadata.disputeStatus = 'negotiation';
+    }
+
+    order.metadata.disputeArbitrationFeeAmount = pending.amount;
+    order.metadata.disputeArbitrationFeeDeadline = dispute.arbitrationFeeDeadline;
+
+    await dispute.save();
+    await order.save();
+
+    res.json({
+      message: bothPaid
+        ? 'Arbitration requested successfully. Admin will review the case.'
+        : 'Arbitration fee paid. Waiting for the other party to pay.',
+      dispute: {
+        id: dispute.disputeId,
+        status: dispute.status,
+        arbitrationRequestedAt: dispute.arbitrationRequestedAt,
+        arbitrationFeeDeadline: dispute.arbitrationFeeDeadline,
+        arbitrationFeeAmount: dispute.arbitrationFeeAmount,
+        arbitrationPayments: dispute.arbitrationPayments,
+      },
+    });
+  } catch (error) {
+    console.error('Capture PayPal arbitration error:', error);
+    res.status(500).json({ error: error.message || 'Failed to capture PayPal payment' });
   }
 });
 
@@ -5686,14 +5859,15 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    if (!order.disputeId) {
-      return res.status(400).json({ error: 'No dispute found for this order' });
-    }
-
-    // Use dispute document when metadata is missing (e.g. disputes created before metadata sync)
+    // Find dispute by order reference (order.disputeId may be missing e.g. legacy or sync issue)
     const dispute = await Dispute.findOne({ order: order._id });
     if (!dispute) {
       return res.status(400).json({ error: 'No dispute found for this order' });
+    }
+
+    // Keep order.disputeId in sync for refund metadata and cleanup
+    if (!order.disputeId) {
+      order.disputeId = dispute.disputeId;
     }
 
     const disputeStatus = order.metadata?.disputeStatus ?? dispute.status;
@@ -5716,12 +5890,12 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
 
     // If arbitration was requested and fee was paid, we might want to refund it
     // For now, we'll just clear the dispute and restore the order to delivered status
-    const arbitrationFeePaid = order.metadata.disputeArbitrationFeePaid;
-    const arbitrationFeeAmount = order.metadata.disputeArbitrationFeeAmount;
+    const arbitrationFeePaid = order.metadata?.disputeArbitrationFeePaid;
+    const arbitrationFeeAmount = order.metadata?.disputeArbitrationFeeAmount;
 
     // Refund arbitration fee if it was paid (to the person who requested it)
     if (arbitrationFeePaid && arbitrationFeeAmount) {
-      const arbitrationRequesterId = order.metadata.disputeArbitrationRequestedBy;
+      const arbitrationRequesterId = order.metadata?.disputeArbitrationRequestedBy;
       const requester = await User.findById(arbitrationRequesterId);
       
       if (requester) {
