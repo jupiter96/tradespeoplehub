@@ -2432,12 +2432,22 @@ export default function ClientOrdersSection() {
                     return "Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.";
                   })()}
                 </p>
-                <Button
-                  onClick={() => openModal('rating')}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
-                >
-                  View review
-                </Button>
+                {currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeId ? (
+                  <Button
+                    onClick={() => navigate(`/dispute/${currentOrder.disputeId}`)}
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    View Dispute
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => openModal('rating')}
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-6 w-full sm:w-auto"
+                  >
+                    View review
+                  </Button>
+                )}
               </div>
             )}
 
