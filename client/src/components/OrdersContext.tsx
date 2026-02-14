@@ -1376,7 +1376,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order's dispute info
+      // Update order's dispute info (include negotiationDeadline so timer resets to step-in on dispute page)
       setOrders(prev => prev.map(order => {
         if (order.id === orderId && order.disputeInfo) {
           return {
@@ -1385,6 +1385,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
               ...order.disputeInfo,
               status: 'negotiation',
               respondedAt: data.dispute.respondedAt,
+              negotiationDeadline: data.dispute.negotiationDeadline ?? order.disputeInfo.negotiationDeadline,
             },
           };
         }

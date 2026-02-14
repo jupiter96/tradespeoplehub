@@ -104,6 +104,7 @@ export default function DisputeDiscussionPage() {
 
   const handleSendMessage = async () => {
     if ((!message.trim() && selectedFiles.length === 0) || !disputeId) return;
+    let messageResponseData: { dispute?: { status?: string; respondedAt?: string; negotiationDeadline?: string; messages?: any[] } } = {};
     try {
       if (isOrderDispute) {
         const order = orders.find(o => o.disputeId === disputeId);
@@ -124,17 +125,33 @@ export default function DisputeDiscussionPage() {
           body: formData,
         });
 
+        const data = await response.json().catch(() => ({}));
+        messageResponseData = data;
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to send message');
+          throw new Error(data.error || 'Failed to send message');
         }
 
         setMessage("");
         setSelectedFiles([]);
         setHasReplied(true);
         toast.success("Message sent");
-        
-        // Refresh orders to get updated dispute (e.g. negotiation phase when respondent replies)
+
+        // If server returned updated dispute (first response → negotiation), merge so timer resets to step-in deadline immediately
+        if (data.dispute?.negotiationDeadline != null || data.dispute?.respondedAt != null) {
+          setDispute((prev: any) =>
+            prev
+              ? {
+                  ...prev,
+                  status: data.dispute?.status ?? prev.status,
+                  respondedAt: data.dispute?.respondedAt ?? prev.respondedAt,
+                  negotiationDeadline: data.dispute?.negotiationDeadline ?? prev.negotiationDeadline,
+                  messages: Array.isArray(data.dispute?.messages) ? data.dispute.messages : prev.messages,
+                }
+              : prev
+          );
+        }
+
+        // Refresh orders so list/context stay in sync
         await refreshOrders?.();
       } else {
         addDisputeMessage(disputeId, message);
@@ -143,12 +160,12 @@ export default function DisputeDiscussionPage() {
         setHasReplied(true);
         toast.success("Message sent");
       }
-      
-      // Refresh dispute
-      if (isOrderDispute) {
-        setDispute(getOrderDisputeById(disputeId));
-      } else {
+
+      // Refresh dispute from context (only if we didn't already set from server response)
+      if (!isOrderDispute) {
         setDispute(getDisputeById(disputeId));
+      } else if (!messageResponseData?.dispute?.negotiationDeadline && !messageResponseData?.dispute?.respondedAt) {
+        setDispute(getOrderDisputeById(disputeId));
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to send message");
@@ -525,6 +542,7 @@ export default function DisputeDiscussionPage() {
         ? (dispute?.respondentId as any)?._id?.toString() || dispute?.respondentId?.toString()
         : dispute?.respondentId;
       const respondentHasRepliedLocal = Boolean(
+        dispute?.respondedAt ||
         (dispute?.messages || []).some((msg: any) => {
           const msgUserId = typeof msg.userId === "object"
             ? (msg.userId as any)?._id?.toString() || msg.userId?.toString()
@@ -532,10 +550,11 @@ export default function DisputeDiscussionPage() {
           return respondentIdStrLocal && msgUserId && String(msgUserId) === String(respondentIdStrLocal);
         }) || (currentUser?.id === respondentIdStrLocal && hasReplied)
       );
+      // Use step-in (negotiation) deadline when respondent has replied; otherwise use initial response deadline
       const isNegotiationPhaseLocal = Boolean(
         dispute?.negotiationDeadline && (dispute?.status === "negotiation" || respondentHasRepliedLocal)
       );
-      
+
       const deadline = isNegotiationPhaseLocal ? dispute?.negotiationDeadline : dispute?.responseDeadline;
       if (!deadline) {
         setTimeLeft("");
@@ -559,7 +578,7 @@ export default function DisputeDiscussionPage() {
     const interval = setInterval(updateTimer, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.status, dispute?.respondentId, dispute?.messages, currentUser?.id, hasReplied]);
+  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.status, dispute?.respondedAt, dispute?.respondentId, dispute?.messages, currentUser?.id, hasReplied]);
 
   if (!dispute || (!job && !order)) {
     return (
@@ -630,6 +649,12 @@ export default function DisputeDiscussionPage() {
       !hasPaidArbitrationFee
   );
 
+  // Negotiation deadline has passed → arbitration stage: user can pay fee to ask admin to step in (no warning modal)
+  const negotiationDeadlineTime = dispute?.negotiationDeadline ? new Date(dispute.negotiationDeadline).getTime() : null;
+  const isNegotiationDeadlinePassed = Boolean(
+    isNegotiationPhase && negotiationDeadlineTime != null && Date.now() >= negotiationDeadlineTime
+  );
+
   // For order disputes, check order.clientId, for job disputes use claimantId
   let isCurrentUserClient = false;
   if (order) {
@@ -667,10 +692,10 @@ export default function DisputeDiscussionPage() {
 
   const milestone = job?.milestones?.find((m) => m.id === (dispute as any).milestoneId);
 
-  // Parse \"X days: Y hours: Z mins\" into parts so we can style numbers vs labels differently.
+  // Parse "X days Y hours Z mins" into parts so we can style numbers vs labels differently.
   const timeParts = (() => {
     if (!timeLeft) return null;
-    const match = timeLeft.match(/(\d+)\\s+days:\\s+(\\d+)\\s+hours:\\s+(\\d+)\\s+mins/);
+    const match = timeLeft.match(/(\d+)\s+days\s+(\d+)\s+hours\s+(\d+)\s+mins/);
     if (!match) return null;
     return {
       days: match[1],
@@ -1002,10 +1027,12 @@ export default function DisputeDiscussionPage() {
                 )}
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
                   {showAdminStepInLabel
-                    ? "left to ask admin to step in"
+                    ? isNegotiationDeadlinePassed || timeLeft === "Deadline passed"
+                      ? "Arbitration stage: You can now ask the dispute team to step in by paying the fee."
+                      : "left to ask admin to step in"
                     : `left for ${dispute.respondentName} to respond`}
                 </p>
-                {showAdminStepInLabel && (
+                {showAdminStepInLabel && !isNegotiationDeadlinePassed && timeLeft !== "Deadline passed" && (
                   <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
                     {`If no agreement is reached, either party can ask the dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}. Both parties must pay ${typeof dispute?.arbitrationFeeAmount === "number" ? `£${dispute.arbitrationFeeAmount.toFixed(2)}` : "the required fee"}.`}
                   </p>

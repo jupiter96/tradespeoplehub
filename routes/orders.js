@@ -4881,7 +4881,10 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
     dispute.status = 'negotiation';
     dispute.respondedAt = new Date();
     dispute.negotiationDeadline = negotiationDeadline;
-    dispute.arbitrationFeeAmount = settings.stepInAmount ?? settings.arbitrationFee ?? dispute.arbitrationFeeAmount;
+    // Arbitration fee is always driven by admin's "step in amount"
+    dispute.arbitrationFeeAmount = typeof settings.stepInAmount === 'number'
+      ? settings.stepInAmount
+      : dispute.arbitrationFeeAmount;
 
     await dispute.save();
 
@@ -4901,13 +4904,14 @@ router.post('/:orderId/dispute/respond', authenticateToken, async (req, res) => 
       'dispute-responded'
     );
 
-    res.json({ 
+    res.json({
       message: 'Dispute response submitted successfully',
       dispute: {
         id: dispute.disputeId,
         status: dispute.status,
-        respondedAt: dispute.respondedAt,
-      }
+        respondedAt: dispute.respondedAt ? new Date(dispute.respondedAt).toISOString() : undefined,
+        negotiationDeadline: dispute.negotiationDeadline ? new Date(dispute.negotiationDeadline).toISOString() : undefined,
+      },
     });
   } catch (error) {
     console.error('Respond to dispute error:', error);
@@ -4975,7 +4979,10 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
       dispute.status = 'negotiation';
       dispute.respondedAt = new Date();
       dispute.negotiationDeadline = negotiationDeadline;
-      dispute.arbitrationFeeAmount = settings.stepInAmount ?? settings.arbitrationFee ?? dispute.arbitrationFeeAmount;
+      // Arbitration fee is always driven by admin's "step in amount"
+      dispute.arbitrationFeeAmount = typeof settings.stepInAmount === 'number'
+        ? settings.stepInAmount
+        : dispute.arbitrationFeeAmount;
       runBackgroundTask(
         () => sendDisputeRespondedNotifications({
           order,
@@ -5020,7 +5027,7 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
       await order.save();
     }
 
-    res.json({ 
+    const responsePayload = {
       message: 'Message added successfully',
       disputeMessage: {
         ...newMessage,
@@ -5029,8 +5036,29 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
           fileName: att.fileName,
           fileType: att.fileType,
         })),
-      }
-    });
+      },
+    };
+
+    // When we transitioned to negotiation, return updated dispute so client can reset timer to step-in deadline
+    if (dispute.status === 'negotiation' && dispute.respondedAt && dispute.negotiationDeadline) {
+      responsePayload.dispute = {
+        status: dispute.status,
+        respondedAt: dispute.respondedAt ? new Date(dispute.respondedAt).toISOString() : undefined,
+        negotiationDeadline: dispute.negotiationDeadline ? new Date(dispute.negotiationDeadline).toISOString() : undefined,
+        messages: dispute.messages ? dispute.messages.map(msg => ({
+          id: msg.id,
+          userId: msg.userId.toString(),
+          userName: msg.userName,
+          userAvatar: msg.userAvatar,
+          message: msg.message,
+          timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
+          isTeamResponse: msg.isTeamResponse || false,
+          attachments: msg.attachments || [],
+        })) : [],
+      };
+    }
+
+    res.json(responsePayload);
   } catch (error) {
     console.error('Add dispute message error:', error);
     res.status(500).json({ error: error.message || 'Failed to add message' });
@@ -5354,9 +5382,11 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
       return res.status(400).json({ error: 'Invalid payment method. Only card, paypal, and account_balance are allowed.' });
     }
 
-    // Get arbitration fee from settings
+    // Get arbitration fee from settings: always use admin's "step in amount"
     const settings = await PaymentSettings.getSettings();
-    const arbitrationFee = settings.stepInAmount ?? settings.arbitrationFee ?? 50;
+    const arbitrationFee = typeof settings.stepInAmount === 'number'
+      ? settings.stepInAmount
+      : 0;
     const feeDeadlineHours = typeof settings.arbitrationFeeDeadlineHours === 'number' && settings.arbitrationFeeDeadlineHours >= 0
       ? settings.arbitrationFeeDeadlineHours
       : ((settings.arbitrationFeeDeadlineDays || 1) * 24);
