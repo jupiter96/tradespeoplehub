@@ -300,9 +300,8 @@ export default function DisputeDialog({
                 max={isMilestoneOrder && onSelectedMilestoneIndicesChange ? maxDisputeAmount : (currentOrder?.amountValue || undefined)}
                 step="0.01"
                 value={disputeOfferAmount}
-                onChange={(e) => !(isMilestoneOrder && onSelectedMilestoneIndicesChange) && onDisputeOfferAmountChange(e.target.value)}
+                onChange={(e) => onDisputeOfferAmountChange(e.target.value)}
                 placeholder="0.00"
-                readOnly={!!(isMilestoneOrder && onSelectedMilestoneIndicesChange)}
                 className="font-['Poppins',sans-serif] text-[14px] pl-10"
               />
             </div>
@@ -312,7 +311,7 @@ export default function DisputeDialog({
               }`}
             >
               {isMilestoneOrder && onSelectedMilestoneIndicesChange
-                ? "Amount is set from selected milestones above."
+                ? `You can edit the amount. Maximum: £${maxDisputeAmount.toFixed(2)} (sum of selected milestones).`
                 : `Must be between £0.00 and £${currentOrder?.amountValue?.toFixed(2) || "0.00"} (order amount)`}
             </p>
           </div>

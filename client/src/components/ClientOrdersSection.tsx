@@ -5665,15 +5665,23 @@ export default function ClientOrdersSection() {
                     id="dispute-offer"
                     type="number"
                     min="0"
-                    max={currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? undefined}
-                    step="0.01"
-                    value={disputeOfferAmount}
-                    onChange={(e) => {
+                    max={(() => {
                       const meta = (currentOrder as any)?.metadata || {};
                       const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
-                      if (!isMilestoneOrder) setDisputeOfferAmount(e.target.value);
-                    }}
-                    readOnly={!!((currentOrder as any)?.metadata?.fromCustomOffer && (currentOrder as any)?.metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any)?.metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0)}
+                      const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+                      if (isMilestoneOrder && selectedMilestoneIndices.length > 0) {
+                        return selectedMilestoneIndices.reduce((s, i) => {
+                          const m = milestones[i];
+                          const p = m?.price ?? m?.amount ?? 0;
+                          const q = m?.noOf ?? 1;
+                          return s + p * q;
+                        }, 0);
+                      }
+                      return currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? undefined;
+                    })()}
+                    step="0.01"
+                    value={disputeOfferAmount}
+                    onChange={(e) => setDisputeOfferAmount(e.target.value)}
                     placeholder="0.00"
                     className="font-['Poppins',sans-serif] text-[14px] pl-10"
                   />
@@ -5681,16 +5689,19 @@ export default function ClientOrdersSection() {
                 {(() => {
                   const meta = (currentOrder as any)?.metadata || {};
                   const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
-                  const maxAmount = currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? 0;
+                  const milestones = (meta.milestones || []) as Array<{ price?: number; amount?: number; noOf?: number }>;
+                  const maxAmount = isMilestoneOrder && selectedMilestoneIndices.length > 0
+                    ? selectedMilestoneIndices.reduce((s, i) => { const m = milestones[i]; const p = m?.price ?? m?.amount ?? 0; const q = m?.noOf ?? 1; return s + p * q; }, 0)
+                    : (currentOrder?.refundableAmount ?? currentOrder?.amountValue ?? 0);
                   const offerValue = parseFloat(disputeOfferAmount);
                   const isOverLimit = !Number.isNaN(offerValue) && offerValue > maxAmount;
                   const helperText = isMilestoneOrder
-                    ? "Amount is set from selected milestones above."
+                    ? `You can enter the amount. Maximum: £${maxAmount.toFixed(2)} (sum of selected milestones).`
                     : `Must be between £0.00 and £${maxAmount.toFixed(2)} (refundable amount, excl. service fee)`;
                   return (
                     <p
                       className={`font-['Poppins',sans-serif] text-[12px] mt-1 ${
-                        !isMilestoneOrder && isOverLimit ? "text-red-600 font-medium" : "text-[#6b6b6b]"
+                        isOverLimit ? "text-red-600 font-medium" : "text-[#6b6b6b]"
                       }`}
                     >
                       {helperText}
