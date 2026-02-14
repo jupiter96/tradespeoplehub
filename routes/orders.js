@@ -4634,8 +4634,8 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
           return res.status(400).json({ error: 'Invalid milestone selection' });
         }
         const maxAmount = milestoneIndices.reduce((sum, i) => sum + milestones[i].price * milestones[i].noOf, 0);
-        if (Math.abs(parsedOfferAmount - maxAmount) > 0.01) {
-          return res.status(400).json({ error: `Offer amount must equal the total of selected milestones (£${maxAmount.toFixed(2)})` });
+        if (parsedOfferAmount > maxAmount) {
+          return res.status(400).json({ error: `Offer amount cannot exceed the total of selected milestones (£${maxAmount.toFixed(2)})` });
         }
       } else if (isMilestoneOrder && milestoneIndices.length === 0) {
         return res.status(400).json({ error: 'Please select at least one milestone to dispute' });
