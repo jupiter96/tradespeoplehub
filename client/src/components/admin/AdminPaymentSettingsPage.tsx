@@ -903,7 +903,7 @@ export default function AdminPaymentSettingsPage() {
                   Other Settings
                 </CardTitle>
                 <CardDescription className="font-['Poppins',sans-serif]">
-                  Configure additional system settings
+                  Configure additional system settings. Each field below explains what it controls and what unit to enter.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -926,6 +926,9 @@ export default function AdminPaymentSettingsPage() {
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        How many days a user can submit or edit review/feedback after completion.
+                      </p>
                     </div>
 
                     <div>
@@ -941,6 +944,9 @@ export default function AdminPaymentSettingsPage() {
                         <option value="Activated">Activated</option>
                         <option value="Deactivated">Deactivated</option>
                       </select>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        Turn automatic review invitation on or off after order completion.
+                      </p>
                     </div>
 
                     <div>
@@ -959,6 +965,9 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        Arbitration fee amount (in GBP) each party pays when asking admin to step in.
+                      </p>
                     </div>
 
                     <div>
@@ -977,6 +986,9 @@ export default function AdminPaymentSettingsPage() {
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        Time limit (hours) for the other party to pay arbitration fee after first payment.
+                      </p>
                     </div>
                   </div>
 
@@ -998,6 +1010,9 @@ export default function AdminPaymentSettingsPage() {
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        How many hours the receiver has to accept or reject a custom offer.
+                      </p>
                     </div>
                     <div>
                       <Label htmlFor="deliveredWorkResponseTimeHours" className="font-['Poppins',sans-serif]">
@@ -1039,6 +1054,9 @@ export default function AdminPaymentSettingsPage() {
                           hours
                         </span>
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        Time (hours) for the respondent to send the first response after dispute opens.
+                      </p>
                     </div>
 
                     <div>
@@ -1057,6 +1075,9 @@ export default function AdminPaymentSettingsPage() {
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        Negotiation window (hours) after first response before "Ask admin to step in" is allowed.
+                      </p>
                     </div>
 
                     <div>
@@ -1071,6 +1092,9 @@ export default function AdminPaymentSettingsPage() {
                         className="mt-2 font-['Poppins',sans-serif]"
                         placeholder="KC89-MX72-WB81-YG55"
                       />
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        API key used for search provider integration. Leave empty if not using external search service.
+                      </p>
                     </div>
 
                     <div>
@@ -1089,6 +1113,9 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                       </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        Fixed platform fee (GBP) added to qualifying orders.
+                      </p>
                     </div>
 
                     <div>

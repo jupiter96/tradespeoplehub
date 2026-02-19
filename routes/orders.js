@@ -5387,9 +5387,15 @@ router.post('/:orderId/dispute/request-arbitration', authenticateToken, async (r
     const arbitrationFee = typeof settings.stepInAmount === 'number'
       ? settings.stepInAmount
       : 0;
-    const feeDeadlineHours = typeof settings.arbitrationFeeDeadlineHours === 'number' && settings.arbitrationFeeDeadlineHours >= 0
+    const feeDeadlineHoursRaw = typeof settings.arbitrationFeeDeadlineHours === 'number'
       ? settings.arbitrationFeeDeadlineHours
-      : ((settings.arbitrationFeeDeadlineDays || 1) * 24);
+      : parseFloat(settings.arbitrationFeeDeadlineHours || '0');
+    const fallbackDaysRaw = typeof settings.arbitrationFeeDeadlineDays === 'number'
+      ? settings.arbitrationFeeDeadlineDays
+      : parseFloat(settings.arbitrationFeeDeadlineDays || '1');
+    const feeDeadlineHours = Number.isFinite(feeDeadlineHoursRaw) && feeDeadlineHoursRaw >= 0
+      ? feeDeadlineHoursRaw
+      : ((Number.isFinite(fallbackDaysRaw) ? fallbackDaysRaw : 1) * 24);
 
     // Requesting user is the current user (claimant or respondent)
     const requestingUser = await User.findById(req.user.id);
@@ -5676,9 +5682,15 @@ router.post('/:orderId/dispute/capture-paypal-arbitration', authenticateToken, a
       transactionId: null,
     });
 
-    const feeDeadlineHours = typeof settings.arbitrationFeeDeadlineHours === 'number' && settings.arbitrationFeeDeadlineHours >= 0
+    const feeDeadlineHoursRaw = typeof settings.arbitrationFeeDeadlineHours === 'number'
       ? settings.arbitrationFeeDeadlineHours
-      : ((settings.arbitrationFeeDeadlineDays || 1) * 24);
+      : parseFloat(settings.arbitrationFeeDeadlineHours || '0');
+    const fallbackDaysRaw = typeof settings.arbitrationFeeDeadlineDays === 'number'
+      ? settings.arbitrationFeeDeadlineDays
+      : parseFloat(settings.arbitrationFeeDeadlineDays || '1');
+    const feeDeadlineHours = Number.isFinite(feeDeadlineHoursRaw) && feeDeadlineHoursRaw >= 0
+      ? feeDeadlineHoursRaw
+      : ((Number.isFinite(fallbackDaysRaw) ? fallbackDaysRaw : 1) * 24);
     if (dispute.arbitrationPayments.length === 1) {
       const feeDeadline = new Date();
       feeDeadline.setTime(feeDeadline.getTime() + feeDeadlineHours * 60 * 60 * 1000);

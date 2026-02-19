@@ -530,10 +530,10 @@ export default function DisputeDiscussionPage() {
     }
   };
 
-  // Calculate time left until response/negotiation deadline
+  // Calculate time left until response/negotiation/arbitration-fee deadline
   // This useEffect must be before early returns to satisfy Rules of Hooks
   useEffect(() => {
-    if (!dispute?.responseDeadline && !dispute?.negotiationDeadline) return;
+    if (!dispute?.responseDeadline && !dispute?.negotiationDeadline && !dispute?.arbitrationFeeDeadline) return;
 
     const updateTimer = () => {
       const now = Date.now();
@@ -554,8 +554,24 @@ export default function DisputeDiscussionPage() {
       const isNegotiationPhaseLocal = Boolean(
         dispute?.negotiationDeadline && (dispute?.status === "negotiation" || respondentHasRepliedLocal)
       );
+      const paidUserIdsLocal = new Set(
+        (dispute?.arbitrationPayments || [])
+          .map((p: any) => {
+            const uid = p?.userId;
+            return typeof uid === "object" ? uid?._id?.toString?.() || uid?.toString?.() : uid?.toString?.();
+          })
+          .filter(Boolean)
+      );
+      const isArbitrationFeeWaitingStageLocal = Boolean(
+        dispute?.arbitrationFeeDeadline &&
+          paidUserIdsLocal.size === 1 &&
+          dispute?.status !== "admin_arbitration" &&
+          dispute?.status !== "closed"
+      );
 
-      const deadline = isNegotiationPhaseLocal ? dispute?.negotiationDeadline : dispute?.responseDeadline;
+      const deadline = isArbitrationFeeWaitingStageLocal
+        ? dispute?.arbitrationFeeDeadline
+        : (isNegotiationPhaseLocal ? dispute?.negotiationDeadline : dispute?.responseDeadline);
       if (!deadline) {
         setTimeLeft("");
         return;
@@ -578,7 +594,7 @@ export default function DisputeDiscussionPage() {
     const interval = setInterval(updateTimer, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.status, dispute?.respondedAt, dispute?.respondentId, dispute?.messages, currentUser?.id, hasReplied]);
+  }, [dispute?.responseDeadline, dispute?.negotiationDeadline, dispute?.arbitrationFeeDeadline, dispute?.arbitrationPayments, dispute?.status, dispute?.respondedAt, dispute?.respondentId, dispute?.messages, currentUser?.id, hasReplied]);
 
   if (!dispute || (!job && !order)) {
     return (
@@ -639,6 +655,43 @@ export default function DisputeDiscussionPage() {
   const hasPaidArbitrationFee = Boolean(
     (dispute?.arbitrationPayments || []).some((p: any) => p?.userId?.toString?.() === currentUser?.id)
   );
+  const arbitrationPaidUserIds = new Set(
+    (dispute?.arbitrationPayments || [])
+      .map((p: any) => {
+        const uid = p?.userId;
+        return typeof uid === "object" ? uid?._id?.toString?.() || uid?.toString?.() : uid?.toString?.();
+      })
+      .filter(Boolean)
+  );
+  const isWaitingOtherPartyArbitrationFee = Boolean(
+    dispute?.arbitrationFeeDeadline &&
+      arbitrationPaidUserIds.size === 1 &&
+      dispute?.status !== "admin_arbitration" &&
+      dispute?.status !== "closed"
+  );
+  const firstArbitrationPayment = (dispute?.arbitrationPayments || [])[0];
+  const firstArbitrationPayerId = firstArbitrationPayment?.userId
+    ? (typeof firstArbitrationPayment.userId === "object"
+        ? firstArbitrationPayment.userId?._id?.toString?.() || firstArbitrationPayment.userId?.toString?.()
+        : firstArbitrationPayment.userId?.toString?.())
+    : null;
+  const arbitrationPayerName =
+    firstArbitrationPayerId && String(firstArbitrationPayerId) === String(claimantIdStr)
+      ? (dispute?.claimantName || "One party")
+      : firstArbitrationPayerId && String(firstArbitrationPayerId) === String(respondentIdStr)
+        ? (dispute?.respondentName || "One party")
+        : "One party";
+  const arbitrationUnpaidPartyName =
+    firstArbitrationPayerId && String(firstArbitrationPayerId) === String(claimantIdStr)
+      ? (dispute?.respondentName || "The other party")
+      : (dispute?.claimantName || "The other party");
+  const arbitrationFeeAmountDisplay =
+    typeof dispute?.arbitrationFeeAmount === "number"
+      ? dispute.arbitrationFeeAmount
+      : (typeof firstArbitrationPayment?.amount === "number" ? firstArbitrationPayment.amount : 0);
+  const arbitrationDaysToPay = dispute?.arbitrationFeeDeadline
+    ? Math.max(0, Math.ceil((new Date(dispute.arbitrationFeeDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
   // Show "Ask to admin step in" button as soon as respondent has replied (negotiation phase); no need to wait for negotiationDeadline in state
   const canShowArbitrationButton = Boolean(
     isOrderDispute &&
@@ -832,6 +885,19 @@ export default function DisputeDiscussionPage() {
 
               {/* Messages Thread */}
               <div className="space-y-4">
+                {isWaitingOtherPartyArbitrationFee && (
+                  <div className="border rounded-lg p-4 bg-[#f3e4d7] border-[#d8bca6]">
+                    <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">
+                      Arbitrate team
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
+                      {`${arbitrationPayerName} has paid £${arbitrationFeeAmountDisplay.toFixed(2)} to escalate the dispute to arbitration.`}
+                    </p>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                      {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${arbitrationPayerName}.`}
+                    </p>
+                  </div>
+                )}
                 {dispute.messages && dispute.messages.length > 0 ? (
                   dispute.messages.map((msg: any, index: number) => {
                     const isCurrentUser = msg.userId === currentUser?.id;
@@ -997,7 +1063,7 @@ export default function DisputeDiscussionPage() {
             {/* Right Column - Sidebar */}
             <div className="space-y-4">
             {/* Response Timeline Card */}
-            {(dispute.status === "open" || dispute.status === "negotiation") && timeLeft && (
+            {(dispute.status === "open" || dispute.status === "negotiation" || isWaitingOtherPartyArbitrationFee) && timeLeft && (
               <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
                 {timeParts ? (
                   <div className="flex flex-wrap justify-center items-baseline gap-1 mb-2">
@@ -1026,13 +1092,20 @@ export default function DisputeDiscussionPage() {
                   </p>
                 )}
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
-                  {showAdminStepInLabel
+                  {isWaitingOtherPartyArbitrationFee
+                    ? (hasPaidArbitrationFee ? "left for the other party to pay arbitration fee" : "left for you to pay arbitration fee")
+                    : showAdminStepInLabel
                     ? isNegotiationDeadlinePassed || timeLeft === "Deadline passed"
                       ? "Arbitration stage: You can now ask the dispute team to step in by paying the fee."
                       : "left to ask admin to step in"
                     : `left for ${dispute.respondentName} to respond`}
                 </p>
-                {showAdminStepInLabel && !isNegotiationDeadlinePassed && timeLeft !== "Deadline passed" && (
+                {isWaitingOtherPartyArbitrationFee && (
+                  <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
+                    {`One party has paid. The other party must pay by ${formatDeadlineDateTime(dispute?.arbitrationFeeDeadline) || "the deadline"} or the case will be decided in favor of the paying party.`}
+                  </p>
+                )}
+                {showAdminStepInLabel && !isWaitingOtherPartyArbitrationFee && !isNegotiationDeadlinePassed && timeLeft !== "Deadline passed" && (
                   <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
                     {`If no agreement is reached, either party can ask the dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}. Both parties must pay ${typeof dispute?.arbitrationFeeAmount === "number" ? `£${dispute.arbitrationFeeAmount.toFixed(2)}` : "the required fee"}.`}
                   </p>
