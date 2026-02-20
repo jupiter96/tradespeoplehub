@@ -3128,12 +3128,14 @@ export default function ClientOrdersSection() {
                   : 0;
                 const _negHours = _negMs > 0 ? Math.floor(_negMs / (1000 * 60 * 60)) : 0;
                 const _negMins = _negMs > 0 ? Math.round((_negMs % (1000 * 60 * 60)) / (1000 * 60)) : 0;
+                const _hUnit = _negHours === 1 ? "hour" : "hours";
+                const _mUnit = _negMins === 1 ? "minute" : "minutes";
                 const _negLabel = _negHours > 0 && _negMins > 0
-                  ? `${_negHours} hours ${_negMins} minutes`
+                  ? `${_negHours} ${_hUnit} ${_negMins} ${_mUnit}`
                   : _negHours > 0
-                  ? `${_negHours} hours`
+                  ? `${_negHours} ${_hUnit}`
                   : _negMins > 0
-                  ? `${_negMins} minutes`
+                  ? `${_negMins} ${_mUnit}`
                   : "the negotiation period";
                 statusMessage = isClaimant
                   ? `${tradingName} has responded to your dispute, so it will no longer close automatically. Both parties have ${_negLabel} to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`
