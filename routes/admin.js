@@ -860,6 +860,12 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
       })),
       clientOffer: dispute.offers?.clientOffer != null ? dispute.offers.clientOffer : undefined,
       professionalOffer: dispute.offers?.professionalOffer != null ? dispute.offers.professionalOffer : undefined,
+      offerHistory: dispute.offerHistory ? dispute.offerHistory.map((h) => ({
+        role: h.role,
+        amount: h.amount,
+        offeredAt: h.offeredAt ? new Date(h.offeredAt).toISOString() : undefined,
+        userId: h.userId?.toString(),
+      })) : [],
       responseDeadline: dispute.responseDeadline ? new Date(dispute.responseDeadline).toISOString() : undefined,
       respondedAt: dispute.respondedAt ? new Date(dispute.respondedAt).toISOString() : undefined,
       negotiationDeadline: dispute.negotiationDeadline ? new Date(dispute.negotiationDeadline).toISOString() : undefined,

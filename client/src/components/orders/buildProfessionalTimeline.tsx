@@ -12,6 +12,7 @@ import {
   XCircle,
   Check,
   MessageCircle,
+  Handshake,
 } from "lucide-react";
 import { TimelineEvent, Order } from "./types";
 
@@ -701,6 +702,40 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       },
       "dispute-closed"
     );
+  }
+  // Offer history events
+  if (disp?.offerHistory && disp.offerHistory.length > 0) {
+    const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
+    (disp.offerHistory as any[]).forEach((offer: any, idx: number) => {
+      if (!offer || typeof offer.amount !== "number") return;
+      const madeByProfessional = offer.role === "professional";
+      const offerDateStr = offer.offeredAt ? formatAcceptedAt(offer.offeredAt) : "";
+      if (madeByProfessional) {
+        push(
+          {
+            at: offer.offeredAt,
+            label: "You made an offer.",
+            description: `You proposed £${offer.amount.toFixed(2)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+            message: `You proposed £${offer.amount.toFixed(2)} as a settlement. ${clientDisplayName} has been notified and can accept or counter with their own offer.`,
+            colorClass: "bg-amber-500",
+            icon: <Handshake className="w-5 h-5 text-amber-600" />,
+          },
+          `dispute-offer-${idx}`
+        );
+      } else {
+        push(
+          {
+            at: offer.offeredAt,
+            label: "You received an offer.",
+            description: `${clientDisplayName} proposed £${offer.amount.toFixed(2)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+            message: `${clientDisplayName} has proposed £${offer.amount.toFixed(2)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
+            colorClass: "bg-amber-500",
+            icon: <Handshake className="w-5 h-5 text-amber-600" />,
+          },
+          `dispute-offer-${idx}`
+        );
+      }
+    });
   }
 
   // Sort by time

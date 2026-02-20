@@ -137,6 +137,15 @@ const disputeSchema = new mongoose.Schema(
         default: null,
       },
     },
+    // Offer history (각 제안 기록)
+    offerHistory: [
+      {
+        role: { type: String, enum: ['client', 'professional'] },
+        amount: { type: Number },
+        offeredAt: { type: Date, default: Date.now },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      },
+    ],
     // Arbitration 정보
     arbitrationRequested: {
       type: Boolean,

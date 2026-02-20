@@ -2829,6 +2829,12 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           })) : [],
           clientOffer: dispute.offers?.clientOffer !== null && dispute.offers?.clientOffer !== undefined ? dispute.offers.clientOffer : undefined,
           professionalOffer: dispute.offers?.professionalOffer !== null && dispute.offers?.professionalOffer !== undefined ? dispute.offers.professionalOffer : undefined,
+          offerHistory: dispute.offerHistory ? dispute.offerHistory.map((h) => ({
+            role: h.role,
+            amount: h.amount,
+            offeredAt: h.offeredAt ? new Date(h.offeredAt).toISOString() : undefined,
+            userId: h.userId?.toString(),
+          })) : [],
           responseDeadline: dispute.responseDeadline ? new Date(dispute.responseDeadline).toISOString() : undefined,
           respondedAt: dispute.respondedAt ? new Date(dispute.respondedAt).toISOString() : undefined,
           negotiationDeadline: dispute.negotiationDeadline ? new Date(dispute.negotiationDeadline).toISOString() : undefined,
@@ -5139,6 +5145,15 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
       }
       dispute.offers.professionalOffer = parsedAmount;
     }
+
+    // Record offer in history
+    if (!dispute.offerHistory) dispute.offerHistory = [];
+    dispute.offerHistory.push({
+      role: isClient ? 'client' : 'professional',
+      amount: parsedAmount,
+      offeredAt: new Date(),
+      userId: req.user.id,
+    });
 
     // Check if offers match - if so, resolve the dispute automatically
     const clientOffer = dispute.offers.clientOffer;

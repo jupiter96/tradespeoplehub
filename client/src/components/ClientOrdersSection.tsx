@@ -42,6 +42,7 @@ import {
   Paperclip,
   Play,
   ExternalLink,
+  Handshake,
 } from "lucide-react";
 
 // Import separated order components
@@ -1121,6 +1122,40 @@ export default function ClientOrdersSection() {
         },
         "dispute-closed"
       );
+    }
+    // Offer history events
+    if (disp?.offerHistory && disp.offerHistory.length > 0) {
+      const professionalDisplayName = order.professional || disp.respondentName || disp.claimantName || "Professional";
+      (disp.offerHistory as any[]).forEach((offer: any, idx: number) => {
+        if (!offer || typeof offer.amount !== "number") return;
+        const madeByClient = offer.role === "client";
+        const offerDateStr = offer.offeredAt ? formatAcceptedAt(offer.offeredAt) : "";
+        if (madeByClient) {
+          push(
+            {
+              at: offer.offeredAt,
+              title: "You made an offer.",
+              description: `You proposed £${offer.amount.toFixed(2)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+              message: `You proposed £${offer.amount.toFixed(2)} as a settlement. ${professionalDisplayName} has been notified and can accept or counter with their own offer.`,
+              colorClass: "bg-amber-500",
+              icon: <Handshake className="w-5 h-5 text-amber-600" />,
+            },
+            `dispute-offer-${idx}`
+          );
+        } else {
+          push(
+            {
+              at: offer.offeredAt,
+              title: "You received an offer.",
+              description: `${professionalDisplayName} proposed £${offer.amount.toFixed(2)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+              message: `${professionalDisplayName} has proposed £${offer.amount.toFixed(2)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
+              colorClass: "bg-amber-500",
+              icon: <Handshake className="w-5 h-5 text-amber-600" />,
+            },
+            `dispute-offer-${idx}`
+          );
+        }
+      });
     }
 
     if (order.status === "Completed") {
