@@ -601,6 +601,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   if (disp?.arbitrationPayments && disp.arbitrationPayments.length === 1) {
     const payment = disp.arbitrationPayments[0];
     const professionalId = (order as any).professionalId || (order as any).professional;
+    const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
     const paidByProfessional = payment?.userId?.toString?.() === professionalId?.toString?.();
     const paidAtStr = payment.paidAt ? formatAcceptedAt(payment.paidAt) : "";
     const deadlineStr = disp.arbitrationFeeDeadline

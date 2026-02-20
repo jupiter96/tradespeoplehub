@@ -19,6 +19,7 @@ import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import paypalLogo from "../assets/paypal-logo.png";
+import adminAvatar from "figma:asset/e0cd63eca847c922f306abffb67a5c6de3fd7001.png";
 
 const getCardType = (brand?: string, cardNumber?: string): "visa" | "mastercard" | "unknown" => {
   if (brand) {
@@ -885,19 +886,6 @@ export default function DisputeDiscussionPage() {
 
               {/* Messages Thread */}
               <div className="space-y-4">
-                {isWaitingOtherPartyArbitrationFee && (
-                  <div className="border rounded-lg p-4 bg-[#f3e4d7] border-[#d8bca6]">
-                    <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">
-                      Arbitrate team
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
-                      {`${arbitrationPayerName} has paid £${arbitrationFeeAmountDisplay.toFixed(2)} to escalate the dispute to arbitration.`}
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
-                      {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${arbitrationPayerName}.`}
-                    </p>
-                  </div>
-                )}
                 {dispute.messages && dispute.messages.length > 0 ? (
                   dispute.messages.map((msg: any, index: number) => {
                     const isCurrentUser = msg.userId === currentUser?.id;
@@ -997,6 +985,36 @@ export default function DisputeDiscussionPage() {
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                       No messages yet
                     </p>
+                  </div>
+                )}
+                {isWaitingOtherPartyArbitrationFee && (
+                  <div className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
+                    <div className="flex gap-3">
+                      <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
+                        <AvatarImage src={adminAvatar} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white">AD</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">
+                          Arbitrate team
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
+                          {`${arbitrationPayerName} has paid £${arbitrationFeeAmountDisplay.toFixed(2)} to escalate the dispute to arbitration.`}
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                          {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${arbitrationPayerName}.`}
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
+                          {new Date(firstArbitrationPayment?.paidAt || Date.now()).toLocaleString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).replace(',', '')}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
