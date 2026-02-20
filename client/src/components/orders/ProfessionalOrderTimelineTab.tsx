@@ -805,9 +805,21 @@ export default function ProfessionalOrderTimelineTab({
           statusMessage = `${currentOrder.client || "The client"} has paid their arbitration fees to request our dispute team to review and decide the case. Please ensure you pay yours before the deadline on ${arbitrationDeadline}, as failure to do so will result in a decision in favor of ${currentOrder.client || "the client"}.`;
         } else if (hasReply) {
           statusTitle = "Negotiation Period";
+          const _negMs = disputeInfo?.negotiationDeadline && disputeInfo?.respondedAt
+            ? new Date(disputeInfo.negotiationDeadline).getTime() - new Date(disputeInfo.respondedAt).getTime()
+            : 0;
+          const _negHours = _negMs > 0 ? Math.floor(_negMs / (1000 * 60 * 60)) : 0;
+          const _negMins = _negMs > 0 ? Math.round((_negMs % (1000 * 60 * 60)) / (1000 * 60)) : 0;
+          const _negLabel = _negHours > 0 && _negMins > 0
+            ? `${_negHours} hours ${_negMins} minutes`
+            : _negHours > 0
+            ? `${_negHours} hours`
+            : _negMins > 0
+            ? `${_negMins} minutes`
+            : "the negotiation period";
           statusMessage = isClaimant
-            ? `${currentOrder.client || "The client"} has responded to your dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`
-            : "You have responded to the dispute, so it will no longer close automatically. Both parties have 5 days to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to step in.";
+            ? `${currentOrder.client || "The client"} has responded to your dispute, so it will no longer close automatically. Both parties have ${_negLabel} to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to decide.`
+            : `You have responded to the dispute, so it will no longer close automatically. Both parties have ${_negLabel} to negotiate a resolution. If a settlement is not reached within this period, you can ask for arbitration to step in.`;
         } else {
           statusTitle = isClaimant ? "Awaiting Response" : "Response Required";
           statusMessage = isClaimant
