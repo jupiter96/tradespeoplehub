@@ -203,7 +203,7 @@ const menuItems: MenuItem[] = [
     icon: AlertCircle,
     children: [
       { key: "dispute-list", label: "Dispute List", icon: AlertCircle, path: "/admin/dispute-list" },
-      { key: "ask-step-in", label: "Ask Step In", icon: AlertCircle, path: "/admin/ask-step-in" },
+      { key: "ask-step-in", label: "Ask Step In", icon: AlertCircle, path: "/admin/ask-step-in", badgeKey: "askToStepIn" },
     ],
   },
   {
@@ -1115,6 +1115,8 @@ export default function AdminSidebar({
                       {menuToRender.children.map((child) => {
                         const ChildIcon = child.icon;
                         const isChildActive = activeChildKey === child.key;
+                        const childBadgeCount =
+                          child.badgeKey && statistics ? statistics[child.badgeKey] || 0 : 0;
 
                         return (
                           <button
@@ -1144,6 +1146,11 @@ export default function AdminSidebar({
                             >
                               {child.label}
                             </span>
+                            {childBadgeCount > 0 && (
+                              <Badge className="ml-auto h-5 min-w-[20px] px-1.5 flex items-center justify-center bg-red-500 text-white text-[11px] font-semibold border-0">
+                                {childBadgeCount > 99 ? "99+" : childBadgeCount}
+                              </Badge>
+                            )}
                           </button>
                         );
                       })}

@@ -949,30 +949,39 @@ export default function DisputeDiscussionPage() {
                     const isCurrentUser = msg.userId === currentUser?.id;
                     const senderName = msg.userName || (msg.userId === dispute.claimantId ? dispute.claimantName : dispute.respondentName);
                     const isClaimant = msg.userId === dispute.claimantId?.toString();
-                    const showDeadline = index === dispute.messages.length - 1 && isClaimant;
+                    const isTeamResponse = msg.isTeamResponse === true;
+                    const showDeadline = index === dispute.messages.length - 1 && isClaimant && !isTeamResponse;
 
                     return (
-                      <div key={msg.id} className={`border rounded-lg p-4 ${showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
+                      <div key={msg.id} className={`border rounded-lg p-4 ${isTeamResponse ? 'bg-[#FFF5EE] border-[#FFD4B8]' : showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
                         <div className="flex gap-3">
                           <Avatar className="w-12 h-12 flex-shrink-0">
                             {resolveAvatarUrl(msg.userAvatar) && (
                               <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
                             )}
-                            <AvatarFallback className="bg-[#3D78CB] text-white">
+                            <AvatarFallback className={isTeamResponse ? "bg-[#FE8A0F] text-white" : "bg-[#3D78CB] text-white"}>
                               {getTwoLetterInitials(senderName, 'U')}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <div className="flex items-start justify-between mb-2">
                               <div>
-                                {isClaimant && (
-                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
-                                    Claimant:
+                                {isTeamResponse ? (
+                                  <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
+                                    {senderName}
                                   </p>
+                                ) : (
+                                  <>
+                                    {isClaimant && (
+                                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                                        Claimant:
+                                      </p>
+                                    )}
+                                    <p className="font-['Poppins',sans-serif] text-[15px] text-[#3D78CB] font-medium">
+                                      {senderName}
+                                    </p>
+                                  </>
                                 )}
-                                <p className="font-['Poppins',sans-serif] text-[15px] text-[#3D78CB] font-medium">
-                                  {senderName}
-                                </p>
                                 {showDeadline && timeLeft && (
                                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#d97706] mt-1">
                                     Deadline: {timeLeft}
@@ -1082,6 +1091,29 @@ export default function DisputeDiscussionPage() {
                     </div>
                   </div>
                 ))}
+                {isResolvedDispute && (
+                  <div className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
+                    <div className="flex gap-3">
+                      <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
+                        <AvatarImage src={adminAvatar} />
+                        <AvatarFallback className="bg-[#FE8A0F] text-white">AD</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
+                          Arbitrate team
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                          {resolvedReasonText}
+                        </p>
+                        {resolvedAtLabel && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
+                            {resolvedAtLabel}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Reply Section */}

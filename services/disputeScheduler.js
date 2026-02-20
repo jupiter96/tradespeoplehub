@@ -104,13 +104,31 @@ async function processAutomaticDisputeClosures() {
           }
         }
 
+        // Get respondent name for the message
+        const respondentName = dispute.respondentId === dispute.claimantId 
+          ? (order.client?.firstName || order.client?.tradingName || 'the claimant')
+          : (order.professional?.tradingName || order.professional?.firstName || 'the respondent');
+
+        // Add resolution message to dispute messages
+        const resolutionMessage = `Dispute resolved as ${respondentName} failed to respond within four days.`;
+        dispute.messages.push({
+          id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          userId: dispute.claimantId,
+          userName: 'Dispute team',
+          userAvatar: '',
+          message: resolutionMessage,
+          timestamp: now,
+          isTeamResponse: true,
+          attachments: [],
+        });
+
         // Update dispute
         dispute.status = 'closed';
         dispute.closedAt = now;
         dispute.winnerId = winnerId || null;
         dispute.loserId = loserId || null;
         dispute.autoClosed = true;
-        dispute.decisionNotes = 'Automatically closed due to no response before the deadline.';
+        dispute.decisionNotes = resolutionMessage;
         await dispute.save();
 
         // Update order metadata
@@ -213,12 +231,30 @@ async function processAutomaticDisputeClosures() {
         // If a Dispute doc exists, update it too
         const existingDispute = await Dispute.findOne({ order: order._id });
         if (existingDispute) {
+          // Get respondent name for the message
+          const respondentName = isClaimantClient
+            ? (order.professional?.tradingName || order.professional?.firstName || 'the respondent')
+            : (order.client?.firstName || order.client?.tradingName || 'the respondent');
+
+          // Add resolution message to dispute messages
+          const resolutionMessage = `Dispute resolved as ${respondentName} failed to respond within four days.`;
+          existingDispute.messages.push({
+            id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            userId: existingDispute.claimantId,
+            userName: 'Dispute team',
+            userAvatar: '',
+            message: resolutionMessage,
+            timestamp: now,
+            isTeamResponse: true,
+            attachments: [],
+          });
+
           existingDispute.status = 'closed';
           existingDispute.closedAt = now;
           existingDispute.winnerId = winnerId || null;
           existingDispute.loserId = loserId || null;
           existingDispute.autoClosed = true;
-          existingDispute.decisionNotes = 'Automatically closed due to no response before the deadline.';
+          existingDispute.decisionNotes = resolutionMessage;
           await existingDispute.save();
         }
 
@@ -308,12 +344,30 @@ async function processAutomaticDisputeClosures() {
           }
         }
 
+        // Get loser name for the message
+        const loserName = loserId === claimantId
+          ? (order.client?.firstName || order.client?.tradingName || 'the claimant')
+          : (order.professional?.tradingName || order.professional?.firstName || 'the respondent');
+
+        // Add resolution message to dispute messages
+        const resolutionMessage = `Dispute resolved as ${loserName} failed to pay the arbitration fee within the deadline.`;
+        dispute.messages.push({
+          id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          userId: dispute.claimantId,
+          userName: 'Dispute team',
+          userAvatar: '',
+          message: resolutionMessage,
+          timestamp: now,
+          isTeamResponse: true,
+          attachments: [],
+        });
+
         dispute.status = 'closed';
         dispute.closedAt = now;
         dispute.winnerId = winnerId || null;
         dispute.loserId = loserId || null;
         dispute.autoClosed = true;
-        dispute.decisionNotes = 'Automatically closed due to unpaid arbitration fee by the other party.';
+        dispute.decisionNotes = resolutionMessage;
         await dispute.save();
 
         if (!order.metadata) order.metadata = {};

@@ -670,6 +670,9 @@ export default function ProfessionalOrderTimelineTab({
                 return "Your order has been completed automatically.";
               }
               const disputeInfo = (currentOrder as any).disputeInfo;
+              const isSettlementAccepted =
+                disputeInfo?.status === "closed" &&
+                (disputeInfo?.acceptedByRole === "professional" || disputeInfo?.acceptedByRole === "client");
               const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
               const isWinnerPro = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
               const feeDeadline = disputeInfo?.arbitrationFeeDeadline
@@ -684,6 +687,9 @@ export default function ProfessionalOrderTimelineTab({
                 !isWinnerPro &&
                 typeof disputeInfo?.decisionNotes === "string" &&
                 disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+              if (isSettlementAccepted) {
+                return "Dispute Resolved & Order Completed!";
+              }
               if (disputeInfo?.adminDecision) {
                 return "Dispute Resolved and Order Completed!";
               }
@@ -703,6 +709,9 @@ export default function ProfessionalOrderTimelineTab({
                 return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response from the client before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the client in the form of feedback.`;
               }
               const disputeInfo = (currentOrder as any).disputeInfo;
+              const isSettlementAccepted =
+                disputeInfo?.status === "closed" &&
+                (disputeInfo?.acceptedByRole === "professional" || disputeInfo?.acceptedByRole === "client");
               const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
               const isWinnerPro = winnerId && userInfo?.id && winnerId.toString() === userInfo.id.toString();
               const feeDeadline = disputeInfo?.arbitrationFeeDeadline
@@ -717,6 +726,9 @@ export default function ProfessionalOrderTimelineTab({
                 !isWinnerPro &&
                 typeof disputeInfo?.decisionNotes === "string" &&
                 disputeInfo.decisionNotes.includes("unpaid arbitration fee");
+              if (isSettlementAccepted) {
+                return "The dispute was resolved through acceptance of a settlement offer, and the order has been marked as completed.";
+              }
               if (disputeInfo?.adminDecision) {
                 return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
               }

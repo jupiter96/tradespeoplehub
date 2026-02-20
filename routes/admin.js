@@ -763,12 +763,12 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
         path: 'order',
         select: 'orderNumber client professional items subtotal discount serviceFee',
         populate: [
-          { path: 'client', select: 'firstName lastName avatar' },
-          { path: 'professional', select: 'firstName lastName tradingName avatar' },
+          { path: 'client', select: '_id firstName lastName avatar' },
+          { path: 'professional', select: '_id firstName lastName tradingName avatar' },
         ],
       })
-      .populate('claimantId', 'firstName lastName tradingName avatar')
-      .populate('respondentId', 'firstName lastName tradingName avatar')
+      .populate('claimantId', '_id firstName lastName tradingName avatar')
+      .populate('respondentId', '_id firstName lastName tradingName avatar')
       .lean();
 
     if (!dispute) {
@@ -780,14 +780,41 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Order not found for this dispute' });
     }
 
+    const asIdString = (value) => {
+      if (!value) return null;
+      if (typeof value === 'string') return value;
+      // Handle ObjectId directly (when not populated or from lean())
+      if (value.constructor && value.constructor.name === 'ObjectId') {
+        return value.toString();
+      }
+      // Handle populated document with _id
+      if (value._id) {
+        const idValue = value._id;
+        if (typeof idValue === 'string') return idValue;
+        if (idValue.constructor && idValue.constructor.name === 'ObjectId') {
+          return idValue.toString();
+        }
+        if (typeof idValue.toString === 'function') {
+          const idStr = idValue.toString();
+          return idStr && idStr !== '[object Object]' ? idStr : null;
+        }
+      }
+      // Fallback: try toString on the value itself
+      if (typeof value.toString === 'function') {
+        const id = value.toString();
+        return id && id !== '[object Object]' ? id : null;
+      }
+      return null;
+    };
+
     const client = order.client && typeof order.client === 'object' ? order.client : null;
     const professional = order.professional && typeof order.professional === 'object' ? order.professional : null;
     const claimant = dispute.claimantId;
     const respondent = dispute.respondentId;
-    const clientIdStr = client?._id?.toString?.() || null;
-    const professionalIdStr = professional?._id?.toString?.() || null;
-    const claimantIdStr = claimant?._id?.toString?.() || claimant?.toString?.() || null;
-    const respondentIdStr = respondent?._id?.toString?.() || respondent?.toString?.() || null;
+    const clientIdStr = asIdString(order.client);
+    const professionalIdStr = asIdString(order.professional);
+    const claimantIdStr = asIdString(claimant) || clientIdStr;
+    const respondentIdStr = asIdString(respondent) || professionalIdStr;
     const clientName = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || 'Client';
     const professionalName = professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional';
 

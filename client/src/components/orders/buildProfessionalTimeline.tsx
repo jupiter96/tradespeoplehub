@@ -677,15 +677,19 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       !isProfessionalWinner &&
       typeof disp.decisionNotes === "string" &&
       disp.decisionNotes.includes("unpaid arbitration fee");
-    const disputeClosedMessage = disp.adminDecision
-      ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
-      : (isArbUnpaidAutoClose
-        ? (isProfessionalWinner
-          ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${clientDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
-          : `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\nYou have failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in the favor of ${clientDisplayName}.`)
-        : (disp.autoClosed
-          ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
-          : undefined));
+    const disputeClosedMessage = disp.acceptedByRole === "professional"
+      ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
+      : disp.acceptedByRole === "client"
+        ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
+      : disp.adminDecision
+        ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
+        : (isArbUnpaidAutoClose
+          ? (isProfessionalWinner
+            ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${clientDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
+            : `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\nYou have failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in the favor of ${clientDisplayName}.`)
+          : (disp.autoClosed
+            ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
+            : undefined));
     push(
       {
         at: disp.closedAt,

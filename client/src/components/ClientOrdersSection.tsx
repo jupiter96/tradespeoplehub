@@ -966,7 +966,7 @@ export default function ClientOrdersSection() {
       const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
       const clientId = (order as any).clientId || userInfo?.id;
       const isClientClaimant = claimantId && clientId && claimantId.toString() === clientId.toString();
-      const professionalDisplayName = disp.respondentName || order.professional || disp.claimantName || "Professional";
+      const professionalDisplayName = order.professional || disp.respondentName || disp.claimantName || "Professional";
       
       // Build warning message based on dispute state
       let disputeWarningMessage = "";
@@ -1097,15 +1097,19 @@ export default function ClientOrdersSection() {
           : disp.acceptedByRole === "professional"
             ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
             : (disp.decisionNotes || "Dispute has been resolved and closed.");
-      const disputeClosedMessage = disp.adminDecision
-        ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
-        : (isArbUnpaidAutoClose
-          ? (isClientWinner
-            ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${professionalDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
-            : `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\nYou failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in ${professionalDisplayName}'s favour.`)
-          : (disp.autoClosed
-            ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
-            : undefined));
+      const disputeClosedMessage = disp.acceptedByRole === "client"
+        ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
+        : disp.acceptedByRole === "professional"
+          ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
+          : disp.adminDecision
+            ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
+            : (isArbUnpaidAutoClose
+              ? (isClientWinner
+                ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${professionalDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
+                : `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\nYou failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in ${professionalDisplayName}'s favour.`)
+              : (disp.autoClosed
+                ? `Your order dispute has been automatically closed and resolved due to no response before the ${autoClosedDeadline}`
+                : undefined));
       push(
         {
           at: disp.closedAt,
@@ -2435,7 +2439,10 @@ export default function ClientOrdersSection() {
                     if (disputeInfo?.autoClosed) {
                       return "Dispute automatically closed & Order completed!";
                     }
-                    if (disputeInfo?.status === "closed" && disputeInfo?.acceptedByRole === "professional") {
+                    if (
+                      disputeInfo?.status === "closed" &&
+                      (disputeInfo?.acceptedByRole === "professional" || disputeInfo?.acceptedByRole === "client")
+                    ) {
                       return "Dispute Resolved & Order Completed!";
                     }
                     return "Your order has been completed!";
@@ -2479,7 +2486,10 @@ export default function ClientOrdersSection() {
                     if (disputeInfo?.autoClosed) {
                       return "The dispute was automatically decided and closed, with the order marked as completed due to no response from you.";
                     }
-                    if (disputeInfo?.status === "closed" && disputeInfo?.acceptedByRole === "professional") {
+                    if (
+                      disputeInfo?.status === "closed" &&
+                      (disputeInfo?.acceptedByRole === "professional" || disputeInfo?.acceptedByRole === "client")
+                    ) {
                       return "The dispute was resolved through acceptance of a settlement offer, and the order has been marked as completed.";
                     }
                     return "Your order has been completed. Please assist other users on our platform by sharing your experience working with the seller in the feedback form.";
@@ -4363,7 +4373,7 @@ export default function ClientOrdersSection() {
                           })()}
                         </p>
                       </>
-                    ) : currentOrder.disputeInfo?.status === "closed" && currentOrder.disputeInfo?.acceptedByRole === "professional" ? (
+                    ) : currentOrder.disputeInfo?.status === "closed" && (currentOrder.disputeInfo?.acceptedByRole === "professional" || currentOrder.disputeInfo?.acceptedByRole === "client") ? (
                       <>
                         <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
                           Dispute Resolved &amp; Order Completed!

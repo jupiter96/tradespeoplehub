@@ -5137,9 +5137,23 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
         professionalOffer !== null && professionalOffer !== undefined && 
         clientOffer === professionalOffer) {
       // Offers match - resolve dispute
+      // Add resolution message to dispute messages
+      const resolutionMessage = `Dispute resolved as both parties agreed on £${clientOffer.toFixed(2)}.`;
+      dispute.messages.push({
+        id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        userId: dispute.claimantId,
+        userName: 'Dispute team',
+        userAvatar: '',
+        message: resolutionMessage,
+        timestamp: new Date(),
+        isTeamResponse: true,
+        attachments: [],
+      });
+
       dispute.status = 'closed';
       dispute.closedAt = new Date();
       dispute.finalAmount = clientOffer;
+      dispute.decisionNotes = resolutionMessage;
       order.status = 'Completed';
       order.deliveryStatus = 'completed';
       
@@ -5210,12 +5224,32 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
 
     // Accept the offer and resolve dispute
     const agreedAmount = otherPartyOffer;
+    
+    // Get acceptor name for the message
+    const acceptorName = isClient 
+      ? (order.client?.firstName || 'Client')
+      : (order.professional?.tradingName || order.professional?.firstName || 'Professional');
+
+    // Add resolution message to dispute messages
+    const resolutionMessage = `Dispute resolved as ${acceptorName} accepted the settlement offer of £${agreedAmount.toFixed(2)}.`;
+    dispute.messages.push({
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: dispute.claimantId,
+      userName: 'Dispute team',
+      userAvatar: '',
+      message: resolutionMessage,
+      timestamp: new Date(),
+      isTeamResponse: true,
+      attachments: [],
+    });
+
     dispute.status = 'closed';
     dispute.closedAt = new Date();
     dispute.acceptedBy = req.user.id;
     dispute.acceptedByRole = isClient ? 'client' : 'professional';
     dispute.acceptedAt = new Date();
     dispute.finalAmount = agreedAmount;
+    dispute.decisionNotes = resolutionMessage;
 
     const isMilestoneOrder = order.metadata?.milestones?.length > 0;
     const disputedIndices = dispute.milestoneIndices && Array.isArray(dispute.milestoneIndices) ? dispute.milestoneIndices : [];

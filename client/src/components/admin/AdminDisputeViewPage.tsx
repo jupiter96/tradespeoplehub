@@ -124,7 +124,8 @@ export default function AdminDisputeViewPage() {
       }
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setTimeLeft(`${days} days, ${hours} hours`);
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      setTimeLeft(`${days} days ${hours} hours ${minutes} mins`);
     };
     updateTimer();
     const interval = setInterval(updateTimer, 60000);
@@ -139,7 +140,11 @@ export default function AdminDisputeViewPage() {
     ? [
         { id: dispute.claimantId, label: dispute.claimantName || "Claimant" },
         { id: dispute.respondentId, label: dispute.respondentName || "Respondent" },
-      ].filter((opt, idx, arr) => Boolean(opt.id) && arr.findIndex((x) => x.id === opt.id) === idx)
+      ].filter((opt, idx, arr) => {
+        const hasValidId = opt.id && opt.id.trim() !== "";
+        const isFirstOccurrence = arr.findIndex((x) => x.id === opt.id) === idx;
+        return hasValidId && isFirstOccurrence;
+      })
     : [];
 
   const handleSubmitReply = async () => {
@@ -338,33 +343,42 @@ export default function AdminDisputeViewPage() {
                     msg.userName ||
                     (msg.userId === dispute.claimantId ? dispute.claimantName : dispute.respondentName);
                   const isClaimant = msg.userId === dispute.claimantId;
+                  const isTeamResponse = msg.isTeamResponse === true;
                   const showDeadline =
-                    msg.id === dispute.messages[dispute.messages.length - 1]?.id && isClaimant;
+                    msg.id === dispute.messages[dispute.messages.length - 1]?.id && isClaimant && !isTeamResponse;
 
                   return (
                     <div
                       key={msg.id}
-                      className={`border rounded-lg p-4 ${showDeadline ? "bg-orange-50 border-orange-200" : "border-gray-200"}`}
+                      className={`border rounded-lg p-4 ${isTeamResponse ? "bg-[#FFF5EE] border-[#FFD4B8]" : showDeadline ? "bg-orange-50 border-orange-200" : "border-gray-200"}`}
                     >
                       <div className="flex gap-3">
                         <Avatar className="w-12 h-12 flex-shrink-0">
                           {resolveAvatarUrl(msg.userAvatar) && (
                             <AvatarImage src={resolveAvatarUrl(msg.userAvatar)} />
                           )}
-                          <AvatarFallback className="bg-[#3D78CB] text-white">
+                          <AvatarFallback className={isTeamResponse ? "bg-[#FE8A0F] text-white" : "bg-[#3D78CB] text-white"}>
                             {getTwoLetterInitials(senderName, "U")}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="mb-2">
-                            {isClaimant && (
-                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
-                                Claimant:
+                            {isTeamResponse ? (
+                              <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium">
+                                {senderName}
                               </p>
+                            ) : (
+                              <>
+                                {isClaimant && (
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">
+                                    Claimant:
+                                  </p>
+                                )}
+                                <p className="font-['Poppins',sans-serif] text-[15px] text-[#3D78CB] font-medium">
+                                  {senderName}
+                                </p>
+                              </>
                             )}
-                            <p className="font-['Poppins',sans-serif] text-[15px] text-[#3D78CB] font-medium">
-                              {senderName}
-                            </p>
                             {showDeadline && timeLeft && (
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#d97706] mt-1">
                                 Deadline: {timeLeft}
@@ -434,12 +448,14 @@ export default function AdminDisputeViewPage() {
               )}
             </div>
             <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-end">
-              <Button
-                onClick={() => setIsDecisionOpen(true)}
-                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-              >
-                Make Final Decision
-              </Button>
+              {dispute.status === "admin_arbitration" && (
+                <Button
+                  onClick={() => setIsDecisionOpen(true)}
+                  className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                >
+                  Make Final Decision
+                </Button>
+              )}
               <Button
                 onClick={() => setIsReplyOpen(true)}
                 variant="outline"
@@ -520,18 +536,24 @@ export default function AdminDisputeViewPage() {
           <div className="space-y-4">
             <div>
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
-              <Select value={replyFavor} onValueChange={setReplyFavor}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  {favorOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {favorOptions.length > 0 ? (
+                <Select value={replyFavor} onValueChange={setReplyFavor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a party" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100005]">
+                    {favorOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-['Poppins',sans-serif] text-[14px] text-red-500">
+                  Unable to load parties. Please refresh the page.
+                </p>
+              )}
             </div>
             <div>
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
@@ -566,18 +588,24 @@ export default function AdminDisputeViewPage() {
           <div className="space-y-4">
             <div>
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
-              <Select value={decisionFavor} onValueChange={setDecisionFavor}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  {favorOptions.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {favorOptions.length > 0 ? (
+                <Select value={decisionFavor} onValueChange={setDecisionFavor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a party" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100005]">
+                    {favorOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-['Poppins',sans-serif] text-[14px] text-red-500">
+                  Unable to load parties. Please refresh the page.
+                </p>
+              )}
             </div>
             <div>
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
