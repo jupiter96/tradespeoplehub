@@ -5126,7 +5126,8 @@ function WithdrawSection() {
                     const processedAt = tx.processedAt ? new Date(tx.processedAt) : new Date();
                     return sum + (processedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
                   }, 0) / completedWithdrawals.length;
-                  return `${Math.round(avgDays)} days`;
+                  const rounded = Math.round(avgDays);
+                  return `${rounded} ${rounded <= 1 ? "day" : "days"}`;
                 })()}
               </p>
             </div>
@@ -5978,9 +5979,9 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMins < 60) return `${diffMins} ${diffMins <= 1 ? 'min' : 'mins'} ago`;
+    if (diffHours < 24) return `${diffHours} ${diffHours <= 1 ? 'hour' : 'hours'} ago`;
+    if (diffDays < 7) return `${diffDays} ${diffDays <= 1 ? 'day' : 'days'} ago`;
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
@@ -6660,7 +6661,7 @@ function MessengerSection() {
                                   <div className="flex justify-between items-center">
                                     <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Delivery:</span>
                                     <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                      {message.orderDetails.deliveryDays} {message.orderDetails.deliveryDays === 1 ? 'day' : 'days'}
+                                      {message.orderDetails.deliveryDays} {message.orderDetails.deliveryDays <= 1 ? 'day' : 'days'}
                                     </span>
                                   </div>
                                 )}

@@ -292,7 +292,7 @@ const formatReviewDate = (dateString: string): string => {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   if (diffDays < 7) {
-    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    return `${diffDays} ${diffDays <= 1 ? 'day' : 'days'} ago`;
   } else if (diffDays < 30) {
     const weeks = Math.floor(diffDays / 7);
     return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
@@ -436,7 +436,7 @@ export default function ServiceDetailPage() {
               highlights: [],
               features: Array.isArray(p.features) ? p.features : [],
               deliveryDays: p.deliveryDays !== undefined && p.deliveryDays !== null ? p.deliveryDays : (p.deliveryType || "standard"),
-              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : (p.deliveryType === "same-day" ? "Same day" : undefined),
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} ${p.deliveryDays <= 1 ? "day" : "days"}` : (p.deliveryType === "same-day" ? "Same day" : undefined),
               revisions: p.revisions || "",
               order: p.order || 0,
             })) || [],
@@ -2218,12 +2218,12 @@ export default function ServiceDetailPage() {
                               } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
                                 deliveryText = "Same day";
                               } else if (typeof deliveryDays === "number" && deliveryDays > 0) {
-                                deliveryText = `${deliveryDays} ${deliveryDays === 1 ? "day" : "days"}`;
+                                deliveryText = `${deliveryDays} ${deliveryDays <= 1 ? "day" : "days"}`;
                               } else if (deliveryDays === 7 || deliveryDays === "7") {
                                 deliveryText = "7 days";
                               } else if (deliveryDays !== undefined && deliveryDays !== null && String(deliveryDays).trim() !== "") {
                                 const n = Number(deliveryDays);
-                                deliveryText = Number.isNaN(n) ? "7 days" : (n === 0 ? "Same day" : `${n} ${n === 1 ? "day" : "days"}`);
+                                deliveryText = Number.isNaN(n) ? "7 days" : (n === 0 ? "Same day" : `${n} ${n <= 1 ? "day" : "days"}`);
                               } else {
                                 const deliveryType = pkg.deliveryType;
                                 if (deliveryType === "same-day" || deliveryType === "same day") {
@@ -3244,20 +3244,20 @@ export default function ServiceDetailPage() {
                       } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
                         deliveryTimeText = "Same day";
                       } else if (typeof deliveryDays === "number" && deliveryDays > 0) {
-                        deliveryTimeText = `${deliveryDays} ${deliveryDays === 1 ? "day" : "days"}`;
+                        deliveryTimeText = `${deliveryDays} ${deliveryDays <= 1 ? "day" : "days"}`;
                       } else if (deliveryDays === 7 || deliveryDays === "7") {
                         deliveryTimeText = "7 days";
                       } else if (deliveryDays !== undefined && deliveryDays !== null && String(deliveryDays).trim() !== "") {
                         const n = Number(deliveryDays);
                         if (!Number.isNaN(n) && n >= 0) {
-                          deliveryTimeText = n === 0 ? "Same day" : `${n} ${n === 1 ? "day" : "days"}`;
+                          deliveryTimeText = n === 0 ? "Same day" : `${n} ${n <= 1 ? "day" : "days"}`;
                         }
                       }
                       if (deliveryTimeText === null && selectedPackage.deliveryType) {
                         if (selectedPackage.deliveryType === "same-day" || selectedPackage.deliveryType === "same day") {
                           deliveryTimeText = "Same day";
                         } else if (typeof selectedPackage.deliveryType === "number") {
-                          deliveryTimeText = `${selectedPackage.deliveryType} ${selectedPackage.deliveryType === 1 ? "day" : "days"}`;
+                          deliveryTimeText = `${selectedPackage.deliveryType} ${selectedPackage.deliveryType <= 1 ? "day" : "days"}`;
                         }
                       }
                       if (deliveryTimeText === null) deliveryTimeText = "7 days"; // fallback for package
@@ -3718,20 +3718,20 @@ export default function ServiceDetailPage() {
                         } else if (deliveryDays === "same-day" || deliveryDays === "same day") {
                           deliveryTimeText = "Same day";
                         } else if (typeof deliveryDays === "number" && deliveryDays > 0) {
-                          deliveryTimeText = `${deliveryDays} ${deliveryDays === 1 ? "day" : "days"}`;
+                          deliveryTimeText = `${deliveryDays} ${deliveryDays <= 1 ? "day" : "days"}`;
                         } else if (deliveryDays === 7 || deliveryDays === "7") {
                           deliveryTimeText = "7 days";
                         } else if (deliveryDays !== undefined && deliveryDays !== null && String(deliveryDays).trim() !== "") {
                           const n = Number(deliveryDays);
                           if (!Number.isNaN(n) && n >= 0) {
-                            deliveryTimeText = n === 0 ? "Same day" : `${n} ${n === 1 ? "day" : "days"}`;
+                            deliveryTimeText = n === 0 ? "Same day" : `${n} ${n <= 1 ? "day" : "days"}`;
                           }
                         }
                         if (deliveryTimeText === null && selectedPackage.deliveryType) {
                           if (selectedPackage.deliveryType === "same-day" || selectedPackage.deliveryType === "same day") {
                             deliveryTimeText = "Same day";
                           } else if (typeof selectedPackage.deliveryType === "number") {
-                            deliveryTimeText = `${selectedPackage.deliveryType} ${selectedPackage.deliveryType === 1 ? "day" : "days"}`;
+                            deliveryTimeText = `${selectedPackage.deliveryType} ${selectedPackage.deliveryType <= 1 ? "day" : "days"}`;
                           }
                         }
                         if (deliveryTimeText === null) deliveryTimeText = "7 days";

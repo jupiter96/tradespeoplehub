@@ -661,7 +661,7 @@ export default function FloatingMessenger() {
                                             Delivery:
                                           </span>
                                           <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
-                                            {message.orderDetails.deliveryDays} {message.orderDetails.deliveryDays === 1 ? 'day' : 'days'}
+                                            {message.orderDetails.deliveryDays} {message.orderDetails.deliveryDays <= 1 ? 'day' : 'days'}
                                           </span>
                                         </div>
                                       )}

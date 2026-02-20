@@ -606,7 +606,10 @@ export default function DisputeDiscussionPage() {
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      setTimeLeft(`${days} days ${hours} hours ${minutes} mins`);
+      const dLabel = days <= 1 ? "day" : "days";
+      const hLabel = hours <= 1 ? "hour" : "hours";
+      const mLabel = minutes <= 1 ? "min" : "mins";
+      setTimeLeft(`${days} ${dLabel} ${hours} ${hLabel} ${minutes} ${mLabel}`);
     };
 
     updateTimer();
@@ -723,7 +726,7 @@ export default function DisputeDiscussionPage() {
   const arbitrationDaysToPay = dispute?.arbitrationFeeDeadline
     ? Math.max(0, Math.ceil((new Date(dispute.arbitrationFeeDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
-  const displayTimeLeft = bothPaidArbitrationFee ? "0 days 0 hours 0 mins" : timeLeft;
+  const displayTimeLeft = bothPaidArbitrationFee ? "0 day 0 hour 0 min" : timeLeft;
   // Show "Ask to admin step in" button as soon as respondent has replied (negotiation phase); no need to wait for negotiationDeadline in state
   const canShowArbitrationButton = Boolean(
     isOrderDispute &&
@@ -884,15 +887,21 @@ export default function DisputeDiscussionPage() {
     }] : []),
   ].sort((a, b) => a.ts - b.ts);
 
-  // Parse "X days Y hours Z mins" into parts so we can style numbers vs labels differently.
+  // Parse "X day(s) Y hour(s) Z min(s)" into parts so we can style numbers vs labels differently.
   const timeParts = (() => {
     if (!displayTimeLeft) return null;
-    const match = displayTimeLeft.match(/(\d+)\s+days\s+(\d+)\s+hours\s+(\d+)\s+mins/);
+    const match = displayTimeLeft.match(/(\d+)\s+days?\s+(\d+)\s+hours?\s+(\d+)\s+mins?/);
     if (!match) return null;
+    const d = parseInt(match[1], 10);
+    const h = parseInt(match[2], 10);
+    const m = parseInt(match[3], 10);
     return {
       days: match[1],
       hours: match[2],
       minutes: match[3],
+      dLabel: d <= 1 ? "day" : "days",
+      hLabel: h <= 1 ? "hour" : "hours",
+      mLabel: m <= 1 ? "min" : "mins",
     };
   })();
 
@@ -1126,7 +1135,7 @@ export default function DisputeDiscussionPage() {
                             </p>
                             {idx === 0 && !bothPaidArbitrationFee && (
                               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
-                                {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${firstPayerName}.`}
+                                {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} ${arbitrationDaysToPay <= 1 ? "day" : "days"} to pay the fee - failure to do so will result in deciding the case in the favour of ${firstPayerName}.`}
                               </p>
                             )}
                             {isLast && bothPaidArbitrationFee && (
@@ -1237,19 +1246,19 @@ export default function DisputeDiscussionPage() {
                       {timeParts.days}
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[5px] text-[#6b6b6b]">
-                      days
+                      {timeParts.dLabel}
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold">
                       {timeParts.hours}
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[5px] text-[#6b6b6b]">
-                      hours
+                      {timeParts.hLabel}
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold">
                       {timeParts.minutes}
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[5px] text-[#6b6b6b]">
-                      mins
+                      {timeParts.mLabel}
                     </span>
                   </div>
                 ) : (

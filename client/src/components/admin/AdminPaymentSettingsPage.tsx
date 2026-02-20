@@ -687,7 +687,7 @@ export default function AdminPaymentSettingsPage() {
 
                     <div>
                       <Label htmlFor="closedProjectDays" className="font-['Poppins',sans-serif]">
-                        Closed Project Day(s):
+                        Closed Project Days:
                       </Label>
                       <div className="relative mt-2">
                         <Input
@@ -698,7 +698,7 @@ export default function AdminPaymentSettingsPage() {
                           className="pr-16 font-['Poppins',sans-serif]"
                           min="0"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{(settings.closedProjectDays || 0) <= 1 ? 'Day' : 'Days'}</span>
                       </div>
                     </div>
                   </div>
@@ -761,7 +761,7 @@ export default function AdminPaymentSettingsPage() {
 
                     <div>
                       <Label htmlFor="waitingTimeInDays" className="font-['Poppins',sans-serif]">
-                        Waiting time in days(s):
+                        Waiting time:
                       </Label>
                       <div className="relative mt-2">
                         <Input
@@ -772,7 +772,7 @@ export default function AdminPaymentSettingsPage() {
                           className="pr-16 font-['Poppins',sans-serif]"
                           min="0"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{(settings.waitingTimeInDays || 0) <= 1 ? 'Day' : 'Days'}</span>
                       </div>
                     </div>
                   </div>
@@ -912,7 +912,7 @@ export default function AdminPaymentSettingsPage() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="feedbackReviewValidityDays" className="font-['Poppins',sans-serif]">
-                        Feedback/Review validity(Days):
+                        Feedback/Review validity:
                       </Label>
                       <div className="relative mt-2">
                         <Input
@@ -924,7 +924,7 @@ export default function AdminPaymentSettingsPage() {
                           min="0"
                           step="0.01"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">Day(s)</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? 'Day' : 'Days')(settings.feedbackReviewValidityDays === "" ? 0 : settings.feedbackReviewValidityDays ?? 0)}</span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
                         How many days a user can submit or edit review/feedback after completion.
@@ -984,10 +984,10 @@ export default function AdminPaymentSettingsPage() {
                           min="0"
                           step="0.01"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? 'hour' : 'hours')(settings.arbitrationFeeDeadlineHours === "" ? 0 : settings.arbitrationFeeDeadlineHours ?? 0)}</span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
-                        Time limit (hours) for the other party to pay arbitration fee after first payment.
+                        Time limit for the other party to pay arbitration fee after first payment.
                       </p>
                     </div>
                   </div>
@@ -1008,7 +1008,7 @@ export default function AdminPaymentSettingsPage() {
                           min="0"
                           step="0.01"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? 'hour' : 'hours')(settings.waitingTimeToAcceptOffer === "" ? 0 : settings.waitingTimeToAcceptOffer ?? 0)}</span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
                         How many hours the receiver has to accept or reject a custom offer.
@@ -1029,7 +1029,7 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
-                          hours
+                          {((v) => v === 0 || v === 1 ? 'hour' : 'hours')(settings.deliveredWorkResponseTimeHours === "" ? 0 : settings.deliveredWorkResponseTimeHours ?? 0)}
                         </span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
@@ -1051,11 +1051,11 @@ export default function AdminPaymentSettingsPage() {
                           step="0.01"
                         />
                         <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">
-                          hours
+                          {((v) => v === 0 || v === 1 ? 'hour' : 'hours')(settings.disputeResponseTimeHours === "" ? 0 : settings.disputeResponseTimeHours ?? 0)}
                         </span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
-                        Time (hours) for the respondent to send the first response after dispute opens.
+                        Time for the respondent to send the first response after dispute opens.
                       </p>
                     </div>
 
@@ -1073,10 +1073,10 @@ export default function AdminPaymentSettingsPage() {
                           min="0"
                           step="0.01"
                         />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">hours</span>
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? 'hour' : 'hours')(settings.stepInHours === "" ? 0 : settings.stepInHours ?? 0)}</span>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
-                        Negotiation window (hours) after first response before "Ask admin to step in" is allowed.
+                        Negotiation window after first response before "Ask admin to step in" is allowed.
                       </p>
                     </div>
 

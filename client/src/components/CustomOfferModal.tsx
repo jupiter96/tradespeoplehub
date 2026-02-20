@@ -449,7 +449,7 @@ export default function CustomOfferModal({
                           </Badge>
                         </div>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-                          Base delivery: {service.deliveryDays} {service.deliveryDays === 1 ? 'day' : 'days'}
+                          Base delivery: {service.deliveryDays} {service.deliveryDays <= 1 ? 'day' : 'days'}
                         </p>
                       </div>
                       <div className="text-right">
@@ -596,7 +596,7 @@ export default function CustomOfferModal({
                                     {milestone.name}
                                   </span>
                                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] shrink-0">
-                                    {milestone.deliveryInDays} {milestone.deliveryInDays === 1 ? "day" : "days"}
+                                    {milestone.deliveryInDays} {milestone.deliveryInDays <= 1 ? "day" : "days"}
                                   </span>
                                   <span className="font-['Poppins',sans-serif] text-[15px] text-[#FE8A0F] font-semibold shrink-0">
                                     £{milestoneTotal.toFixed(2)}
@@ -1037,7 +1037,7 @@ export default function CustomOfferModal({
                                   </span>
                                   <div className="flex items-center gap-3 mt-0.5">
                                     <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                                      {milestone.deliveryInDays} {milestone.deliveryInDays === 1 ? "day" : "days"}
+                                      {milestone.deliveryInDays} {milestone.deliveryInDays <= 1 ? "day" : "days"}
                                     </span>
                                     <span className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F] font-semibold">
                                       £{milestoneTotal.toFixed(2)}

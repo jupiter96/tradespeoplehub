@@ -112,7 +112,7 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
           <div className={`font-['Poppins',sans-serif] text-[13px] ${
             timeLeft.isOverdue ? 'text-red-600' : 'text-[#6b6b6b]'
           }`}>
-            Days
+            {timeLeft.days <= 1 ? 'Day' : 'Days'}
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
           <div className={`font-['Poppins',sans-serif] text-[13px] ${
             timeLeft.isOverdue ? 'text-red-600' : 'text-[#6b6b6b]'
           }`}>
-            Hours
+            {timeLeft.hours <= 1 ? 'Hour' : 'Hours'}
           </div>
         </div>
 
@@ -140,7 +140,7 @@ export default function DeliveryCountdown({ expectedDelivery }: DeliveryCountdow
           <div className={`font-['Poppins',sans-serif] text-[13px] ${
             timeLeft.isOverdue ? 'text-red-600' : 'text-[#6b6b6b]'
           }`}>
-            Minutes
+            {timeLeft.minutes <= 1 ? 'Minute' : 'Minutes'}
           </div>
         </div>
       </div>

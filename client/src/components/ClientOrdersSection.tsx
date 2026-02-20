@@ -1941,7 +1941,7 @@ export default function ClientOrdersSection() {
                       {String(appointmentCountdown.days).padStart(2, '0')}
                     </div>
                     <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                      Days
+                      {appointmentCountdown.days <= 1 ? 'Day' : 'Days'}
                     </div>
                   </div>
 
@@ -1951,7 +1951,7 @@ export default function ClientOrdersSection() {
                       {String(appointmentCountdown.hours).padStart(2, '0')}
                     </div>
                     <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                      Hours
+                      {appointmentCountdown.hours <= 1 ? 'Hour' : 'Hours'}
                     </div>
                   </div>
 
@@ -1961,7 +1961,7 @@ export default function ClientOrdersSection() {
                       {String(appointmentCountdown.minutes).padStart(2, '0')}
                     </div>
                     <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                      Minutes
+                      {appointmentCountdown.minutes <= 1 ? 'Minute' : 'Minutes'}
                     </div>
                   </div>
 
@@ -1971,7 +1971,7 @@ export default function ClientOrdersSection() {
                       {String(appointmentCountdown.seconds).padStart(2, '0')}
                     </div>
                     <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                      Seconds
+                      {appointmentCountdown.seconds <= 1 ? 'Second' : 'Seconds'}
                     </div>
                   </div>
                 </div>
@@ -1987,7 +1987,7 @@ export default function ClientOrdersSection() {
                     />
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                    {appointmentCountdown.days > 0 ? `${appointmentCountdown.days}d remaining` : 'Today'}
+                    {appointmentCountdown.days > 0 ? `${appointmentCountdown.days} ${appointmentCountdown.days <= 1 ? 'day' : 'days'} remaining` : 'Today'}
                   </span>
                 </div>
 
@@ -2057,7 +2057,7 @@ export default function ClientOrdersSection() {
                   {String((isDeliveryOverdue ? overdueElapsedTime.days : workElapsedTime.days)).padStart(2, '0')}
                 </div>
                 <div className={`font-['Poppins',sans-serif] text-[10px] md:text-[11px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
-                  Days
+                  {(isDeliveryOverdue ? overdueElapsedTime.days : workElapsedTime.days) <= 1 ? 'Day' : 'Days'}
                 </div>
               </div>
 
@@ -2067,7 +2067,7 @@ export default function ClientOrdersSection() {
                   {String((isDeliveryOverdue ? overdueElapsedTime.hours : workElapsedTime.hours)).padStart(2, '0')}
                 </div>
                 <div className={`font-['Poppins',sans-serif] text-[10px] md:text-[11px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
-                  Hours
+                  {(isDeliveryOverdue ? overdueElapsedTime.hours : workElapsedTime.hours) <= 1 ? 'Hour' : 'Hours'}
                 </div>
               </div>
 
@@ -2077,7 +2077,7 @@ export default function ClientOrdersSection() {
                   {String((isDeliveryOverdue ? overdueElapsedTime.minutes : workElapsedTime.minutes)).padStart(2, '0')}
                 </div>
                 <div className={`font-['Poppins',sans-serif] text-[10px] md:text-[11px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
-                  Minutes
+                  {(isDeliveryOverdue ? overdueElapsedTime.minutes : workElapsedTime.minutes) <= 1 ? 'Minute' : 'Minutes'}
                 </div>
               </div>
 
@@ -2087,7 +2087,7 @@ export default function ClientOrdersSection() {
                   {String((isDeliveryOverdue ? overdueElapsedTime.seconds : workElapsedTime.seconds)).padStart(2, '0')}
                 </div>
                 <div className={`font-['Poppins',sans-serif] text-[10px] md:text-[11px] uppercase tracking-wider mt-1 ${isDeliveryOverdue ? "text-red-600" : "text-blue-600"}`}>
-                  Seconds
+                  {(isDeliveryOverdue ? overdueElapsedTime.seconds : workElapsedTime.seconds) <= 1 ? 'Second' : 'Seconds'}
                 </div>
               </div>
             </div>
@@ -2224,7 +2224,7 @@ export default function ClientOrdersSection() {
                                   {String(offerResponseCountdown.days).padStart(2, '0')}
                                 </div>
                                 <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                                  Days
+                                  {offerResponseCountdown.days <= 1 ? 'Day' : 'Days'}
                                 </div>
                               </div>
                               <div className="bg-gray-100 rounded-xl p-4 text-center">
@@ -2232,7 +2232,7 @@ export default function ClientOrdersSection() {
                                   {String(offerResponseCountdown.hours).padStart(2, '0')}
                                 </div>
                                 <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                                  Hours
+                                  {offerResponseCountdown.hours <= 1 ? 'Hour' : 'Hours'}
                                 </div>
                               </div>
                               <div className="bg-gray-100 rounded-xl p-4 text-center">
@@ -2240,7 +2240,7 @@ export default function ClientOrdersSection() {
                                   {String(offerResponseCountdown.minutes).padStart(2, '0')}
                                 </div>
                                 <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                                  Minutes
+                                  {offerResponseCountdown.minutes <= 1 ? 'Minute' : 'Minutes'}
                                 </div>
                               </div>
                               <div className="bg-gray-100 rounded-xl p-4 text-center">
@@ -2248,7 +2248,7 @@ export default function ClientOrdersSection() {
                                   {String(offerResponseCountdown.seconds).padStart(2, '0')}
                                 </div>
                                 <div className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                                  Seconds
+                                  {offerResponseCountdown.seconds <= 1 ? 'Second' : 'Seconds'}
                                 </div>
                               </div>
                             </div>
@@ -2263,7 +2263,7 @@ export default function ClientOrdersSection() {
                                   />
                                 </div>
                                 <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                                  {offerResponseCountdown.days > 0 ? `${offerResponseCountdown.days}d remaining` : 'Today'}
+                                  {offerResponseCountdown.days > 0 ? `${offerResponseCountdown.days} ${offerResponseCountdown.days <= 1 ? 'day' : 'days'} remaining` : 'Today'}
                                 </span>
                               </div>
                             )}
@@ -3128,8 +3128,8 @@ export default function ClientOrdersSection() {
                   : 0;
                 const _negHours = _negMs > 0 ? Math.floor(_negMs / (1000 * 60 * 60)) : 0;
                 const _negMins = _negMs > 0 ? Math.round((_negMs % (1000 * 60 * 60)) / (1000 * 60)) : 0;
-                const _hUnit = _negHours === 1 ? "hour" : "hours";
-                const _mUnit = _negMins === 1 ? "minute" : "minutes";
+                const _hUnit = _negHours <= 1 ? "hour" : "hours";
+                const _mUnit = _negMins <= 1 ? "minute" : "minutes";
                 const _negLabel = _negHours > 0 && _negMins > 0
                   ? `${_negHours} ${_hUnit} ${_negMins} ${_mUnit}`
                   : _negHours > 0

@@ -215,7 +215,7 @@ export default function ProfessionalOrderTimelineTab({
                             {String(offerResponseCountdown.days).padStart(2, '0')}
                           </div>
                           <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                            Days
+                            {offerResponseCountdown.days <= 1 ? 'Day' : 'Days'}
                           </div>
                         </div>
                         <div className="bg-gray-100 rounded-xl p-4 text-center">
@@ -223,7 +223,7 @@ export default function ProfessionalOrderTimelineTab({
                             {String(offerResponseCountdown.hours).padStart(2, '0')}
                           </div>
                           <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                            Hours
+                            {offerResponseCountdown.hours <= 1 ? 'Hour' : 'Hours'}
                           </div>
                         </div>
                         <div className="bg-gray-100 rounded-xl p-4 text-center">
@@ -231,7 +231,7 @@ export default function ProfessionalOrderTimelineTab({
                             {String(offerResponseCountdown.minutes).padStart(2, '0')}
                           </div>
                           <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                            Minutes
+                            {offerResponseCountdown.minutes <= 1 ? 'Minute' : 'Minutes'}
                           </div>
                         </div>
                         <div className="bg-gray-100 rounded-xl p-4 text-center">
@@ -239,7 +239,7 @@ export default function ProfessionalOrderTimelineTab({
                             {String(offerResponseCountdown.seconds).padStart(2, '0')}
                           </div>
                           <div className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] uppercase tracking-wider mt-1">
-                            Seconds
+                            {offerResponseCountdown.seconds <= 1 ? 'Second' : 'Seconds'}
                           </div>
                         </div>
                       </div>
@@ -254,7 +254,7 @@ export default function ProfessionalOrderTimelineTab({
                             />
                           </div>
                           <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                            {offerResponseCountdown.days > 0 ? `${offerResponseCountdown.days}d remaining` : 'Today'}
+                            {offerResponseCountdown.days > 0 ? `${offerResponseCountdown.days} ${offerResponseCountdown.days <= 1 ? 'day' : 'days'} remaining` : 'Today'}
                           </span>
                         </div>
                       )}
@@ -810,8 +810,8 @@ export default function ProfessionalOrderTimelineTab({
             : 0;
           const _negHours = _negMs > 0 ? Math.floor(_negMs / (1000 * 60 * 60)) : 0;
           const _negMins = _negMs > 0 ? Math.round((_negMs % (1000 * 60 * 60)) / (1000 * 60)) : 0;
-          const _hUnit = _negHours === 1 ? "hour" : "hours";
-          const _mUnit = _negMins === 1 ? "minute" : "minutes";
+          const _hUnit = _negHours <= 1 ? "hour" : "hours";
+          const _mUnit = _negMins <= 1 ? "minute" : "minutes";
           const _negLabel = _negHours > 0 && _negMins > 0
             ? `${_negHours} ${_hUnit} ${_negMins} ${_mUnit}`
             : _negHours > 0
@@ -939,25 +939,25 @@ export default function ProfessionalOrderTimelineTab({
                               <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
                                 {String(extensionCountdown.days).padStart(2, '0')}
                               </div>
-                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Days</div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">{extensionCountdown.days <= 1 ? 'Day' : 'Days'}</div>
                             </div>
                             <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
                               <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
                                 {String(extensionCountdown.hours).padStart(2, '0')}
                               </div>
-                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Hours</div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">{extensionCountdown.hours <= 1 ? 'Hour' : 'Hours'}</div>
                             </div>
                             <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
                               <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
                                 {String(extensionCountdown.minutes).padStart(2, '0')}
                               </div>
-                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Min</div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">{extensionCountdown.minutes <= 1 ? 'Min' : 'Mins'}</div>
                             </div>
                             <div className="bg-white rounded-xl p-3 text-center border border-indigo-100">
                               <div className="font-['Poppins',sans-serif] text-[22px] md:text-[26px] font-medium text-[#2c353f] leading-none">
                                 {String(extensionCountdown.seconds).padStart(2, '0')}
                               </div>
-                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">Sec</div>
+                              <div className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] uppercase tracking-wider mt-1">{extensionCountdown.seconds <= 1 ? 'Sec' : 'Secs'}</div>
                             </div>
                           </div>
                         )}

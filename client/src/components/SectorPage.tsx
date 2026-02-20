@@ -1099,7 +1099,7 @@ export default function SectorPage() {
               description: p.description || "",
               highlights: [],
               features: p.features || [],
-              deliveryTime: p.deliveryDays ? `${p.deliveryDays} days` : undefined,
+              deliveryTime: p.deliveryDays ? `${p.deliveryDays} ${p.deliveryDays <= 1 ? "day" : "days"}` : undefined,
               revisions: p.revisions || "",
             })) || [],
             skills: s.skills || [],
