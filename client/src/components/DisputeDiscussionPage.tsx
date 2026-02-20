@@ -853,8 +853,36 @@ export default function DisputeDiscussionPage() {
     const isLegacySettlementTeamMessage =
       msg?.isTeamResponse === true &&
       text.startsWith("Dispute resolved as ");
-    return !isLegacySettlementTeamMessage;
+    if (isLegacySettlementTeamMessage) return false;
+    // Hide admin replies targeted to the other party
+    if (msg?.inFavorOfId && msg.inFavorOfId !== currentUser?.id) return false;
+    return true;
   });
+
+  // Unified timeline: merge regular messages + arbitration payment notices + resolved notice, sorted by timestamp
+  type TimelineItem =
+    | { kind: 'message'; ts: number; data: any }
+    | { kind: 'arb_payment'; ts: number; entry: any; idx: number; isLast: boolean }
+    | { kind: 'resolved'; ts: number };
+
+  const unifiedTimeline: TimelineItem[] = [
+    ...visibleDisputeMessages.map((msg: any) => ({
+      kind: 'message' as const,
+      ts: msg.timestamp ? new Date(msg.timestamp).getTime() : 0,
+      data: msg,
+    })),
+    ...arbitrationPaymentsOrdered.map((entry: any, idx: number) => ({
+      kind: 'arb_payment' as const,
+      ts: entry.payment?.paidAt ? new Date(entry.payment.paidAt).getTime() : 0,
+      entry,
+      idx,
+      isLast: idx === arbitrationPaymentsOrdered.length - 1,
+    })),
+    ...(isResolvedDispute ? [{
+      kind: 'resolved' as const,
+      ts: dispute?.closedAt ? new Date(dispute.closedAt).getTime() : Date.now(),
+    }] : []),
+  ].sort((a, b) => a.ts - b.ts);
 
   // Parse "X days Y hours Z mins" into parts so we can style numbers vs labels differently.
   const timeParts = (() => {
@@ -994,16 +1022,22 @@ export default function DisputeDiscussionPage() {
                 </div>
               </div>
 
-              {/* Messages Thread */}
+              {/* Messages Thread — unified timeline sorted by timestamp */}
               <div className="space-y-4">
-                {visibleDisputeMessages.length > 0 ? (
-                  visibleDisputeMessages.map((msg: any, index: number) => {
-                    const isCurrentUser = msg.userId === currentUser?.id;
+                {unifiedTimeline.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      No messages yet
+                    </p>
+                  </div>
+                ) : unifiedTimeline.map((item, timelineIdx) => {
+                  if (item.kind === 'message') {
+                    const msg = item.data;
                     const senderName = msg.userName || (msg.userId === dispute.claimantId ? dispute.claimantName : dispute.respondentName);
                     const isClaimant = msg.userId === dispute.claimantId?.toString();
                     const isTeamResponse = msg.isTeamResponse === true;
-                    const showDeadline = index === visibleDisputeMessages.length - 1 && isClaimant && !isTeamResponse;
-
+                    const isLastRegular = timelineIdx === unifiedTimeline.length - 1;
+                    const showDeadline = isLastRegular && isClaimant && !isTeamResponse;
                     return (
                       <div key={msg.id} className={`border rounded-lg p-4 ${isTeamResponse ? 'bg-[#FFF5EE] border-[#FFD4B8]' : showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
                         <div className="flex gap-3">
@@ -1044,128 +1078,93 @@ export default function DisputeDiscussionPage() {
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 whitespace-pre-wrap">
                               {msg.message}
                             </p>
-                            
-                            {/* Message Attachments */}
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
                                 {msg.attachments.map((attachment: any, attIdx: number) => {
                                   const fileUrl = resolveFileUrl(attachment.url || attachment);
                                   const fileName = attachment.fileName || (typeof attachment === 'string' ? attachment.split('/').pop() : '');
                                   const fileType = attachment.fileType || getFileType(fileName);
-                                  
                                   return (
                                     <div key={attIdx} className="relative group">
                                       {fileType === 'image' ? (
-                                        <img
-                                          src={fileUrl}
-                                          alt={fileName}
-                                          className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
-                                          onClick={() => window.open(fileUrl, '_blank')}
-                                        />
+                                        <img src={fileUrl} alt={fileName} className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => window.open(fileUrl, '_blank')} />
                                       ) : fileType === 'video' ? (
-                                        <video
-                                          src={fileUrl}
-                                          className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer"
-                                          controls
-                                        />
+                                        <video src={fileUrl} className="w-full h-24 object-cover rounded-lg border border-gray-300 cursor-pointer" controls />
                                       ) : (
-                                        <div
-                                          className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
-                                          onClick={() => window.open(fileUrl, '_blank')}
-                                        >
+                                        <div className="w-full h-24 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => window.open(fileUrl, '_blank')}>
                                           <Paperclip className="w-6 h-6 text-gray-600" />
                                         </div>
                                       )}
-                                      <p className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] mt-1 truncate" title={fileName}>
-                                        {fileName}
-                                      </p>
+                                      <p className="font-['Poppins',sans-serif] text-[10px] text-[#6b6b6b] mt-1 truncate" title={fileName}>{fileName}</p>
                                     </div>
                                   );
                                 })}
                               </div>
                             )}
-                            
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
-                              {new Date(msg.timestamp).toLocaleString("en-GB", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }).replace(',', '')}
+                              {msg.timestamp ? new Date(msg.timestamp).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(',', '') : ''}
                             </p>
                           </div>
                         </div>
                       </div>
                     );
-                  })
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      No messages yet
-                    </p>
-                  </div>
-                )}
-                {hasAnyArbitrationPayment && arbitrationPaymentsOrdered.map((entry: any, idx: number) => (
-                  <div key={`arb-payment-msg-${idx}`} className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
-                    <div className="flex gap-3">
-                      <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
-                        <AvatarImage src={adminAvatar} />
-                        <AvatarFallback className="bg-[#FE8A0F] text-white">AD</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">
-                          Arbitrate team
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
-                          {`${entry.payerName} has paid £${entry.amount.toFixed(2)} to escalate the dispute to arbitration.`}
-                        </p>
-                        {idx === 0 && !bothPaidArbitrationFee && (
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
-                            {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${firstPayerName}.`}
-                          </p>
-                        )}
-                        {idx === arbitrationPaymentsOrdered.length - 1 && bothPaidArbitrationFee && (
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
-                            Both parties have now paid the arbitration fee. The dispute team will step in to review and decide the case.
-                          </p>
-                        )}
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
-                          {new Date(entry.payment?.paidAt || Date.now()).toLocaleString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }).replace(',', '')}
-                        </p>
+                  }
+
+                  if (item.kind === 'arb_payment') {
+                    const { entry, idx, isLast } = item;
+                    return (
+                      <div key={`arb-payment-msg-${idx}`} className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
+                        <div className="flex gap-3">
+                          <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
+                            <AvatarImage src={adminAvatar} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white">AD</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">Arbitrate team</p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
+                              {`${entry.payerName} has paid £${entry.amount.toFixed(2)} to escalate the dispute to arbitration.`}
+                            </p>
+                            {idx === 0 && !bothPaidArbitrationFee && (
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                                {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${firstPayerName}.`}
+                              </p>
+                            )}
+                            {isLast && bothPaidArbitrationFee && (
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                                Both parties have now paid the arbitration fee. The dispute team will step in to review and decide the case.
+                              </p>
+                            )}
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
+                              {new Date(entry.payment?.paidAt || Date.now()).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(',', '')}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-                {isResolvedDispute && (
-                  <div className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
-                    <div className="flex gap-3">
-                      <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
-                        <AvatarImage src={adminAvatar} />
-                        <AvatarFallback className="bg-[#FE8A0F] text-white">AD</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
-                          Arbitrate team
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
-                          {resolvedReasonText}
-                        </p>
-                        {resolvedAtLabel && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
-                            {resolvedAtLabel}
-                          </p>
-                        )}
+                    );
+                  }
+
+                  if (item.kind === 'resolved') {
+                    return (
+                      <div key="resolved-msg" className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
+                        <div className="flex gap-3">
+                          <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
+                            <AvatarImage src={adminAvatar} />
+                            <AvatarFallback className="bg-[#FE8A0F] text-white">AD</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">Arbitrate team</p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">{resolvedReasonText}</p>
+                            {resolvedAtLabel && (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">{resolvedAtLabel}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
+                    );
+                  }
+
+                  return null;
+                })}
               </div>
 
               {/* Reply Section */}

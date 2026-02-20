@@ -2819,6 +2819,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
             message: msg.message,
             timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
             isTeamResponse: msg.isTeamResponse || false,
+            inFavorOfName: msg.inFavorOfName || null,
+            inFavorOfId: msg.inFavorOfId || null,
             attachments: msg.attachments ? msg.attachments.map((att) => ({
               url: att.url,
               fileName: att.fileName,
@@ -5058,6 +5060,8 @@ router.post('/:orderId/dispute/message', authenticateToken, upload.array('attach
           message: msg.message,
           timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
           isTeamResponse: msg.isTeamResponse || false,
+          inFavorOfName: msg.inFavorOfName || null,
+          inFavorOfId: msg.inFavorOfId || null,
           attachments: msg.attachments || [],
         })) : [],
       };

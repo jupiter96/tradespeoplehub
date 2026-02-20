@@ -31,6 +31,14 @@ const disputeMessageSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  inFavorOfName: {
+    type: String,
+    default: null,
+  },
+  inFavorOfId: {
+    type: String,
+    default: null,
+  },
   attachments: [{
     url: String,
     fileName: String,

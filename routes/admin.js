@@ -850,6 +850,8 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
         message: msg.message,
         timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
         isTeamResponse: msg.isTeamResponse || false,
+        inFavorOfName: msg.inFavorOfName || null,
+        inFavorOfId: msg.inFavorOfId || null,
         attachments: (msg.attachments || []).map((att) => ({
           url: att.url,
           fileName: att.fileName,
@@ -881,21 +883,34 @@ router.post('/disputes/:disputeId/reply', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Dispute not found' });
     }
     const adminName = req.adminUser?.fullname || 'Dispute Team';
-    const replyText = [
-      inFavorOf ? `In Favor of: ${inFavorOf}` : null,
-      comment ? `Comment: ${comment}` : null,
-    ].filter(Boolean).join('\n');
-    if (!replyText) {
+    const replyText = comment ? comment.trim() : '';
+    if (!replyText && !inFavorOf) {
       return res.status(400).json({ error: 'Reply content is required' });
     }
+    // Resolve inFavorOf ID to a display name
+    let inFavorOfName = null;
+    if (inFavorOf) {
+      try {
+        const User = require('../models/User');
+        const u = await User.findById(inFavorOf).select('firstName lastName tradingName').lean();
+        inFavorOfName = u
+          ? (u.tradingName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || inFavorOf)
+          : inFavorOf;
+      } catch (_) {
+        inFavorOfName = inFavorOf;
+      }
+    }
+    const finalMessage = replyText || '(No comment)';
     dispute.messages.push({
       id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: dispute.claimantId,
       userName: adminName,
       userAvatar: req.adminUser?.avatar || '',
-      message: replyText,
+      message: finalMessage,
       timestamp: new Date(),
       isTeamResponse: true,
+      inFavorOfName: inFavorOfName || null,
+      inFavorOfId: inFavorOf || null,
       attachments: [],
     });
     await dispute.save();
@@ -935,6 +950,17 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
     const winnerArbitrationRefund = (dispute.arbitrationPayments || [])
       .filter((p) => p?.userId?.toString?.() === winnerId)
       .reduce((sum, p) => sum + (p?.amount || 0), 0);
+
+    // Resolve winner's actual display name
+    let winnerDisplayName = isWinnerClient ? 'Client' : 'Professional';
+    try {
+      const winnerUser = await User.findById(winnerId).select('firstName lastName tradingName').lean();
+      if (winnerUser) {
+        winnerDisplayName = isWinnerClient
+          ? `${winnerUser.firstName || ''} ${winnerUser.lastName || ''}`.trim() || 'Client'
+          : winnerUser.tradingName || `${winnerUser.firstName || ''} ${winnerUser.lastName || ''}`.trim() || 'Professional';
+      }
+    } catch (_) { /* keep default */ }
 
     if (isWinnerClient) {
       const client = await User.findById(order.client?._id || order.client);
@@ -1022,11 +1048,10 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
       }
     }
 
-    const winnerName = winnerId === claimantId ? (dispute.claimantName || 'Claimant') : (dispute.respondentName || 'Respondent');
     const adminName = req.adminUser?.fullname || 'Dispute Team';
     const decisionMessage = [
       `Final decision by ${adminName}:`,
-      `Winner: ${winnerName}`,
+      `Winner: ${winnerDisplayName}`,
       decisionNotes ? `Comment: ${decisionNotes}` : null,
     ].filter(Boolean).join('\n');
     dispute.messages.push({

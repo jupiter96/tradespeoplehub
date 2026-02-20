@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { MessageCircle, Paperclip, ArrowLeft } from "lucide-react";
+import { MessageCircle, Paperclip, ArrowLeft, ChevronDown, X } from "lucide-react";
 import { resolveApiUrl } from "../../config/api";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 import { resolveAvatarUrl, getTwoLetterInitials } from "../orders/utils";
@@ -19,6 +18,7 @@ interface AdminDisputeMessage {
   message: string;
   timestamp?: string;
   isTeamResponse?: boolean;
+  inFavorOfName?: string | null;
   attachments?: { url: string; fileName?: string; fileType?: string }[];
 }
 
@@ -68,6 +68,167 @@ const getFileType = (fileName: string): "image" | "video" | "other" => {
   if (["mp4", "webm", "ogg", "mov", "avi"].includes(ext)) return "video";
   return "other";
 };
+
+function NativeModal({
+  open,
+  onClose,
+  title,
+  description,
+  children,
+  maxWidth = "520px",
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  maxWidth?: string;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 9000 }}
+      className="flex items-center justify-center"
+    >
+      {/* Backdrop */}
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.5)" }}
+        onClick={onClose}
+      />
+      {/* Modal box — no transform, no stacking context issue */}
+      <div
+        style={{ position: "relative", zIndex: 9001, maxWidth }}
+        className="bg-white rounded-lg shadow-xl w-[90vw] p-6"
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold leading-tight">
+              {title}
+            </h2>
+            {description && (
+              <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-1">
+                {description}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-4 flex-shrink-0 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <X className="w-4 h-4 text-[#2c353f]" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function FavorSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select a party",
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  options: { id: string; label: string }[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      setRect(triggerRef.current.getBoundingClientRect());
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const insideTrigger = triggerRef.current?.contains(target);
+      const insideDropdown = dropdownRef.current?.contains(target);
+      if (!insideTrigger && !insideDropdown) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const selected = options.find((o) => o.id === value);
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-3 text-[15px] font-['Poppins',sans-serif] outline-none focus:border-[#FE8A0F] focus:ring-1 focus:ring-[#FE8A0F] cursor-pointer"
+      >
+        <span className={selected ? "text-[#2c353f]" : "text-[#9ca3af]"}>
+          {selected?.label || placeholder}
+        </span>
+        <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+      </button>
+      {open && rect && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "fixed",
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+            zIndex: 9002,
+          }}
+          className="bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden"
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                onChange(opt.id);
+                setOpen(false);
+              }}
+              className={`w-full text-left px-4 py-3 text-[15px] font-['Poppins',sans-serif] hover:bg-[#FFF5EE] cursor-pointer ${
+                opt.id === value ? "bg-[#FFF5EE] text-[#FE8A0F] font-medium" : "text-[#2c353f]"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
 
 export default function AdminDisputeViewPage() {
   const { disputeId } = useParams<{ disputeId: string }>();
@@ -258,13 +419,13 @@ export default function AdminDisputeViewPage() {
               <div>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Dispute ID:</p>
                 <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
-                  {dispute.id.replace("DISP-", "").replace("dispute-", "")}
+                  {(dispute.id || "").replace("DISP-", "").replace("dispute-", "")}
                 </p>
               </div>
               <div>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Case status:</p>
                 <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
-                  {dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1)}
+                  {dispute.status ? dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1) : ""}
                 </p>
               </div>
               <div>
@@ -484,7 +645,7 @@ export default function AdminDisputeViewPage() {
               Total disputed order
             </p>
             <p className="font-['Poppins',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
-              £{dispute.amount.toFixed(0)}
+              £{(dispute.amount ?? 0).toFixed(0)}
             </p>
 
             <div className="border-t border-gray-200 pt-4 mt-4">
@@ -526,106 +687,85 @@ export default function AdminDisputeViewPage() {
         </div>
       </div>
 
-      <Dialog open={isReplyOpen} onOpenChange={setIsReplyOpen}>
-        <DialogContent className="w-[90vw] max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Reply on Dispute
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
-              {favorOptions.length > 0 ? (
-                <Select value={replyFavor} onValueChange={setReplyFavor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a party" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100005]">
-                    {favorOptions.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="font-['Poppins',sans-serif] text-[14px] text-red-500">
-                  Unable to load parties. Please refresh the page.
-                </p>
-              )}
-            </div>
-            <div>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
-              <Textarea
-                value={replyComment}
-                onChange={(e) => setReplyComment(e.target.value)}
-                rows={4}
+      <NativeModal
+        open={isReplyOpen}
+        onClose={() => setIsReplyOpen(false)}
+        title="Reply on Dispute"
+      >
+        <div className="space-y-6" style={{ width: "400px" }}>
+          <div>
+            <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-3">In Favor of:</p>
+            {favorOptions.length > 0 ? (
+              <FavorSelect
+                value={replyFavor}
+                onChange={setReplyFavor}
+                options={favorOptions}
               />
-            </div>
+            ) : (
+              <p className="font-['Poppins',sans-serif] text-[15px] text-red-500">
+                Unable to load parties. Please refresh the page.
+              </p>
+            )}
           </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setIsReplyOpen(false)}>
-              Close
-            </Button>
-            <Button onClick={handleSubmitReply} className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white">
-              Submit
-            </Button>
+          <div>
+            <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-3">Comment:</p>
+            <Textarea
+              value={replyComment}
+              onChange={(e) => setReplyComment(e.target.value)}
+              rows={10}
+              className="text-[15px] font-['Poppins',sans-serif] p-4 resize-none"
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="outline" className="px-6 py-2 text-[15px]" onClick={() => setIsReplyOpen(false)}>
+            Close
+          </Button>
+          <Button onClick={handleSubmitReply} className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white px-6 py-2 text-[15px]">
+            Submit
+          </Button>
+        </div>
+      </NativeModal>
 
-      <Dialog open={isDecisionOpen} onOpenChange={setIsDecisionOpen}>
-        <DialogContent className="w-[90vw] max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Make Final Decision
-            </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              Select who the decision is in favor of and provide a comment.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
-              {favorOptions.length > 0 ? (
-                <Select value={decisionFavor} onValueChange={setDecisionFavor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a party" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100005]">
-                    {favorOptions.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.id}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <p className="font-['Poppins',sans-serif] text-[14px] text-red-500">
-                  Unable to load parties. Please refresh the page.
-                </p>
-              )}
-            </div>
-            <div>
-              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
-              <Textarea
-                value={decisionComment}
-                onChange={(e) => setDecisionComment(e.target.value)}
-                rows={4}
+      <NativeModal
+        open={isDecisionOpen}
+        onClose={() => setIsDecisionOpen(false)}
+        title="Make Final Decision"
+        description="Select who the decision is in favor of and provide a comment."
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">In Favor of:</p>
+            {favorOptions.length > 0 ? (
+              <FavorSelect
+                value={decisionFavor}
+                onChange={setDecisionFavor}
+                options={favorOptions}
               />
-            </div>
+            ) : (
+              <p className="font-['Poppins',sans-serif] text-[14px] text-red-500">
+                Unable to load parties. Please refresh the page.
+              </p>
+            )}
           </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setIsDecisionOpen(false)}>
-              Close
-            </Button>
-            <Button onClick={handleSubmitDecision} className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white">
-              Submit
-            </Button>
+          <div>
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">Comment:</p>
+            <Textarea
+              value={decisionComment}
+              onChange={(e) => setDecisionComment(e.target.value)}
+              rows={4}
+            />
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="outline" onClick={() => setIsDecisionOpen(false)}>
+            Close
+          </Button>
+          <Button onClick={handleSubmitDecision} className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white">
+            Submit
+          </Button>
+        </div>
+      </NativeModal>
     </div>
   );
 }
