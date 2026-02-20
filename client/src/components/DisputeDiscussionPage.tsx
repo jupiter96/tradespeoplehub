@@ -762,6 +762,7 @@ export default function DisputeDiscussionPage() {
 
   const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
+  const canRespondToOffer = dispute.status === "open" || dispute.status === "negotiation";
 
   // Pro: can only lower offer → max = their last offer (or order amount if no offer yet)
   // Client: can only raise offer → min = their last offer (or 0 if no offer yet)
@@ -780,20 +781,64 @@ export default function DisputeDiscussionPage() {
   const acceptedByIdStr = typeof dispute?.acceptedBy === "object"
     ? dispute?.acceptedBy?._id?.toString?.() || dispute?.acceptedBy?.toString?.()
     : dispute?.acceptedBy?.toString?.();
+  const orderClientIdStr = order
+    ? (typeof (order as any).clientId === "object"
+        ? (order as any).clientId?._id?.toString?.() || (order as any).clientId?.toString?.()
+        : (order as any).clientId?.toString?.() || (order as any).client?.toString?.())
+    : null;
+  const acceptedByNameByRole = dispute?.acceptedByRole === "client"
+    ? (orderClientIdStr && String(orderClientIdStr) === String(claimantIdStr)
+        ? (dispute?.claimantName || "Client")
+        : orderClientIdStr && String(orderClientIdStr) === String(respondentIdStr)
+          ? (dispute?.respondentName || "Client")
+          : "Client")
+    : dispute?.acceptedByRole === "professional"
+      ? (orderClientIdStr && String(orderClientIdStr) === String(claimantIdStr)
+          ? (dispute?.respondentName || "Professional")
+          : orderClientIdStr && String(orderClientIdStr) === String(respondentIdStr)
+            ? (dispute?.claimantName || "Professional")
+            : "Professional")
+      : null;
   const acceptedByName = acceptedByIdStr
     ? (String(acceptedByIdStr) === String(claimantIdStr)
         ? (dispute?.claimantName || "Claimant")
         : String(acceptedByIdStr) === String(respondentIdStr)
           ? (dispute?.respondentName || "Respondent")
           : "One party")
-    : "One party";
+    : (acceptedByNameByRole || "One party");
+  const offererName = acceptedByIdStr
+    ? (String(acceptedByIdStr) === String(claimantIdStr)
+        ? (dispute?.respondentName || "Respondent")
+        : String(acceptedByIdStr) === String(respondentIdStr)
+          ? (dispute?.claimantName || "Claimant")
+          : "the other party")
+    : (dispute?.acceptedByRole === "client"
+        ? (orderClientIdStr && String(orderClientIdStr) === String(claimantIdStr)
+            ? (dispute?.respondentName || "Professional")
+            : orderClientIdStr && String(orderClientIdStr) === String(respondentIdStr)
+              ? (dispute?.claimantName || "Professional")
+              : "Professional")
+        : dispute?.acceptedByRole === "professional"
+          ? (orderClientIdStr && String(orderClientIdStr) === String(claimantIdStr)
+              ? (dispute?.claimantName || "Client")
+              : orderClientIdStr && String(orderClientIdStr) === String(respondentIdStr)
+                ? (dispute?.respondentName || "Client")
+                : "Client")
+          : "the other party");
+  const settlementAmount = (() => {
+    if (typeof dispute?.finalAmount === "number") return dispute.finalAmount;
+    if (typeof dispute?.clientOffer === "number" && typeof dispute?.professionalOffer === "number" && dispute.clientOffer === dispute.professionalOffer) {
+      return dispute.clientOffer;
+    }
+    return null;
+  })();
   const resolvedReasonText = dispute?.adminDecision
     ? "Resolved by admin arbitration final decision."
     : dispute?.acceptedAt
-      ? `${acceptedByName} accepted the settlement offer and closed the dispute.`
+      ? `Dispute resolved positively as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
       : dispute?.autoClosed
         ? "Resolved automatically because the required response/payment deadline passed."
-        : "Resolved automatically after both parties reached the same settlement amount.";
+        : `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`;
   const resolvedAtLabel = dispute?.closedAt
     ? new Date(dispute.closedAt).toLocaleString("en-GB", {
         day: "2-digit",
@@ -803,6 +848,13 @@ export default function DisputeDiscussionPage() {
         minute: "2-digit",
       }).replace(",", "")
     : null;
+  const visibleDisputeMessages = (dispute?.messages || []).filter((msg: any) => {
+    const text = typeof msg?.message === "string" ? msg.message.trim() : "";
+    const isLegacySettlementTeamMessage =
+      msg?.isTeamResponse === true &&
+      text.startsWith("Dispute resolved as ");
+    return !isLegacySettlementTeamMessage;
+  });
 
   // Parse "X days Y hours Z mins" into parts so we can style numbers vs labels differently.
   const timeParts = (() => {
@@ -944,13 +996,13 @@ export default function DisputeDiscussionPage() {
 
               {/* Messages Thread */}
               <div className="space-y-4">
-                {dispute.messages && dispute.messages.length > 0 ? (
-                  dispute.messages.map((msg: any, index: number) => {
+                {visibleDisputeMessages.length > 0 ? (
+                  visibleDisputeMessages.map((msg: any, index: number) => {
                     const isCurrentUser = msg.userId === currentUser?.id;
                     const senderName = msg.userName || (msg.userId === dispute.claimantId ? dispute.claimantName : dispute.respondentName);
                     const isClaimant = msg.userId === dispute.claimantId?.toString();
                     const isTeamResponse = msg.isTeamResponse === true;
-                    const showDeadline = index === dispute.messages.length - 1 && isClaimant && !isTeamResponse;
+                    const showDeadline = index === visibleDisputeMessages.length - 1 && isClaimant && !isTeamResponse;
 
                     return (
                       <div key={msg.id} className={`border rounded-lg p-4 ${isTeamResponse ? 'bg-[#FFF5EE] border-[#FFD4B8]' : showDeadline ? 'bg-orange-50 border-orange-200' : 'border-gray-200'}`}>
@@ -1285,32 +1337,34 @@ export default function DisputeDiscussionPage() {
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
                           £{otherOffer.toFixed(2)}
                         </p>
-                        <div className="mt-3 space-y-2">
-                          {!showRespondActions ? (
-                            <Button
-                              onClick={() => setShowRespondActions(true)}
-                              className="w-full bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] text-[13px]"
-                            >
-                              Respond
-                            </Button>
-                          ) : (
-                            <>
+                        {canRespondToOffer && (
+                          <div className="mt-3 space-y-2">
+                            {!showRespondActions ? (
                               <Button
-                                onClick={() => setIsAcceptConfirmOpen(true)}
-                                className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                                onClick={() => setShowRespondActions(true)}
+                                className="w-full bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] text-[13px]"
                               >
-                                Accept and close
+                                Respond
                               </Button>
-                              <Button
-                                onClick={() => setIsRejectConfirmOpen(true)}
-                                variant="outline"
-                                className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                            ) : (
+                              <>
+                                <Button
+                                  onClick={() => setIsAcceptConfirmOpen(true)}
+                                  className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                                >
+                                  Accept and close
+                                </Button>
+                                <Button
+                                  onClick={() => setIsRejectConfirmOpen(true)}
+                                  variant="outline"
+                                  className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </>
                     ) : (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">

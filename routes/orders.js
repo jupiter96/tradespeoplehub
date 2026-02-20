@@ -93,9 +93,12 @@ async function emitNotificationToUser(userId, notification) {
 }
 
 async function applyDisputeSettlement({ order, dispute, agreedAmount }) {
-  const refundableAmount = (order.subtotal || 0) - (order.discount || 0);
-  const payoutAmount = Math.min(agreedAmount, refundableAmount);
-  const refundAmount = Math.max(0, refundableAmount - payoutAmount);
+  const totalPaidRaw = Number(order.total ?? 0);
+  const totalPaid = Number.isFinite(totalPaidRaw) ? totalPaidRaw : 0;
+  const agreedRaw = Number(agreedAmount ?? 0);
+  const normalizedAgreedAmount = Number.isFinite(agreedRaw) ? agreedRaw : 0;
+  const payoutAmount = Math.max(0, Math.min(normalizedAgreedAmount, totalPaid));
+  const refundAmount = Math.max(0, totalPaid - payoutAmount);
 
   if (!order.metadata) order.metadata = {};
   if (order.metadata.disputePayoutProcessed) return;
@@ -147,6 +150,8 @@ async function applyDisputeSettlement({ order, dispute, agreedAmount }) {
 
   order.metadata.disputePayoutProcessed = true;
   order.metadata.disputePayoutProcessedAt = new Date();
+  order.metadata.disputeSettlementAgreedAmount = payoutAmount;
+  order.metadata.disputeSettlementRefundAmount = refundAmount;
 }
 
 async function sendOrderNotifications({ order, clientUser, professionalUser }) {
@@ -5080,7 +5085,9 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid offer amount' });
     }
 
-    const order = await Order.findOne(await buildOrderQuery(orderId));
+    const order = await Order.findOne(await buildOrderQuery(orderId))
+      .populate('client', 'firstName lastName tradingName')
+      .populate('professional', 'firstName lastName tradingName');
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -5137,18 +5144,15 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
         professionalOffer !== null && professionalOffer !== undefined && 
         clientOffer === professionalOffer) {
       // Offers match - resolve dispute
-      // Add resolution message to dispute messages
-      const resolutionMessage = `Dispute resolved as both parties agreed on £${clientOffer.toFixed(2)}.`;
-      dispute.messages.push({
-        id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: dispute.claimantId,
-        userName: 'Dispute team',
-        userAvatar: '',
-        message: resolutionMessage,
-        timestamp: new Date(),
-        isTeamResponse: true,
-        attachments: [],
-      });
+      const getDisplayName = (user) => {
+        if (!user) return 'Unknown';
+        if (user.tradingName) return user.tradingName;
+        if (user.firstName || user.lastName) return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        return 'Unknown';
+      };
+      const clientName = getDisplayName(order.client);
+      const professionalName = getDisplayName(order.professional);
+      const resolutionMessage = `Dispute resolved as ${clientName} and ${professionalName} both agreed on a settlement amount of £${clientOffer.toFixed(2)}.`;
 
       dispute.status = 'closed';
       dispute.closedAt = new Date();
@@ -5225,23 +5229,18 @@ router.post('/:orderId/dispute/accept', authenticateToken, async (req, res) => {
     // Accept the offer and resolve dispute
     const agreedAmount = otherPartyOffer;
     
-    // Get acceptor name for the message
-    const acceptorName = isClient 
-      ? (order.client?.firstName || 'Client')
-      : (order.professional?.tradingName || order.professional?.firstName || 'Professional');
-
-    // Add resolution message to dispute messages
-    const resolutionMessage = `Dispute resolved as ${acceptorName} accepted the settlement offer of £${agreedAmount.toFixed(2)}.`;
-    dispute.messages.push({
-      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      userId: dispute.claimantId,
-      userName: 'Dispute team',
-      userAvatar: '',
-      message: resolutionMessage,
-      timestamp: new Date(),
-      isTeamResponse: true,
-      attachments: [],
-    });
+    // Get names for the resolution message
+    const getDisplayName = (user) => {
+      if (!user) return 'Unknown';
+      if (user.tradingName) return user.tradingName;
+      if (user.firstName || user.lastName) return `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      return 'Unknown';
+    };
+    const accepterName = isClient ? getDisplayName(order.client) : getDisplayName(order.professional);
+    const offererName = isClient ? getDisplayName(order.professional) : getDisplayName(order.client);
+    
+    // Store detailed resolution notes with specific names and amount
+    const resolutionMessage = `Dispute resolved as ${accepterName} accepted the £${agreedAmount.toFixed(2)} offer from ${offererName}.`;
 
     dispute.status = 'closed';
     dispute.closedAt = new Date();
