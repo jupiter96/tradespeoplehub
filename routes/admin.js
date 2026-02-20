@@ -784,19 +784,19 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
     const professional = order.professional && typeof order.professional === 'object' ? order.professional : null;
     const claimant = dispute.claimantId;
     const respondent = dispute.respondentId;
+    const clientIdStr = client?._id?.toString?.() || null;
+    const professionalIdStr = professional?._id?.toString?.() || null;
+    const claimantIdStr = claimant?._id?.toString?.() || claimant?.toString?.() || null;
+    const respondentIdStr = respondent?._id?.toString?.() || respondent?.toString?.() || null;
+    const clientName = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || 'Client';
+    const professionalName = professional?.tradingName || `${professional?.firstName || ''} ${professional?.lastName || ''}`.trim() || 'Professional';
 
-    const claimantName = claimant
-      ? (claimant._id?.toString() === client?._id?.toString()
-        ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client'
-        : (claimant.tradingName || `${claimant.firstName || ''} ${claimant.lastName || ''}`.trim() || 'Professional'))
-      : undefined;
-    const respondentName = respondent
-      ? (respondent._id?.toString() === client?._id?.toString()
-        ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Client'
-        : (respondent.tradingName || `${respondent.firstName || ''} ${respondent.lastName || ''}`.trim() || 'Professional'))
-      : undefined;
-    const claimantAvatar = claimant?.avatar || '';
-    const respondentAvatar = respondent?.avatar || '';
+    const claimantName = claimant?.tradingName || `${claimant?.firstName || ''} ${claimant?.lastName || ''}`.trim() ||
+      (claimantIdStr && claimantIdStr === clientIdStr ? clientName : claimantIdStr && claimantIdStr === professionalIdStr ? professionalName : 'Claimant');
+    const respondentName = respondent?.tradingName || `${respondent?.firstName || ''} ${respondent?.lastName || ''}`.trim() ||
+      (respondentIdStr && respondentIdStr === clientIdStr ? clientName : respondentIdStr && respondentIdStr === professionalIdStr ? professionalName : 'Respondent');
+    const claimantAvatar = claimant?.avatar || (claimantIdStr === clientIdStr ? (client?.avatar || '') : (professional?.avatar || ''));
+    const respondentAvatar = respondent?.avatar || (respondentIdStr === clientIdStr ? (client?.avatar || '') : (professional?.avatar || ''));
 
     const amount = dispute.amount != null ? dispute.amount : (order.subtotal || 0) - (order.discount || 0);
 
@@ -808,8 +808,8 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
       requirements: dispute.requirements,
       unmetRequirements: dispute.unmetRequirements,
       evidenceFiles: dispute.evidenceFiles || [],
-      claimantId: dispute.claimantId?._id?.toString() || dispute.claimantId?.toString(),
-      respondentId: dispute.respondentId?._id?.toString() || dispute.respondentId?.toString(),
+      claimantId: claimantIdStr || clientIdStr || '',
+      respondentId: respondentIdStr || professionalIdStr || '',
       claimantName,
       respondentName,
       claimantAvatar: claimantAvatar || '',
@@ -902,18 +902,22 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
     }
     const loserId = winnerId === claimantId ? respondentId : claimantId;
     const professionalPayoutAmount = order.metadata?.professionalPayoutAmount || order.subtotal;
-    const orderTotal = order.total;
+    // Service fee is not refundable; refundable order amount excludes service fee.
+    const refundableOrderAmount = (order.subtotal || 0) - (order.discount || 0);
     const isWinnerClient = order.client?._id?.toString() === winnerId || order.client?.toString() === winnerId;
+    const winnerArbitrationRefund = (dispute.arbitrationPayments || [])
+      .filter((p) => p?.userId?.toString?.() === winnerId)
+      .reduce((sum, p) => sum + (p?.amount || 0), 0);
 
     if (isWinnerClient) {
       const client = await User.findById(order.client?._id || order.client);
       if (client) {
-        client.walletBalance = (client.walletBalance || 0) + orderTotal;
+        client.walletBalance = (client.walletBalance || 0) + refundableOrderAmount;
         await client.save();
         const refundTransaction = new Wallet({
           userId: client._id,
           type: 'deposit',
-          amount: orderTotal,
+          amount: refundableOrderAmount,
           balance: client.walletBalance,
           status: 'completed',
           paymentMethod: 'wallet',
@@ -926,6 +930,26 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
           },
         });
         await refundTransaction.save();
+        if (winnerArbitrationRefund > 0) {
+          client.walletBalance = (client.walletBalance || 0) + winnerArbitrationRefund;
+          await client.save();
+          const arbitrationRefundTx = new Wallet({
+            userId: client._id,
+            type: 'deposit',
+            amount: winnerArbitrationRefund,
+            balance: client.walletBalance,
+            status: 'completed',
+            paymentMethod: 'wallet',
+            orderId: order._id,
+            description: `Arbitration Fee Refund - Order ${order.orderNumber}`,
+            metadata: {
+              orderNumber: order.orderNumber,
+              disputeId: dispute.disputeId,
+              reason: 'Admin arbitration decision - winner fee refund',
+            },
+          });
+          await arbitrationRefundTx.save();
+        }
       }
     } else {
       const professional = await User.findById(order.professional?._id || order.professional);
@@ -948,8 +972,46 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
           },
         });
         await payoutTransaction.save();
+        if (winnerArbitrationRefund > 0) {
+          professional.walletBalance = (professional.walletBalance || 0) + winnerArbitrationRefund;
+          await professional.save();
+          const arbitrationRefundTx = new Wallet({
+            userId: professional._id,
+            type: 'deposit',
+            amount: winnerArbitrationRefund,
+            balance: professional.walletBalance,
+            status: 'completed',
+            paymentMethod: 'wallet',
+            orderId: order._id,
+            description: `Arbitration Fee Refund - Order ${order.orderNumber}`,
+            metadata: {
+              orderNumber: order.orderNumber,
+              disputeId: dispute.disputeId,
+              reason: 'Admin arbitration decision - winner fee refund',
+            },
+          });
+          await arbitrationRefundTx.save();
+        }
       }
     }
+
+    const winnerName = winnerId === claimantId ? (dispute.claimantName || 'Claimant') : (dispute.respondentName || 'Respondent');
+    const adminName = req.adminUser?.fullname || 'Dispute Team';
+    const decisionMessage = [
+      `Final decision by ${adminName}:`,
+      `Winner: ${winnerName}`,
+      decisionNotes ? `Comment: ${decisionNotes}` : null,
+    ].filter(Boolean).join('\n');
+    dispute.messages.push({
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: req.adminUser?._id || dispute.claimantId,
+      userName: adminName,
+      userAvatar: req.adminUser?.avatar || '',
+      message: decisionMessage,
+      timestamp: new Date(),
+      isTeamResponse: true,
+      attachments: [],
+    });
 
     dispute.status = 'closed';
     dispute.closedAt = new Date();

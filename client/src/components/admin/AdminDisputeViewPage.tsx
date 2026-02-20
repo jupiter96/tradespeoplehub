@@ -139,7 +139,7 @@ export default function AdminDisputeViewPage() {
     ? [
         { id: dispute.claimantId, label: dispute.claimantName || "Claimant" },
         { id: dispute.respondentId, label: dispute.respondentName || "Respondent" },
-      ]
+      ].filter((opt, idx, arr) => Boolean(opt.id) && arr.findIndex((x) => x.id === opt.id) === idx)
     : [];
 
   const handleSubmitReply = async () => {

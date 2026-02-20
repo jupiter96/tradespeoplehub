@@ -76,7 +76,9 @@ export default function DisputeDiscussionPage() {
   const [isArbitrationPaymentOpen, setIsArbitrationPaymentOpen] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<string>("");
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletBalance, setWalletBalance] = useState<number>(
+    typeof (currentUser as any)?.walletBalance === "number" ? (currentUser as any).walletBalance : 0
+  );
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [isPayingArbitration, setIsPayingArbitration] = useState(false);
   // Controls whether Accept/Reject buttons are expanded in Current Offer Status card
@@ -337,22 +339,27 @@ export default function DisputeDiscussionPage() {
 
   const fetchWalletBalance = async () => {
     try {
-      const response = await fetch(resolveApiUrl("/api/payment/wallet-balance"), {
+      const response = await fetch(resolveApiUrl("/api/payment/wallet/balance"), {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        const balance = data.balance || 0;
+        const rawBalance = data?.balance;
+        const parsedBalance = typeof rawBalance === "number" ? rawBalance : parseFloat(rawBalance || "0");
+        const balance = Number.isFinite(parsedBalance) ? parsedBalance : 0;
         setWalletBalance(balance);
         return balance;
       }
     } catch (error) {
       console.error("Error fetching wallet balance:", error);
     }
-    return 0;
+    const fallback =
+      typeof (currentUser as any)?.walletBalance === "number" ? (currentUser as any).walletBalance : 0;
+    setWalletBalance(fallback);
+    return fallback;
   };
 
-  const fetchPaymentMethods = async () => {
+  const fetchPaymentMethods = async (balanceForDisplay?: number) => {
     setLoadingPaymentMethods(true);
     try {
       const [methodsResponse, settingsResponse] = await Promise.all([
@@ -369,7 +376,7 @@ export default function DisputeDiscussionPage() {
           id: "account_balance",
           type: "account_balance",
           isDefault: true,
-          balance: walletBalance,
+          balance: typeof balanceForDisplay === "number" ? balanceForDisplay : walletBalance,
         },
       ];
       if (methodsResponse.ok) {
@@ -406,9 +413,16 @@ export default function DisputeDiscussionPage() {
 
   useEffect(() => {
     if (isArbitrationPaymentOpen) {
-      fetchWalletBalance().then(() => fetchPaymentMethods());
+      fetchWalletBalance().then((balance) => fetchPaymentMethods(balance));
     }
   }, [isArbitrationPaymentOpen]);
+
+  // Keep local wallet balance in sync with account context (client/pro both)
+  useEffect(() => {
+    if (typeof (currentUser as any)?.walletBalance === "number") {
+      setWalletBalance((currentUser as any).walletBalance);
+    }
+  }, [currentUser]);
 
   // Handle return from PayPal: capture arbitration fee and clear URL params
   useEffect(() => {
@@ -484,7 +498,11 @@ export default function DisputeDiscussionPage() {
       toast.error("Arbitration fee is not available");
       return;
     }
-    if (selectedMethod?.type === "account_balance" && walletBalance < feeAmount) {
+    let latestBalance = walletBalance;
+    if (selectedMethod?.type === "account_balance") {
+      latestBalance = await fetchWalletBalance();
+    }
+    if (selectedMethod?.type === "account_balance" && latestBalance < feeAmount) {
       toast.error(`Insufficient wallet balance. Fee is £${feeAmount.toFixed(2)}.`);
       return;
     }
@@ -670,29 +688,42 @@ export default function DisputeDiscussionPage() {
       dispute?.status !== "admin_arbitration" &&
       dispute?.status !== "closed"
   );
-  const firstArbitrationPayment = (dispute?.arbitrationPayments || [])[0];
-  const firstArbitrationPayerId = firstArbitrationPayment?.userId
-    ? (typeof firstArbitrationPayment.userId === "object"
-        ? firstArbitrationPayment.userId?._id?.toString?.() || firstArbitrationPayment.userId?.toString?.()
-        : firstArbitrationPayment.userId?.toString?.())
-    : null;
-  const arbitrationPayerName =
-    firstArbitrationPayerId && String(firstArbitrationPayerId) === String(claimantIdStr)
-      ? (dispute?.claimantName || "One party")
-      : firstArbitrationPayerId && String(firstArbitrationPayerId) === String(respondentIdStr)
-        ? (dispute?.respondentName || "One party")
-        : "One party";
+  const hasAnyArbitrationPayment = Boolean((dispute?.arbitrationPayments || []).length > 0);
+  const bothPaidArbitrationFee = arbitrationPaidUserIds.size >= 2;
+  const arbitrationPaymentsOrdered = [...(dispute?.arbitrationPayments || [])]
+    .sort((a: any, b: any) => {
+      const at = a?.paidAt ? new Date(a.paidAt).getTime() : 0;
+      const bt = b?.paidAt ? new Date(b.paidAt).getTime() : 0;
+      return at - bt;
+    })
+    .map((payment: any) => {
+      const payerId = payment?.userId
+        ? (typeof payment.userId === "object"
+            ? payment.userId?._id?.toString?.() || payment.userId?.toString?.()
+            : payment.userId?.toString?.())
+        : null;
+      const payerName =
+        payerId && String(payerId) === String(claimantIdStr)
+          ? (dispute?.claimantName || "One party")
+          : payerId && String(payerId) === String(respondentIdStr)
+            ? (dispute?.respondentName || "One party")
+            : "One party";
+      const amount =
+        typeof payment?.amount === "number"
+          ? payment.amount
+          : (typeof dispute?.arbitrationFeeAmount === "number" ? dispute.arbitrationFeeAmount : 0);
+      return { payment, payerId, payerName, amount };
+    });
+  const firstPaymentPayerId = arbitrationPaymentsOrdered[0]?.payerId || null;
+  const firstPayerName = arbitrationPaymentsOrdered[0]?.payerName || "One party";
   const arbitrationUnpaidPartyName =
-    firstArbitrationPayerId && String(firstArbitrationPayerId) === String(claimantIdStr)
+    firstPaymentPayerId && String(firstPaymentPayerId) === String(claimantIdStr)
       ? (dispute?.respondentName || "The other party")
       : (dispute?.claimantName || "The other party");
-  const arbitrationFeeAmountDisplay =
-    typeof dispute?.arbitrationFeeAmount === "number"
-      ? dispute.arbitrationFeeAmount
-      : (typeof firstArbitrationPayment?.amount === "number" ? firstArbitrationPayment.amount : 0);
   const arbitrationDaysToPay = dispute?.arbitrationFeeDeadline
     ? Math.max(0, Math.ceil((new Date(dispute.arbitrationFeeDeadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
+  const displayTimeLeft = bothPaidArbitrationFee ? "0 days 0 hours 0 mins" : timeLeft;
   // Show "Ask to admin step in" button as soon as respondent has replied (negotiation phase); no need to wait for negotiationDeadline in state
   const canShowArbitrationButton = Boolean(
     isOrderDispute &&
@@ -745,11 +776,38 @@ export default function DisputeDiscussionPage() {
   const isOfferOutOfRange = !Number.isNaN(newOfferValue) && (newOfferValue < offerMin || newOfferValue > offerMax);
 
   const milestone = job?.milestones?.find((m) => m.id === (dispute as any).milestoneId);
+  const isResolvedDispute = dispute?.status === "closed";
+  const acceptedByIdStr = typeof dispute?.acceptedBy === "object"
+    ? dispute?.acceptedBy?._id?.toString?.() || dispute?.acceptedBy?.toString?.()
+    : dispute?.acceptedBy?.toString?.();
+  const acceptedByName = acceptedByIdStr
+    ? (String(acceptedByIdStr) === String(claimantIdStr)
+        ? (dispute?.claimantName || "Claimant")
+        : String(acceptedByIdStr) === String(respondentIdStr)
+          ? (dispute?.respondentName || "Respondent")
+          : "One party")
+    : "One party";
+  const resolvedReasonText = dispute?.adminDecision
+    ? "Resolved by admin arbitration final decision."
+    : dispute?.acceptedAt
+      ? `${acceptedByName} accepted the settlement offer and closed the dispute.`
+      : dispute?.autoClosed
+        ? "Resolved automatically because the required response/payment deadline passed."
+        : "Resolved automatically after both parties reached the same settlement amount.";
+  const resolvedAtLabel = dispute?.closedAt
+    ? new Date(dispute.closedAt).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).replace(",", "")
+    : null;
 
   // Parse "X days Y hours Z mins" into parts so we can style numbers vs labels differently.
   const timeParts = (() => {
-    if (!timeLeft) return null;
-    const match = timeLeft.match(/(\d+)\s+days\s+(\d+)\s+hours\s+(\d+)\s+mins/);
+    if (!displayTimeLeft) return null;
+    const match = displayTimeLeft.match(/(\d+)\s+days\s+(\d+)\s+hours\s+(\d+)\s+mins/);
     if (!match) return null;
     return {
       days: match[1],
@@ -987,8 +1045,8 @@ export default function DisputeDiscussionPage() {
                     </p>
                   </div>
                 )}
-                {isWaitingOtherPartyArbitrationFee && (
-                  <div className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
+                {hasAnyArbitrationPayment && arbitrationPaymentsOrdered.map((entry: any, idx: number) => (
+                  <div key={`arb-payment-msg-${idx}`} className="border rounded-lg p-4 bg-[#f4b183] border-[#f4b183] shadow-sm">
                     <div className="flex gap-3">
                       <Avatar className="w-12 h-12 flex-shrink-0 border border-[#f4b183]">
                         <AvatarImage src={adminAvatar} />
@@ -999,13 +1057,20 @@ export default function DisputeDiscussionPage() {
                           Arbitrate team
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
-                          {`${arbitrationPayerName} has paid £${arbitrationFeeAmountDisplay.toFixed(2)} to escalate the dispute to arbitration.`}
+                          {`${entry.payerName} has paid £${entry.amount.toFixed(2)} to escalate the dispute to arbitration.`}
                         </p>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
-                          {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${arbitrationPayerName}.`}
-                        </p>
+                        {idx === 0 && !bothPaidArbitrationFee && (
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                            {`${arbitrationUnpaidPartyName} has ${arbitrationDaysToPay} day(s) to pay the fee - failure to do so will result in deciding the case in the favour of ${firstPayerName}.`}
+                          </p>
+                        )}
+                        {idx === arbitrationPaymentsOrdered.length - 1 && bothPaidArbitrationFee && (
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                            Both parties have now paid the arbitration fee. The dispute team will step in to review and decide the case.
+                          </p>
+                        )}
                         <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">
-                          {new Date(firstArbitrationPayment?.paidAt || Date.now()).toLocaleString("en-GB", {
+                          {new Date(entry.payment?.paidAt || Date.now()).toLocaleString("en-GB", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
@@ -1016,7 +1081,7 @@ export default function DisputeDiscussionPage() {
                       </div>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
 
               {/* Reply Section */}
@@ -1081,7 +1146,7 @@ export default function DisputeDiscussionPage() {
             {/* Right Column - Sidebar */}
             <div className="space-y-4">
             {/* Response Timeline Card */}
-            {(dispute.status === "open" || dispute.status === "negotiation" || isWaitingOtherPartyArbitrationFee) && timeLeft && (
+            {(dispute.status === "open" || dispute.status === "negotiation" || isWaitingOtherPartyArbitrationFee || bothPaidArbitrationFee) && displayTimeLeft && (
               <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
                 {timeParts ? (
                   <div className="flex flex-wrap justify-center items-baseline gap-1 mb-2">
@@ -1106,7 +1171,7 @@ export default function DisputeDiscussionPage() {
                   </div>
                 ) : (
                   <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f] font-bold text-center mb-2">
-                    {timeLeft}
+                    {displayTimeLeft}
                   </p>
                 )}
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] text-center">
@@ -1368,6 +1433,28 @@ export default function DisputeDiscussionPage() {
                     </div>
                   </div>
                 ) : null}
+              </div>
+            )}
+
+            {isResolvedDispute && (
+              <div className="bg-white rounded-lg shadow-sm p-6 border-2 border-red-200">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    Dispute status
+                  </p>
+                  <Badge className="bg-red-100 text-red-700 border border-red-300 font-['Poppins',sans-serif] text-[14px] px-3 py-1">
+                    Resolved
+                  </Badge>
+                </div>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                  {resolvedReasonText}
+                </p>
+                {resolvedAtLabel && (
+                  <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {`Closed on ${resolvedAtLabel}`}
+                  </p>
+                )}
               </div>
             )}
             </div>
