@@ -848,11 +848,18 @@ export default function DisputeDiscussionPage() {
           ? (dispute?.respondentName || "Respondent")
           : "the selected party")
     : "the selected party";
-  const adminDecisionComment = typeof dispute?.decisionNotes === "string" && dispute.decisionNotes.trim()
-    ? dispute.decisionNotes.trim()
-    : "No additional comment provided.";
+  const cleanAdminDecisionText = (value?: string) =>
+    (value || "")
+      .replace(/^\s*decision\s*:\s*/i, "")
+      .replace(/^\s*comment\s*:\s*/i, "")
+      .trim();
+  const adminDecisionSummary = `Dispute decided in the favour of ${winnerName}.`;
+  const adminDecisionCommentRaw =
+    typeof dispute?.decisionNotes === "string" ? dispute.decisionNotes.trim() : "";
+  const adminDecisionComment =
+    cleanAdminDecisionText(adminDecisionCommentRaw) || "No additional comment provided.";
   const resolvedReasonText = dispute?.adminDecision
-    ? `Decision: Dispute decided in the favour of ${winnerName}.\ncomment: ${adminDecisionComment}`
+    ? `${adminDecisionSummary}\n${adminDecisionComment}`
     : dispute?.acceptedAt
       ? `Dispute resolved positively as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
       : dispute?.autoClosed
@@ -1185,7 +1192,22 @@ export default function DisputeDiscussionPage() {
                           </Avatar>
                           <div className="flex-1">
                             <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">Arbitrate team</p>
-                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45] whitespace-pre-line">{resolvedReasonText}</p>
+                            {dispute?.adminDecision ? (
+                              <div className="space-y-3">
+                                <div className="rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-100 px-4 py-3 shadow-sm">
+                                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.5] font-semibold">
+                                    {adminDecisionSummary}
+                                  </p>
+                                </div>
+                                <div className="rounded-lg border border-orange-200 bg-white/80 px-4 py-3 shadow-sm">
+                                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.55] whitespace-pre-line">
+                                    {adminDecisionComment}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45] whitespace-pre-line">{resolvedReasonText}</p>
+                            )}
                             {resolvedAtLabel && (
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">{resolvedAtLabel}</p>
                             )}
