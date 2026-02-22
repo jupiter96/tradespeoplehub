@@ -2859,6 +2859,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           adminDecision: dispute.adminDecision || false,
           decisionNotes: dispute.decisionNotes || undefined,
           autoClosed: dispute.autoClosed || false,
+          finalAmount: typeof dispute.finalAmount === 'number' ? dispute.finalAmount : undefined,
         } : undefined,
         reviewInfo: review ? {
           id: review._id.toString(),

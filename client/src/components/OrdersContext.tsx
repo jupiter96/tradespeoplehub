@@ -83,6 +83,11 @@ export interface OrderDispute {
   adminDecision?: boolean;
   decisionNotes?: string;
   autoClosed?: boolean;
+  acceptedBy?: string;
+  acceptedByRole?: "client" | "professional";
+  acceptedAt?: string;
+  closedAt?: string;
+  finalAmount?: number;
 }
 
 export interface Order {
@@ -928,6 +933,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           adminDecision: order.disputeInfo.adminDecision,
           decisionNotes: order.disputeInfo.decisionNotes,
           autoClosed: order.disputeInfo.autoClosed,
+          acceptedBy: order.disputeInfo.acceptedBy,
+          acceptedByRole: order.disputeInfo.acceptedByRole,
+          acceptedAt: order.disputeInfo.acceptedAt,
+          closedAt: order.disputeInfo.closedAt,
+          finalAmount: order.disputeInfo.finalAmount,
         } as OrderDispute;
       }
     }
