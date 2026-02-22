@@ -861,7 +861,7 @@ export default function DisputeDiscussionPage() {
   const resolvedReasonText = dispute?.adminDecision
     ? `${adminDecisionSummary}\n${adminDecisionComment}`
     : dispute?.acceptedAt
-      ? `Dispute resolved positively as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
+      ? `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
       : dispute?.autoClosed
         ? "Resolved automatically because the required response/payment deadline passed."
         : `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`;
