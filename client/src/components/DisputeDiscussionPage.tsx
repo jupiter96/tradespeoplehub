@@ -835,8 +835,21 @@ export default function DisputeDiscussionPage() {
     }
     return null;
   })();
+  const winnerIdStr = typeof dispute?.winnerId === "object"
+    ? dispute?.winnerId?._id?.toString?.() || dispute?.winnerId?.toString?.()
+    : dispute?.winnerId?.toString?.();
+  const winnerName = winnerIdStr
+    ? (String(winnerIdStr) === String(claimantIdStr)
+        ? (dispute?.claimantName || "Claimant")
+        : String(winnerIdStr) === String(respondentIdStr)
+          ? (dispute?.respondentName || "Respondent")
+          : "the selected party")
+    : "the selected party";
+  const adminDecisionComment = typeof dispute?.decisionNotes === "string" && dispute.decisionNotes.trim()
+    ? dispute.decisionNotes.trim()
+    : "No additional comment provided.";
   const resolvedReasonText = dispute?.adminDecision
-    ? "Resolved by admin arbitration final decision."
+    ? `Decision: Dispute decided in the favour of ${winnerName}. comment: ${adminDecisionComment}`
     : dispute?.acceptedAt
       ? `Dispute resolved positively as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
       : dispute?.autoClosed

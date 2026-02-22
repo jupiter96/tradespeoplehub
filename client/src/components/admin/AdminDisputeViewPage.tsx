@@ -46,6 +46,8 @@ interface AdminDispute {
   createdAt?: string;
   closedAt?: string;
   milestoneIndices?: number[];
+  arbitrationPaymentsCount?: number;
+  bothPartiesPaidArbitrationFee?: boolean;
 }
 
 const resolveFileUrl = (filePath: string) => {
@@ -240,7 +242,7 @@ export default function AdminDisputeViewPage() {
   const [timeLeft, setTimeLeft] = useState("");
   const [isReplyOpen, setIsReplyOpen] = useState(false);
   const [isDecisionOpen, setIsDecisionOpen] = useState(false);
-  const [replyFavor, setReplyFavor] = useState<string>("");
+  const [replyRecipient, setReplyRecipient] = useState<string>("");
   const [replyComment, setReplyComment] = useState("");
   const [decisionFavor, setDecisionFavor] = useState<string>("");
   const [decisionComment, setDecisionComment] = useState("");
@@ -310,10 +312,13 @@ export default function AdminDisputeViewPage() {
         return hasValidId && isFirstOccurrence;
       })
     : [];
+  const isArbitrationStage = dispute?.status === "admin_arbitration" || dispute?.status === "arbitration";
+  const bothArbitrationFeesPaid = dispute?.bothPartiesPaidArbitrationFee === true;
+  const showArbitrationActions = isArbitrationStage && bothArbitrationFeesPaid;
 
   const handleSubmitReply = async () => {
-    if (!dispute || !replyFavor) {
-      toast.error("Please select who the reply is in favor of.");
+    if (!dispute || !replyRecipient) {
+      toast.error("Please select who should receive this reply.");
       return;
     }
     try {
@@ -322,7 +327,7 @@ export default function AdminDisputeViewPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          inFavorOf: replyFavor,
+          recipientId: replyRecipient,
           comment: replyComment,
         }),
       });
@@ -333,7 +338,7 @@ export default function AdminDisputeViewPage() {
       const data = await res.json();
       setDispute(data.dispute || dispute);
       setReplyComment("");
-      setReplyFavor("");
+      setReplyRecipient("");
       setIsReplyOpen(false);
       toast.success("Reply sent");
     } catch (e: any) {
@@ -612,7 +617,7 @@ export default function AdminDisputeViewPage() {
               )}
             </div>
             <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-end">
-              {dispute.status === "admin_arbitration" && (
+              {showArbitrationActions && (
                 <Button
                   onClick={() => setIsDecisionOpen(true)}
                   className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
@@ -620,13 +625,15 @@ export default function AdminDisputeViewPage() {
                   Make Final Decision
                 </Button>
               )}
-              <Button
-                onClick={() => setIsReplyOpen(true)}
-                variant="outline"
-                className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif]"
-              >
-                Reply
-              </Button>
+              {showArbitrationActions && (
+                <Button
+                  onClick={() => setIsReplyOpen(true)}
+                  variant="outline"
+                  className="border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FE8A0F]/10 font-['Poppins',sans-serif]"
+                >
+                  Reply
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -697,11 +704,11 @@ export default function AdminDisputeViewPage() {
       >
         <div className="space-y-6" style={{ width: "400px" }}>
           <div>
-            <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-3">In Favor of:</p>
+            <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#2c353f] mb-3">Send To:</p>
             {favorOptions.length > 0 ? (
               <FavorSelect
-                value={replyFavor}
-                onChange={setReplyFavor}
+                value={replyRecipient}
+                onChange={setReplyRecipient}
                 options={favorOptions}
               />
             ) : (
@@ -742,6 +749,7 @@ export default function AdminDisputeViewPage() {
             {favorOptions.length > 0 ? (
               <FavorSelect
                 value={decisionFavor}
+                
                 onChange={setDecisionFavor}
                 options={favorOptions}
               />

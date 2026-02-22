@@ -827,6 +827,13 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
 
     const amount = dispute.amount != null ? dispute.amount : (order.subtotal || 0) - (order.discount || 0);
 
+    const arbitrationPayments = Array.isArray(dispute.arbitrationPayments) ? dispute.arbitrationPayments : [];
+    const paidUserIds = new Set(
+      arbitrationPayments
+        .map((p) => asIdString(p?.userId))
+        .filter(Boolean)
+    );
+
     const disputePayload = {
       id: dispute.disputeId,
       orderId: order._id.toString(),
@@ -872,6 +879,8 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
       createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : undefined,
       closedAt: dispute.closedAt ? new Date(dispute.closedAt).toISOString() : undefined,
       milestoneIndices: dispute.milestoneIndices,
+      arbitrationPaymentsCount: arbitrationPayments.length,
+      bothPartiesPaidArbitrationFee: paidUserIds.size >= 2,
     };
 
     return res.json({ dispute: disputePayload, order: { id: order._id.toString(), orderNumber: order.orderNumber } });
@@ -883,30 +892,32 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
 router.post('/disputes/:disputeId/reply', requireAdmin, async (req, res) => {
   try {
     const { disputeId } = req.params;
-    const { inFavorOf, comment } = req.body || {};
+    const { recipientId, inFavorOf, comment } = req.body || {};
+    const targetUserId = recipientId || inFavorOf || null;
     const dispute = await Dispute.findOne({ disputeId });
     if (!dispute) {
       return res.status(404).json({ error: 'Dispute not found' });
     }
     const adminName = req.adminUser?.fullname || 'Dispute Team';
     const replyText = comment ? comment.trim() : '';
-    if (!replyText && !inFavorOf) {
+    if (!replyText) {
       return res.status(400).json({ error: 'Reply content is required' });
     }
-    // Resolve inFavorOf ID to a display name
+    // Resolve target user to a display name. We keep existing inFavorOf fields
+    // for compatibility with user-side message visibility filtering.
     let inFavorOfName = null;
-    if (inFavorOf) {
+    if (targetUserId) {
       try {
         const User = require('../models/User');
-        const u = await User.findById(inFavorOf).select('firstName lastName tradingName').lean();
+        const u = await User.findById(targetUserId).select('firstName lastName tradingName').lean();
         inFavorOfName = u
-          ? (u.tradingName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || inFavorOf)
-          : inFavorOf;
+          ? (u.tradingName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || targetUserId)
+          : targetUserId;
       } catch (_) {
-        inFavorOfName = inFavorOf;
+        inFavorOfName = targetUserId;
       }
     }
-    const finalMessage = replyText || '(No comment)';
+    const finalMessage = replyText;
     dispute.messages.push({
       id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: dispute.claimantId,
@@ -916,7 +927,7 @@ router.post('/disputes/:disputeId/reply', requireAdmin, async (req, res) => {
       timestamp: new Date(),
       isTeamResponse: true,
       inFavorOfName: inFavorOfName || null,
-      inFavorOfId: inFavorOf || null,
+      inFavorOfId: targetUserId || null,
       attachments: [],
     });
     await dispute.save();
@@ -1054,16 +1065,14 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
       }
     }
 
-    const adminName = req.adminUser?.fullname || 'Dispute Team';
-    const decisionMessage = [
-      `Final decision by ${adminName}:`,
-      `Winner: ${winnerDisplayName}`,
-      decisionNotes ? `Comment: ${decisionNotes}` : null,
-    ].filter(Boolean).join('\n');
+    const commentText = decisionNotes && String(decisionNotes).trim()
+      ? String(decisionNotes).trim()
+      : 'No additional comment provided.';
+    const decisionMessage = `Decision: Dispute decided in the favour of ${winnerDisplayName}. comment: ${commentText}`;
     dispute.messages.push({
       id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: req.adminUser?._id || dispute.claimantId,
-      userName: adminName,
+      userName: req.adminUser?.fullname || 'Dispute Team',
       userAvatar: req.adminUser?.avatar || '',
       message: decisionMessage,
       timestamp: new Date(),
