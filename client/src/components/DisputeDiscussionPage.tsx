@@ -874,6 +874,7 @@ export default function DisputeDiscussionPage() {
         minute: "2-digit",
       }).replace(",", "")
     : null;
+  const resolvedStatusCardText = dispute?.adminDecision ? adminDecisionSummary : resolvedReasonText;
   const visibleDisputeMessages = (dispute?.messages || []).filter((msg: any) => {
     const text = typeof msg?.message === "string" ? msg.message.trim() : "";
     const isLegacySettlementTeamMessage =
@@ -1602,12 +1603,14 @@ export default function DisputeDiscussionPage() {
                   </Badge>
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45] whitespace-pre-line">
-                  {resolvedReasonText}
+                  {resolvedStatusCardText}
                 </p>
                 {resolvedAtLabel && (
                   <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
-                    {`Closed on ${resolvedAtLabel}`}
+                    {dispute?.adminDecision
+                      ? `Closed by dispute team on ${resolvedAtLabel}`
+                      : `Closed on ${resolvedAtLabel}`}
                   </p>
                 )}
               </div>
