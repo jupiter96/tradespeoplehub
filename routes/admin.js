@@ -838,7 +838,7 @@ router.get('/disputes/:disputeId', requireAdmin, async (req, res) => {
       id: dispute.disputeId,
       orderId: order._id.toString(),
       orderNumber: order.orderNumber,
-      status: dispute.status || 'open',
+      status: dispute.status === 'final' ? 'closed' : (dispute.status || 'open'),
       requirements: dispute.requirements,
       unmetRequirements: dispute.unmetRequirements,
       evidenceFiles: dispute.evidenceFiles || [],
@@ -1068,7 +1068,7 @@ router.post('/disputes/:disputeId/decide', requireAdmin, async (req, res) => {
     const commentText = decisionNotes && String(decisionNotes).trim()
       ? String(decisionNotes).trim()
       : 'No additional comment provided.';
-    const decisionMessage = `Decision: Dispute decided in the favour of ${winnerDisplayName}. comment: ${commentText}`;
+    const decisionMessage = `Decision: Dispute decided in the favour of ${winnerDisplayName}.\ncomment: ${commentText}`;
     dispute.messages.push({
       id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       userId: req.adminUser?._id || dispute.claimantId,

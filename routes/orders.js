@@ -2774,7 +2774,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         refundableAmount: totalWithoutServiceFee,
         disputeInfo: dispute ? {
           id: dispute.disputeId || undefined,
-          status: dispute.status,
+          status: dispute.status === 'final' ? 'closed' : dispute.status,
           amount: totalWithoutServiceFee,
           requirements: dispute.requirements || undefined,
           unmetRequirements: dispute.unmetRequirements || undefined,

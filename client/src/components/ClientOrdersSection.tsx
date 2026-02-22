@@ -1103,7 +1103,7 @@ export default function ClientOrdersSection() {
         : disp.acceptedByRole === "professional"
           ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
           : disp.adminDecision
-            ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
+            ? (disp.decisionNotes || `Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.`)
             : (isArbUnpaidAutoClose
               ? (isClientWinner
                 ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${professionalDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
@@ -2508,7 +2508,7 @@ export default function ClientOrdersSection() {
                       typeof disputeInfo?.decisionNotes === "string" &&
                       disputeInfo.decisionNotes.includes("unpaid arbitration fee");
                     if (disputeInfo?.adminDecision) {
-                      return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+                      return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
                     }
                     if (isArbUnpaidAutoClose) {
                       return isWinnerClient
@@ -4375,7 +4375,7 @@ export default function ClientOrdersSection() {
                               typeof disputeInfo?.decisionNotes === "string" &&
                               disputeInfo.decisionNotes.includes("unpaid arbitration fee");
                             if (disputeInfo?.adminDecision) {
-                              return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+                              return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
                             }
                             if (isArbUnpaidAutoClose) {
                               const tradingName = (currentOrder as any).professional || "the professional";
@@ -4406,7 +4406,7 @@ export default function ClientOrdersSection() {
                               typeof disputeInfo?.decisionNotes === "string" &&
                               disputeInfo.decisionNotes.includes("unpaid arbitration fee");
                             if (disputeInfo?.adminDecision) {
-                              return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
+                              return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
                             }
                             if (isArbUnpaidAutoClose) {
                               const feeDeadline = disputeInfo?.arbitrationFeeDeadline

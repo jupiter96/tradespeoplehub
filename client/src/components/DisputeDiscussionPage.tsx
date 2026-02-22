@@ -765,7 +765,8 @@ export default function DisputeDiscussionPage() {
 
   const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
-  const canRespondToOffer = dispute.status === "open" || dispute.status === "negotiation";
+  const normalizedDisputeStatus = dispute?.status === "final" ? "closed" : dispute?.status;
+  const canRespondToOffer = normalizedDisputeStatus === "open" || normalizedDisputeStatus === "negotiation";
 
   // Pro: can only lower offer → max = their last offer (or order amount if no offer yet)
   // Client: can only raise offer → min = their last offer (or 0 if no offer yet)
@@ -780,7 +781,7 @@ export default function DisputeDiscussionPage() {
   const isOfferOutOfRange = !Number.isNaN(newOfferValue) && (newOfferValue < offerMin || newOfferValue > offerMax);
 
   const milestone = job?.milestones?.find((m) => m.id === (dispute as any).milestoneId);
-  const isResolvedDispute = dispute?.status === "closed";
+  const isResolvedDispute = normalizedDisputeStatus === "closed";
   const acceptedByIdStr = typeof dispute?.acceptedBy === "object"
     ? dispute?.acceptedBy?._id?.toString?.() || dispute?.acceptedBy?.toString?.()
     : dispute?.acceptedBy?.toString?.();
@@ -849,7 +850,7 @@ export default function DisputeDiscussionPage() {
     ? dispute.decisionNotes.trim()
     : "No additional comment provided.";
   const resolvedReasonText = dispute?.adminDecision
-    ? `Decision: Dispute decided in the favour of ${winnerName}. comment: ${adminDecisionComment}`
+    ? `Decision: Dispute decided in the favour of ${winnerName}.\ncomment: ${adminDecisionComment}`
     : dispute?.acceptedAt
       ? `Dispute resolved positively as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
       : dispute?.autoClosed
@@ -870,6 +871,11 @@ export default function DisputeDiscussionPage() {
       msg?.isTeamResponse === true &&
       text.startsWith("Dispute resolved as ");
     if (isLegacySettlementTeamMessage) return false;
+    // Hide admin final decision messages (shown in Arbitrate team card instead)
+    const isAdminDecisionMessage =
+      msg?.isTeamResponse === true &&
+      text.startsWith("Decision: Dispute decided in the favour of");
+    if (isAdminDecisionMessage) return false;
     // Hide admin replies targeted to the other party
     if (msg?.inFavorOfId && msg.inFavorOfId !== currentUser?.id) return false;
     return true;
@@ -966,7 +972,9 @@ export default function DisputeDiscussionPage() {
                     Case status:
                   </p>
                   <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
-                    {dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1)}
+                    {normalizedDisputeStatus
+                      ? normalizedDisputeStatus.charAt(0).toUpperCase() + normalizedDisputeStatus.slice(1)
+                      : ""}
                   </p>
                 </div>
                 <div>
@@ -1175,7 +1183,7 @@ export default function DisputeDiscussionPage() {
                           </Avatar>
                           <div className="flex-1">
                             <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">Arbitrate team</p>
-                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">{resolvedReasonText}</p>
+                            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45] whitespace-pre-line">{resolvedReasonText}</p>
                             {resolvedAtLabel && (
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-right mt-2">{resolvedAtLabel}</p>
                             )}
@@ -1553,7 +1561,7 @@ export default function DisputeDiscussionPage() {
                     Resolved
                   </Badge>
                 </div>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45] whitespace-pre-line">
                   {resolvedReasonText}
                 </p>
                 {resolvedAtLabel && (

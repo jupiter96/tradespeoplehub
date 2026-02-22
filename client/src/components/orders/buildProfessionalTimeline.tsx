@@ -683,7 +683,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       : disp.acceptedByRole === "client"
         ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
       : disp.adminDecision
-        ? `Dispute Decided and Closed. ${formatAcceptedAt(disp.closedAt)}\nDispute reviewed and resolved by the arbitration team. The case is now closed.`
+        ? (disp.decisionNotes || `Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.`)
         : (isArbUnpaidAutoClose
           ? (isProfessionalWinner
             ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${clientDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`

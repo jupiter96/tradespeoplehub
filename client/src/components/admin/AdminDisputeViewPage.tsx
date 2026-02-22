@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
@@ -247,32 +247,33 @@ export default function AdminDisputeViewPage() {
   const [decisionFavor, setDecisionFavor] = useState<string>("");
   const [decisionComment, setDecisionComment] = useState("");
 
-  useEffect(() => {
+  const fetchDispute = useCallback(async (showLoader = true) => {
     if (!disputeId) {
       setLoading(false);
       return;
     }
-    const fetchDispute = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(resolveApiUrl(`/api/admin/disputes/${encodeURIComponent(disputeId)}`), {
-          credentials: "include",
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Failed to load dispute");
-        }
-        const data = await res.json();
-        setDispute(data.dispute || null);
-      } catch (e: any) {
-        toast.error(e.message || "Failed to load dispute");
-        setDispute(null);
-      } finally {
-        setLoading(false);
+    try {
+      if (showLoader) setLoading(true);
+      const res = await fetch(resolveApiUrl(`/api/admin/disputes/${encodeURIComponent(disputeId)}`), {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to load dispute");
       }
-    };
-    fetchDispute();
+      const data = await res.json();
+      setDispute(data.dispute || null);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to load dispute");
+      setDispute(null);
+    } finally {
+      if (showLoader) setLoading(false);
+    }
   }, [disputeId]);
+
+  useEffect(() => {
+    fetchDispute(true);
+  }, [fetchDispute]);
 
   useEffect(() => {
     if (!dispute?.responseDeadline && !dispute?.negotiationDeadline) return;
@@ -312,7 +313,8 @@ export default function AdminDisputeViewPage() {
         return hasValidId && isFirstOccurrence;
       })
     : [];
-  const isArbitrationStage = dispute?.status === "admin_arbitration" || dispute?.status === "arbitration";
+  const normalizedDisputeStatus = dispute?.status === "final" ? "closed" : dispute?.status;
+  const isArbitrationStage = normalizedDisputeStatus === "admin_arbitration" || normalizedDisputeStatus === "arbitration";
   const bothArbitrationFeesPaid = dispute?.bothPartiesPaidArbitrationFee === true;
   const showArbitrationActions = isArbitrationStage && bothArbitrationFeesPaid;
 
@@ -335,8 +337,7 @@ export default function AdminDisputeViewPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Failed to send reply");
       }
-      const data = await res.json();
-      setDispute(data.dispute || dispute);
+      await fetchDispute(false);
       setReplyComment("");
       setReplyRecipient("");
       setIsReplyOpen(false);
@@ -365,8 +366,7 @@ export default function AdminDisputeViewPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Failed to submit decision");
       }
-      const data = await res.json();
-      setDispute(data.dispute || dispute);
+      await fetchDispute(false);
       setDecisionComment("");
       setDecisionFavor("");
       setIsDecisionOpen(false);
@@ -433,13 +433,13 @@ export default function AdminDisputeViewPage() {
               <div>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Case status:</p>
                 <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
-                  {dispute.status ? dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1) : ""}
+                  {normalizedDisputeStatus ? normalizedDisputeStatus.charAt(0).toUpperCase() + normalizedDisputeStatus.slice(1) : ""}
                 </p>
               </div>
               <div>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Decided in:</p>
                 <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
-                  {dispute.status === "open" || dispute.status === "negotiation"
+                  {normalizedDisputeStatus === "open" || normalizedDisputeStatus === "negotiation"
                     ? "In progress"
                     : `${dispute.claimantName} favour`}
                 </p>
@@ -639,7 +639,7 @@ export default function AdminDisputeViewPage() {
         </div>
 
         <div className="space-y-4">
-          {(dispute.status === "open" || dispute.status === "negotiation") && timeLeft && (
+          {(normalizedDisputeStatus === "open" || normalizedDisputeStatus === "negotiation") && timeLeft && (
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
               <p className="font-['Poppins',sans-serif] text-[32px] text-[#2c353f] font-bold text-center mb-2">
                 {timeLeft}
