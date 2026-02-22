@@ -290,12 +290,14 @@ export default function DisputeDiscussionPage() {
         await rejectDisputeOffer(disputeId);
       }
       toast.success("Offer rejected");
-      // Refresh dispute
+      // Refresh orders first to get updated dispute info, then refresh dispute
       if (isOrderDispute) {
+        await refreshOrders();
         setDispute(getOrderDisputeById(disputeId));
       } else {
         setDispute(getDisputeById(disputeId));
       }
+      setShowRespondActions(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to reject offer");
     }
@@ -1395,6 +1397,22 @@ export default function DisputeDiscussionPage() {
                           </div>
                         )}
                       </>
+                    ) : dispute?.lastOfferRejectedAt ? (
+                      (() => {
+                        const myRole = isCurrentUserClient ? 'client' : 'professional';
+                        const iRejected = dispute?.lastOfferRejectedByRole === myRole;
+                        const rejectedAmount = dispute?.lastRejectedOfferAmount;
+                        return (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-red-700">
+                              {iRejected 
+                                ? `You rejected the £${typeof rejectedAmount === 'number' ? rejectedAmount.toFixed(2) : '0.00'} offer. Waiting for a new offer.`
+                                : `Your £${typeof rejectedAmount === 'number' ? rejectedAmount.toFixed(2) : '0.00'} offer was rejected.`
+                              }
+                            </p>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">
                         No offer yet

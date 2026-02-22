@@ -88,6 +88,10 @@ export interface OrderDispute {
   acceptedAt?: string;
   closedAt?: string;
   finalAmount?: number;
+  lastOfferRejectedAt?: string;
+  lastOfferRejectedBy?: string;
+  lastOfferRejectedByRole?: "client" | "professional";
+  lastRejectedOfferAmount?: number;
 }
 
 export interface Order {
@@ -938,6 +942,10 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           acceptedAt: order.disputeInfo.acceptedAt,
           closedAt: order.disputeInfo.closedAt,
           finalAmount: order.disputeInfo.finalAmount,
+          lastOfferRejectedAt: order.disputeInfo.lastOfferRejectedAt,
+          lastOfferRejectedBy: order.disputeInfo.lastOfferRejectedBy,
+          lastOfferRejectedByRole: order.disputeInfo.lastOfferRejectedByRole,
+          lastRejectedOfferAmount: order.disputeInfo.lastRejectedOfferAmount,
         } as OrderDispute;
       }
     }

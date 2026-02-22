@@ -2860,6 +2860,10 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           decisionNotes: dispute.decisionNotes || undefined,
           autoClosed: dispute.autoClosed || false,
           finalAmount: typeof dispute.finalAmount === 'number' ? dispute.finalAmount : undefined,
+          lastOfferRejectedAt: dispute.lastOfferRejectedAt ? new Date(dispute.lastOfferRejectedAt).toISOString() : undefined,
+          lastOfferRejectedBy: dispute.lastOfferRejectedBy ? dispute.lastOfferRejectedBy.toString() : undefined,
+          lastOfferRejectedByRole: dispute.lastOfferRejectedByRole || undefined,
+          lastRejectedOfferAmount: typeof dispute.lastRejectedOfferAmount === 'number' ? dispute.lastRejectedOfferAmount : undefined,
         } : undefined,
         reviewInfo: review ? {
           id: review._id.toString(),
@@ -5147,6 +5151,12 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
       dispute.offers.professionalOffer = parsedAmount;
     }
 
+    // Clear rejection status when a new offer is made
+    dispute.lastOfferRejectedAt = null;
+    dispute.lastOfferRejectedBy = null;
+    dispute.lastOfferRejectedByRole = null;
+    dispute.lastRejectedOfferAmount = null;
+
     // Record offer in history
     if (!dispute.offerHistory) dispute.offerHistory = [];
     dispute.offerHistory.push({
@@ -5363,24 +5373,48 @@ router.post('/:orderId/dispute/reject', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You are not authorized to reject this dispute offer' });
     }
 
-    // Add rejection message if provided
-    if (message && message.trim()) {
-      const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
-      const user = isClient ? order.client : order.professional;
-      
-      const rejectionMessage = {
-        id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        userId: req.user.id,
-        userName: isClient ? 
-          `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
-          (user.tradingName || 'Professional'),
-        userAvatar: user.avatar || '',
-        message: `Rejected offer. ${message.trim()}`,
-        timestamp: new Date(),
-        isTeamResponse: false,
-      };
-      dispute.messages.push(rejectionMessage);
+    // Determine which offer to clear based on who is rejecting
+    const isClient = order.client?._id?.toString() === req.user.id || order.client?.toString() === req.user.id;
+    const user = isClient ? order.client : order.professional;
+
+    // Store the rejected offer amount before clearing
+    const rejectedOfferAmount = isClient
+      ? dispute.offers?.professionalOffer
+      : dispute.offers?.clientOffer;
+
+    // Clear the other party's offer when rejected (so respond button won't show until new offer is made)
+    if (!dispute.offers) {
+      dispute.offers = { clientOffer: null, professionalOffer: null };
     }
+    if (isClient) {
+      // Client is rejecting professional's offer
+      dispute.offers.professionalOffer = null;
+    } else {
+      // Professional is rejecting client's offer
+      dispute.offers.clientOffer = null;
+    }
+
+    // Track rejection status
+    dispute.lastOfferRejectedAt = new Date();
+    dispute.lastOfferRejectedBy = req.user.id;
+    dispute.lastOfferRejectedByRole = isClient ? 'client' : 'professional';
+    dispute.lastRejectedOfferAmount = rejectedOfferAmount;
+
+    // Add rejection message
+    const rejectionMessage = {
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      userId: req.user.id,
+      userName: isClient ? 
+        `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
+        (user.tradingName || 'Professional'),
+      userAvatar: user.avatar || '',
+      message: message && message.trim() 
+        ? `Rejected the £${rejectedOfferAmount?.toFixed(2) || '0.00'} offer. ${message.trim()}`
+        : `Rejected the £${rejectedOfferAmount?.toFixed(2) || '0.00'} offer.`,
+      timestamp: new Date(),
+      isTeamResponse: false,
+    };
+    dispute.messages.push(rejectionMessage);
 
     await dispute.save();
 
@@ -5389,6 +5423,12 @@ router.post('/:orderId/dispute/reject', authenticateToken, async (req, res) => {
       dispute: {
         id: dispute.disputeId,
         status: dispute.status,
+        clientOffer: dispute.offers?.clientOffer ?? null,
+        professionalOffer: dispute.offers?.professionalOffer ?? null,
+        lastOfferRejectedAt: dispute.lastOfferRejectedAt?.toISOString(),
+        lastOfferRejectedBy: dispute.lastOfferRejectedBy?.toString(),
+        lastOfferRejectedByRole: dispute.lastOfferRejectedByRole,
+        lastRejectedOfferAmount: dispute.lastRejectedOfferAmount,
       }
     });
   } catch (error) {
