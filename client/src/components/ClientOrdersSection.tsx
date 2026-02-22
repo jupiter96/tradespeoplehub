@@ -2738,8 +2738,8 @@ export default function ClientOrdersSection() {
 
             {/* Timeline first (newest at top), then Order Placed/Created/Started - use flex order so dynamic events appear above static block */}
             <div className="flex flex-col" style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ order: 2 }}>
-            {/* Order Placed / Order Created / Order Started - order: Placed (top), Created, Started (bottom) */}
+              <div style={{ order: 4 }}>
+            {/* Order Placed / Order Created / Order Started - oldest events at bottom */}
             <div className="space-y-0">
               {/* Created Milestones - table above Order Placed (custom offer milestone payment) */}
               {(currentOrder as any).metadata?.paymentType === "milestone" &&
@@ -3034,7 +3034,7 @@ export default function ClientOrdersSection() {
               if (warnings.length === 0) return null;
               
               return (
-                <div className="mt-4 space-y-3" style={{ order: 3 }}>
+                <div className="mt-4 space-y-3" style={{ order: 2 }}>
                   {warnings.map((warning, index) => (
                     <div 
                       key={index}
@@ -3076,50 +3076,7 @@ export default function ClientOrdersSection() {
             })()}
 
             <div style={{ order: 1 }}>
-            {/* {currentOrder.status === "completed" && currentOrder.rating && (
-              <div className="bg-white rounded-lg p-6 shadow-md">
-                <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
-                  Your order has been completed!
-                </h4>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                  Thank you for your review! You rated this service {currentOrder.rating}/5 stars.
-                </p>
-                <div className="flex gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-5 h-5 ${star <= (currentOrder.rating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`}
-                    />
-                  ))}
-                </div>
-                {currentOrder.review && (
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4 shadow-md">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] italic">
-                      "{currentOrder.review}"
-                    </p>
-                  </div>
-                )}
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    onClick={() => {
-                      if (currentOrder.professionalId) {
-                        startConversation(currentOrder.professionalId, currentOrder.professional);
-                      }
-                    }}
-                    variant="outline"
-                    className="font-['Poppins',sans-serif] px-6"
-                  >
-                    Chat
-                  </Button>
-                </div>
-              </div>
-            )} */}
-
-            {(() => {
-              return null;
-            })()}
-            
-            {/* Disputed Status Alert - Above Timeline */}
+            {/* Disputed Status Alert - Above Warnings */}
             {currentOrder.status === "disputed" && (() => {
               const isClaimant = currentOrder.disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
               const hasReply = Boolean(currentOrder.disputeInfo?.respondedAt);
@@ -3134,6 +3091,7 @@ export default function ClientOrdersSection() {
               );
               const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
               const bothPaid = paidUserIds.size >= 2;
+              const tradingName = currentOrder.professional || "The professional";
               const arbitrationDeadline = disputeInfo?.arbitrationFeeDeadline
                 ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
                     day: "numeric",
@@ -3141,7 +3099,6 @@ export default function ClientOrdersSection() {
                     year: "numeric",
                   })
                 : "the deadline";
-              const tradingName = currentOrder.professional || "The professional";
               
               // Determine status title and message
               let statusTitle = "Your order is being disputed!";
@@ -3205,6 +3162,47 @@ export default function ClientOrdersSection() {
                 </div>
               );
             })()}
+            </div>
+
+            <div style={{ order: 3 }}>
+            {/* {currentOrder.status === "completed" && currentOrder.rating && (
+              <div className="bg-white rounded-lg p-6 shadow-md">
+                <h4 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-3">
+                  Your order has been completed!
+                </h4>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                  Thank you for your review! You rated this service {currentOrder.rating}/5 stars.
+                </p>
+                <div className="flex gap-1 mb-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-5 h-5 ${star <= (currentOrder.rating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`}
+                    />
+                  ))}
+                </div>
+                {currentOrder.review && (
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4 shadow-md">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] italic">
+                      "{currentOrder.review}"
+                    </p>
+                  </div>
+                )}
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    onClick={() => {
+                      if (currentOrder.professionalId) {
+                        startConversation(currentOrder.professionalId, currentOrder.professional);
+                      }
+                    }}
+                    variant="outline"
+                    className="font-['Poppins',sans-serif] px-6"
+                  >
+                    Chat
+                  </Button>
+                </div>
+              </div>
+            )} */}
 
             {/* Timeline Events */}
             <div className="space-y-0 mt-6">

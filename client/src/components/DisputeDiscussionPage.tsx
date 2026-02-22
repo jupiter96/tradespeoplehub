@@ -979,10 +979,10 @@ export default function DisputeDiscussionPage() {
                 </div>
                 <div>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
-                    Opened by:
+                    {isResolvedDispute ? "Decided in:" : "Opened by:"}
                   </p>
                   <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium">
-                    {dispute.claimantName}
+                    {isResolvedDispute ? `${winnerName} favour` : dispute.claimantName}
                   </p>
                 </div>
               </div>

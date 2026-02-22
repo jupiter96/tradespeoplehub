@@ -853,6 +853,134 @@ export default function ProfessionalOrderTimelineTab({
         );
       })()}
 
+      {/* Dispute Warning Messages - Below Status Card, Above Timeline */}
+      {currentOrder.status === "disputed" && (() => {
+        const isClaimant = (currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
+        const hasReply = Boolean((currentOrder as any).disputeInfo?.respondedAt);
+        const disputeInfo = (currentOrder as any).disputeInfo;
+        const arbitrationPayments = disputeInfo?.arbitrationPayments || [];
+        const hasPaidArbitration = arbitrationPayments.some(
+          (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
+        );
+        const onlyOnePaid = arbitrationPayments.length === 1;
+        const hasOtherPaid = arbitrationPayments.some(
+          (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
+        );
+        const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
+        const bothPaid = paidUserIds.size >= 2;
+        
+        const warnings: { title: string; message: string; type: 'danger' | 'warning' | 'info' }[] = [];
+        
+        // Warning 1: Response deadline (for respondent who hasn't replied yet)
+        if (!isClaimant && !hasReply) {
+          const responseDeadline = disputeInfo?.responseDeadline 
+            ? formatDateOrdinal(disputeInfo.responseDeadline) 
+            : "the deadline";
+          warnings.push({
+            title: "Response Deadline",
+            message: `You have until ${responseDeadline} to respond. Not responding within the time frame will result in closing the case and deciding in ${(currentOrder.client || "the client") + "'s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.`,
+            type: 'danger'
+          });
+        }
+        
+        // Warning 2: Claimant waiting for response
+        if (isClaimant && !hasReply) {
+          const responseDeadline = disputeInfo?.responseDeadline 
+            ? formatDateOrdinal(disputeInfo.responseDeadline) 
+            : "the deadline";
+          warnings.push({
+            title: "Awaiting Response",
+            message: `${currentOrder.client || "The client"} has until ${responseDeadline} to respond. If they don't respond within the time frame, the case will be closed in your favour.`,
+            type: 'info'
+          });
+        }
+        
+        // Warning 3: Negotiation deadline
+        if (hasReply && !bothPaid && disputeInfo?.negotiationDeadline) {
+          const negotiationDeadline = new Date(disputeInfo.negotiationDeadline).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          warnings.push({
+            title: "Negotiation Deadline",
+            message: `Both parties have until ${negotiationDeadline} to reach a settlement. If no agreement is reached, either party can request arbitration to decide the case.`,
+            type: 'warning'
+          });
+        }
+        
+        // Warning 4: Arbitration fee deadline (for party who hasn't paid)
+        if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
+          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          warnings.push({
+            title: "Arbitration Fee Deadline",
+            message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${(currentOrder.client || "the client") + "'s"} favour.`,
+            type: 'danger'
+          });
+        }
+        
+        // Warning 5: Waiting for other party to pay arbitration fee
+        if (onlyOnePaid && hasPaidArbitration && !hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
+          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          warnings.push({
+            title: "Waiting for Other Party",
+            message: `${currentOrder.client || "The client"} has until ${arbitrationDeadline} to pay their arbitration fee. If they don't pay, the case will be decided in your favour.`,
+            type: 'info'
+          });
+        }
+        
+        if (warnings.length === 0) return null;
+        
+        return (
+          <div className="mt-4 space-y-3">
+            {warnings.map((warning, index) => (
+              <div 
+                key={index}
+                className={`rounded-lg p-4 border-2 ${
+                  warning.type === 'danger' 
+                    ? 'bg-red-50 border-red-300' 
+                    : warning.type === 'warning'
+                    ? 'bg-amber-50 border-amber-300'
+                    : 'bg-blue-50 border-blue-300'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                    warning.type === 'danger' 
+                      ? 'text-red-600' 
+                      : warning.type === 'warning'
+                      ? 'text-amber-600'
+                      : 'text-blue-600'
+                  }`} />
+                  <div className="flex-1">
+                    <h5 className={`font-['Poppins',sans-serif] text-[14px] font-semibold mb-1 ${
+                      warning.type === 'danger' 
+                        ? 'text-red-700' 
+                        : warning.type === 'warning'
+                        ? 'text-amber-700'
+                        : 'text-blue-700'
+                    }`}>
+                      {warning.title}
+                    </h5>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      {warning.message}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Timeline Events */}
       <div className="space-y-0">
         {timelineEvents.length === 0 && (
@@ -1397,134 +1525,6 @@ export default function ProfessionalOrderTimelineTab({
         </div>
 
       </div>
-
-      {/* Dispute Warning Messages - Below Timeline */}
-      {currentOrder.status === "disputed" && (() => {
-        const isClaimant = (currentOrder as any).disputeInfo?.claimantId?.toString() === userInfo?.id?.toString();
-        const hasReply = Boolean((currentOrder as any).disputeInfo?.respondedAt);
-        const disputeInfo = (currentOrder as any).disputeInfo;
-        const arbitrationPayments = disputeInfo?.arbitrationPayments || [];
-        const hasPaidArbitration = arbitrationPayments.some(
-          (p: any) => p?.userId?.toString?.() === userInfo?.id?.toString()
-        );
-        const onlyOnePaid = arbitrationPayments.length === 1;
-        const hasOtherPaid = arbitrationPayments.some(
-          (p: any) => p?.userId?.toString?.() !== userInfo?.id?.toString()
-        );
-        const paidUserIds = new Set(arbitrationPayments.map((p: any) => p?.userId?.toString?.()).filter(Boolean));
-        const bothPaid = paidUserIds.size >= 2;
-        
-        const warnings: { title: string; message: string; type: 'danger' | 'warning' | 'info' }[] = [];
-        
-        // Warning 1: Response deadline (for respondent who hasn't replied yet)
-        if (!isClaimant && !hasReply) {
-          const responseDeadline = disputeInfo?.responseDeadline 
-            ? formatDateOrdinal(disputeInfo.responseDeadline) 
-            : "the deadline";
-          warnings.push({
-            title: "Response Deadline",
-            message: `You have until ${responseDeadline} to respond. Not responding within the time frame will result in closing the case and deciding in ${(currentOrder.client || "the client") + "'s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.`,
-            type: 'danger'
-          });
-        }
-        
-        // Warning 2: Claimant waiting for response
-        if (isClaimant && !hasReply) {
-          const responseDeadline = disputeInfo?.responseDeadline 
-            ? formatDateOrdinal(disputeInfo.responseDeadline) 
-            : "the deadline";
-          warnings.push({
-            title: "Awaiting Response",
-            message: `${currentOrder.client || "The client"} has until ${responseDeadline} to respond. If they don't respond within the time frame, the case will be closed in your favour.`,
-            type: 'info'
-          });
-        }
-        
-        // Warning 3: Negotiation deadline
-        if (hasReply && !bothPaid && disputeInfo?.negotiationDeadline) {
-          const negotiationDeadline = new Date(disputeInfo.negotiationDeadline).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          warnings.push({
-            title: "Negotiation Deadline",
-            message: `Both parties have until ${negotiationDeadline} to reach a settlement. If no agreement is reached, either party can request arbitration to decide the case.`,
-            type: 'warning'
-          });
-        }
-        
-        // Warning 4: Arbitration fee deadline (for party who hasn't paid)
-        if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
-          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          warnings.push({
-            title: "Arbitration Fee Deadline",
-            message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${(currentOrder.client || "the client") + "'s"} favour.`,
-            type: 'danger'
-          });
-        }
-        
-        // Warning 5: Waiting for other party to pay arbitration fee
-        if (onlyOnePaid && hasPaidArbitration && !hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
-          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          warnings.push({
-            title: "Waiting for Other Party",
-            message: `${currentOrder.client || "The client"} has until ${arbitrationDeadline} to pay their arbitration fee. If they don't pay, the case will be decided in your favour.`,
-            type: 'info'
-          });
-        }
-        
-        if (warnings.length === 0) return null;
-        
-        return (
-          <div className="mt-4 space-y-3">
-            {warnings.map((warning, index) => (
-              <div 
-                key={index}
-                className={`rounded-lg p-4 border-2 ${
-                  warning.type === 'danger' 
-                    ? 'bg-red-50 border-red-300' 
-                    : warning.type === 'warning'
-                    ? 'bg-amber-50 border-amber-300'
-                    : 'bg-blue-50 border-blue-300'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                    warning.type === 'danger' 
-                      ? 'text-red-600' 
-                      : warning.type === 'warning'
-                      ? 'text-amber-600'
-                      : 'text-blue-600'
-                  }`} />
-                  <div className="flex-1">
-                    <h5 className={`font-['Poppins',sans-serif] text-[14px] font-semibold mb-1 ${
-                      warning.type === 'danger' 
-                        ? 'text-red-700' 
-                        : warning.type === 'warning'
-                        ? 'text-amber-700'
-                        : 'text-blue-700'
-                    }`}>
-                      {warning.title}
-                    </h5>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      {warning.message}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
 
       {/* Attachment Preview Modal - Inline React Modal (not Radix UI) */}
       {previewAttachment && (

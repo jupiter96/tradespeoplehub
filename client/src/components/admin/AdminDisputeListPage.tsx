@@ -63,12 +63,12 @@ function SortableHeader({
   );
 }
 
-// Dispute stages: Initial, Respondent, Negotiation, Arbitration, Final
+// Dispute stages: Initial, Respondent, Negotiation, Arbitration, Closed
 const getDisputeStage = (dispute: AdminDispute) => {
   const status = dispute.disputeStatus?.toLowerCase() || '';
   
-  if (status === 'closed') {
-    return { stage: 'Final', color: 'gray', icon: CheckCircle2 };
+  if (status === 'closed' || status === 'final') {
+    return { stage: 'Closed', color: 'gray', icon: CheckCircle2 };
   }
   if (status === 'admin_arbitration') {
     return { stage: 'Arbitration', color: 'purple', icon: Gavel };
@@ -178,7 +178,7 @@ export default function AdminDisputeListPage() {
   return (
     <AdminPageLayout
       title="Dispute List"
-      description="View all disputes. The dispute system comprises 5 stages: Initial, Respondent, Negotiation, Arbitration, and Final."
+      description="View all disputes. The dispute system comprises 5 stages: Initial, Respondent, Negotiation, Arbitration, and Closed."
     >
       <div className="space-y-6">
         {/* Stage Legend */}
@@ -198,7 +198,7 @@ export default function AdminDisputeListPage() {
               <Gavel className="w-3 h-3 mr-1" /> Arbitration
             </Badge>
             <Badge className="bg-gray-100 text-gray-700 border-gray-200 border text-xs">
-              <CheckCircle2 className="w-3 h-3 mr-1" /> Final
+              <CheckCircle2 className="w-3 h-3 mr-1" /> Closed
             </Badge>
           </div>
         </div>

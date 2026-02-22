@@ -174,11 +174,14 @@ export default function ProfessionalOrderDetailSidebar({
                   </DropdownMenuItem>
                 ))}
 
-                {/* Request Cancellation: for remaining undelivered milestones (milestone orders) or normal pending work */}
-                {onOpenCancellationRequest && (
-                  (!isMilestoneOrder && (order.deliveryStatus === "pending" || order.deliveryStatus === "active")) ||
-                  (isMilestoneOrder && hasUndeliveredMilestone)
-                ) && (
+                {/* Request Cancellation: only when no delivery has been submitted yet */}
+                {onOpenCancellationRequest && 
+                  !(order.deliveryFiles && order.deliveryFiles.length > 0) &&
+                  !hasDeliveredMilestone &&
+                  (
+                    (!isMilestoneOrder && (order.deliveryStatus === "pending" || order.deliveryStatus === "active")) ||
+                    (isMilestoneOrder && hasUndeliveredMilestone)
+                  ) && (
                   <DropdownMenuItem
                     onClick={onOpenCancellationRequest}
                     className="text-red-600 focus:text-red-700 focus:bg-red-50 cursor-pointer"
