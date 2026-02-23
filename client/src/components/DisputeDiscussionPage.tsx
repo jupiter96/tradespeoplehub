@@ -767,6 +767,27 @@ export default function DisputeDiscussionPage() {
 
   const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
+  const rejectedOfferAmountFromMessages = (() => {
+    const messages = Array.isArray(dispute?.messages) ? [...dispute.messages].reverse() : [];
+    for (const msg of messages) {
+      const text = typeof msg?.message === "string" ? msg.message : "";
+      const match =
+        text.match(/rejected the £(\d+(?:\.\d{1,2})?)/i) ||
+        text.match(/£(\d+(?:\.\d{1,2})?)\s+offer\s+was\s+rejected/i);
+      if (match?.[1]) {
+        const parsed = parseFloat(match[1]);
+        if (!Number.isNaN(parsed)) return parsed;
+      }
+    }
+    return null;
+  })();
+  const rejectedOfferAmountToShow =
+    typeof dispute?.lastRejectedOfferAmount === "number"
+      ? dispute.lastRejectedOfferAmount
+      : rejectedOfferAmountFromMessages;
+  const hasRejectedOfferNotice =
+    !hasOtherMadeOffer &&
+    (Boolean(dispute?.lastOfferRejectedAt) || typeof rejectedOfferAmountToShow === "number");
   const normalizedDisputeStatus = dispute?.status === "final" ? "closed" : dispute?.status;
   const canRespondToOffer = normalizedDisputeStatus === "open" || normalizedDisputeStatus === "negotiation";
 
@@ -1420,22 +1441,12 @@ export default function DisputeDiscussionPage() {
                           </div>
                         )}
                       </>
-                    ) : dispute?.lastOfferRejectedAt ? (
-                      (() => {
-                        const myRole = isCurrentUserClient ? 'client' : 'professional';
-                        const iRejected = dispute?.lastOfferRejectedByRole === myRole;
-                        const rejectedAmount = dispute?.lastRejectedOfferAmount;
-                        return (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-red-700">
-                              {iRejected 
-                                ? `You rejected the £${typeof rejectedAmount === 'number' ? rejectedAmount.toFixed(2) : '0.00'} offer. Waiting for a new offer.`
-                                : `Your £${typeof rejectedAmount === 'number' ? rejectedAmount.toFixed(2) : '0.00'} offer was rejected.`
-                              }
-                            </p>
-                          </div>
-                        );
-                      })()
+                    ) : hasRejectedOfferNotice ? (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-red-700">
+                          £{typeof rejectedOfferAmountToShow === "number" ? rejectedOfferAmountToShow.toFixed(2) : "0.00"} offer rejected
+                        </p>
+                      </div>
                     ) : (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] italic">
                         No offer yet

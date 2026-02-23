@@ -872,28 +872,28 @@ export default function ProfessionalOrderTimelineTab({
         const warnings: { title: string; message: string; type: 'danger' | 'warning' | 'info' }[] = [];
         
         // Warning 1: Response deadline (for respondent who hasn't replied yet)
-        if (!isClaimant && !hasReply) {
-          const responseDeadline = disputeInfo?.responseDeadline 
-            ? formatDateOrdinal(disputeInfo.responseDeadline) 
-            : "the deadline";
-          warnings.push({
-            title: "Response Deadline",
-            message: `You have until ${responseDeadline} to respond. Not responding within the time frame will result in closing the case and deciding in ${(currentOrder.client || "the client") + "'s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.`,
-            type: 'danger'
-          });
-        }
+        // if (!isClaimant && !hasReply) {
+        //   const responseDeadline = disputeInfo?.responseDeadline 
+        //     ? formatDateOrdinal(disputeInfo.responseDeadline) 
+        //     : "the deadline";
+        //   warnings.push({
+        //     title: "Response Deadline",
+        //     message: `You have until ${responseDeadline} to respond. Not responding within the time frame will result in closing the case and deciding in ${(currentOrder.client || "the client") + "'s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.`,
+        //     type: 'danger'
+        //   });
+        // }
         
         // Warning 2: Claimant waiting for response
-        if (isClaimant && !hasReply) {
-          const responseDeadline = disputeInfo?.responseDeadline 
-            ? formatDateOrdinal(disputeInfo.responseDeadline) 
-            : "the deadline";
-          warnings.push({
-            title: "Awaiting Response",
-            message: `${currentOrder.client || "The client"} has until ${responseDeadline} to respond. If they don't respond within the time frame, the case will be closed in your favour.`,
-            type: 'info'
-          });
-        }
+        // if (isClaimant && !hasReply) {
+        //   const responseDeadline = disputeInfo?.responseDeadline 
+        //     ? formatDateOrdinal(disputeInfo.responseDeadline) 
+        //     : "the deadline";
+        //   warnings.push({
+        //     title: "Awaiting Response",
+        //     message: `${currentOrder.client || "The client"} has until ${responseDeadline} to respond. If they don't respond within the time frame, the case will be closed in your favour.`,
+        //     type: 'info'
+        //   });
+        // }
         
         // Warning 3: Negotiation deadline
         if (hasReply && !bothPaid && disputeInfo?.negotiationDeadline) {

@@ -558,7 +558,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         disputeWarningMessage = `⏳ Awaiting Response\n${clientDisplayName} has until ${responseDeadlineStr} to respond. If they don't respond within the time frame, the case will be closed in your favour.`;
       } else {
         // Client opened the dispute, professional needs to respond
-        disputeWarningMessage = `⚠️ Response Required\nYou have until ${responseDeadlineStr} to respond. Not responding within the time frame will result in closing the case and deciding in ${clientDisplayName}'s favour. Any decision reached is final and irrevocable.`;
+        disputeWarningMessage = `⚠️ You have until ${responseDeadlineStr} to respond. Not responding within the time frame will result in closing the case and deciding in ${clientDisplayName + "'s"} favour. Any decision reached is final and irrevocable. Once a case has been closed, it can't be reopened.`;
       }
     }
     
