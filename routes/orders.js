@@ -2674,6 +2674,11 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           promoCode: order.metadata?.promoCode || order.promoCode?.code || undefined,
           promoCodeType: order.metadata?.promoCodeType || order.promoCode?.type || undefined,
           chargePer: order.metadata?.chargePer || undefined,
+          disputeCancelledAt: order.metadata?.disputeCancelledAt
+            ? new Date(order.metadata.disputeCancelledAt).toISOString()
+            : undefined,
+          disputeCancelledBy: order.metadata?.disputeCancelledBy?.toString?.() || order.metadata?.disputeCancelledBy,
+          disputeCancelledByRole: order.metadata?.disputeCancelledByRole || undefined,
         },
         review: order.review || undefined,
         professionalResponse: order.professionalResponse || undefined,
@@ -4786,6 +4791,9 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     order.metadata.disputeRespondentId = respondentId?.toString?.() || respondentId;
     order.metadata.disputeResponseDeadline = responseDeadline;
     order.metadata.disputeRespondedAt = null;
+    delete order.metadata.disputeCancelledAt;
+    delete order.metadata.disputeCancelledBy;
+    delete order.metadata.disputeCancelledByRole;
     await order.save();
     await syncCustomOfferMessageStatus(order);
 
@@ -6031,9 +6039,17 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     // Check if user is either claimant or respondent
     const isClaimant = claimantId?.toString() === req.user.id;
     const isRespondent = respondentId?.toString() === req.user.id;
+    const isClientCancelling =
+      order.client?.toString?.() === req.user.id ||
+      order.client?._id?.toString?.() === req.user.id;
 
     if (!isClaimant && !isRespondent) {
       return res.status(403).json({ error: 'Only parties involved in the dispute can cancel it' });
+    }
+
+    // Only dispute opener (claimant) can cancel/withdraw the dispute.
+    if (!isClaimant) {
+      return res.status(403).json({ error: 'Only the dispute opener can cancel this dispute' });
     }
 
     // If arbitration was requested and fee was paid, we might want to refund it
@@ -6070,54 +6086,48 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
       }
     }
 
-    // Clear dispute information and restore order to delivered status
-    const previousDisputeId = order.disputeId;
-    order.disputeId = null;
-    order.status = 'In Progress'; // Restore to In Progress (which allows delivery)
-    order.deliveryStatus = 'delivered'; // Restore to delivered status
+    // Close dispute (keep dispute data) and restore order to delivered status
+    // Restore order to delivered state (the same stage before dispute opening)
+    order.status = 'delivered';
+    order.deliveryStatus = 'delivered';
 
-    // Remove dispute document so order no longer shows as disputed
-    await Dispute.deleteOne({ order: order._id });
+    const cancelledAt = new Date();
+    const cancelledByRole = isClientCancelling ? 'client' : 'professional';
+    const cancelDecisionNote = `Dispute cancelled and withdrawn by ${cancelledByRole}.`;
 
-    // Clear dispute metadata
-    if (order.metadata) {
-      delete order.metadata.disputeReason;
-      delete order.metadata.disputeEvidence;
-      delete order.metadata.disputeCreatedBy;
-      delete order.metadata.disputeCreatedAt;
-      delete order.metadata.disputeClaimantId;
-      delete order.metadata.disputeRespondentId;
-      delete order.metadata.disputeResponseDeadline;
-      delete order.metadata.disputeRespondedAt;
-      delete order.metadata.disputeResponseMessage;
-      delete order.metadata.disputeNegotiationDeadline;
-      delete order.metadata.disputeArbitrationRequested;
-      delete order.metadata.disputeArbitrationRequestedBy;
-      delete order.metadata.disputeArbitrationRequestedAt;
-      delete order.metadata.disputeArbitrationFeePaid;
-      delete order.metadata.disputeArbitrationFeeAmount;
-      delete order.metadata.disputeArbitrationFeeTransactionId;
-      delete order.metadata.disputeStatus;
-      delete order.metadata.disputeClosedAt;
-      delete order.metadata.disputeWinnerId;
-      delete order.metadata.disputeLoserId;
-      delete order.metadata.disputeAdminDecision;
-      delete order.metadata.disputeDecisionNotes;
-      delete order.metadata.disputeDecidedBy;
-      delete order.metadata.disputeDecidedAt;
-      delete order.metadata.disputeAutoClosed;
-    }
+    dispute.status = 'closed';
+    dispute.closedAt = cancelledAt;
+    dispute.autoClosed = false;
+    dispute.adminDecision = false;
+    dispute.decisionNotes = cancelDecisionNote;
+
+    if (!order.metadata) order.metadata = {};
+    order.metadata.disputeStatus = 'closed';
+    order.metadata.disputeClosedAt = cancelledAt;
+    order.metadata.disputeAutoClosed = false;
+    order.metadata.disputeCancelledAt = cancelledAt;
+    order.metadata.disputeCancelledBy = req.user.id;
+    order.metadata.disputeCancelledByRole = cancelledByRole;
+
+    await dispute.save();
 
     await order.save();
     await syncCustomOfferMessageStatus(order);
 
     res.json({ 
-      message: 'Dispute cancelled successfully. Order restored to delivered status.',
+      message: 'Dispute cancelled successfully. Dispute closed and order restored to delivered status.',
       order: {
         status: order.status,
         deliveryStatus: order.deliveryStatus,
-        disputeId: null,
-      }
+        disputeId: order.disputeId || dispute.disputeId || null,
+      },
+      dispute: {
+        id: dispute.disputeId,
+        status: dispute.status,
+        closedAt: dispute.closedAt ? new Date(dispute.closedAt).toISOString() : undefined,
+        decisionNotes: dispute.decisionNotes,
+        cancelledByRole,
+      },
     });
   } catch (error) {
     console.error('Cancel dispute error:', error);

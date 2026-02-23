@@ -529,6 +529,41 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
+  const disputeCancelledAt = (order as any).metadata?.disputeCancelledAt;
+  const disputeCancelledByRole = (order as any).metadata?.disputeCancelledByRole;
+  const clientFullName = (order as any).client || "Client";
+  const clientShortName =
+    typeof clientFullName === "string" && clientFullName.trim().length > 0
+      ? clientFullName.trim().split(/\s+/)[0]
+      : "Client";
+  if (disputeCancelledAt && disputeCancelledByRole === "professional") {
+    const cancelledAtStr = formatAcceptedAt(disputeCancelledAt);
+    push(
+      {
+        at: disputeCancelledAt,
+        label: "Dispute Cancelled",
+        description: `You have cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}`,
+        message: "Order payment dispute has been cancelled and withdrawn by you.",
+        colorClass: "bg-red-700",
+        icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
+      },
+      "dispute-cancelled-by-professional"
+    );
+  } else if (disputeCancelledAt && disputeCancelledByRole === "client") {
+    const cancelledAtStr = formatAcceptedAt(disputeCancelledAt);
+    push(
+      {
+        at: disputeCancelledAt,
+        label: "Dispute Cancelled",
+        description: `${clientFullName} has cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}`,
+        message: `${clientShortName} has cancelled the order payment dispute.`,
+        colorClass: "bg-red-700",
+        icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
+      },
+      "dispute-cancelled-by-client"
+    );
+  }
+
   // Dispute events
   const disp = order.disputeInfo;
   if (disp && (disp.createdAt || order.deliveryStatus === "dispute")) {

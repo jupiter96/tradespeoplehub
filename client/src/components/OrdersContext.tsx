@@ -105,7 +105,7 @@ export interface Order {
   items: OrderItem[];
   service: string; // main service title for display
   date: string; // order creation date
-  status: "In Progress" | "Completed" | "Cancelled" | "Cancellation Pending" | "Rejected" | "disputed" | "offer created";
+  status: "In Progress" | "Completed" | "Cancelled" | "Cancellation Pending" | "Rejected" | "disputed" | "offer created" | "delivered";
   amount: string; // formatted amount with £
   amountValue: number; // numeric value for sorting
   professional: string;
@@ -1488,15 +1488,31 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order - remove dispute info and restore to delivered status
+      // Update order - keep dispute data but mark dispute closed; restore order to delivered status.
       setOrders(prev => prev.map(order => {
         if (order.id === orderId) {
+          const prevDispute = (order.disputeInfo || {}) as any;
+          const closedAt = data?.dispute?.closedAt || new Date().toISOString();
+          const cancelledByRole = data?.dispute?.cancelledByRole || prevDispute.disputeCancelledByRole;
           return {
             ...order,
-            status: 'In Progress',
+            status: 'delivered',
             deliveryStatus: 'delivered',
-            disputeInfo: undefined,
-            disputeId: undefined,
+            disputeId: data?.order?.disputeId || order.disputeId,
+            disputeInfo: {
+              ...prevDispute,
+              status: 'closed',
+              closedAt,
+              autoClosed: false,
+              decisionNotes: data?.dispute?.decisionNotes || prevDispute.decisionNotes,
+            },
+            metadata: {
+              ...(order.metadata || {}),
+              disputeStatus: 'closed',
+              disputeClosedAt: closedAt,
+              disputeCancelledAt: closedAt,
+              disputeCancelledByRole: cancelledByRole,
+            },
           };
         }
         return order;

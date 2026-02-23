@@ -954,6 +954,37 @@ export default function ClientOrdersSection() {
       );
     }
 
+    const disputeCancelledAt = order.metadata?.disputeCancelledAt;
+    const disputeCancelledByRole = order.metadata?.disputeCancelledByRole;
+    if (disputeCancelledAt && disputeCancelledByRole === "professional") {
+      const proName = order.professional || "Professional";
+      const cancelledAtStr = formatAcceptedAt(disputeCancelledAt);
+      push(
+        {
+          at: disputeCancelledAt,
+          title: "Dispute Cancelled",
+          description: `${proName} has cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}`,
+          message: `Order payment dispute has been cancelled and withdrawn by ${proName}.`,
+          colorClass: "bg-red-600",
+          icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-cancelled-by-professional"
+      );
+    } else if (disputeCancelledAt && disputeCancelledByRole === "client") {
+      const cancelledAtStr = formatAcceptedAt(disputeCancelledAt);
+      push(
+        {
+          at: disputeCancelledAt,
+          title: "Dispute Cancelled",
+          description: `You have cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}`,
+          message: "Order payment dispute has been cancelled and withdrawn by you.",
+          colorClass: "bg-red-600",
+          icon: <AlertTriangle className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-cancelled-by-client"
+      );
+    }
+
     // Dispute events
     const disp = order.disputeInfo;
     if (disp && (disp.createdAt || order.deliveryStatus === "dispute")) {
@@ -2441,25 +2472,29 @@ export default function ClientOrdersSection() {
               const isCancelledByClient = isClientRequest && currentOrder.status === "Cancelled";
 
               if (isWithdrawnByClient || isCancelledByClient) {
-                const cancelledAt = cr?.respondedAt || cr?.updatedAt || currentOrder.updatedAt;
-                const cancelledAtStr = cancelledAt ? (() => {
-                  const date = new Date(cancelledAt);
-                  if (isNaN(date.getTime())) return "";
-                  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                  const day = date.getDate();
-                  const dayName = dayNames[date.getDay()];
-                  const month = monthNames[date.getMonth()];
-                  const year = date.getFullYear();
-                  const hours = String(date.getHours()).padStart(2, "0");
-                  const minutes = String(date.getMinutes()).padStart(2, "0");
-                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                  return `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
-                })() : "";
                 return (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+                      Your work has been delivered!
+                    </h3>
                     <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] whitespace-pre-line">
-                      {`You have cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}\nOrder payment dispute has been cancelled and withdrawn by you.`}
+                      {currentOrder.deliveredDate ? (() => {
+                        const deliveryDate = new Date(currentOrder.deliveredDate);
+                        const deadlineDate = new Date(deliveryDate);
+                        deadlineDate.setDate(deadlineDate.getDate() + 1);
+                        deadlineDate.setHours(7, 0, 0, 0);
+                        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                        const day = deadlineDate.getDate();
+                        const dayName = dayNames[deadlineDate.getDay()];
+                        const month = monthNames[deadlineDate.getMonth()];
+                        const year = deadlineDate.getFullYear();
+                        const hours = deadlineDate.getHours().toString().padStart(2, "0");
+                        const minutes = deadlineDate.getMinutes().toString().padStart(2, "0");
+                        const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                        const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+                        return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                      })() : "Your work has been delivered. Kindly approve the delivery or request any modifications within 24 hours. If no response is received, the order will be automatically completed and funds released to the seller."}
                     </p>
                   </div>
                 );
@@ -2476,26 +2511,29 @@ export default function ClientOrdersSection() {
               const isCancelledByPro = hasCancellationRequest && cr?.requestedBy?.toString() !== userInfo?.id?.toString() && currentOrder.status === "Cancelled";
 
               if (isWithdrawnByPro || isCancelledByPro) {
-                const cancelledAt = cr?.respondedAt || cr?.updatedAt || currentOrder.updatedAt;
-                const cancelledAtStr = cancelledAt ? (() => {
-                  const date = new Date(cancelledAt);
-                  if (isNaN(date.getTime())) return "";
-                  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                  const day = date.getDate();
-                  const dayName = dayNames[date.getDay()];
-                  const month = monthNames[date.getMonth()];
-                  const year = date.getFullYear();
-                  const hours = String(date.getHours()).padStart(2, "0");
-                  const minutes = String(date.getMinutes()).padStart(2, "0");
-                  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
-                  return `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
-                })() : "";
-                const proName = currentOrder.professional || "The professional";
                 return (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
+                      Your work has been delivered!
+                    </h3>
                     <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] whitespace-pre-line">
-                      {`${proName} has cancelled the order payment dispute${cancelledAtStr ? ` on ${cancelledAtStr}` : ""}\nOrder payment dispute has been cancelled and withdrawn by ${proName}.`}
+                      {currentOrder.deliveredDate ? (() => {
+                        const deliveryDate = new Date(currentOrder.deliveredDate);
+                        const deadlineDate = new Date(deliveryDate);
+                        deadlineDate.setDate(deadlineDate.getDate() + 1);
+                        deadlineDate.setHours(7, 0, 0, 0);
+                        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                        const day = deadlineDate.getDate();
+                        const dayName = dayNames[deadlineDate.getDay()];
+                        const month = monthNames[deadlineDate.getMonth()];
+                        const year = deadlineDate.getFullYear();
+                        const hours = deadlineDate.getHours().toString().padStart(2, "0");
+                        const minutes = deadlineDate.getMinutes().toString().padStart(2, "0");
+                        const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+                        const deadlineStr = `${dayName} ${day}${daySuffix} ${month}, ${year} ${hours}:${minutes}`;
+                        return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                      })() : "Your work has been delivered. Kindly approve the delivery or request any modifications within 24 hours. If no response is received, the order will be automatically completed and funds released to the seller."}
                     </p>
                   </div>
                 );
