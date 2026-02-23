@@ -1574,6 +1574,47 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         throw new Error(error.error || 'Failed to reject dispute offer');
       }
 
+      const data = await response.json();
+      const rejectedDispute = data?.dispute || {};
+      const rejectedAt = rejectedDispute.lastOfferRejectedAt || new Date().toISOString();
+      const rejectedRole = rejectedDispute.lastOfferRejectedByRole;
+      const rejectedAmount =
+        typeof rejectedDispute.lastRejectedOfferAmount === 'number'
+          ? rejectedDispute.lastRejectedOfferAmount
+          : undefined;
+      const rejectionMessageText =
+        typeof rejectedAmount === 'number'
+          ? `Rejected the £${rejectedAmount.toFixed(2)} offer.${message?.trim() ? ` ${message.trim()}` : ''}`
+          : `Rejected the offer.${message?.trim() ? ` ${message.trim()}` : ''}`;
+
+      // Optimistically update local state so timeline updates immediately without manual refresh.
+      setOrders(prev => prev.map(existingOrder => {
+        if (existingOrder.id !== order.id) return existingOrder;
+        const prevDispute = (existingOrder.disputeInfo || {}) as any;
+        const optimisticMessage = {
+          id: `MSG-${Date.now()}-local-reject`,
+          userId: rejectedDispute.lastOfferRejectedBy || '',
+          userName: '',
+          message: rejectionMessageText,
+          timestamp: rejectedAt,
+          isTeamResponse: false,
+        };
+        return {
+          ...existingOrder,
+          disputeInfo: {
+            ...prevDispute,
+            clientOffer: rejectedDispute.clientOffer ?? prevDispute.clientOffer ?? null,
+            professionalOffer: rejectedDispute.professionalOffer ?? prevDispute.professionalOffer ?? null,
+            lastOfferRejectedAt: rejectedAt,
+            lastOfferRejectedBy: rejectedDispute.lastOfferRejectedBy || prevDispute.lastOfferRejectedBy,
+            lastOfferRejectedByRole: rejectedRole || prevDispute.lastOfferRejectedByRole,
+            lastRejectedOfferAmount:
+              rejectedAmount ?? prevDispute.lastRejectedOfferAmount,
+            messages: [...(prevDispute.messages || []), optimisticMessage],
+          },
+        };
+      }));
+
       scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Reject dispute offer error:', error);

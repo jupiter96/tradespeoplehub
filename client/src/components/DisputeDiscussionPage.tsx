@@ -85,6 +85,7 @@ export default function DisputeDiscussionPage() {
   const [showRespondActions, setShowRespondActions] = useState(false);
   const [isAcceptConfirmOpen, setIsAcceptConfirmOpen] = useState(false);
   const [isRejectConfirmOpen, setIsRejectConfirmOpen] = useState(false);
+  const [isOfferActionPending, setIsOfferActionPending] = useState(false);
   
   // Determine if this is an order dispute or job dispute
   const isOrderDispute = dispute && "orderId" in dispute;
@@ -264,7 +265,8 @@ export default function DisputeDiscussionPage() {
   };
 
   const handleAcceptOffer = async () => {
-    if (!disputeId) return;
+    if (!disputeId || isOfferActionPending) return;
+    setIsOfferActionPending(true);
     try {
       const acceptAction = isOrderDispute ? acceptDisputeOffer(disputeId) : Promise.resolve();
       await toast.promise(acceptAction, {
@@ -280,36 +282,74 @@ export default function DisputeDiscussionPage() {
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to accept offer");
+    } finally {
+      setIsOfferActionPending(false);
     }
   };
 
   const handleRejectOffer = async () => {
-    if (!disputeId) return;
+    if (!disputeId || isOfferActionPending) return;
+    setIsOfferActionPending(true);
     try {
       if (isOrderDispute) {
         await rejectDisputeOffer(disputeId);
       }
-      toast.success("Offer rejected");
-      // Refresh orders first to get updated dispute info, then refresh dispute
       if (isOrderDispute) {
-        await refreshOrders();
-        setDispute(getOrderDisputeById(disputeId));
+        const rejectedAtIso = new Date().toISOString();
+        const rejectedAmount = isCurrentUserClient ? dispute?.professionalOffer : dispute?.clientOffer;
+        const rejectionMessageText =
+          typeof rejectedAmount === "number"
+            ? `Rejected the £${rejectedAmount.toFixed(2)} offer.`
+            : "Rejected the offer.";
+
+        // Immediate local update so dispute UI/timeline warning reflects without waiting for refresh.
+        setDispute((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                clientOffer: isCurrentUserClient ? prev.clientOffer : null,
+                professionalOffer: isCurrentUserClient ? null : prev.professionalOffer,
+                lastOfferRejectedAt: rejectedAtIso,
+                lastOfferRejectedBy: currentUser?.id || prev.lastOfferRejectedBy,
+                lastOfferRejectedByRole: isCurrentUserClient ? "client" : "professional",
+                lastRejectedOfferAmount:
+                  typeof rejectedAmount === "number" ? rejectedAmount : prev.lastRejectedOfferAmount,
+                messages: [
+                  ...(prev.messages || []),
+                  {
+                    id: `MSG-${Date.now()}-local-reject`,
+                    userId: currentUser?.id || "",
+                    userName: "You",
+                    message: rejectionMessageText,
+                    timestamp: rejectedAtIso,
+                    isTeamResponse: false,
+                  },
+                ],
+              }
+            : prev
+        );
+      }
+      toast.success("Offer rejected");
+      // Keep data in sync with server in the background without blocking immediate UI update.
+      if (isOrderDispute) {
+        void refreshOrders();
       } else {
         setDispute(getDisputeById(disputeId));
       }
       setShowRespondActions(false);
+      setIsRejectConfirmOpen(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to reject offer");
+    } finally {
+      setIsOfferActionPending(false);
     }
   };
 
   const handleConfirmAccept = async () => {
-    setIsAcceptConfirmOpen(false);
     await handleAcceptOffer();
   };
 
   const handleConfirmReject = async () => {
-    setIsRejectConfirmOpen(false);
     await handleRejectOffer();
   };
 
@@ -767,27 +807,14 @@ export default function DisputeDiscussionPage() {
 
   const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
-  const rejectedOfferAmountFromMessages = (() => {
-    const messages = Array.isArray(dispute?.messages) ? [...dispute.messages].reverse() : [];
-    for (const msg of messages) {
-      const text = typeof msg?.message === "string" ? msg.message : "";
-      const match =
-        text.match(/rejected the £(\d+(?:\.\d{1,2})?)/i) ||
-        text.match(/£(\d+(?:\.\d{1,2})?)\s+offer\s+was\s+rejected/i);
-      if (match?.[1]) {
-        const parsed = parseFloat(match[1]);
-        if (!Number.isNaN(parsed)) return parsed;
-      }
-    }
-    return null;
-  })();
-  const rejectedOfferAmountToShow =
-    typeof dispute?.lastRejectedOfferAmount === "number"
-      ? dispute.lastRejectedOfferAmount
-      : rejectedOfferAmountFromMessages;
-  const hasRejectedOfferNotice =
-    !hasOtherMadeOffer &&
-    (Boolean(dispute?.lastOfferRejectedAt) || typeof rejectedOfferAmountToShow === "number");
+  const isAwaitingNewOffer = Boolean(
+    dispute?.lastOfferRejectedAt ||
+      (Array.isArray(dispute?.messages) &&
+        dispute.messages.some(
+          (msg: any) =>
+            typeof msg?.message === "string" && /^Rejected the £/i.test(msg.message.trim())
+        ))
+  );
   const normalizedDisputeStatus = dispute?.status === "final" ? "closed" : dispute?.status;
   const canRespondToOffer = normalizedDisputeStatus === "open" || normalizedDisputeStatus === "negotiation";
 
@@ -1417,6 +1444,7 @@ export default function DisputeDiscussionPage() {
                             {!showRespondActions ? (
                               <Button
                                 onClick={() => setShowRespondActions(true)}
+                                disabled={isOfferActionPending}
                                 className="w-full bg-[#3D78CB] hover:bg-[#2C5AA0] text-white font-['Poppins',sans-serif] text-[13px]"
                               >
                                 Respond
@@ -1425,12 +1453,14 @@ export default function DisputeDiscussionPage() {
                               <>
                                 <Button
                                   onClick={() => setIsAcceptConfirmOpen(true)}
+                                  disabled={isOfferActionPending}
                                   className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
                                 >
                                   Accept and close
                                 </Button>
                                 <Button
                                   onClick={() => setIsRejectConfirmOpen(true)}
+                                  disabled={isOfferActionPending}
                                   variant="outline"
                                   className="w-full border-red-500 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
                                 >
@@ -1441,10 +1471,10 @@ export default function DisputeDiscussionPage() {
                           </div>
                         )}
                       </>
-                    ) : hasRejectedOfferNotice ? (
+                    ) : isAwaitingNewOffer ? (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                         <p className="font-['Poppins',sans-serif] text-[13px] text-red-700">
-                          £{typeof rejectedOfferAmountToShow === "number" ? rejectedOfferAmountToShow.toFixed(2) : "0.00"} offer rejected
+                          Awaiting new offer
                         </p>
                       </div>
                     ) : (
@@ -1476,7 +1506,13 @@ export default function DisputeDiscussionPage() {
                 )}
 
         {/* Accept Offer Confirmation Dialog */}
-        <Dialog open={isAcceptConfirmOpen} onOpenChange={setIsAcceptConfirmOpen}>
+        <Dialog
+          open={isAcceptConfirmOpen}
+          onOpenChange={(open: boolean) => {
+            if (isOfferActionPending) return;
+            setIsAcceptConfirmOpen(open);
+          }}
+        >
           <DialogContent className="w-[400px] sm:max-w-[400px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
@@ -1490,22 +1526,30 @@ export default function DisputeDiscussionPage() {
               <Button
                 variant="outline"
                 onClick={() => setIsAcceptConfirmOpen(false)}
+                disabled={isOfferActionPending}
                 className="font-['Poppins',sans-serif]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleConfirmAccept}
+                disabled={isOfferActionPending}
                 className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
               >
-                Yes, accept and close
+                {isOfferActionPending ? "Processing..." : "Yes, accept and close"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Reject Offer Confirmation Dialog */}
-        <Dialog open={isRejectConfirmOpen} onOpenChange={setIsRejectConfirmOpen}>
+        <Dialog
+          open={isRejectConfirmOpen}
+          onOpenChange={(open: boolean) => {
+            if (isOfferActionPending) return;
+            setIsRejectConfirmOpen(open);
+          }}
+        >
           <DialogContent className="w-[400px] sm:max-w-[400px]">
             <DialogHeader>
               <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
@@ -1519,16 +1563,18 @@ export default function DisputeDiscussionPage() {
               <Button
                 variant="outline"
                 onClick={() => setIsRejectConfirmOpen(false)}
+                disabled={isOfferActionPending}
                 className="font-['Poppins',sans-serif]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleConfirmReject}
+                disabled={isOfferActionPending}
                 variant="destructive"
                 className="font-['Poppins',sans-serif]"
               >
-                Yes, reject
+                {isOfferActionPending ? "Processing..." : "Yes, reject"}
               </Button>
             </div>
           </DialogContent>

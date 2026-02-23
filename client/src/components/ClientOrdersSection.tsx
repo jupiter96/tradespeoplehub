@@ -1157,6 +1157,88 @@ export default function ClientOrdersSection() {
         }
       });
     }
+    const clientIdForRejection = (order as any).clientId || userInfo?.id;
+    const professionalDisplayNameForRejection =
+      order.professional || disp?.respondentName || disp?.claimantName || "Professional";
+    const rejectionMessages = Array.isArray((disp as any)?.messages)
+      ? (disp as any).messages.filter((msg: any) => {
+          const text = typeof msg?.message === "string" ? msg.message.trim() : "";
+          return /^Rejected the £/i.test(text);
+        })
+      : [];
+
+    rejectionMessages.forEach((msg: any, idx: number) => {
+      const rejectedAt = msg?.timestamp || msg?.createdAt || (disp as any)?.lastOfferRejectedAt;
+      const rejectedAtStr = rejectedAt ? formatAcceptedAt(rejectedAt) : "";
+      const amountMatch = typeof msg?.message === "string" ? msg.message.match(/£(\d+(?:\.\d+)?)/) : null;
+      const rejectedAmount =
+        amountMatch && amountMatch[1]
+          ? Number(amountMatch[1])
+          : typeof (disp as any)?.lastRejectedOfferAmount === "number"
+            ? (disp as any).lastRejectedOfferAmount
+            : undefined;
+      const rejectorId = msg?.userId?.toString?.() || msg?.userId;
+      const rejectedByClient =
+        Boolean(clientIdForRejection && rejectorId) &&
+        clientIdForRejection.toString() === rejectorId.toString();
+
+      const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
+
+      if (rejectedByClient) {
+        push(
+          {
+            at: rejectedAt,
+            title: `You rejected an offer from ${professionalDisplayNameForRejection}.`,
+            description: `You rejected ${professionalDisplayNameForRejection}'s settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`,
+            message: `Warning: You rejected ${professionalDisplayNameForRejection}'s offer of ${amountText}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}. Submit a new offer if you want to continue the negotiation.`,
+            colorClass: "bg-red-600",
+            icon: <XCircle className="w-5 h-5 text-blue-600" />,
+          },
+          `dispute-offer-rejected-${idx}-${rejectedAt || "unknown"}`
+        );
+      } else {
+        push(
+          {
+            at: rejectedAt,
+            title: "Your offer was rejected.",
+            description: `${professionalDisplayNameForRejection} rejected your settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`,
+            message: `Warning: Your offer of ${amountText} was rejected by ${professionalDisplayNameForRejection}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}. Please review and submit a new offer.`,
+            colorClass: "bg-red-600",
+            icon: <XCircle className="w-5 h-5 text-blue-600" />,
+          },
+          `dispute-offer-rejected-${idx}-${rejectedAt || "unknown"}`
+        );
+      }
+    });
+
+    if (rejectionMessages.length === 0 && (disp as any)?.lastOfferRejectedAt) {
+      const rejectedAt = (disp as any).lastOfferRejectedAt;
+      const rejectedAtStr = formatAcceptedAt(rejectedAt);
+      const rejectedAmount =
+        typeof (disp as any)?.lastRejectedOfferAmount === "number"
+          ? (disp as any).lastRejectedOfferAmount
+          : undefined;
+      const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
+      const rejectedByClient = (disp as any)?.lastOfferRejectedByRole === "client";
+
+      push(
+        {
+          at: rejectedAt,
+          title: rejectedByClient
+            ? `You rejected an offer from ${professionalDisplayNameForRejection}.`
+            : "Your offer was rejected.",
+          description: rejectedByClient
+            ? `You rejected ${professionalDisplayNameForRejection}'s settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`
+            : `${professionalDisplayNameForRejection} rejected your settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`,
+          message: rejectedByClient
+            ? `Warning: You rejected ${professionalDisplayNameForRejection}'s offer of ${amountText}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}.`
+            : `Warning: Your offer of ${amountText} was rejected by ${professionalDisplayNameForRejection}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}.`,
+          colorClass: "bg-red-600",
+          icon: <XCircle className="w-5 h-5 text-blue-600" />,
+        },
+        `dispute-offer-rejected-fallback-${rejectedAt}`
+      );
+    }
 
     if (order.status === "Completed") {
       push(

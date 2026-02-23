@@ -704,9 +704,9 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
   // Offer history events
-  if (disp?.offerHistory && disp.offerHistory.length > 0) {
-    const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
-    (disp.offerHistory as any[]).forEach((offer: any, idx: number) => {
+  const clientDisplayName = (order as any).client || (disp as any)?.claimantName || (disp as any)?.respondentName || "Client";
+  if ((disp as any)?.offerHistory && (disp as any).offerHistory.length > 0) {
+    ((disp as any).offerHistory as any[]).forEach((offer: any, idx: number) => {
       if (!offer || typeof offer.amount !== "number") return;
       const madeByProfessional = offer.role === "professional";
       const offerDateStr = offer.offeredAt ? formatAcceptedAt(offer.offeredAt) : "";
@@ -736,6 +736,86 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         );
       }
     });
+  }
+  const professionalIdForRejection = (order as any).professionalId || (order as any).professional;
+  const rejectionMessages = Array.isArray((disp as any)?.messages)
+    ? (disp as any).messages.filter((msg: any) => {
+        const text = typeof msg?.message === "string" ? msg.message.trim() : "";
+        return /^Rejected the £/i.test(text);
+      })
+    : [];
+
+  rejectionMessages.forEach((msg: any, idx: number) => {
+    const rejectedAt = msg?.timestamp || msg?.createdAt || (disp as any)?.lastOfferRejectedAt;
+    const rejectedAtStr = rejectedAt ? formatAcceptedAt(rejectedAt) : "";
+    const amountMatch = typeof msg?.message === "string" ? msg.message.match(/£(\d+(?:\.\d+)?)/) : null;
+    const rejectedAmount =
+      amountMatch && amountMatch[1]
+        ? Number(amountMatch[1])
+        : typeof (disp as any)?.lastRejectedOfferAmount === "number"
+          ? (disp as any).lastRejectedOfferAmount
+          : undefined;
+    const rejectorId = msg?.userId?.toString?.() || msg?.userId;
+    const rejectedByProfessional =
+      Boolean(professionalIdForRejection && rejectorId) &&
+      professionalIdForRejection.toString() === rejectorId.toString();
+
+    const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
+
+    if (rejectedByProfessional) {
+      push(
+        {
+          at: rejectedAt,
+          label: `You rejected an offer from ${clientDisplayName}.`,
+          description: `You rejected ${clientDisplayName}'s settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`,
+          message: `Warning: You rejected ${clientDisplayName}'s offer of ${amountText}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}. Submit a new offer if you want to continue the negotiation.`,
+          colorClass: "bg-red-600",
+          icon: <XCircle className="w-5 h-5 text-blue-600" />,
+        },
+        `dispute-offer-rejected-${idx}-${rejectedAt || "unknown"}`
+      );
+    } else {
+      push(
+        {
+          at: rejectedAt,
+          label: "Your offer was rejected.",
+          description: `${clientDisplayName} rejected your settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`,
+          message: `Warning: Your offer of ${amountText} was rejected by ${clientDisplayName}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}. Please review and submit a new offer.`,
+          colorClass: "bg-red-600",
+          icon: <XCircle className="w-5 h-5 text-blue-600" />,
+        },
+        `dispute-offer-rejected-${idx}-${rejectedAt || "unknown"}`
+      );
+    }
+  });
+
+  if (rejectionMessages.length === 0 && (disp as any)?.lastOfferRejectedAt) {
+    const rejectedAt = (disp as any).lastOfferRejectedAt;
+    const rejectedAtStr = formatAcceptedAt(rejectedAt);
+    const rejectedAmount =
+      typeof (disp as any)?.lastRejectedOfferAmount === "number"
+        ? (disp as any).lastRejectedOfferAmount
+        : undefined;
+    const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
+    const rejectedByProfessional = (disp as any)?.lastOfferRejectedByRole === "professional";
+
+    push(
+      {
+        at: rejectedAt,
+        label: rejectedByProfessional
+          ? `You rejected an offer from ${clientDisplayName}.`
+          : "Your offer was rejected.",
+        description: rejectedByProfessional
+          ? `You rejected ${clientDisplayName}'s settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`
+          : `${clientDisplayName} rejected your settlement offer of ${amountText}.${rejectedAtStr ? ` ${rejectedAtStr}` : ""}`,
+        message: rejectedByProfessional
+          ? `Warning: You rejected ${clientDisplayName}'s offer of ${amountText}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}.`
+          : `Warning: Your offer of ${amountText} was rejected by ${clientDisplayName}${rejectedAtStr ? ` at ${rejectedAtStr}` : ""}.`,
+        colorClass: "bg-red-600",
+        icon: <XCircle className="w-5 h-5 text-blue-600" />,
+      },
+      `dispute-offer-rejected-fallback-${rejectedAt}`
+    );
   }
 
   // Sort by time
