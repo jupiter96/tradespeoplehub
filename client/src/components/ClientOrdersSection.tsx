@@ -1097,13 +1097,15 @@ export default function ClientOrdersSection() {
           ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
           : disp.acceptedByRole === "professional"
             ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
-            : (disp.decisionNotes || "Dispute has been resolved and closed.");
+            : disp.adminDecision
+              ? `Dispute Decided and Closed. ${acceptedTimestamp}`
+              : (disp.decisionNotes || "Dispute has been resolved and closed.");
       const disputeClosedMessage = disp.acceptedByRole === "client"
         ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
         : disp.acceptedByRole === "professional"
           ? `Your offer was accepted and the dispute closed by ${professionalDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
           : disp.adminDecision
-            ? (disp.decisionNotes || `Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.`)
+            ? "Dispute reviewed and resolved by the arbitration team. The case is now closed."
             : (isArbUnpaidAutoClose
               ? (isClientWinner
                 ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${professionalDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`
@@ -2590,7 +2592,7 @@ export default function ClientOrdersSection() {
                       typeof disputeInfo?.decisionNotes === "string" &&
                       disputeInfo.decisionNotes.includes("unpaid arbitration fee");
                     if (disputeInfo?.adminDecision) {
-                      return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
+                      return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
                     }
                     if (isArbUnpaidAutoClose) {
                       return isWinnerClient
@@ -4441,7 +4443,16 @@ export default function ClientOrdersSection() {
                     <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
                       <Check className="w-8 h-8 text-green-600" />
                     </div>
-                    {currentOrder.disputeInfo?.autoClosed &&
+                    {currentOrder.disputeInfo?.adminDecision ? (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                          Dispute Resolved and Order Completed!
+                        </p>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.
+                        </p>
+                      </>
+                    ) : currentOrder.disputeInfo?.autoClosed &&
                       currentOrder.disputeInfo?.winnerId?.toString?.() === userInfo?.id?.toString() ? (
                       <>
                         <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
@@ -4454,9 +4465,6 @@ export default function ClientOrdersSection() {
                               disputeInfo?.autoClosed &&
                               typeof disputeInfo?.decisionNotes === "string" &&
                               disputeInfo.decisionNotes.includes("unpaid arbitration fee");
-                            if (disputeInfo?.adminDecision) {
-                              return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
-                            }
                             if (isArbUnpaidAutoClose) {
                               const tradingName = (currentOrder as any).professional || "the professional";
                               const feeDeadline = disputeInfo?.arbitrationFeeDeadline
@@ -4485,9 +4493,6 @@ export default function ClientOrdersSection() {
                               disputeInfo?.autoClosed &&
                               typeof disputeInfo?.decisionNotes === "string" &&
                               disputeInfo.decisionNotes.includes("unpaid arbitration fee");
-                            if (disputeInfo?.adminDecision) {
-                              return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
-                            }
                             if (isArbUnpaidAutoClose) {
                               const feeDeadline = disputeInfo?.arbitrationFeeDeadline
                                 ? new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {

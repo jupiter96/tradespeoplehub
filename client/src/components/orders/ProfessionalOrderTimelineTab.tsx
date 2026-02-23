@@ -691,7 +691,7 @@ export default function ProfessionalOrderTimelineTab({
                 return "Dispute Resolved & Order Completed!";
               }
               if (disputeInfo?.adminDecision) {
-                return "Dispute Decided and Order Completed!";
+                return "Dispute Resolved and Order Completed!";
               }
               if (isArbUnpaidAutoClose) {
                 return "Dispute automatically closed. Order completed!";
@@ -730,7 +730,7 @@ export default function ProfessionalOrderTimelineTab({
                 return "The dispute was resolved through acceptance of a settlement offer, and the order has been marked as completed.";
               }
               if (disputeInfo?.adminDecision) {
-                return disputeInfo?.decisionNotes || "Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.";
+                return "Our arbitration team has carefully reviewed and resolved the dispute. Your order is now completed. Please share your feedback to help other users.";
               }
               if (isArbUnpaidAutoClose) {
                 const opponentName = (currentOrder as any).client || "The client";

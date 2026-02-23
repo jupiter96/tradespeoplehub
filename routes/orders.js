@@ -5136,15 +5136,28 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
     // Determine if user is client or professional
     const isClient = order.client?.toString() === req.user.id || order.client?._id?.toString() === req.user.id;
 
-    // Validate offer doesn't decrease from previous offer
+    // Validate offer doesn't regress from the user's latest own offer
+    const ownRole = isClient ? 'client' : 'professional';
+    const latestOwnOfferFromHistory = Array.isArray(dispute.offerHistory)
+      ? [...dispute.offerHistory]
+          .reverse()
+          .find((h) => h?.role === ownRole && typeof h?.amount === 'number')?.amount
+      : undefined;
+
     if (isClient) {
-      const previousOffer = dispute.offers.clientOffer;
+      const previousOffer =
+        dispute.offers.clientOffer !== null && dispute.offers.clientOffer !== undefined
+          ? dispute.offers.clientOffer
+          : latestOwnOfferFromHistory;
       if (previousOffer !== null && previousOffer !== undefined && parsedAmount < previousOffer) {
         return res.status(400).json({ error: `You cannot decrease your offer. Your current offer is £${previousOffer.toFixed(2)}` });
       }
       dispute.offers.clientOffer = parsedAmount;
     } else {
-      const previousOffer = dispute.offers.professionalOffer;
+      const previousOffer =
+        dispute.offers.professionalOffer !== null && dispute.offers.professionalOffer !== undefined
+          ? dispute.offers.professionalOffer
+          : latestOwnOfferFromHistory;
       if (previousOffer !== null && previousOffer !== undefined && parsedAmount > previousOffer) {
         return res.status(400).json({ error: `You cannot increase your offer. Your current offer is £${previousOffer.toFixed(2)}` });
       }

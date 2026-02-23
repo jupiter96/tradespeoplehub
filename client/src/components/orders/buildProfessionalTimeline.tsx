@@ -672,7 +672,9 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
         ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
         : disp.acceptedByRole === "client"
           ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
-          : (disp.decisionNotes || "Dispute has been resolved and closed.");
+          : (disp as any).adminDecision
+            ? `Dispute Decided and Closed. ${acceptedTimestamp}`
+            : (disp.decisionNotes || "Dispute has been resolved and closed.");
     const isArbUnpaidAutoClose =
       disp.autoClosed &&
       !isProfessionalWinner &&
@@ -682,8 +684,8 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       ? `Offer accepted and dispute closed by you. ${acceptedTimestamp}\nThank you for accepting the offer and closing the dispute.`
       : disp.acceptedByRole === "client"
         ? `Your offer was accepted and the dispute closed by ${clientDisplayName}. ${acceptedTimestamp}\nThank you for your settlement offer.`
-      : disp.adminDecision
-        ? (disp.decisionNotes || `Decision: Dispute decided in the favour of the selected party.\ncomment: No additional comment provided.`)
+      : (disp as any).adminDecision
+        ? "Dispute reviewed and resolved by the arbitration team. The case is now closed."
         : (isArbUnpaidAutoClose
           ? (isProfessionalWinner
             ? `The order dispute was closed and decided automatically on ${formatAcceptedAt(disp.closedAt)}.\n${clientDisplayName} failed to pay the arbitration fee within the given time frame. As a result, the dispute has been decided in your favour.`

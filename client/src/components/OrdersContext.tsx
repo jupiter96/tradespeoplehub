@@ -68,6 +68,12 @@ export interface OrderDispute {
   professionalOffer?: number;
   claimantOffer?: OrderDisputeOffer; // Deprecated - kept for backward compatibility
   respondentOffer?: OrderDisputeOffer; // Deprecated - kept for backward compatibility
+  offerHistory?: Array<{
+    role: "client" | "professional";
+    amount: number;
+    offeredAt?: string;
+    userId?: string;
+  }>;
   createdAt: string;
   resolvedAt?: string;
   teamInterventionTime?: string;
@@ -191,6 +197,12 @@ export interface Order {
     messages?: any[];
     clientOffer?: number;
     professionalOffer?: number;
+    offerHistory?: Array<{
+      role: "client" | "professional";
+      amount: number;
+      offeredAt?: string;
+      userId?: string;
+    }>;
     responseDeadline?: string;
     respondedAt?: string;
     negotiationDeadline?: string;
@@ -925,6 +937,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           amount: order.disputeInfo.amount ?? order.refundableAmount ?? order.amountValue ?? parseFloat(order.amount?.replace(/[^0-9.]/g, '') || '0'),
           clientOffer: order.disputeInfo.clientOffer,
           professionalOffer: order.disputeInfo.professionalOffer,
+          offerHistory: order.disputeInfo.offerHistory,
           responseDeadline: order.disputeInfo.responseDeadline,
           negotiationDeadline: order.disputeInfo.negotiationDeadline,
           arbitrationRequested: order.disputeInfo.arbitrationRequested,

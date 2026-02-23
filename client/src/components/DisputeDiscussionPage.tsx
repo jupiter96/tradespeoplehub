@@ -798,14 +798,25 @@ export default function DisputeDiscussionPage() {
   const userRole = isCurrentUserClient ? "Client (you)" : "Professional (you)";
   const otherRole = isCurrentUserClient ? `Professional (${dispute.respondentName || dispute.claimantName})` : `Client (${dispute.claimantName || dispute.respondentName})`;
 
-  // Client's offer = what they want to pay, Professional's offer = what they want to receive
-  const userOffer = isCurrentUserClient ? (dispute as any).clientOffer : (dispute as any).professionalOffer;
+  // Client's offer = what they want to pay, Professional's offer = what they want to receive.
+  // After a rejection, active offer can be cleared; keep using latest own historical offer for constraints/display.
+  const latestUserOfferFromHistory = (() => {
+    const history = Array.isArray((dispute as any)?.offerHistory) ? (dispute as any).offerHistory : [];
+    const ownRole = isCurrentUserClient ? "client" : "professional";
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+      const offer = history[i];
+      if (offer?.role === ownRole && typeof offer?.amount === "number") return offer.amount;
+    }
+    return undefined;
+  })();
+  const activeUserOffer = isCurrentUserClient ? (dispute as any).clientOffer : (dispute as any).professionalOffer;
+  const userOffer = typeof activeUserOffer === "number" ? activeUserOffer : latestUserOfferFromHistory;
   const otherOffer = isCurrentUserClient ? (dispute as any).professionalOffer : (dispute as any).clientOffer;
   const maxOfferAmount = isOrderDispute
     ? (order?.refundableAmount ?? dispute.amount)
     : dispute.amount;
 
-  const hasUserMadeOffer = userOffer !== undefined && userOffer !== null;
+  const hasUserMadeOffer = typeof userOffer === "number";
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
   const isAwaitingNewOffer = Boolean(
     dispute?.lastOfferRejectedAt ||
@@ -1618,9 +1629,11 @@ export default function DisputeDiscussionPage() {
                   </p>
                 )}
                 
-                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2 text-center">
-                  Enter an amount between £{offerMin.toFixed(2)} and £{offerMax.toFixed(2)} GBP
-                </p>
+                {!hasUserMadeOffer && (
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2 text-center">
+                    Enter an amount between £{offerMin.toFixed(2)} and £{offerMax.toFixed(2)} GBP
+                  </p>
+                )}
 
                 {(isClaimant && isOrderDispute && (dispute.status === "open" || dispute.status === "negotiation")) || canShowArbitrationButton ? (
                   <div className="mt-4 pt-4 border-t border-gray-200">
