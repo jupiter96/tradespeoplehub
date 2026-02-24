@@ -3621,10 +3621,13 @@ export default function ClientOrdersSection() {
                               </div>
                             );
                           })()}
-                          {/* Work Delivered Action Card */}
+                          {/* Work Delivered Action Card - show for latest delivery when order is delivered, or for milestone orders as soon as any milestone is delivered */}
                           {event.title === "Work Delivered" && 
                            isLatestDelivery &&
-                           currentOrder.status === "delivered" && (
+                           (currentOrder.status === "delivered" ||
+                            ((currentOrder as any).metadata?.paymentType === "milestone" &&
+                             Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
+                             (currentOrder as any).metadata.milestoneDeliveries.length > 0)) && (
                             <div className="mt-3">
                               <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 shadow-sm">
                                 <div className="flex gap-3 mb-4">
