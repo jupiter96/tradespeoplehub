@@ -611,19 +611,41 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
   if (disp?.respondedAt) {
+    // Who opened the dispute: claimantId. Who had to respond first: respondentId. This timeline is for the professional.
     const claimantIdRaw = (disp as any).claimantId;
-    const claimantId = claimantIdRaw != null ? (typeof claimantIdRaw === 'object' && (claimantIdRaw as any)._id != null ? (claimantIdRaw as any)._id.toString() : String(claimantIdRaw)) : undefined;
+    const respondentIdRaw = (disp as any).respondentId;
     const professionalIdRaw = (order as any).professionalId;
-    const professionalId = professionalIdRaw != null ? (typeof professionalIdRaw === 'object' && (professionalIdRaw as any)._id != null ? (professionalIdRaw as any)._id.toString() : String(professionalIdRaw)) : undefined;
-    const isProfessionalClaimant = Boolean(claimantId && professionalId && claimantId === professionalId);
+    const toStr = (v: any): string | undefined => {
+      if (v == null) return undefined;
+      if (typeof v === 'object' && v._id != null) return String(v._id);
+      return String(v);
+    };
+    const claimantId = toStr(claimantIdRaw);
+    const respondentId = toStr(respondentIdRaw);
+    const professionalId = toStr(professionalIdRaw);
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
-    if (isProfessionalClaimant) {
-      const negotiationDeadlineStr = disp.negotiationDeadline
-        ? formatAcceptedAt(disp.negotiationDeadline).split(" ").slice(1, 4).join(" ")
-        : "the deadline";
-      const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
-        ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
-        : "";
+    const negotiationDeadlineStr = disp.negotiationDeadline
+      ? formatAcceptedAt(disp.negotiationDeadline).split(" ").slice(1, 4).join(" ")
+      : "the deadline";
+    const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
+      ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
+      : "";
+    // Professional submitted the first response when they are the respondent (other party opened the dispute).
+    const isProfessionalRespondent = Boolean(respondentId && professionalId && respondentId === professionalId);
+    const isProfessionalClaimant = Boolean(claimantId && professionalId && claimantId === professionalId);
+    if (isProfessionalRespondent) {
+      push(
+        {
+          at: disp.respondedAt,
+          label: "Dispute Response Submitted",
+          description: `You responded to ${clientDisplayName}'s dispute.`,
+          message: `You have until ${negotiationDeadlineStr} to negotiate and reach a settlement directly. If you are unable to reach an agreement, you may request our team to arbitrate the case by paying the required arbitration fee.${arbitrationFeeAmount}`,
+          colorClass: "bg-blue-600",
+          icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-response-submitted"
+      );
+    } else if (isProfessionalClaimant) {
       push(
         {
           at: disp.respondedAt,
@@ -634,6 +656,19 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
         },
         "dispute-responded"
+      );
+    } else {
+      // Fallback when IDs are missing: still show an event so timeline is not empty (e.g. professional is usually respondent when client opened dispute).
+      push(
+        {
+          at: disp.respondedAt,
+          label: "Dispute Response",
+          description: "A response was submitted to the dispute. You can now negotiate or request arbitration.",
+          message: negotiationDeadlineStr ? `You have until ${negotiationDeadlineStr} to negotiate and reach a settlement.${arbitrationFeeAmount}` : undefined,
+          colorClass: "bg-blue-600",
+          icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+        },
+        "dispute-response-fallback"
       );
     }
   }

@@ -1035,13 +1035,14 @@ export default function ClientOrdersSection() {
       const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
       const clientId = (order as any).clientId || (order as any).client;
       const professionalDisplayName = disp.respondentName || order.professional || disp.claimantName || "Professional";
-      if (claimantId && clientId && claimantId.toString() === clientId.toString()) {
-        const negotiationDeadlineStr = disp.negotiationDeadline
-          ? formatDateOrdinal(disp.negotiationDeadline)
-          : "the deadline";
-        const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
-          ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
-          : "";
+      const isClientClaimant = claimantId && clientId && claimantId.toString() === clientId.toString();
+      const negotiationDeadlineStr = disp.negotiationDeadline
+        ? formatDateOrdinal(disp.negotiationDeadline)
+        : "the deadline";
+      const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
+        ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
+        : "";
+      if (isClientClaimant) {
         push(
           {
             at: disp.respondedAt,
@@ -1052,6 +1053,18 @@ export default function ClientOrdersSection() {
             icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
           },
           "dispute-responded"
+        );
+      } else {
+        push(
+          {
+            at: disp.respondedAt,
+            title: "Dispute Response Submitted",
+            description: `You responded to ${professionalDisplayName}'s dispute.`,
+            message: `You have until ${negotiationDeadlineStr} to negotiate and reach a settlement directly. If you are unable to reach an agreement, you may request our team to arbitrate the case by paying the required arbitration fee.${arbitrationFeeAmount}`,
+            colorClass: "bg-blue-600",
+            icon: <MessageCircle className="w-5 h-5 text-blue-600" />,
+          },
+          "dispute-response-submitted"
         );
       }
     }

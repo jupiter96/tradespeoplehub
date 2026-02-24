@@ -86,7 +86,6 @@ export default function ProfessionalOrderTimelineTab({
   showDisputeSection,
   getOrderDisputeById,
   onOpenModal,
-  onOpenDeliveryForMilestone,
   onStartConversation,
   onRespondToCancellation,
   onRespondToRevision,
@@ -466,8 +465,7 @@ export default function ProfessionalOrderTimelineTab({
                   : "TBD"}
             </span> Feel free to reach out if you have any questions using the chat button.
           </p>
-          {currentOrder.deliveryStatus !== "delivered" &&
-            !((currentOrder as any).metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any).metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0) && (
+          {currentOrder.deliveryStatus !== "delivered" && (
             <div className="flex gap-3 flex-wrap">
               <Button
                 onClick={() => onOpenModal('delivery')}
@@ -630,8 +628,7 @@ export default function ProfessionalOrderTimelineTab({
               </p>
             </div>
           )}
-          {currentOrder.deliveryStatus !== "delivered" &&
-            !((currentOrder as any).metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any).metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0) && (
+          {currentOrder.deliveryStatus !== "delivered" && (
             <div className="flex gap-3 flex-wrap">
               <Button
                 onClick={() => {
@@ -1431,10 +1428,6 @@ export default function ProfessionalOrderTimelineTab({
                         if (orderStatus === "cancellation pending") return { label: "Cancellation Pending", color: "text-orange-500" };
                         return { label: "Active", color: "text-gray-500" };
                       })();
-                      const canDeliver = !isMilestoneDelivered && !isMilestoneResolvedByDispute &&
-                        currentOrder.status === "In Progress" &&
-                        (currentOrder.deliveryStatus === "active" || currentOrder.deliveryStatus === "pending") &&
-                        currentOrder.status !== "Cancelled" && currentOrder.status !== "Completed";
                       return (
                         <tr key={idx} className="border-b border-gray-100 last:border-b-0">
                           <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
@@ -1444,20 +1437,13 @@ export default function ProfessionalOrderTimelineTab({
                           <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof amt === "number" ? amt.toFixed(2) : "0.00"}</td>
                           <td className={`py-3 px-4 ${milestoneStatus.color}`}>{milestoneStatus.label}</td>
                           <td className="py-3 px-4">
-                            {canDeliver && onOpenDeliveryForMilestone ? (
-                              <Button
-                                size="sm"
-                                onClick={() => onOpenDeliveryForMilestone(idx)}
-                                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px]"
-                              >
-                                <Truck className="w-3.5 h-3.5 mr-1 inline" />
-                                Deliver Work
-                              </Button>
-                            ) : isMilestoneDelivered ? (
+                            {isMilestoneDelivered ? (
                               <span className="text-[12px] text-green-600 font-medium">Delivered</span>
                             ) : isMilestoneResolvedByDispute ? (
                               <span className="text-[12px] text-green-600 font-medium">Resolved (dispute)</span>
-                            ) : null}
+                            ) : (
+                              <span className="text-[12px] text-[#6b6b6b]">—</span>
+                            )}
                           </td>
                         </tr>
                       );

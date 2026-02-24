@@ -79,6 +79,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { toast } from "sonner";
 import {
@@ -138,6 +139,7 @@ function ProfessionalOrdersSection() {
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
   const [deliveryFiles, setDeliveryFiles] = useState<File[]>([]);
   const [deliveryForMilestoneIndex, setDeliveryForMilestoneIndex] = useState<number | null>(null);
+  const [deliverySelectedMilestoneIndices, setDeliverySelectedMilestoneIndices] = useState<number[]>([]);
   const [cancelReason, setCancelReason] = useState("");
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeEvidence, setDisputeEvidence] = useState("");
@@ -211,6 +213,7 @@ function ProfessionalOrdersSection() {
     setExtensionNewTime("09:00");
     setDeliveryMessage("");
     setDeliveryFiles([]);
+    setDeliverySelectedMilestoneIndices([]);
     setCompletionMessage("");
     setCompletionFiles([]);
     setRevisionAdditionalNotes("");
@@ -249,6 +252,7 @@ function ProfessionalOrdersSection() {
         break;
       case 'delivery':
         setDeliveryForMilestoneIndex(null);
+        setDeliverySelectedMilestoneIndices([]);
         setIsDeliveryDialogOpen(true);
         break;
       case 'disputeResponse':
@@ -753,20 +757,46 @@ function ProfessionalOrdersSection() {
         ? (Array.isArray(currentOrder.revisionRequest) ? currentOrder.revisionRequest : [currentOrder.revisionRequest])
         : [];
       const hasInProgressRevision = revisionRequests.some(rr => rr && rr.status === 'in_progress');
+      const isMilestoneOrder = (currentOrder as any)?.metadata?.paymentType === "milestone" &&
+        Array.isArray((currentOrder as any)?.metadata?.milestones) &&
+        (currentOrder as any).metadata.milestones.length > 0;
+
       if (deliveryForMilestoneIndex !== null) {
         closeAllModals();
         setDeliveryMessage("");
         setDeliveryFiles([]);
+        setDeliverySelectedMilestoneIndices([]);
         const idx = deliveryForMilestoneIndex;
         setDeliveryForMilestoneIndex(null);
         toast.promise(
-          deliverMilestone(selectedOrder, idx, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
+          deliverMilestone(selectedOrder, idx, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined).then(() => refreshOrders?.()),
           { loading: "Delivering milestone...", success: "Milestone delivered successfully!", error: (e: any) => e.message || "Failed to deliver milestone" }
         );
+      } else if (isMilestoneOrder && deliverySelectedMilestoneIndices.length > 0) {
+        closeAllModals();
+        const message = deliveryMessage;
+        const files = deliveryFiles.length > 0 ? deliveryFiles : undefined;
+        setDeliveryMessage("");
+        setDeliveryFiles([]);
+        setDeliverySelectedMilestoneIndices([]);
+        const indices = [...deliverySelectedMilestoneIndices];
+        toast.promise(
+          (async () => {
+            for (const idx of indices) {
+              await deliverMilestone(selectedOrder, idx, message, files);
+            }
+            await refreshOrders?.();
+          })(),
+          { loading: "Delivering milestone(s)...", success: "Milestone(s) delivered successfully!", error: (e: any) => e.message || "Failed to deliver milestone(s)" }
+        );
+      } else if (isMilestoneOrder && deliverySelectedMilestoneIndices.length === 0) {
+        toast.error("Please select at least one milestone for this delivery");
+        return;
       } else if (hasInProgressRevision) {
         closeAllModals();
         setDeliveryMessage("");
         setDeliveryFiles([]);
+        setDeliverySelectedMilestoneIndices([]);
         toast.promise(
           completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
           { loading: "Processing...", success: "Revision completed and delivered successfully!", error: (e: any) => e.message || "Failed to complete revision" }
@@ -775,6 +805,7 @@ function ProfessionalOrdersSection() {
         closeAllModals();
         setDeliveryMessage("");
         setDeliveryFiles([]);
+        setDeliverySelectedMilestoneIndices([]);
         toast.promise(
           deliverWork(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
           { loading: "Processing...", success: "Order marked as delivered! Client will be notified.", error: (e: any) => e.message || "Failed to mark order as delivered" }
@@ -2298,6 +2329,7 @@ function ProfessionalOrdersSection() {
 	        onOpenChange={(open) => {
 	          if (!open) {
 	            setDeliveryForMilestoneIndex(null);
+	            setDeliverySelectedMilestoneIndices([]);
 	            closeAllModals();
 	          }
 	        }}
@@ -2404,6 +2436,55 @@ function ProfessionalOrdersSection() {
                 />
               </div>
 
+              {/* Milestone selection (milestone orders only, when not opening for a single milestone) */}
+              {currentOrder && (currentOrder as any).metadata?.paymentType === "milestone" && deliveryForMilestoneIndex === null && (() => {
+                const milestones = ((currentOrder as any).metadata?.milestones || []) as Array<{ name?: string; description?: string; amount?: number; dueInDays?: number; hours?: number }>;
+                const milestoneDeliveries = ((currentOrder as any).metadata?.milestoneDeliveries || []) as Array<{ milestoneIndex: number }>;
+                const disputeResolvedIndices = ((currentOrder as any).metadata?.disputeResolvedMilestoneIndices || []) as number[];
+                const deliveredIndices = new Set([
+                  ...milestoneDeliveries.map((d: { milestoneIndex: number }) => d.milestoneIndex),
+                  ...disputeResolvedIndices,
+                ]);
+                const undeliveredIndices = milestones.map((_, idx) => idx).filter((i) => !deliveredIndices.has(i));
+                if (undeliveredIndices.length === 0) return null;
+                const allSelected = undeliveredIndices.every((i) => deliverySelectedMilestoneIndices.includes(i));
+                return (
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
+                      Select milestone(s) for this delivery
+                    </Label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) setDeliverySelectedMilestoneIndices([...undeliveredIndices]);
+                            else setDeliverySelectedMilestoneIndices([]);
+                          }}
+                        />
+                        Select all ({undeliveredIndices.length} undelivered)
+                      </label>
+                      {undeliveredIndices.map((idx) => {
+                        const m = milestones[idx];
+                        const label = m?.name ? `Milestone ${idx + 1}: ${m.name}` : `Milestone ${idx + 1}`;
+                        return (
+                          <label key={idx} className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            <Checkbox
+                              checked={deliverySelectedMilestoneIndices.includes(idx)}
+                              onCheckedChange={(checked) => {
+                                if (checked) setDeliverySelectedMilestoneIndices((prev) => [...prev, idx].sort((a, b) => a - b));
+                                else setDeliverySelectedMilestoneIndices((prev) => prev.filter((i) => i !== idx));
+                              }}
+                            />
+                            {label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="flex justify-end gap-3 pt-2">
                 <Button
                   variant="outline"
@@ -2412,6 +2493,7 @@ function ProfessionalOrdersSection() {
                     closeAllModals();
                     setDeliveryMessage("");
                     setDeliveryFiles([]);
+                    setDeliverySelectedMilestoneIndices([]);
                   }}
                   className="font-['Poppins',sans-serif] text-[13px]"
                 >
@@ -2419,7 +2501,13 @@ function ProfessionalOrdersSection() {
                 </Button>
                 <Button
                   onClick={handleMarkAsDelivered}
-                  disabled={deliveryForMilestoneIndex !== null ? (deliveryFiles.length === 0 && !deliveryMessage?.trim()) : deliveryFiles.length === 0}
+                  disabled={(() => {
+                    const base = deliveryFiles.length === 0 && !deliveryMessage?.trim();
+                    if (deliveryForMilestoneIndex !== null) return base;
+                    const isMilestone = currentOrder && (currentOrder as any).metadata?.paymentType === "milestone" && Array.isArray((currentOrder as any).metadata?.milestones) && (currentOrder as any).metadata.milestones.length > 0;
+                    if (isMilestone && deliverySelectedMilestoneIndices.length === 0) return true;
+                    return deliveryFiles.length === 0;
+                  })()}
                   className="bg-[#3D78CB] hover:bg-[#2d5ca3] text-white font-['Poppins',sans-serif] text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Truck className="w-4 h-4 mr-2" />
