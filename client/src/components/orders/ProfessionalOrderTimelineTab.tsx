@@ -1388,7 +1388,6 @@ export default function ProfessionalOrderTimelineTab({
                       <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Description</th>
                       <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Amount</th>
                       <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Status</th>
-                      <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1436,15 +1435,6 @@ export default function ProfessionalOrderTimelineTab({
                           <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || (m.chargePer ? `${m.chargePer} x${noOfVal}` : "—")}</td>
                           <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof amt === "number" ? amt.toFixed(2) : "0.00"}</td>
                           <td className={`py-3 px-4 ${milestoneStatus.color}`}>{milestoneStatus.label}</td>
-                          <td className="py-3 px-4">
-                            {isMilestoneDelivered ? (
-                              <span className="text-[12px] text-green-600 font-medium">Delivered</span>
-                            ) : isMilestoneResolvedByDispute ? (
-                              <span className="text-[12px] text-green-600 font-medium">Resolved (dispute)</span>
-                            ) : (
-                              <span className="text-[12px] text-[#6b6b6b]">—</span>
-                            )}
-                          </td>
                         </tr>
                       );
                     })}
