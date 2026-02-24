@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 
 // Import separated order components
-import { getStatusLabel, getStatusLabelForTable, AddInfoDialog, OrderDetailsTab } from "./orders";
+import { getStatusLabel, getStatusLabelForTable, AddInfoDialog, OrderDetailsTab, formatDeliveredResponseDeadline } from "./orders";
 import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -2478,7 +2478,10 @@ export default function ClientOrdersSection() {
                       Your work has been delivered!
                     </h3>
                     <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] whitespace-pre-line">
-                      {currentOrder.deliveredDate ? (() => {
+                      {(currentOrder as any).deliveredWorkResponseDeadline ? (() => {
+                        const deadlineStr = formatDeliveredResponseDeadline((currentOrder as any).deliveredWorkResponseDeadline);
+                        return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                      })() : currentOrder.deliveredDate ? (() => {
                         const deliveryDate = new Date(currentOrder.deliveredDate);
                         const deadlineDate = new Date(deliveryDate);
                         deadlineDate.setDate(deadlineDate.getDate() + 1);
@@ -2517,7 +2520,10 @@ export default function ClientOrdersSection() {
                       Your work has been delivered!
                     </h3>
                     <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] whitespace-pre-line">
-                      {currentOrder.deliveredDate ? (() => {
+                      {(currentOrder as any).deliveredWorkResponseDeadline ? (() => {
+                        const deadlineStr = formatDeliveredResponseDeadline((currentOrder as any).deliveredWorkResponseDeadline);
+                        return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                      })() : currentOrder.deliveredDate ? (() => {
                         const deliveryDate = new Date(currentOrder.deliveredDate);
                         const deadlineDate = new Date(deliveryDate);
                         deadlineDate.setDate(deadlineDate.getDate() + 1);
@@ -2740,7 +2746,10 @@ export default function ClientOrdersSection() {
                     Your work has been delivered!
                   </h3>
                   <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] break-words">
-                    {currentOrder.deliveredDate ? (() => {
+                    {(currentOrder as any).deliveredWorkResponseDeadline ? (() => {
+                      const deadlineStr = formatDeliveredResponseDeadline((currentOrder as any).deliveredWorkResponseDeadline);
+                      return `Your work has been delivered. Kindly approve the delivery or request any modifications by ${deadlineStr}. If no response is received, the order will be automatically completed and funds released to the seller.`;
+                    })() : currentOrder.deliveredDate ? (() => {
                       const deliveryDate = new Date(currentOrder.deliveredDate);
                       const deadlineDate = new Date(deliveryDate);
                       deadlineDate.setDate(deadlineDate.getDate() + 1);

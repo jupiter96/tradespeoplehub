@@ -15,6 +15,19 @@ export const formatDateOrdinal = (dateString: string): string => {
   return `${day}${getOrdinal(day)} ${monthNames[date.getMonth()]}, ${date.getFullYear()}`;
 };
 
+/** Format delivered-work response deadline as "Wed 25th February, 2026 07:00" for display in delivered message. */
+export const formatDeliveredResponseDeadline = (isoString: string): string => {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const day = date.getDate();
+  const daySuffix = day === 1 || day === 21 || day === 31 ? "st" : day === 2 || day === 22 ? "nd" : day === 3 || day === 23 ? "rd" : "th";
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${dayNames[date.getDay()]} ${day}${daySuffix} ${monthNames[date.getMonth()]}, ${date.getFullYear()} ${hours}:${minutes}`;
+};
+
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-GB", {

@@ -5,6 +5,8 @@ import Notification from '../models/Notification.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
+import CustomOffer from '../models/CustomOffer.js';
+import Message from '../models/Message.js';
 import { sendTemplatedEmail } from './notifier.js';
 import { getIO } from './socket.js';
 
@@ -104,28 +106,29 @@ const REVIEW_REMINDER_HOURS_AFTER = 24;
 async function processAutoCompleteDeliveredOrders() {
   try {
     const settings = await PaymentSettings.getSettings();
-    // Use delivered work response time (hours) only
-    const responseTimeHours = typeof settings.deliveredWorkResponseTimeHours === 'number' && settings.deliveredWorkResponseTimeHours >= 0
+    // Use delivered work response time (hours); fallback to days*24, then default 48
+    const responseTimeHours = typeof settings.deliveredWorkResponseTimeHours === 'number' && settings.deliveredWorkResponseTimeHours > 0
       ? settings.deliveredWorkResponseTimeHours
       : (typeof settings.deliveredWorkResponseTimeDays === 'number' && settings.deliveredWorkResponseTimeDays >= 0
         ? settings.deliveredWorkResponseTimeDays * 24
         : 48);
-
-    if (responseTimeHours <= 0) return;
+    const effectiveResponseHours = responseTimeHours > 0 ? responseTimeHours : 48;
 
     const now = new Date();
-    const threshold = new Date(now.getTime() - responseTimeHours * 60 * 60 * 1000);
+    const threshold = new Date(now.getTime() - effectiveResponseHours * 60 * 60 * 1000);
 
     const orders = await Order.find({
       status: { $in: ['delivered', 'Delivered'] },
       deliveryStatus: 'delivered',
-      deliveredDate: { $lte: threshold },
+      deliveredDate: { $exists: true, $ne: null, $lte: threshold },
     });
 
     for (const order of orders) {
       try {
         if (order.status === 'Completed' || order.deliveryStatus === 'completed') continue;
-        if (order.disputeId || order.metadata?.disputeStatus) continue;
+        // Skip only when dispute is still open (not closed)
+        const disputeStatus = order.metadata?.disputeStatus;
+        if (disputeStatus === 'open' || disputeStatus === 'negotiation' || disputeStatus === 'admin_arbitration') continue;
         if (order.status === 'Revision') continue;
 
         const revisionRequests = order.revisionRequest
@@ -167,7 +170,7 @@ async function processAutoCompleteDeliveredOrders() {
         const baseDate = order.deliveredDate
           ? new Date(order.deliveredDate)
           : (order.metadata?.professionalCompleteRequest?.requestedAt ? new Date(order.metadata.professionalCompleteRequest.requestedAt) : new Date());
-        const deadlineDate = new Date(baseDate.getTime() + responseTimeHours * 60 * 60 * 1000);
+        const deadlineDate = new Date(baseDate.getTime() + effectiveResponseHours * 60 * 60 * 1000);
 
         order.status = 'Completed';
         order.deliveryStatus = 'completed';
@@ -176,6 +179,23 @@ async function processAutoCompleteDeliveredOrders() {
         order.metadata.autoApprovedDeadlineAt = deadlineDate;
         order.metadata.autoApprovedReason = 'no_client_response';
         await order.save();
+
+        // Sync custom offer chat message status to 'completed' if applicable
+        if (order.metadata?.fromCustomOffer && order.metadata?.customOfferId) {
+          try {
+            const customOffer = await CustomOffer.findById(order.metadata.customOfferId);
+            if (customOffer?.message) {
+              const message = await Message.findById(customOffer.message);
+              if (message?.orderDetails) {
+                message.orderDetails.status = 'completed';
+                message.markModified('orderDetails');
+                await message.save();
+              }
+            }
+          } catch (syncErr) {
+            console.error(`[Order Status Scheduler] Failed to sync custom offer message for order ${order.orderNumber}:`, syncErr);
+          }
+        }
       } catch (orderErr) {
         console.error(`[Order Status Scheduler] Error auto-completing order ${order.orderNumber}:`, orderErr);
       }
@@ -325,8 +345,8 @@ export function startOrderStatusScheduler() {
     scheduled: true,
     timezone: 'UTC',
   });
-  // Run every hour to auto-complete delivered orders after waiting time
-  cron.schedule('10 * * * *', async () => {
+  // Run every 10 minutes to auto-complete delivered orders after response time elapsed
+  cron.schedule('*/10 * * * *', async () => {
     await processAutoCompleteDeliveredOrders();
   }, {
     scheduled: true,
@@ -353,4 +373,11 @@ export function startOrderStatusScheduler() {
  */
 export async function triggerOrderStatusUpdate() {
   await processOrderStatusUpdates();
+}
+
+/**
+ * Manually trigger auto-complete of delivered orders (for testing or admin use)
+ */
+export async function triggerAutoCompleteDeliveredOrders() {
+  await processAutoCompleteDeliveredOrders();
 }

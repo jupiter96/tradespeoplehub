@@ -572,11 +572,12 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       disp.requirements ||
       "A dispute was opened for this order. Please review and respond.";
     
-    // Determine if professional is claimant or respondent
+    // Use only ID strings: claimantId from dispute; professionalId from order (never use order.professional when it's a display name string)
     const claimantIdRaw = (disp as any).claimantId;
-    const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
-    const professionalId = (order as any).professionalId || (order as any).professional;
-    const isProfessionalClaimant = claimantId && professionalId && claimantId.toString() === professionalId.toString();
+    const claimantId = claimantIdRaw != null ? (typeof claimantIdRaw === 'object' && (claimantIdRaw as any)._id != null ? (claimantIdRaw as any)._id.toString() : String(claimantIdRaw)) : undefined;
+    const professionalIdRaw = (order as any).professionalId;
+    const professionalId = professionalIdRaw != null ? (typeof professionalIdRaw === 'object' && (professionalIdRaw as any)._id != null ? (professionalIdRaw as any)._id.toString() : String(professionalIdRaw)) : undefined;
+    const isProfessionalClaimant = Boolean(claimantId && professionalId && claimantId === professionalId);
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
     
     // Build warning message based on dispute state
@@ -611,10 +612,12 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   }
   if (disp?.respondedAt) {
     const claimantIdRaw = (disp as any).claimantId;
-    const claimantId = claimantIdRaw?.toString?.() || claimantIdRaw;
-    const professionalId = (order as any).professionalId || (order as any).professional;
+    const claimantId = claimantIdRaw != null ? (typeof claimantIdRaw === 'object' && (claimantIdRaw as any)._id != null ? (claimantIdRaw as any)._id.toString() : String(claimantIdRaw)) : undefined;
+    const professionalIdRaw = (order as any).professionalId;
+    const professionalId = professionalIdRaw != null ? (typeof professionalIdRaw === 'object' && (professionalIdRaw as any)._id != null ? (professionalIdRaw as any)._id.toString() : String(professionalIdRaw)) : undefined;
+    const isProfessionalClaimant = Boolean(claimantId && professionalId && claimantId === professionalId);
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
-    if (claimantId && professionalId && claimantId.toString() === professionalId.toString()) {
+    if (isProfessionalClaimant) {
       const negotiationDeadlineStr = disp.negotiationDeadline
         ? formatAcceptedAt(disp.negotiationDeadline).split(" ").slice(1, 4).join(" ")
         : "the deadline";
@@ -636,9 +639,10 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   }
   if (disp?.arbitrationPayments && disp.arbitrationPayments.length === 1) {
     const payment = disp.arbitrationPayments[0];
-    const professionalId = (order as any).professionalId || (order as any).professional;
+    const professionalIdRaw = (order as any).professionalId;
+    const professionalId = professionalIdRaw != null ? (typeof professionalIdRaw === 'object' && (professionalIdRaw as any)._id != null ? (professionalIdRaw as any)._id.toString() : String(professionalIdRaw)) : undefined;
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
-    const paidByProfessional = payment?.userId?.toString?.() === professionalId?.toString?.();
+    const paidByProfessional = professionalId != null && payment?.userId != null && String(payment.userId) === professionalId;
     const paidAtStr = payment.paidAt ? formatAcceptedAt(payment.paidAt) : "";
     const deadlineStr = disp.arbitrationFeeDeadline
       ? formatAcceptedAt(disp.arbitrationFeeDeadline).split(" ").slice(1, 4).join(" ")
@@ -693,12 +697,10 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     const clientDisplayName = order.client || disp.claimantName || disp.respondentName || "Client";
     const acceptedTimestamp = formatAcceptedAt(disp.acceptedAt || disp.closedAt);
     const winnerIdRaw = (disp as any).winnerId;
-    const winnerId = winnerIdRaw?.toString?.() || winnerIdRaw;
-    const professionalId = (order as any).professionalId || (order as any).professional;
-    const isProfessionalWinner =
-      winnerId &&
-      professionalId &&
-      winnerId.toString() === professionalId.toString();
+    const winnerId = winnerIdRaw != null ? String(winnerIdRaw) : undefined;
+    const professionalIdRaw = (order as any).professionalId;
+    const professionalId = professionalIdRaw != null ? (typeof professionalIdRaw === 'object' && (professionalIdRaw as any)._id != null ? (professionalIdRaw as any)._id.toString() : String(professionalIdRaw)) : undefined;
+    const isProfessionalWinner = Boolean(winnerId && professionalId && winnerId === professionalId);
     const autoClosedDeadline = disp.responseDeadline
       ? new Date(disp.responseDeadline).toISOString().split("T")[0]
       : "the deadline";
@@ -774,7 +776,8 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       }
     });
   }
-  const professionalIdForRejection = (order as any).professionalId || (order as any).professional;
+  const professionalIdForRejectionRaw = (order as any).professionalId;
+  const professionalIdForRejection = professionalIdForRejectionRaw != null ? (typeof professionalIdForRejectionRaw === 'object' && (professionalIdForRejectionRaw as any)._id != null ? (professionalIdForRejectionRaw as any)._id.toString() : String(professionalIdForRejectionRaw)) : undefined;
   const rejectionMessages = Array.isArray((disp as any)?.messages)
     ? (disp as any).messages.filter((msg: any) => {
         const text = typeof msg?.message === "string" ? msg.message.trim() : "";
@@ -795,7 +798,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     const rejectorId = msg?.userId?.toString?.() || msg?.userId;
     const rejectedByProfessional =
       Boolean(professionalIdForRejection && rejectorId) &&
-      professionalIdForRejection.toString() === rejectorId.toString();
+      String(professionalIdForRejection) === String(rejectorId);
 
     const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
 

@@ -101,6 +101,8 @@ export interface Order {
   expectedDelivery?: string;
   scheduledDate?: string;
   deliveredDate?: string;
+  /** Client must approve or request changes by this time (deliveredDate + Admin delivered work response time). ISO string. */
+  deliveredWorkResponseDeadline?: string;
   deliveryMessage?: string;
   deliveryFiles?: OrderFile[];
   address?: OrderAddress;

@@ -2530,13 +2530,28 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
     const disputes = await Dispute.find({ order: { $in: orderIds } })
       .populate('claimantId', 'firstName lastName tradingName avatar')
       .populate('respondentId', 'firstName lastName tradingName avatar')
+      .sort({ createdAt: -1 })
       .lean();
-    
-    // Create a map of orderId to dispute
+
+    // Map orderId -> dispute: prefer active (open/negotiation/admin_arbitration), else most recent (e.g. closed)
     const disputeMap = {};
-    disputes.forEach(dispute => {
-      disputeMap[dispute.order.toString()] = dispute;
+    const activeStatuses = ['open', 'negotiation', 'admin_arbitration'];
+    orderIds.forEach(oid => {
+      const oidStr = oid.toString();
+      const orderDisputes = disputes.filter(d => d.order && d.order.toString() === oidStr);
+      if (orderDisputes.length === 0) return;
+      const active = orderDisputes.filter(d => activeStatuses.includes(d.status));
+      const chosen = active.length > 0
+        ? active[0] // already sorted by createdAt desc, first is latest active
+        : orderDisputes[0]; // all closed, use most recent (first after sort)
+      disputeMap[oidStr] = chosen;
     });
+
+    // Fetch payment settings once for delivered-work response deadline
+    let paymentSettings = null;
+    try {
+      paymentSettings = await PaymentSettings.getSettings();
+    } catch (_) { /* ignore */ }
 
     // Transform orders to match frontend format
     const transformedOrders = orders.map(order => {
@@ -2604,6 +2619,19 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       const scheduledDate = order.scheduledDate ? new Date(order.scheduledDate).toISOString().split('T')[0] : undefined;
       const completedDate = order.completedDate ? new Date(order.completedDate).toISOString() : undefined;
       const deliveredDate = order.deliveredDate ? new Date(order.deliveredDate).toISOString() : undefined;
+
+      // Delivered work response deadline: deliveredDate + Admin's "Delivered work response time"
+      let deliveredWorkResponseDeadline = undefined;
+      if ((order.status === 'delivered' || order.status === 'Delivered') && order.deliveredDate && paymentSettings) {
+        const rh = paymentSettings.deliveredWorkResponseTimeHours;
+        const rd = paymentSettings.deliveredWorkResponseTimeDays;
+        const responseTimeHours = (typeof rh === 'number' && rh > 0)
+          ? rh
+          : (typeof rd === 'number' && rd >= 0 ? rd * 24 : 48);
+        const effectiveHours = responseTimeHours > 0 ? responseTimeHours : 48;
+        const base = new Date(order.deliveredDate);
+        deliveredWorkResponseDeadline = new Date(base.getTime() + effectiveHours * 60 * 60 * 1000).toISOString();
+      }
       
       // Get booking info from first item
       const booking = order.items?.[0]?.booking;
@@ -2652,6 +2680,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         scheduledDate: order.metadata?.scheduledDate || scheduledDate,
         completedDate,
         deliveredDate,
+        deliveredWorkResponseDeadline: deliveredWorkResponseDeadline || undefined,
         rating: order.rating || null,
         metadata: {
           fromCustomOffer: order.metadata?.fromCustomOffer,
@@ -4702,9 +4731,10 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       return res.status(403).json({ error: 'You are not authorized to create a dispute for this order' });
     }
 
-    // Check if dispute already exists
+    // Check if an active (non-closed) dispute already exists for this order
     const existingDispute = await Dispute.findOne({ order: order._id });
-    if (existingDispute || order.disputeId) {
+    const hasActiveDispute = existingDispute && ['open', 'negotiation', 'admin_arbitration'].includes(existingDispute.status);
+    if (hasActiveDispute) {
       return res.status(400).json({ error: 'A dispute already exists for this order' });
     }
 

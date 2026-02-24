@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/colla
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Order, TimelineEvent } from "./types";
-import { buildProfessionalTimeline, formatDate, formatDateTime, formatDateOrdinal, resolveFileUrl } from "./index";
+import { buildProfessionalTimeline, formatDate, formatDateTime, formatDateOrdinal, formatDeliveredResponseDeadline, resolveFileUrl } from "./index";
 import { toast } from "sonner";
 
 interface ProfessionalOrderTimelineTabProps {
@@ -324,7 +324,10 @@ export default function ProfessionalOrderTimelineTab({
                   Your work has been delivered!
                 </h3>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] whitespace-pre-line">
-                  {currentOrder.deliveredDate ? (() => {
+                  {(currentOrder as any).deliveredWorkResponseDeadline ? (() => {
+                    const deadlineStr = formatDeliveredResponseDeadline((currentOrder as any).deliveredWorkResponseDeadline);
+                    return `You have delivered your work. The client has until ${deadlineStr}, to approve the delivery or request modifications. If no response is received, the order will be automatically completed.`;
+                  })() : currentOrder.deliveredDate ? (() => {
                     const deliveryDate = new Date(currentOrder.deliveredDate);
                     const deadlineDate = new Date(deliveryDate);
                     deadlineDate.setDate(deadlineDate.getDate() + 1);
@@ -377,7 +380,10 @@ export default function ProfessionalOrderTimelineTab({
                 Your work has been delivered!
               </h3>
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] whitespace-pre-line">
-                {currentOrder.deliveredDate ? (() => {
+                {(currentOrder as any).deliveredWorkResponseDeadline ? (() => {
+                  const deadlineStr = formatDeliveredResponseDeadline((currentOrder as any).deliveredWorkResponseDeadline);
+                  return `You have delivered your work. The client has until ${deadlineStr}, to approve the delivery or request modifications. If no response is received, the order will be automatically completed.`;
+                })() : currentOrder.deliveredDate ? (() => {
                   const deliveryDate = new Date(currentOrder.deliveredDate);
                   const deadlineDate = new Date(deliveryDate);
                   deadlineDate.setDate(deadlineDate.getDate() + 1);
@@ -522,7 +528,10 @@ export default function ProfessionalOrderTimelineTab({
             Your work has been delivered!
           </h3>
           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-            {currentOrder.deliveredDate ? (() => {
+            {(currentOrder as any).deliveredWorkResponseDeadline ? (() => {
+              const deadlineStr = formatDeliveredResponseDeadline((currentOrder as any).deliveredWorkResponseDeadline);
+              return `You have delivered your work. The client has until ${deadlineStr}, to approve the delivery or request modifications. If no response is received, the order will be automatically completed.`;
+            })() : currentOrder.deliveredDate ? (() => {
               const deliveryDate = new Date(currentOrder.deliveredDate);
               const deadlineDate = new Date(deliveryDate);
               deadlineDate.setDate(deadlineDate.getDate() + 1);
