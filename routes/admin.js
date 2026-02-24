@@ -21,6 +21,7 @@ import Order from '../models/Order.js';
 import Dispute from '../models/Dispute.js';
 import Message from '../models/Message.js';
 import CustomOffer from '../models/CustomOffer.js';
+import Review from '../models/Review.js';
 
 // Load environment variables
 dotenv.config();
@@ -751,6 +752,202 @@ router.get('/orders', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to get orders' });
+  }
+});
+
+// Get all ratings/reviews for admin management (client→pro from Review, pro→client from Order.buyerReview)
+router.get('/ratings', requireAdmin, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const search = (req.query.search || '').trim();
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'desc';
+    const filterRatedBy = req.query.ratedBy; // 'client' | 'professional' | ''
+
+    const rows = [];
+
+    // 1) Client → Professional: from Review (completed orders only)
+    const completedOrderIds = await Order.find({ status: 'Completed' }).distinct('_id');
+    const reviews = await Review.find({
+      order: { $in: completedOrderIds },
+      ...(filterRatedBy === 'professional' ? {} : {}),
+    })
+      .populate('order', 'orderNumber items')
+      .populate('professional', 'firstName lastName tradingName email')
+      .populate('reviewer', 'firstName lastName tradingName email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    for (const r of reviews) {
+      if (filterRatedBy === 'professional') continue; // only client→pro here
+      const order = r.order;
+      const serviceTitle = order?.items?.[0]?.title || 'Service Order';
+      const ratedByName = r.reviewerName || (r.reviewer ? `${r.reviewer.firstName || ''} ${r.reviewer.lastName || ''}`.trim() || r.reviewer.tradingName : '') || '—';
+      const ratedToName = r.professional ? (r.professional.tradingName || `${r.professional.firstName || ''} ${r.professional.lastName || ''}`.trim() || '—') : '—';
+      rows.push({
+        id: r._id.toString(),
+        type: 'client_to_pro',
+        orderId: r.order?._id?.toString(),
+        orderNumber: order?.orderNumber || '',
+        ratedById: r.reviewer?._id?.toString(),
+        ratedByName,
+        ratedToId: r.professional?._id?.toString(),
+        ratedToName,
+        rating: typeof r.rating === 'number' ? r.rating : 0,
+        comment: r.comment || '',
+        serviceTitle,
+        createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : '',
+      });
+    }
+
+    // 2) Professional → Client: from Order.metadata.buyerReview
+    const ordersWithBuyerReview = await Order.find({
+      status: 'Completed',
+      'metadata.buyerReview': { $exists: true, $ne: null },
+    })
+      .populate('client', 'firstName lastName email')
+      .populate('professional', 'firstName lastName tradingName email')
+      .lean();
+
+    for (const order of ordersWithBuyerReview) {
+      if (filterRatedBy === 'client') continue;
+      const br = order.metadata?.buyerReview;
+      if (!br || typeof br.rating !== 'number') continue;
+      const serviceTitle = order.items?.[0]?.title || 'Service Order';
+      rows.push({
+        id: `${order._id.toString()}_buyer`,
+        type: 'pro_to_client',
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber || '',
+        ratedById: br.reviewedBy?.toString(),
+        ratedByName: br.reviewerName || 'Professional',
+        ratedToId: order.client?._id?.toString(),
+        ratedToName: order.client ? `${order.client.firstName || ''} ${order.client.lastName || ''}`.trim() || order.client.email || '—' : '—',
+        rating: br.rating,
+        comment: br.comment || '',
+        serviceTitle,
+        createdAt: br.reviewedAt ? new Date(br.reviewedAt).toISOString() : order.updatedAt ? new Date(order.updatedAt).toISOString() : '',
+      });
+    }
+
+    // Filter by search (ratedByName, ratedToName, comment, serviceTitle, orderNumber)
+    let filtered = rows;
+    if (search) {
+      const s = search.toLowerCase();
+      filtered = rows.filter(
+        (row) =>
+          (row.ratedByName && row.ratedByName.toLowerCase().includes(s)) ||
+          (row.ratedToName && row.ratedToName.toLowerCase().includes(s)) ||
+          (row.comment && row.comment.toLowerCase().includes(s)) ||
+          (row.serviceTitle && row.serviceTitle.toLowerCase().includes(s)) ||
+          (row.orderNumber && row.orderNumber.toLowerCase().includes(s))
+      );
+    }
+
+    if (filterRatedBy === 'client') {
+      filtered = filtered.filter((r) => r.type === 'client_to_pro');
+    } else if (filterRatedBy === 'professional') {
+      filtered = filtered.filter((r) => r.type === 'pro_to_client');
+    }
+
+    const totalCount = filtered.length;
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortField = sortBy || 'createdAt';
+    filtered.sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+      if (sortField === 'rating') {
+        aVal = Number(aVal);
+        bVal = Number(bVal);
+      }
+      if (aVal === bVal) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      const cmp = aVal < bVal ? -1 : 1;
+      return cmp * sortDirection;
+    });
+
+    const skip = (page - 1) * limit;
+    const paged = filtered.slice(skip, skip + limit);
+    const totalPages = Math.ceil(totalCount / limit) || 1;
+
+    return res.json({
+      ratings: paged,
+      totalCount,
+      totalPages,
+      page,
+      limit,
+    });
+  } catch (error) {
+    console.error('Admin get ratings error:', error);
+    return res.status(500).json({ error: 'Failed to get ratings' });
+  }
+});
+
+// Update a single rating (admin)
+router.patch('/ratings/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { rating, comment } = req.body;
+    const ratingNum = rating !== undefined && rating !== null ? Number(rating) : undefined;
+    const commentStr = typeof comment === 'string' ? comment.trim() : undefined;
+
+    if (id.endsWith('_buyer')) {
+      const orderId = id.replace(/_buyer$/, '');
+      const order = await Order.findById(orderId);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (!order.metadata || !order.metadata.buyerReview) return res.status(404).json({ error: 'Buyer review not found' });
+      if (typeof ratingNum === 'number' && (ratingNum < 0 || ratingNum > 5)) return res.status(400).json({ error: 'Rating must be between 0 and 5' });
+      if (typeof ratingNum === 'number') order.metadata.buyerReview.rating = ratingNum;
+      if (commentStr !== undefined) order.metadata.buyerReview.comment = commentStr;
+      order.markModified('metadata');
+      await order.save();
+      return res.json({
+        id,
+        rating: order.metadata.buyerReview.rating,
+        comment: order.metadata.buyerReview.comment || '',
+      });
+    }
+
+    const review = await Review.findById(id);
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+    if (typeof ratingNum === 'number' && (ratingNum < 0 || ratingNum > 5)) return res.status(400).json({ error: 'Rating must be between 0 and 5' });
+    if (typeof ratingNum === 'number') review.rating = ratingNum;
+    if (commentStr !== undefined) review.comment = commentStr;
+    await review.save();
+    return res.json({
+      id: review._id.toString(),
+      rating: review.rating,
+      comment: review.comment || '',
+    });
+  } catch (error) {
+    console.error('Admin update rating error:', error);
+    return res.status(500).json({ error: 'Failed to update rating' });
+  }
+});
+
+// Delete a single rating (admin): remove review doc or buyerReview from order
+router.delete('/ratings/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id.endsWith('_buyer')) {
+      const orderId = id.replace(/_buyer$/, '');
+      const order = await Order.findById(orderId);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (!order.metadata?.buyerReview) return res.status(404).json({ error: 'Buyer review not found' });
+      delete order.metadata.buyerReview;
+      await order.save();
+      return res.json({ message: 'Buyer review deleted' });
+    }
+
+    const review = await Review.findByIdAndDelete(id);
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+    return res.json({ message: 'Review deleted' });
+  } catch (error) {
+    console.error('Admin delete rating error:', error);
+    return res.status(500).json({ error: 'Failed to delete rating' });
   }
 });
 
