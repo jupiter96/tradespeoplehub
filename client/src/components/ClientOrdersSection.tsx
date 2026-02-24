@@ -2473,7 +2473,7 @@ export default function ClientOrdersSection() {
 
               if (isWithdrawnByClient || isCancelledByClient) {
                 return (
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                       Your work has been delivered!
                     </h3>
@@ -2512,7 +2512,7 @@ export default function ClientOrdersSection() {
 
               if (isWithdrawnByPro || isCancelledByPro) {
                 return (
-                  <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6 shadow-md mb-4 md:mb-6">
                     <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                       Your work has been delivered!
                     </h3>
@@ -2734,7 +2734,7 @@ export default function ClientOrdersSection() {
 
             {/* Service In Progress / Work Delivered - Show based on status */}
             {currentOrder.status === "delivered" ? (
-              <div className="border rounded-lg p-4 sm:p-6 shadow-md bg-white border-gray-200">
+              <div className="border border-green-200 rounded-lg p-4 sm:p-6 shadow-md bg-green-50">
               
                   <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2 break-words">
                     Your work has been delivered!
@@ -3127,18 +3127,18 @@ export default function ClientOrdersSection() {
               }
               
               // Warning 4: Arbitration fee deadline (for party who hasn't paid)
-              if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
-                const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                });
-                warnings.push({
-                  title: "Arbitration Fee Deadline",
-                  message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${tradingName + "'s"} favour.`,
-                  type: 'danger'
-                });
-              }
+              // if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
+              //   const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+              //     day: "numeric",
+              //     month: "short",
+              //     year: "numeric",
+              //   });
+              //   warnings.push({
+              //     title: "Arbitration Fee Deadline",
+              //     message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${tradingName + "'s"} favour.`,
+              //     type: 'danger'
+              //   });
+              // }
               
               // Warning 5: Waiting for other party to pay arbitration fee
               if (onlyOnePaid && hasPaidArbitration && !hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {

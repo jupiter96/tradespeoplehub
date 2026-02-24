@@ -319,7 +319,7 @@ export default function ProfessionalOrderTimelineTab({
             (showDeliveredMessage && isProfessionalRequest)) {
           if (showDeliveredMessage) {
             return (
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md mb-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md mb-6">
                 <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
                   Your work has been delivered!
                 </h3>
@@ -372,7 +372,7 @@ export default function ProfessionalOrderTimelineTab({
         
         if (isClientRequest && showDeliveredMessage) {
           return (
-            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md mb-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md mb-6">
               <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
                 Your work has been delivered!
               </h3>
@@ -517,7 +517,7 @@ export default function ProfessionalOrderTimelineTab({
        currentOrder.status !== "Completed" &&
        currentOrder.status !== "Cancelled" &&
        currentOrder.status !== "Cancellation Pending" && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-md mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 shadow-md mb-6">
           <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold mb-2">
             Your work has been delivered!
           </h3>
@@ -918,18 +918,18 @@ export default function ProfessionalOrderTimelineTab({
         }
         
         // Warning 4: Arbitration fee deadline (for party who hasn't paid)
-        if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
-          const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          warnings.push({
-            title: "Arbitration Fee Deadline",
-            message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${(currentOrder.client || "the client") + "'s"} favour.`,
-            type: 'danger'
-          });
-        }
+        // if (onlyOnePaid && !hasPaidArbitration && hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
+        //   const arbitrationDeadline = new Date(disputeInfo.arbitrationFeeDeadline).toLocaleDateString("en-GB", {
+        //     day: "numeric",
+        //     month: "short",
+        //     year: "numeric",
+        //   });
+        //   warnings.push({
+        //     title: "Arbitration Fee Deadline",
+        //     message: `You must pay your arbitration fee by ${arbitrationDeadline}. Failure to pay will result in the case being decided in ${(currentOrder.client || "the client") + "'s"} favour.`,
+        //     type: 'danger'
+        //   });
+        // }
         
         // Warning 5: Waiting for other party to pay arbitration fee
         if (onlyOnePaid && hasPaidArbitration && !hasOtherPaid && disputeInfo?.arbitrationFeeDeadline) {
