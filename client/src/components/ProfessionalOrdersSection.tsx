@@ -110,6 +110,7 @@ import {
   resolveFileUrl,
   resolveAvatarUrl,
   isVideoFile,
+  OrderMilestoneTable,
 } from "./orders";
 
 function ProfessionalOrdersSection() {
@@ -1510,6 +1511,14 @@ function ProfessionalOrdersSection() {
                 >
                   Details
                 </TabsTrigger>
+                {(currentOrder as any)?.metadata?.paymentType === "milestone" && (
+                  <TabsTrigger
+                    value="milestone"
+                    className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
+                  >
+                    Milestone
+                  </TabsTrigger>
+                )}
                 <TabsTrigger
                   value="additional-info"
                   className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
@@ -1574,6 +1583,11 @@ function ProfessionalOrdersSection() {
               {/* Details Tab */}
               <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
                 <ProfessionalOrderDetailsTab order={currentOrder} />
+              </TabsContent>
+
+              {/* Milestone Tab - only for milestone custom offers */}
+              <TabsContent value="milestone" className="mt-4 md:mt-6 px-4 md:px-6">
+                <OrderMilestoneTable order={currentOrder as any} inProgressLabel="Active" />
               </TabsContent>
 
               {/* Additional Info Tab */}

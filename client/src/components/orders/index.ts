@@ -9,6 +9,7 @@ export { default as OrderDetailsTab } from './OrderDetailsTab';
 export { default as ProfessionalOrderAdditionalInfoTab } from './ProfessionalOrderAdditionalInfoTab';
 export { default as ProfessionalOrderDeliveryTab, ProfessionalOrderServiceAddressSection, ProfessionalOrderDeliveryCompletionSection } from './ProfessionalOrderDeliveryTab';
 export { default as ProfessionalOrderTimelineTab } from './ProfessionalOrderTimelineTab';
+export { default as OrderMilestoneTable } from './OrderMilestoneTable';
 
 // Dialog components
 export { default as AddInfoDialog } from './dialogs/AddInfoDialog';

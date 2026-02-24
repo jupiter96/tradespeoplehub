@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 
 // Import separated order components
-import { getStatusLabel, getStatusLabelForTable, AddInfoDialog, OrderDetailsTab, formatDeliveredResponseDeadline } from "./orders";
+import { getStatusLabel, getStatusLabelForTable, AddInfoDialog, OrderDetailsTab, formatDeliveredResponseDeadline, OrderMilestoneTable } from "./orders";
 import { resolveAvatarUrl } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -2330,6 +2330,14 @@ export default function ClientOrdersSection() {
                   >
                     Details
                   </TabsTrigger>
+                  {(currentOrder as any)?.metadata?.paymentType === "milestone" && (
+                    <TabsTrigger
+                      value="milestone"
+                      className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
+                    >
+                      Milestone
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger
                     value="additional-info"
                     className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE8A0F] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent px-4 md:px-6 py-3 whitespace-nowrap flex-shrink-0 snap-start"
@@ -2885,90 +2893,6 @@ export default function ClientOrdersSection() {
               <div style={{ order: 4 }}>
             {/* Order Placed / Order Created / Order Started - oldest events at bottom */}
             <div className="space-y-0">
-              {/* Created Milestones - table above Order Placed (custom offer milestone payment) */}
-              {(currentOrder as any).metadata?.paymentType === "milestone" &&
-                Array.isArray((currentOrder as any).metadata?.milestones) &&
-                (currentOrder as any).metadata.milestones.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold mb-3">
-                      Created Milestones
-                    </h4>
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                      <table className="w-full font-['Poppins',sans-serif] text-[13px]">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-200">
-                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Milestone Name</th>
-                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Delivery Date</th>
-                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Hours</th>
-                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Description</th>
-                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Amount</th>
-                            <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {((currentOrder as any).metadata.milestones as Array<{
-                            name?: string;
-                            description?: string;
-                            amount?: number;
-                            price?: number;
-                            dueInDays?: number;
-                            deliveryInDays?: number;
-                            hours?: number;
-                            noOf?: number;
-                            chargePer?: string;
-                          }>).map((m, idx) => {
-                            const orderDate = (currentOrder.date || currentOrder.createdAt)
-                              ? new Date(currentOrder.date || currentOrder.createdAt || "")
-                              : new Date();
-                            const deliveryDate = new Date(orderDate);
-                            const days = m.deliveryInDays ?? m.dueInDays ?? 0;
-                            deliveryDate.setDate(deliveryDate.getDate() + (typeof days === "number" ? days : 0));
-                            const unitPrice = m.price ?? m.amount ?? 0;
-                            const noOfVal = m.noOf ?? m.hours ?? 1;
-                            const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
-
-                            const milestoneDeliveries = (currentOrder as any).metadata?.milestoneDeliveries as
-                              | Array<{ milestoneIndex: number }>
-                              | undefined;
-                            const disputeResolvedIndices = (currentOrder as any).metadata?.disputeResolvedMilestoneIndices as number[] | undefined;
-                            const isMilestoneDelivered =
-                              Array.isArray(milestoneDeliveries) &&
-                              milestoneDeliveries.some(
-                                (d: { milestoneIndex: number }) => d.milestoneIndex === idx
-                              );
-                            const isMilestoneResolvedByDispute = Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx);
-
-                            const milestoneStatus = (() => {
-                              if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
-                              if (isMilestoneResolvedByDispute) return { label: "Resolved (dispute)", color: "text-green-600" };
-                              const orderStatus = currentOrder.status?.toLowerCase() || "";
-                              if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
-                              if (orderStatus === "in progress") return { label: "In Progress", color: "text-blue-600" };
-                              if (orderStatus === "delivered") return { label: "Delivered", color: "text-green-600" };
-                              if (orderStatus === "revision") return { label: "Revision", color: "text-yellow-600" };
-                              if (orderStatus === "completed") return { label: "Completed", color: "text-green-700 font-semibold" };
-                              if (orderStatus === "cancelled") return { label: "Cancelled", color: "text-red-600" };
-                              if (orderStatus === "disputed") return { label: "Disputed", color: "text-red-500" };
-                              if (orderStatus === "cancellation pending") return { label: "Cancellation Pending", color: "text-orange-500" };
-                              return { label: currentOrder.status || "Pending", color: "text-gray-500" };
-                            })();
-                            return (
-                              <tr key={idx} className="border-b border-gray-100 last:border-b-0">
-                                <td className="py-3 px-4 text-[#2c353f]">{m.name || "—"}</td>
-                                <td className="py-3 px-4 text-[#2c353f]">{formatDateOrdinal(deliveryDate.toISOString())}</td>
-                                <td className="py-3 px-4 text-[#2c353f]">{typeof noOfVal === "number" ? noOfVal : "—"}</td>
-                                <td className="py-3 px-4 text-[#6b6b6b] max-w-[200px] truncate">{m.description || (m.chargePer ? `${m.chargePer} x${noOfVal}` : "—")}</td>
-                                <td className="py-3 px-4 text-[#FE8A0F] font-medium">£{typeof amt === "number" ? amt.toFixed(2) : "0.00"}</td>
-                                <td className={`py-3 px-4 ${milestoneStatus.color}`}>{milestoneStatus.label}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
               {/* Order Placed - top */}
               {(currentOrder.date || currentOrder.createdAt) && (
                 <div className="flex gap-4">
@@ -4174,6 +4098,11 @@ export default function ClientOrdersSection() {
               order={currentOrder}
               formatMoneyFn={(v, fb) => formatMoney(v, fb ?? "0.00")}
             />
+          </TabsContent>
+
+          {/* Milestone Tab - only for milestone custom offers */}
+          <TabsContent value="milestone" className="mt-4 md:mt-6 px-4 md:px-6">
+            <OrderMilestoneTable order={currentOrder as any} inProgressLabel="In Progress" />
           </TabsContent>
 
           {/* Additional Info Tab */}

@@ -6045,8 +6045,14 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Find dispute by order reference (order.disputeId may be missing e.g. legacy or sync issue)
-    const dispute = await Dispute.findOne({ order: order._id });
+    // Find the current dispute: use order.disputeId so we get the active one after reopen (not an old closed dispute)
+    let dispute = null;
+    if (order.disputeId) {
+      dispute = await Dispute.findOne({ disputeId: order.disputeId });
+    }
+    if (!dispute) {
+      dispute = await Dispute.findOne({ order: order._id });
+    }
     if (!dispute) {
       return res.status(400).json({ error: 'No dispute found for this order' });
     }
@@ -6056,11 +6062,11 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
       order.disputeId = dispute.disputeId;
     }
 
-    const disputeStatus = order.metadata?.disputeStatus ?? dispute.status;
+    const disputeStatus = dispute.status; // use actual dispute document (order.metadata may be stale after reopen)
     const claimantId = order.metadata?.disputeClaimantId ?? dispute.claimantId?.toString?.() ?? dispute.claimantId;
     const respondentId = order.metadata?.disputeRespondentId ?? dispute.respondentId?.toString?.() ?? dispute.respondentId;
 
-    // Allow cancel unless dispute is already closed
+    // Allow cancel unless dispute is already closed (claimant can cancel at any time otherwise)
     const isClosed = disputeStatus === 'closed' || disputeStatus === 'final';
     if (isClosed) {
       return res.status(400).json({ error: 'Dispute cannot be cancelled in its current state' });
