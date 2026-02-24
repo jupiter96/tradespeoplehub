@@ -3111,8 +3111,9 @@ export default function ClientOrdersSection() {
               //   });
               // }
               
-              // Warning 3: Negotiation deadline
-              if (hasReply && !bothPaid && disputeInfo?.negotiationDeadline) {
+              // Warning 3: Negotiation deadline (hide when arbitration fee deadline is in effect)
+              const showArbitrationFeeDeadline = onlyOnePaid && disputeInfo?.arbitrationFeeDeadline;
+              if (hasReply && !bothPaid && disputeInfo?.negotiationDeadline && !showArbitrationFeeDeadline) {
                 const negotiationDeadline = new Date(disputeInfo.negotiationDeadline).toLocaleDateString("en-GB", {
                   day: "numeric",
                   month: "short",
