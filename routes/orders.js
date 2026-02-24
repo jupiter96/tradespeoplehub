@@ -6060,9 +6060,9 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     const claimantId = order.metadata?.disputeClaimantId ?? dispute.claimantId?.toString?.() ?? dispute.claimantId;
     const respondentId = order.metadata?.disputeRespondentId ?? dispute.respondentId?.toString?.() ?? dispute.respondentId;
 
-    // Check if dispute is in a cancellable state (open, negotiation, or admin_arbitration)
-    const cancellableStatuses = ['open', 'negotiation', 'admin_arbitration'];
-    if (!cancellableStatuses.includes(disputeStatus)) {
+    // Allow cancel unless dispute is already closed
+    const isClosed = disputeStatus === 'closed' || disputeStatus === 'final';
+    if (isClosed) {
       return res.status(400).json({ error: 'Dispute cannot be cancelled in its current state' });
     }
 
