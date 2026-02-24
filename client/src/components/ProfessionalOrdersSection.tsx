@@ -1761,7 +1761,7 @@ function ProfessionalOrdersSection() {
                   {/* Amount Card */}
                   <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {dispute.amount}</span>
+                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {(typeof dispute.amount === "number" ? dispute.amount : 0).toFixed(2)}</span>
                     </p>
                     <Separator className="my-4" />
                     <button className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:underline mb-4">

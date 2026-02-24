@@ -98,6 +98,8 @@ export interface OrderDispute {
   lastOfferRejectedBy?: string;
   lastOfferRejectedByRole?: "client" | "professional";
   lastRejectedOfferAmount?: number;
+  /** Indices of milestones selected when dispute was created (milestone orders only) */
+  milestoneIndices?: number[];
 }
 
 export interface Order {
@@ -959,6 +961,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           lastOfferRejectedBy: order.disputeInfo.lastOfferRejectedBy,
           lastOfferRejectedByRole: order.disputeInfo.lastOfferRejectedByRole,
           lastRejectedOfferAmount: order.disputeInfo.lastRejectedOfferAmount,
+          milestoneIndices: Array.isArray(order.disputeInfo.milestoneIndices) ? order.disputeInfo.milestoneIndices : undefined,
         } as OrderDispute;
       }
     }
@@ -1488,16 +1491,18 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order - keep dispute data but mark dispute closed; restore order to delivered status.
+      // Update order - keep dispute data but mark dispute closed; restore order to previous status/deliveryStatus from server.
       setOrders(prev => prev.map(order => {
         if (order.id === orderId) {
           const prevDispute = (order.disputeInfo || {}) as any;
           const closedAt = data?.dispute?.closedAt || new Date().toISOString();
           const cancelledByRole = data?.dispute?.cancelledByRole || prevDispute.disputeCancelledByRole;
+          const restoredStatus = data?.order?.status ?? 'delivered';
+          const restoredDeliveryStatus = data?.order?.deliveryStatus ?? 'delivered';
           return {
             ...order,
-            status: 'delivered',
-            deliveryStatus: 'delivered',
+            status: restoredStatus,
+            deliveryStatus: restoredDeliveryStatus,
             disputeId: data?.order?.disputeId || order.disputeId,
             disputeInfo: {
               ...prevDispute,

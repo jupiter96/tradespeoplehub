@@ -260,6 +260,11 @@ const disputeSchema = new mongoose.Schema(
       type: [Number],
       default: undefined,
     },
+    // Disputed amount: for milestone disputes = sum of selected milestones; otherwise = order refundable amount
+    amount: {
+      type: Number,
+      default: null,
+    },
   },
   {
     timestamps: true,

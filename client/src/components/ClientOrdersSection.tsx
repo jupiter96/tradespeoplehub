@@ -239,6 +239,7 @@ export default function ClientOrdersSection() {
   const [revisionMessage, setRevisionMessage] = useState("");
   const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
   const [isDisputeResponseDialogOpen, setIsDisputeResponseDialogOpen] = useState(false);
+  const [isSingleMilestoneDisputeConfirmOpen, setIsSingleMilestoneDisputeConfirmOpen] = useState(false);
 
   const parseOnlineDeliveryDays = (value?: string): number | null => {
     if (!value) return null;
@@ -1607,48 +1608,66 @@ export default function ClientOrdersSection() {
         return;
       }
 
-      const reqs = disputeRequirements;
-      const unmet = disputeUnmetRequirements;
-      const offer = disputeOfferAmount;
-      const evidenceFiles = disputeEvidenceFiles;
-      const milestoneInds = selectedMilestoneIndices;
-      const orderId = selectedOrder;
-      closeAllModals();
-      setDisputeRequirements("");
-      setDisputeUnmetRequirements("");
-      setDisputeEvidenceFiles([]);
-      setDisputeOfferAmount("");
-      setSelectedMilestoneIndices([]);
-      toast.promise(
-        (async () => {
-          const formData = new FormData();
-          formData.append('requirements', reqs);
-          formData.append('unmetRequirements', unmet);
-          formData.append('offerAmount', offer);
-          evidenceFiles.forEach((file) => formData.append('evidenceFiles', file));
-          if (isMilestoneOrder && milestoneInds.length > 0) {
-            formData.append('milestoneIndices', JSON.stringify(milestoneInds));
-          }
+      const milestoneDeliveries = (meta.milestoneDeliveries || []) as Array<{ milestoneIndex: number }>;
+      const deliveredIndices: number[] = milestoneDeliveries
+        .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+        .filter((idx) => idx >= 0 && idx < milestones.length);
+      if (isMilestoneOrder && deliveredIndices.length > 1 && selectedMilestoneIndices.length === 1) {
+        setIsSingleMilestoneDisputeConfirmOpen(true);
+        return;
+      }
 
-          const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute`), {
-            method: 'POST',
-            credentials: 'include',
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to create dispute');
-          }
-
-          const data = await response.json();
-          refreshOrders();
-          navigate(`/dispute/${data.disputeId}`);
-          return data;
-        })(),
-        { loading: "Processing...", success: "Dispute has been created", error: (e: any) => e.message || "Failed to create dispute" }
-      );
+      doCreateDisputeSubmit();
     }
+  };
+
+  const doCreateDisputeSubmit = () => {
+    if (!selectedOrder) return;
+    const order = orders.find(o => o.id === selectedOrder);
+    const meta = (order as any)?.metadata || {};
+    const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
+    const reqs = disputeRequirements;
+    const unmet = disputeUnmetRequirements;
+    const offer = disputeOfferAmount;
+    const evidenceFiles = disputeEvidenceFiles;
+    const milestoneInds = selectedMilestoneIndices;
+    const orderId = selectedOrder;
+    closeAllModals();
+    setDisputeRequirements("");
+    setDisputeUnmetRequirements("");
+    setDisputeEvidenceFiles([]);
+    setDisputeOfferAmount("");
+    setSelectedMilestoneIndices([]);
+    setIsSingleMilestoneDisputeConfirmOpen(false);
+    toast.promise(
+      (async () => {
+        const formData = new FormData();
+        formData.append('requirements', reqs);
+        formData.append('unmetRequirements', unmet);
+        formData.append('offerAmount', offer);
+        evidenceFiles.forEach((file) => formData.append('evidenceFiles', file));
+        if (isMilestoneOrder && milestoneInds.length > 0) {
+          formData.append('milestoneIndices', JSON.stringify(milestoneInds));
+        }
+
+        const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/dispute`), {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create dispute');
+        }
+
+        const data = await response.json();
+        refreshOrders();
+        navigate(`/dispute/${data.disputeId}`);
+        return data;
+      })(),
+      { loading: "Processing...", success: "Dispute has been created", error: (e: any) => e.message || "Failed to create dispute" }
+    );
   };
 
   const handleSubmitRating = async () => {
@@ -4966,7 +4985,7 @@ export default function ClientOrdersSection() {
                   {/* Amount Card */}
                   <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {dispute.amount}</span>
+                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {(typeof dispute.amount === "number" ? dispute.amount : 0).toFixed(2)}</span>
                     </p>
                     <Separator className="my-4" />
                     <button className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:underline mb-4">
@@ -5885,6 +5904,38 @@ export default function ClientOrdersSection() {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Single-milestone dispute confirmation */}
+        <Dialog open={isSingleMilestoneDisputeConfirmOpen} onOpenChange={setIsSingleMilestoneDisputeConfirmOpen}>
+          <DialogContent className="max-w-[420px] bg-red-50 border-red-200">
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                Dispute for one milestone only?
+              </DialogTitle>
+            </DialogHeader>
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+              Are you sure you want to open a dispute for only one milestone? If not, please select additional or all relevant milestones now. Once a dispute is opened for a single milestone, you will not be able to raise disputes on the remaining milestones.
+            </p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                className="font-['Poppins',sans-serif]"
+                onClick={() => setIsSingleMilestoneDisputeConfirmOpen(false)}
+              >
+                OK
+              </Button>
+              <Button
+                className="font-['Poppins',sans-serif] bg-[#3D78CB] hover:bg-[#2C5AA0]"
+                onClick={() => {
+                  setIsSingleMilestoneDisputeConfirmOpen(false);
+                  doCreateDisputeSubmit();
+                }}
+              >
+                No, Continue
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         

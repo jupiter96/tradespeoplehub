@@ -55,7 +55,7 @@ function generateOfferNumber() {
 // Professional: Create custom offer
 router.post('/', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
-    const { conversationId, serviceId, serviceName, price, deliveryDays, quantity, chargePer, description, paymentType, milestones, offerExpiresInDays } = req.body;
+    const { conversationId, serviceId, serviceName, price, deliveryDays, quantity, chargePer, description, paymentType, milestones } = req.body;
 
     if (!conversationId || !serviceName || !price || !deliveryDays) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -111,21 +111,17 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       }
     }
 
-    // Response deadline: use offerExpiresInDays if provided, else waitingTimeToAcceptOffer (hours), else fallback to hours
+    // Response deadline: use admin "waiting time to accept custom offer" (Payment Settings -> Other settings)
     const settings = await PaymentSettings.getSettings();
     const responseDeadline = new Date();
-    if (typeof offerExpiresInDays === 'number' && offerExpiresInDays > 0) {
-      responseDeadline.setDate(responseDeadline.getDate() + offerExpiresInDays);
+    const waitingHours = typeof settings.waitingTimeToAcceptOffer === 'number'
+      ? settings.waitingTimeToAcceptOffer
+      : 0;
+    if (waitingHours > 0) {
+      responseDeadline.setHours(responseDeadline.getHours() + waitingHours);
     } else {
-      const waitingHours = typeof settings.waitingTimeToAcceptOffer === 'number'
-        ? settings.waitingTimeToAcceptOffer
-        : 0;
-      if (waitingHours > 0) {
-        responseDeadline.setHours(responseDeadline.getHours() + waitingHours);
-      } else {
-        const responseTimeHours = settings.customOfferResponseTimeHours || 48;
-        responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
-      }
+      const responseTimeHours = settings.customOfferResponseTimeHours || 48;
+      responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
     }
 
     const offerNumber = generateOfferNumber();

@@ -2809,7 +2809,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         disputeInfo: dispute ? {
           id: dispute.disputeId || undefined,
           status: dispute.status === 'final' ? 'closed' : dispute.status,
-          amount: totalWithoutServiceFee,
+          amount: dispute.amount != null ? dispute.amount : totalWithoutServiceFee,
+          milestoneIndices: Array.isArray(dispute.milestoneIndices) ? dispute.milestoneIndices : undefined,
           requirements: dispute.requirements || undefined,
           unmetRequirements: dispute.unmetRequirements || undefined,
           evidenceFiles: dispute.evidenceFiles || [],
@@ -4757,6 +4758,13 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     // Generate dispute ID
     const disputeId = `DISP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Disputed amount: for milestone with selection = sum of selected milestones; else = order refundable amount
+    const refundableAmount = (order.subtotal || 0) - (order.discount || 0);
+    const disputedAmount =
+      isMilestoneOrder && milestoneIndices && milestoneIndices.length > 0
+        ? milestoneIndices.reduce((sum, i) => sum + milestones[i].price * milestones[i].noOf, 0)
+        : refundableAmount;
+
     // Process evidence files
     const evidenceFiles = req.files ? req.files.map(file => file.path) : [];
 
@@ -4806,6 +4814,7 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
       decisionNotes: null,
       autoClosed: false,
       finalAmount: null,
+      amount: disputedAmount,
       ...(milestoneIndices && milestoneIndices.length > 0 && { milestoneIndices }),
     });
 
@@ -5157,10 +5166,11 @@ router.post('/:orderId/dispute/offer', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot submit offer for a closed dispute' });
     }
 
-    // Validate offer amount does not exceed refundable amount (exclude service fee - not refundable)
+    // Validate offer amount does not exceed disputed amount (for milestone disputes = selected milestones total; else = refundable order amount)
     const refundableAmount = (order.subtotal || 0) - (order.discount || 0);
-    if (parsedAmount > refundableAmount) {
-      return res.status(400).json({ error: `Offer amount cannot exceed the refundable order amount (£${refundableAmount.toFixed(2)})` });
+    const maxOfferAmount = dispute.amount != null ? dispute.amount : refundableAmount;
+    if (parsedAmount > maxOfferAmount) {
+      return res.status(400).json({ error: `Offer amount cannot exceed the refundable order amount (£${maxOfferAmount.toFixed(2)})` });
     }
 
     // Check if user is involved in the dispute
@@ -6119,10 +6129,21 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
       }
     }
 
-    // Close dispute (keep dispute data) and restore order to delivered status
-    // Restore order to delivered state (the same stage before dispute opening)
-    order.status = 'delivered';
-    order.deliveryStatus = 'delivered';
+    // Close dispute (keep dispute data) and restore order to previous state (before dispute).
+    // For milestone orders: only set delivered if ALL milestones were delivered; otherwise restore to active.
+    // Do not modify milestoneDeliveries – only actually delivered milestones stay in the list.
+    const milestones = order.metadata?.milestones || [];
+    const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+    const isMilestoneOrder = Array.isArray(milestones) && milestones.length > 0;
+    const allMilestonesDelivered = isMilestoneOrder && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length >= milestones.length;
+
+    if (isMilestoneOrder && !allMilestonesDelivered) {
+      order.status = 'In Progress';
+      order.deliveryStatus = 'active';
+    } else {
+      order.status = 'delivered';
+      order.deliveryStatus = 'delivered';
+    }
 
     const cancelledAt = new Date();
     const cancelledByRole = isClientCancelling ? 'client' : 'professional';

@@ -86,6 +86,7 @@ export default function DisputeDiscussionPage() {
   const [isAcceptConfirmOpen, setIsAcceptConfirmOpen] = useState(false);
   const [isRejectConfirmOpen, setIsRejectConfirmOpen] = useState(false);
   const [isOfferActionPending, setIsOfferActionPending] = useState(false);
+  const [showDisputedMilestones, setShowDisputedMilestones] = useState(false);
   
   // Determine if this is an order dispute or job dispute
   const isOrderDispute = dispute && "orderId" in dispute;
@@ -812,9 +813,11 @@ export default function DisputeDiscussionPage() {
   const activeUserOffer = isCurrentUserClient ? (dispute as any).clientOffer : (dispute as any).professionalOffer;
   const userOffer = typeof activeUserOffer === "number" ? activeUserOffer : latestUserOfferFromHistory;
   const otherOffer = isCurrentUserClient ? (dispute as any).professionalOffer : (dispute as any).clientOffer;
-  const maxOfferAmount = isOrderDispute
-    ? (order?.refundableAmount ?? dispute.amount)
-    : dispute.amount;
+  // Use dispute.amount when set (selected milestones total for milestone disputes; refundable for others). Fallback to order refundable for legacy.
+  const maxOfferAmount =
+    typeof dispute.amount === "number"
+      ? dispute.amount
+      : (isOrderDispute ? (order?.refundableAmount ?? 0) : 0);
 
   const hasUserMadeOffer = typeof userOffer === "number";
   const hasOtherMadeOffer = otherOffer !== undefined && otherOffer !== null;
@@ -1399,8 +1402,61 @@ export default function DisputeDiscussionPage() {
                 Total disputed {isOrderDispute ? "order" : "milestone"}
               </p>
               <p className="font-['Poppins',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
-                £ {dispute.amount.toFixed(0)}
+                £ {(typeof dispute.amount === "number" ? dispute.amount : 0).toFixed(2)}
               </p>
+
+              {/* Show milestone button – always for milestone-type order disputes, above Current Offer Status */}
+              {isOrderDispute &&
+                order &&
+                Array.isArray(order.metadata?.milestones) &&
+                order.metadata.milestones.length > 0 && (
+                  <div className="mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowDisputedMilestones((prev) => !prev)}
+                      className="font-['Poppins',sans-serif] text-[13px] text-[#3D78CB] hover:underline focus:outline-none"
+                    >
+                      {showDisputedMilestones ? "Hide milestones" : "Show milestones"}
+                    </button>
+                    {showDisputedMilestones && (() => {
+                      const rawIndices = (dispute as any).milestoneIndices ?? order?.disputeInfo?.milestoneIndices;
+                      const hasIndices = Array.isArray(rawIndices) && rawIndices.length > 0;
+                      const indices = hasIndices
+                        ? (rawIndices as number[]).filter(
+                            (i) => typeof i === "number" && i >= 0 && i < (order!.metadata!.milestones!.length ?? 0)
+                          )
+                        : [];
+                      return (
+                        <div className="mt-3 p-3 bg-[#f8f9fa] rounded-lg text-left border border-gray-200">
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2 font-medium">
+                            Milestones in this dispute:
+                          </p>
+                          {indices.length > 0 ? (
+                            <ul className="space-y-2">
+                              {indices.map((idx) => {
+                                const m = order!.metadata!.milestones![idx];
+                                const name = m?.name || `Milestone ${idx + 1}`;
+                                const unitPrice = typeof m?.price === "number" ? m.price : typeof m?.amount === "number" ? m.amount : 0;
+                                const qty = typeof m?.noOf === "number" ? m.noOf : typeof m?.hours === "number" ? m.hours : 1;
+                                const totalPrice = unitPrice * qty;
+                                return (
+                                  <li key={idx} className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] flex justify-between items-baseline gap-2">
+                                    <span>{name}</span>
+                                    <span className="text-[#6b6b6b] shrink-0 font-medium">£{totalPrice.toFixed(2)}</span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : (
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">
+                              No specific milestones selected for this dispute.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+              )}
 
               {!isOrderDispute && showMilestones && milestone && (
                 <div className="mt-4 p-3 bg-[#f8f9fa] rounded-lg text-left">

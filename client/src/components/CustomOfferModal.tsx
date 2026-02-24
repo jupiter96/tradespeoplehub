@@ -98,8 +98,6 @@ export default function CustomOfferModal({
   const [chargePer, setChargePer] = useState<string>("service");
   const [quantity, setQuantity] = useState<string>("1");
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
-  const [offerExpiresEnabled, setOfferExpiresEnabled] = useState(false);
-  const [offerExpiresInDays, setOfferExpiresInDays] = useState<string>("3");
   const [categoryPriceUnits, setCategoryPriceUnits] = useState<PriceUnitOption[]>([]);
   const [savedMilestones, setSavedMilestones] = useState<Set<string>>(new Set());
 
@@ -367,7 +365,6 @@ export default function CustomOfferModal({
           paymentType: paymentType,
           milestones: paymentType === "milestone" ? milestones.map(({ id, ...m }) => m) : undefined,
           attributes: selectedAttributes,
-          ...(offerExpiresEnabled && { offerExpiresInDays: parseInt(offerExpiresInDays, 10) || 3 }),
         }),
       });
 
@@ -969,30 +966,6 @@ export default function CustomOfferModal({
                     </div>
                   )}
 
-                  {/* Offer expires in */}
-                  <div className="space-y-2 mt-6 pt-4 border-t border-gray-200">
-                    <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      <Checkbox
-                        checked={offerExpiresEnabled}
-                        onCheckedChange={(c) => setOfferExpiresEnabled(!!c)}
-                      />
-                      <span>Offer expires in</span>
-                    </label>
-                    {offerExpiresEnabled && (
-                      <div className="flex items-center gap-2 pl-6">
-                        <Input
-                          type="number"
-                          placeholder="Days"
-                          value={offerExpiresInDays}
-                          onChange={(e) => setOfferExpiresInDays(e.target.value)}
-                          className="w-20 font-['Poppins',sans-serif] text-[14px] border-gray-200"
-                          min="1"
-                          max="30"
-                        />
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">days</span>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 {/* Milestone Details (if milestone payment selected) */}
