@@ -2624,8 +2624,11 @@ export default function ClientOrdersSection() {
               <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md">
                 <h3 className="font-['Poppins',sans-serif] text-[18px] sm:text-[20px] text-[#2c353f] font-semibold mb-2">
                   {(() => {
-                    const deadline = currentOrder.metadata?.autoApprovedAt || currentOrder.metadata?.autoApprovedDeadlineAt;
-                    if (deadline) {
+                    const isAutoCompleted =
+                      currentOrder.metadata?.autoApprovedAt ||
+                      currentOrder.metadata?.autoApprovedDeadlineAt ||
+                      currentOrder.metadata?.autoApprovedReason === "no_client_response";
+                    if (isAutoCompleted) {
                       return "Your order has been completed automatically.";
                     }
                     const disputeInfo = currentOrder.disputeInfo;
@@ -2653,8 +2656,14 @@ export default function ClientOrdersSection() {
                 </h3>
                 <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words whitespace-pre-line">
                   {(() => {
-                    const isAutoApproved = currentOrder.metadata?.autoApprovedAt ?? currentOrder.metadata?.autoApprovedDeadlineAt;
-                    const deadlineForDisplay = currentOrder.metadata?.autoApprovedDeadlineAt || currentOrder.metadata?.autoApprovedAt;
+                    const isAutoApproved =
+                      currentOrder.metadata?.autoApprovedAt ??
+                      currentOrder.metadata?.autoApprovedDeadlineAt ??
+                      (currentOrder.metadata?.autoApprovedReason === "no_client_response" ? true : null);
+                    const deadlineForDisplay =
+                      currentOrder.metadata?.autoApprovedDeadlineAt ||
+                      currentOrder.metadata?.autoApprovedAt ||
+                      (currentOrder.completedDate ? new Date(currentOrder.completedDate).toISOString() : null);
                     if (isAutoApproved && deadlineForDisplay) {
                       const deadlineStr = formatDateOrdinal(deadlineForDisplay);
                       return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.`;

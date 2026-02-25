@@ -2805,7 +2805,11 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           })) : [],
           submittedAt: order.additionalInformation.submittedAt ? new Date(order.additionalInformation.submittedAt).toISOString() : undefined,
         } : undefined,
-        metadata: order.metadata || {},
+        metadata: {
+          ...(order.metadata && typeof order.metadata === 'object' ? order.metadata : {}),
+          autoApprovedAt: order.metadata?.autoApprovedAt ? new Date(order.metadata.autoApprovedAt).toISOString() : undefined,
+          autoApprovedDeadlineAt: order.metadata?.autoApprovedDeadlineAt ? new Date(order.metadata.autoApprovedDeadlineAt).toISOString() : undefined,
+        },
         // Refundable amount (subtotal - discount); dispute max is this, service fee is not refundable
         refundableAmount: totalWithoutServiceFee,
         disputeInfo: dispute ? {

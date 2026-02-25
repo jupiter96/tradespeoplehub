@@ -192,6 +192,7 @@ async function processAutoCompleteDeliveredOrders() {
         order.metadata.autoApprovedAt = new Date();
         order.metadata.autoApprovedDeadlineAt = deadlineDate;
         order.metadata.autoApprovedReason = 'no_client_response';
+        order.markModified('metadata');
         await order.save();
 
         if (order.metadata?.fromCustomOffer && order.metadata?.customOfferId) {
