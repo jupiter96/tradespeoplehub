@@ -3657,11 +3657,16 @@ export default function ClientOrdersSection() {
                                   <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                                   <div className="flex-1">
                                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] leading-relaxed break-words">
-                                      Your work has been delivered. Please approve the delivery or request a revision. {event.at && (() => {
-                                        const deliveryDate = new Date(event.at);
-                                        const deadlineDate = new Date(deliveryDate);
-                                        deadlineDate.setDate(deadlineDate.getDate() + 1);
-                                        return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                                      Your work has been delivered. Please approve the delivery or request a revision. {(() => {
+                                        const deadline = (currentOrder as any).deliveredWorkResponseDeadline;
+                                        if (deadline) {
+                                          return `You have until ${formatDeliveredResponseDeadline(deadline)} to respond.`;
+                                        }
+                                        if (event.at) {
+                                          const fallback = new Date(new Date(event.at).getTime() + 48 * 60 * 60 * 1000);
+                                          return `You have until ${formatDeliveredResponseDeadline(fallback.toISOString())} to respond.`;
+                                        }
+                                        return "";
                                       })()} If no action is taken by then, the order will be automatically completed.
                                     </p>
                                   </div>
@@ -4386,11 +4391,16 @@ export default function ClientOrdersSection() {
                                 <div className="flex gap-2 mb-4">
                                   <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                                   <p className="font-['Poppins',sans-serif] text-[14px] text-blue-900">
-                                    Your work has been delivered. Please approve the delivery or request a revision. {delivery.at && (() => {
-                                      const deliveryDate = new Date(delivery.at);
-                                      const deadlineDate = new Date(deliveryDate);
-                                      deadlineDate.setDate(deadlineDate.getDate() + 1);
-                                      return `You have until ${formatDate(deadlineDate.toISOString())} to respond.`;
+                                    Your work has been delivered. Please approve the delivery or request a revision. {(() => {
+                                      const deadline = (currentOrder as any).deliveredWorkResponseDeadline;
+                                      if (deadline) {
+                                        return `You have until ${formatDeliveredResponseDeadline(deadline)} to respond.`;
+                                      }
+                                      if (delivery.at) {
+                                        const fallback = new Date(new Date(delivery.at).getTime() + 48 * 60 * 60 * 1000);
+                                        return `You have until ${formatDeliveredResponseDeadline(fallback.toISOString())} to respond.`;
+                                      }
+                                      return "";
                                     })()} If no action is taken by then, the order will be automatically completed.
                                   </p>
                                 </div>
