@@ -2708,6 +2708,8 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
             : undefined,
           disputeCancelledBy: order.metadata?.disputeCancelledBy?.toString?.() || order.metadata?.disputeCancelledBy,
           disputeCancelledByRole: order.metadata?.disputeCancelledByRole || undefined,
+          autoApprovedAt: order.metadata?.autoApprovedAt ? new Date(order.metadata.autoApprovedAt).toISOString() : undefined,
+          autoApprovedDeadlineAt: order.metadata?.autoApprovedDeadlineAt ? new Date(order.metadata.autoApprovedDeadlineAt).toISOString() : undefined,
         },
         review: order.review || undefined,
         professionalResponse: order.professionalResponse || undefined,

@@ -714,11 +714,10 @@ export default function ProfessionalOrderTimelineTab({
           </h4>
           <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4 whitespace-pre-line">
             {(() => {
-              const autoDeadline =
-                (currentOrder as any).metadata?.autoApprovedDeadlineAt ||
-                (currentOrder as any).metadata?.autoApprovedAt;
-              if (autoDeadline) {
-                const deadlineStr = formatDateOrdinal(autoDeadline);
+              const isAutoApproved = (currentOrder as any).metadata?.autoApprovedAt ?? (currentOrder as any).metadata?.autoApprovedDeadlineAt;
+              const deadlineForDisplay = (currentOrder as any).metadata?.autoApprovedDeadlineAt || (currentOrder as any).metadata?.autoApprovedAt;
+              if (isAutoApproved && deadlineForDisplay) {
+                const deadlineStr = formatDateOrdinal(deadlineForDisplay);
                 return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response from the client before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the client in the form of feedback.`;
               }
               const disputeInfo = (currentOrder as any).disputeInfo;

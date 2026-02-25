@@ -2653,11 +2653,10 @@ export default function ClientOrdersSection() {
                 </h3>
                 <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b] mb-4 break-words whitespace-pre-line">
                   {(() => {
-                    const deadline =
-                      currentOrder.metadata?.autoApprovedDeadlineAt ||
-                      currentOrder.metadata?.autoApprovedAt;
-                    if (deadline) {
-                      const deadlineStr = formatDateOrdinal(deadline);
+                    const isAutoApproved = currentOrder.metadata?.autoApprovedAt ?? currentOrder.metadata?.autoApprovedDeadlineAt;
+                    const deadlineForDisplay = currentOrder.metadata?.autoApprovedDeadlineAt || currentOrder.metadata?.autoApprovedAt;
+                    if (isAutoApproved && deadlineForDisplay) {
+                      const deadlineStr = formatDateOrdinal(deadlineForDisplay);
                       return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.`;
                     }
                     const disputeInfo = currentOrder.disputeInfo;
