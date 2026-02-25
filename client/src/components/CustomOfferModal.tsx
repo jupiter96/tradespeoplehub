@@ -100,8 +100,18 @@ export default function CustomOfferModal({
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
   const [categoryPriceUnits, setCategoryPriceUnits] = useState<PriceUnitOption[]>([]);
   const [savedMilestones, setSavedMilestones] = useState<Set<string>>(new Set());
+  /** Hours until offer expires (client must accept/reject before this). Pro chooses in modal. */
+  const [offerExpireInHours, setOfferExpireInHours] = useState<string>("72");
 
   const selectedService = professionalServices.find(s => s.id === selectedServiceId);
+
+  const OFFER_EXPIRE_OPTIONS: { value: string; label: string }[] = [
+    { value: "24", label: "1 day" },
+    { value: "48", label: "2 days" },
+    { value: "72", label: "3 days" },
+    { value: "168", label: "7 days" },
+    { value: "336", label: "14 days" },
+  ];
 
   // Fetch professional's services
   useEffect(() => {
@@ -166,8 +176,7 @@ export default function CustomOfferModal({
     setChargePer("service");
     setQuantity("1");
     setSelectedAttributes([]);
-    setOfferExpiresEnabled(false);
-    setOfferExpiresInDays("3");
+    setOfferExpireInHours("72");
     setCategoryPriceUnits([]);
     setSavedMilestones(new Set());
     onClose();
@@ -365,6 +374,7 @@ export default function CustomOfferModal({
           paymentType: paymentType,
           milestones: paymentType === "milestone" ? milestones.map(({ id, ...m }) => m) : undefined,
           attributes: selectedAttributes,
+          responseTimeHours: parseInt(offerExpireInHours, 10) || 72,
         }),
       });
 
@@ -841,6 +851,26 @@ export default function CustomOfferModal({
                     onChange={(e) => setOfferDescription(e.target.value)}
                     className="font-['Poppins',sans-serif] text-[14px] border-gray-200 focus:border-[#FE8A0F] min-h-[100px]"
                   />
+                </div>
+
+                {/* Offer expires in - client must accept/reject before this time */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#FE8A0F]" />
+                    Offer expires in
+                  </Label>
+                  <select
+                    value={offerExpireInHours}
+                    onChange={(e) => setOfferExpireInHours(e.target.value)}
+                    className="flex h-10 w-full max-w-xs items-center justify-between gap-2 rounded-md border border-input bg-input-background px-3 py-2 text-sm font-['Poppins',sans-serif] border-gray-200 focus:border-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/20 cursor-pointer"
+                  >
+                    {OFFER_EXPIRE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                    The client must accept or reject the offer before this time.
+                  </p>
                 </div>
 
                 {/* Switch to Milestones (single payment only) */}

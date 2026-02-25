@@ -65,7 +65,6 @@ export default function AdminPaymentSettingsPage() {
     waitingTimeInDays: 1,
     feedbackReviewValidityDays: 90,
     inviteToReview: "Activated",
-    waitingTimeToAcceptOffer: 2,
     deliveredWorkResponseTimeDays: 2,
     deliveredWorkResponseTimeHours: 48,
     stepInAmount: 5.00,
@@ -994,26 +993,6 @@ export default function AdminPaymentSettingsPage() {
 
                   {/* Right Column */}
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="waitingTimeToAcceptOffer" className="font-['Poppins',sans-serif]">
-                        Waiting time to accept custom offer:
-                      </Label>
-                      <div className="relative mt-2">
-                        <Input
-                          id="waitingTimeToAcceptOffer"
-                          type="number"
-                          value={settings.waitingTimeToAcceptOffer === "" ? "" : settings.waitingTimeToAcceptOffer ?? 0}
-                          onChange={(e) => updateField("waitingTimeToAcceptOffer", parseNumberInput(e.target.value, "float"))}
-                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
-                          min="0"
-                          step="0.01"
-                        />
-                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? 'hour' : 'hours')(settings.waitingTimeToAcceptOffer === "" ? 0 : settings.waitingTimeToAcceptOffer ?? 0)}</span>
-                      </div>
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
-                        How many hours the receiver has to accept or reject a custom offer.
-                      </p>
-                    </div>
                     <div>
                       <Label htmlFor="deliveredWorkResponseTimeHours" className="font-['Poppins',sans-serif]">
                         Delivered work response time:

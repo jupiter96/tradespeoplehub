@@ -207,11 +207,6 @@ const paymentSettingsSchema = new mongoose.Schema(
       enum: ['Activated', 'Deactivated'],
       default: 'Activated',
     },
-    waitingTimeToAcceptOffer: {
-      type: Number,
-      default: 2,
-      min: 0,
-    },
     waitingTimeToApproveOrder: {
       type: Number,
       default: 2,
@@ -281,12 +276,6 @@ const paymentSettingsSchema = new mongoose.Schema(
       type: Number,
       default: 50,
       min: 0,
-    },
-    // Custom offer response time in hours (default 48 hours)
-    customOfferResponseTimeHours: {
-      type: Number,
-      default: 48,
-      min: 1,
     },
     searchApiKey: {
       type: String,

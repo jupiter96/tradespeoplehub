@@ -111,18 +111,15 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
       }
     }
 
-    // Response deadline: use admin "waiting time to accept custom offer" (Payment Settings -> Other settings)
-    const settings = await PaymentSettings.getSettings();
-    const responseDeadline = new Date();
-    const waitingHours = typeof settings.waitingTimeToAcceptOffer === 'number'
-      ? settings.waitingTimeToAcceptOffer
-      : 0;
-    if (waitingHours > 0) {
-      responseDeadline.setHours(responseDeadline.getHours() + waitingHours);
-    } else {
-      const responseTimeHours = settings.customOfferResponseTimeHours || 48;
-      responseDeadline.setHours(responseDeadline.getHours() + responseTimeHours);
-    }
+    // Response deadline: set by pro in modal (responseTimeHours). Default 72 hours if missing/invalid.
+    const hoursFromBody = req.body.responseTimeHours;
+    const responseTimeHours = typeof hoursFromBody === 'number' && hoursFromBody >= 1 && hoursFromBody <= 720
+      ? hoursFromBody
+      : (typeof hoursFromBody === 'string' ? parseInt(hoursFromBody, 10) : NaN);
+    const effectiveHours = Number.isFinite(responseTimeHours) && responseTimeHours >= 1 && responseTimeHours <= 720
+      ? responseTimeHours
+      : 72;
+    const responseDeadline = new Date(Date.now() + effectiveHours * 60 * 60 * 1000);
 
     const offerNumber = generateOfferNumber();
 
