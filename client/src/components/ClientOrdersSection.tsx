@@ -3326,19 +3326,28 @@ export default function ClientOrdersSection() {
                     return bTime - aTime; // Newest first
                   });
 
-                // Find the latest delivery event (newest first, so first "Work Delivered" event)
-                const latestDeliveryEvent = sortedTimelineEvents.find(e => e.title === "Work Delivered");
+                // For "Work Delivered": show Approve/Request modification for every delivery that is not yet processed (order not completed, no active revision).
+                const orderCompleted = currentOrder.status === "Completed";
+                const hasActiveRevision = (() => {
+                  const rr = (currentOrder as any).revisionRequest;
+                  if (!rr) return false;
+                  const arr = Array.isArray(rr) ? rr : [rr];
+                  return arr.some((r: any) => r && (r.status === "pending" || r.status === "in_progress"));
+                })();
+                const showDeliveryActions = (event: { title?: string }) =>
+                  event.title === "Work Delivered" &&
+                  !orderCompleted &&
+                  !hasActiveRevision &&
+                  (currentOrder.status === "delivered" ||
+                    ((currentOrder as any).metadata?.paymentType === "milestone" &&
+                      Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
+                      (currentOrder as any).metadata.milestoneDeliveries.length > 0));
 
                 return sortedTimelineEvents.map((event, index) => {
                   // Get delivery number if this is a "Work Delivered" event
                   const deliveryNumber = event.title === "Work Delivered" 
                     ? deliveryNumberMap.get(event.at || 'no-date')
                     : null;
-                  
-                  // Check if this is the latest delivery event
-                  const isLatestDelivery = latestDeliveryEvent && 
-                    event.title === "Work Delivered" && 
-                    event.at === latestDeliveryEvent.at;
 
                   return (
                     <div key={`${event.id}-${event.at || "na"}-${index}`} className="flex gap-4 mb-0 relative group">
@@ -3640,13 +3649,8 @@ export default function ClientOrdersSection() {
                               </div>
                             );
                           })()}
-                          {/* Work Delivered Action Card - show for latest delivery when order is delivered, or for milestone orders as soon as any milestone is delivered */}
-                          {event.title === "Work Delivered" && 
-                           isLatestDelivery &&
-                           (currentOrder.status === "delivered" ||
-                            ((currentOrder as any).metadata?.paymentType === "milestone" &&
-                             Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
-                             (currentOrder as any).metadata.milestoneDeliveries.length > 0)) && (
+                          {/* Work Delivered Action Card - show for every undecided delivery (all milestones show buttons until order is completed or revision is active) */}
+                          {showDeliveryActions(event) && (
                             <div className="mt-3">
                               <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 shadow-sm">
                                 <div className="flex gap-3 mb-4">
@@ -4367,13 +4371,17 @@ export default function ClientOrdersSection() {
                               </div>
                             )}
 
-                            {/* Approval Message - Show for latest delivery if order is not completed and no active revision request */}
-                            {/* {index === sortedDeliveries.length - 1 &&
-                             (currentOrder.status !== "Completed" && currentOrder.status !== "Cancelled") && 
-                             (currentOrder.status === "delivered" || currentOrder.status === "In Progress") &&
-                             (!currentOrder.revisionRequest || 
-                              (currentOrder.revisionRequest.status !== 'pending' && 
-                               currentOrder.revisionRequest.status !== 'in_progress')) && (
+                            {/* Approval / Request modification - show for every delivery while order not completed and no active revision */}
+                            {currentOrder.status !== "Completed" &&
+                             currentOrder.status !== "Cancelled" &&
+                             (currentOrder.status === "delivered" || currentOrder.status === "In Progress" ||
+                              ((currentOrder as any).metadata?.paymentType === "milestone" &&
+                               Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
+                               (currentOrder as any).metadata.milestoneDeliveries.length > 0)) &&
+                             (!(currentOrder as any).revisionRequest ||
+                              (Array.isArray((currentOrder as any).revisionRequest)
+                                ? !(currentOrder as any).revisionRequest.some((r: any) => r && (r.status === "pending" || r.status === "in_progress"))
+                                : ((currentOrder as any).revisionRequest.status !== "pending" && (currentOrder as any).revisionRequest.status !== "in_progress"))) && (
                               <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
                                 <div className="flex gap-2 mb-4">
                                   <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -4411,7 +4419,7 @@ export default function ClientOrdersSection() {
                                   </Button>
                                 </div>
                               </div>
-                            )} */}
+                            )}
                           </div>
                         </div>
                         );
