@@ -47,12 +47,22 @@ async function processDeliveryReminders() {
     const reminderThreshold = new Date(now.getTime() - DELIVERY_REMINDER_HOURS_AFTER * 60 * 60 * 1000);
 
     const orders = await Order.find({
-      deliveryStatus: 'delivered',
       status: 'delivered',
       deliveredDate: { $lte: reminderThreshold },
-      $or: [
-        { 'metadata.deliveryReminderSentAt': null },
-        { 'metadata.deliveryReminderSentAt': { $exists: false } },
+      $and: [
+        {
+          $or: [
+            { deliveryStatus: 'delivered' },
+            { deliveryStatus: { $exists: false } },
+            { deliveryStatus: null },
+          ],
+        },
+        {
+          $or: [
+            { 'metadata.deliveryReminderSentAt': null },
+            { 'metadata.deliveryReminderSentAt': { $exists: false } },
+          ],
+        },
       ],
     }).populate('client');
 
@@ -117,16 +127,20 @@ async function processAutoCompleteDeliveredOrders() {
     const now = new Date();
     const threshold = new Date(now.getTime() - effectiveResponseHours * 60 * 60 * 1000);
 
-    const orders = await Order.find({
+    // ---- 1) Regular orders (and milestone orders with all delivered): status delivered, deliveredDate past threshold
+    const deliveredOrders = await Order.find({
       status: { $in: ['delivered', 'Delivered'] },
-      deliveryStatus: 'delivered',
       deliveredDate: { $exists: true, $ne: null, $lte: threshold },
+      $or: [
+        { deliveryStatus: 'delivered' },
+        { deliveryStatus: { $exists: false } },
+        { deliveryStatus: null },
+      ],
     });
 
-    for (const order of orders) {
+    for (const order of deliveredOrders) {
       try {
         if (order.status === 'Completed' || order.deliveryStatus === 'completed') continue;
-        // Skip only when dispute is still open (not closed)
         const disputeStatus = order.metadata?.disputeStatus;
         if (disputeStatus === 'open' || disputeStatus === 'negotiation' || disputeStatus === 'admin_arbitration') continue;
         if (order.status === 'Revision') continue;
@@ -180,7 +194,6 @@ async function processAutoCompleteDeliveredOrders() {
         order.metadata.autoApprovedReason = 'no_client_response';
         await order.save();
 
-        // Sync custom offer chat message status to 'completed' if applicable
         if (order.metadata?.fromCustomOffer && order.metadata?.customOfferId) {
           try {
             const customOffer = await CustomOffer.findById(order.metadata.customOfferId);
@@ -198,6 +211,102 @@ async function processAutoCompleteDeliveredOrders() {
         }
       } catch (orderErr) {
         console.error(`[Order Status Scheduler] Error auto-completing order ${order.orderNumber}:`, orderErr);
+      }
+    }
+
+    // ---- 2) Milestone orders (partially delivered): auto-approve each milestone whose deliveredAt is past threshold
+    const milestoneOrders = await Order.find({
+      status: 'In Progress',
+      'metadata.paymentType': 'milestone',
+      'metadata.milestones.0': { $exists: true },
+      'metadata.milestoneDeliveries': { $exists: true, $ne: [] },
+    });
+
+    for (const order of milestoneOrders) {
+      try {
+        if (order.status === 'Completed') continue;
+        const disputeStatus = order.metadata?.disputeStatus;
+        if (disputeStatus === 'open' || disputeStatus === 'negotiation' || disputeStatus === 'admin_arbitration') continue;
+
+        const milestones = order.metadata?.milestones || [];
+        const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+        const disputeResolved = order.metadata?.disputeResolvedMilestoneIndices || [];
+
+        let anyUpdated = false;
+        for (const d of milestoneDeliveries) {
+          if (d.approvedAt) continue;
+          const deliveredAt = d.deliveredAt ? new Date(d.deliveredAt) : null;
+          if (!deliveredAt || deliveredAt > threshold) continue;
+          d.approvedAt = new Date();
+          anyUpdated = true;
+        }
+
+        if (!anyUpdated) continue;
+
+        order.markModified('metadata');
+
+        // If all milestones are now delivered and approved (or dispute-resolved), complete the order
+        const allComplete = Array.isArray(milestones) && milestones.length > 0 &&
+          milestones.every((_, idx) =>
+            disputeResolved.includes(idx) ||
+            milestoneDeliveries.some((d) => d.milestoneIndex === idx && d.approvedAt)
+          );
+
+        if (allComplete) {
+          const professional = await User.findById(order.professional);
+          if (professional) {
+            const professionalPayoutAmount = order.metadata?.professionalPayoutAmount || order.subtotal;
+            if (professionalPayoutAmount > 0) {
+              professional.walletBalance = (professional.walletBalance || 0) + professionalPayoutAmount;
+              await professional.save();
+              const payoutTransaction = new Wallet({
+                userId: professional._id,
+                type: 'deposit',
+                amount: professionalPayoutAmount,
+                balance: professional.walletBalance,
+                status: 'completed',
+                paymentMethod: 'wallet',
+                orderId: order._id,
+                description: `Auto-approved payment for Order ${order.orderNumber}`,
+                metadata: {
+                  orderNumber: order.orderNumber,
+                  orderSubtotal: order.subtotal,
+                  discount: order.discount || 0,
+                  promoCode: order.promoCode || null,
+                  promoCodeType: order.metadata?.promoCodeType || null,
+                  autoApproved: true,
+                },
+              });
+              await payoutTransaction.save();
+            }
+          }
+          order.status = 'Completed';
+          order.deliveryStatus = 'completed';
+          order.completedDate = new Date();
+          if (!order.metadata) order.metadata = {};
+          order.metadata.autoApprovedAt = new Date();
+          order.metadata.autoApprovedReason = 'no_client_response';
+        }
+
+        await order.save();
+
+        if (order.status === 'Completed' && order.metadata?.fromCustomOffer && order.metadata?.customOfferId) {
+          try {
+            const customOffer = await CustomOffer.findById(order.metadata.customOfferId);
+            if (customOffer?.message) {
+              const message = await Message.findById(customOffer.message);
+              if (message?.orderDetails) {
+                message.orderDetails.status = 'completed';
+                message.markModified('orderDetails');
+                await message.save();
+              }
+            }
+          } catch (syncErr) {
+            console.error(`[Order Status Scheduler] Failed to sync custom offer message for order ${order.orderNumber}:`, syncErr);
+          }
+        }
+      } catch (orderErr) {
+        console.error(`[Order Status Scheduler] Error auto-completing milestone order ${order.orderNumber}:`, orderErr);
       }
     }
   } catch (error) {

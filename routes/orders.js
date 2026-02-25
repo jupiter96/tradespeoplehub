@@ -4253,7 +4253,16 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
     order.status = 'Completed';
     order.deliveryStatus = 'completed';
     order.completedDate = new Date();
-    
+
+    // Mark all milestone deliveries as approved when client completes (for consistency with auto-approve)
+    if (isMilestoneOrder && order.metadata?.milestoneDeliveries?.length) {
+      const approvedAt = new Date();
+      for (const d of order.metadata.milestoneDeliveries) {
+        if (!d.approvedAt) d.approvedAt = approvedAt;
+      }
+      order.markModified('metadata');
+    }
+
     // Store rating and review in order (for backward compatibility)
     if (rating !== undefined) {
       order.rating = rating;

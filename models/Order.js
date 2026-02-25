@@ -233,6 +233,15 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    deliveryStatus: {
+      type: String,
+      enum: ['pending', 'active', 'delivered', 'completed', 'cancelled', 'revision', 'dispute'],
+      default: 'pending',
+    },
+    completedDate: {
+      type: Date,
+      default: null,
+    },
     // Extension request for delivery time
     extensionRequest: {
       status: {
