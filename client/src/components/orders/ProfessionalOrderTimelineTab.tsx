@@ -724,7 +724,8 @@ export default function ProfessionalOrderTimelineTab({
                 (currentOrder as any).metadata?.autoApprovedAt ||
                 ((currentOrder as any).completedDate ? new Date((currentOrder as any).completedDate).toISOString() : null);
               if (isAutoApproved && deadlineForDisplay) {
-                const deadlineStr = formatDateOrdinal(typeof deadlineForDisplay === "string" ? deadlineForDisplay : new Date(deadlineForDisplay).toISOString());
+                const deadlineIso = typeof deadlineForDisplay === "string" ? deadlineForDisplay : new Date(deadlineForDisplay).toISOString();
+                const deadlineStr = formatDeliveredResponseDeadline(deadlineIso);
                 return `Your order has been completed automatically. Your order has been approved and completed automatically due to no response from the client before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the client in the form of feedback.`;
               }
               const disputeInfo = (currentOrder as any).disputeInfo;
