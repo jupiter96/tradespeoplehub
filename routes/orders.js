@@ -3795,12 +3795,18 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       if (Number.isInteger(parsed) && parsed >= 0) {
         revisionMilestoneIndex = parsed;
       } else {
-        // Infer: the delivered milestone(s) without approvedAt; if exactly one, use it
+        // Infer: revision is for the delivered milestone that has no approvedAt
         const deliveredNotApproved = (order.metadata.milestoneDeliveries || []).filter(
           d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt
         );
         if (deliveredNotApproved.length === 1) {
-          revisionMilestoneIndex = deliveredNotApproved[0].milestoneIndex;
+          // When there is only one delivery in the whole order, the revision is for the first (and only) delivered milestone = index 0
+          const totalDeliveries = (order.metadata.milestoneDeliveries || []).length;
+          if (totalDeliveries === 1) {
+            revisionMilestoneIndex = 0;
+          } else {
+            revisionMilestoneIndex = deliveredNotApproved[0].milestoneIndex;
+          }
         }
       }
       // Milestone orders: only one active revision per milestone

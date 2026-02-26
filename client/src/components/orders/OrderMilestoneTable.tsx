@@ -52,11 +52,19 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
       ? order.revisionRequest
       : [order.revisionRequest]
     : [];
-  const activeRevisionMilestoneIndices = new Set(
-    revisionRequests
+  const activeRevisionMilestoneIndices = (() => {
+    const fromMilestoneIndex = revisionRequests
       .filter((rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && typeof rr.milestoneIndex === "number")
-      .map((rr) => rr.milestoneIndex as number)
-  );
+      .map((rr) => rr.milestoneIndex as number);
+    const fallback: number[] = [];
+    const activeWithoutIndex = revisionRequests.filter(
+      (rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && (rr.milestoneIndex === undefined || rr.milestoneIndex === null)
+    );
+    if (activeWithoutIndex.length > 0 && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length === 1) {
+      fallback.push(0);
+    }
+    return new Set([...fromMilestoneIndex, ...fallback]);
+  })();
 
   return (
     <div className="mb-6">
