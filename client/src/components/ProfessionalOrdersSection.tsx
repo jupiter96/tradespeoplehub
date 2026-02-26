@@ -1587,7 +1587,7 @@ function ProfessionalOrdersSection() {
 
               {/* Milestone Tab - only for milestone custom offers */}
               <TabsContent value="milestone" className="mt-4 md:mt-6 px-4 md:px-6">
-                <OrderMilestoneTable order={currentOrder as any} inProgressLabel="Active" />
+                <OrderMilestoneTable order={currentOrder as any} inProgressLabel="In Progress" />
               </TabsContent>
 
               {/* Additional Info Tab */}

@@ -102,6 +102,7 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
                 if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
                 if (isMilestoneResolvedByDispute) return { label: "Resolved (dispute)", color: "text-green-600" };
                 if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
+                if (orderStatus === "revision") return { label: inProgressLabel, color: "text-blue-600" };
                 if (orderStatus === "in progress") return { label: inProgressLabel, color: "text-blue-600" };
                 if (orderStatus === "delivered") return { label: "Delivered", color: "text-green-600" };
                 if (orderStatus === "completed") return { label: "Completed", color: "text-green-700 font-semibold" };
