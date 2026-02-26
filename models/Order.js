@@ -385,6 +385,11 @@ const orderSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+      // For milestone orders: which milestone this revision refers to (0-based index)
+      milestoneIndex: {
+        type: Number,
+        default: null,
+      },
     }],
   },
   {

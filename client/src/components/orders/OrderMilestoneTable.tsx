@@ -1,6 +1,12 @@
 import React from "react";
 import { formatDateOrdinal } from "./utils";
 
+type RevisionRequestLike = {
+  index?: number;
+  status?: string;
+  milestoneIndex?: number;
+};
+
 type OrderLike = {
   date?: string;
   status?: string;
@@ -20,6 +26,7 @@ type OrderLike = {
     milestoneDeliveries?: Array<{ milestoneIndex: number }>;
     disputeResolvedMilestoneIndices?: number[];
   };
+  revisionRequest?: RevisionRequestLike | RevisionRequestLike[];
   createdAt?: string;
 };
 
@@ -40,6 +47,16 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
   const milestoneDeliveries = order.metadata?.milestoneDeliveries;
   const disputeResolvedIndices = order.metadata?.disputeResolvedMilestoneIndices;
   const orderStatus = (order.status || "").toLowerCase();
+  const revisionRequests = order.revisionRequest
+    ? Array.isArray(order.revisionRequest)
+      ? order.revisionRequest
+      : [order.revisionRequest]
+    : [];
+  const activeRevisionMilestoneIndices = new Set(
+    revisionRequests
+      .filter((rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && typeof rr.milestoneIndex === "number")
+      .map((rr) => rr.milestoneIndex as number)
+  );
 
   return (
     <div className="mb-6">
@@ -71,13 +88,14 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
                 milestoneDeliveries.some((d) => d.milestoneIndex === idx);
               const isMilestoneResolvedByDispute =
                 Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx);
+              const isThisMilestoneInRevision = activeRevisionMilestoneIndices.has(idx);
               const milestoneStatus = (() => {
+                if (isThisMilestoneInRevision) return { label: "Revision", color: "text-yellow-600" };
                 if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
                 if (isMilestoneResolvedByDispute) return { label: "Resolved (dispute)", color: "text-green-600" };
                 if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
                 if (orderStatus === "in progress") return { label: inProgressLabel, color: "text-blue-600" };
                 if (orderStatus === "delivered") return { label: "Delivered", color: "text-green-600" };
-                if (orderStatus === "revision") return { label: "Revision", color: "text-yellow-600" };
                 if (orderStatus === "completed") return { label: "Completed", color: "text-green-700 font-semibold" };
                 if (orderStatus === "cancelled") return { label: "Cancelled", color: "text-red-600" };
                 if (orderStatus === "disputed") return { label: "Disputed", color: "text-red-500" };

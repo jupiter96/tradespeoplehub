@@ -2778,6 +2778,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
               requestedAt: rr.requestedAt ? new Date(rr.requestedAt).toISOString() : undefined,
               respondedAt: rr.respondedAt ? new Date(rr.respondedAt).toISOString() : undefined,
               additionalNotes: rr.additionalNotes || undefined,
+              milestoneIndex: rr.milestoneIndex !== undefined && rr.milestoneIndex !== null ? rr.milestoneIndex : undefined,
             }))
           : (order.revisionRequest && !Array.isArray(order.revisionRequest)
             ? [{
@@ -2794,6 +2795,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
                 requestedAt: order.revisionRequest.requestedAt ? new Date(order.revisionRequest.requestedAt).toISOString() : undefined,
                 respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
                 additionalNotes: order.revisionRequest.additionalNotes || undefined,
+                milestoneIndex: order.revisionRequest.milestoneIndex !== undefined && order.revisionRequest.milestoneIndex !== null ? order.revisionRequest.milestoneIndex : undefined,
               }]
             : undefined),
         additionalInformation: order.additionalInformation ? {
@@ -3759,7 +3761,7 @@ const maybeRevisionUpload = (req, res, next) => {
 router.post('/:orderId/revision-request', authenticateToken, requireRole(['client']), maybeRevisionUpload, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason, message } = req.body;
+    const { reason, message, milestoneIndex: bodyMilestoneIndex } = req.body;
 
     if (!reason || !reason.trim()) {
       return res.status(400).json({ error: 'Revision reason is required' });
@@ -3775,22 +3777,46 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     // Revision can only be requested when:
     // 1. Delivery files exist (professional has sent delivery result), OR
     // 2. Status is 'delivered', OR
-    // 3. DeliveryStatus is 'delivered'
+    // 3. DeliveryStatus is 'delivered', OR
+    // 4. Milestone order with at least one milestone delivered
     const hasDeliveryFiles = order.deliveryFiles && order.deliveryFiles.length > 0;
     const isDeliveredStatus = order.status === 'delivered' || order.status === 'Delivered';
     const isDeliveredDeliveryStatus = order.deliveryStatus === 'delivered';
-    
-    if (!hasDeliveryFiles && !isDeliveredStatus && !isDeliveredDeliveryStatus) {
+    const isMilestoneOrder = order.metadata?.paymentType === 'milestone' && Array.isArray(order.metadata?.milestoneDeliveries) && order.metadata.milestoneDeliveries.length > 0;
+    const hasMilestoneDelivery = isMilestoneOrder && order.metadata.milestoneDeliveries.some(d => d && (d.milestoneIndex === 0 || d.milestoneIndex));
+
+    if (!hasDeliveryFiles && !isDeliveredStatus && !isDeliveredDeliveryStatus && !hasMilestoneDelivery) {
       return res.status(400).json({ error: 'Revision can only be requested for delivered orders' });
     }
 
-    // Check if there's already a pending or in_progress revision request
-    const activeRevisionRequest = order.revisionRequest && Array.isArray(order.revisionRequest)
-      ? order.revisionRequest.find(rr => rr.status === 'pending' || rr.status === 'in_progress')
-      : (order.revisionRequest && (order.revisionRequest.status === 'pending' || order.revisionRequest.status === 'in_progress') ? order.revisionRequest : null);
-    
-    if (activeRevisionRequest) {
-      return res.status(400).json({ error: 'There is already an active revision request' });
+    let revisionMilestoneIndex = null;
+    if (isMilestoneOrder) {
+      const parsed = bodyMilestoneIndex !== undefined && bodyMilestoneIndex !== '' ? parseInt(String(bodyMilestoneIndex), 10) : NaN;
+      if (Number.isInteger(parsed) && parsed >= 0) {
+        revisionMilestoneIndex = parsed;
+      } else {
+        // Infer: the delivered milestone(s) without approvedAt; if exactly one, use it
+        const deliveredNotApproved = (order.metadata.milestoneDeliveries || []).filter(
+          d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt
+        );
+        if (deliveredNotApproved.length === 1) {
+          revisionMilestoneIndex = deliveredNotApproved[0].milestoneIndex;
+        }
+      }
+      // Milestone orders: only one active revision per milestone
+      const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
+      const activeForSameMilestone = revList.find(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress') && (rr.milestoneIndex === revisionMilestoneIndex || (revisionMilestoneIndex === null && rr.milestoneIndex == null)));
+      if (activeForSameMilestone) {
+        return res.status(400).json({ error: 'There is already an active revision request for this milestone' });
+      }
+    } else {
+      // Non-milestone: only one active revision overall
+      const activeRevisionRequest = order.revisionRequest && Array.isArray(order.revisionRequest)
+        ? order.revisionRequest.find(rr => rr.status === 'pending' || rr.status === 'in_progress')
+        : (order.revisionRequest && (order.revisionRequest.status === 'pending' || order.revisionRequest.status === 'in_progress') ? order.revisionRequest : null);
+      if (activeRevisionRequest) {
+        return res.status(400).json({ error: 'There is already an active revision request' });
+      }
     }
 
     // Process uploaded files
@@ -3815,11 +3841,11 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     }
 
     // Calculate next index
-    const nextIndex = order.revisionRequest.length > 0 
+    const nextIndex = order.revisionRequest.length > 0
       ? Math.max(...order.revisionRequest.map(rr => rr.index || 0)) + 1
       : 1;
 
-    // Create new revision request and add to array
+    // Create new revision request and add to array (milestoneIndex for milestone orders)
     const newRevisionRequest = {
       index: nextIndex,
       status: 'pending',
@@ -3829,11 +3855,12 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       requestedAt: new Date(),
       respondedAt: null,
       additionalNotes: null,
+      ...(revisionMilestoneIndex !== null ? { milestoneIndex: revisionMilestoneIndex } : {}),
     };
-    
+
     order.revisionRequest.push(newRevisionRequest);
 
-    // Update order status - when revision is requested, change status to "Revision"
+    // Update order status - when revision is requested, change status to "Revision" (order-level for scheduler etc.)
     order.status = 'Revision';
     order.deliveryStatus = 'revision';
 

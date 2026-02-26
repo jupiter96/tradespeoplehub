@@ -1166,7 +1166,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           
           // Add new revision request to array
           const newRevisionRequest = {
-            index: data.revisionRequest.index || (existingRevisionRequests.length > 0 
+            index: data.revisionRequest.index || (existingRevisionRequests.length > 0
               ? Math.max(...existingRevisionRequests.map(rr => rr.index || 0)) + 1
               : 1),
             status: data.revisionRequest.status,
@@ -1176,6 +1176,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             requestedAt: data.revisionRequest.requestedAt,
             respondedAt: undefined,
             additionalNotes: undefined,
+            milestoneIndex: data.revisionRequest.milestoneIndex !== undefined ? data.revisionRequest.milestoneIndex : undefined,
           };
           
           return {
