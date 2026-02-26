@@ -235,6 +235,7 @@ export default function ClientOrdersSection() {
   const [isCancellationRequestDialogOpen, setIsCancellationRequestDialogOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
+  const [revisionRequestMilestoneIndex, setRevisionRequestMilestoneIndex] = useState<number | null>(null);
   const [revisionReason, setRevisionReason] = useState("");
   const [revisionMessage, setRevisionMessage] = useState("");
   const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
@@ -256,6 +257,7 @@ export default function ClientOrdersSection() {
 
   const [isApproveConfirmDialogOpen, setIsApproveConfirmDialogOpen] = useState(false);
   const [approveOrderId, setApproveOrderId] = useState<string | null>(null);
+  const [approveMilestoneIndices, setApproveMilestoneIndices] = useState<number[] | null>(null);
   const [isApproving, setIsApproving] = useState(false);
   const [isCancellationConfirmDialogOpen, setIsCancellationConfirmDialogOpen] = useState(false);
   const [pendingCancellationOrderId, setPendingCancellationOrderId] = useState<string | null>(null);
@@ -287,12 +289,14 @@ export default function ClientOrdersSection() {
     setIsDisputeDialogOpen(false);
     setIsCancellationRequestDialogOpen(false);
     setIsRevisionRequestDialogOpen(false);
+    setRevisionRequestMilestoneIndex(null);
     setIsDisputeResponseDialogOpen(false);
     setIsAddInfoDialogOpen(false);
     setIsAcceptOfferConfirmOpen(false);
     setIsDeclineOfferConfirmOpen(false);
     setIsApproveConfirmDialogOpen(false);
     setApproveOrderId(null);
+    setApproveMilestoneIndices(null);
     setIsCancellationConfirmDialogOpen(false);
     setPendingCancellationOrderId(null);
     setPendingCancellationAction(null);
@@ -308,7 +312,8 @@ export default function ClientOrdersSection() {
   };
 
   // Function to open a specific modal and close all others
-  const openModal = (modalName: 'rating' | 'cancel' | 'dispute' | 'cancellationRequest' | 'revisionRequest' | 'disputeResponse' | 'addInfo') => {
+  // For revisionRequest, pass milestoneIndex when requesting from a specific milestone's delivery
+  const openModal = (modalName: 'rating' | 'cancel' | 'dispute' | 'cancellationRequest' | 'revisionRequest' | 'disputeResponse' | 'addInfo', options?: { revisionMilestoneIndex?: number }) => {
     // Close all modals EXCEPT the one we're about to open
     // This avoids the false->true batching issue
     if (modalName !== 'rating') setIsRatingDialogOpen(false);
@@ -320,6 +325,7 @@ export default function ClientOrdersSection() {
     if (modalName !== 'addInfo') setIsAddInfoDialogOpen(false);
     setIsApproveConfirmDialogOpen(false);
     setApproveOrderId(null);
+    setApproveMilestoneIndices(null);
     setPreviewAttachment(null);
     // Reset form states for other modals
     if (modalName !== 'cancel') {
@@ -330,6 +336,7 @@ export default function ClientOrdersSection() {
       setCancellationReason("");
     }
     if (modalName !== 'revisionRequest') {
+      setRevisionRequestMilestoneIndex(null);
       setRevisionReason("");
       setRevisionMessage("");
       setRevisionFiles([]);
@@ -352,6 +359,7 @@ export default function ClientOrdersSection() {
         setIsCancellationRequestDialogOpen(true);
         break;
       case 'revisionRequest':
+        setRevisionRequestMilestoneIndex(options?.revisionMilestoneIndex ?? null);
         setIsRevisionRequestDialogOpen(true);
         break;
       case 'disputeResponse':
@@ -583,7 +591,12 @@ export default function ClientOrdersSection() {
       url: string;
       fileName: string;
       fileType?: string;
+      milestoneIndex?: number;
     }>;
+    /** For milestone orders: which milestone this delivery is for (0-based). */
+    milestoneIndex?: number;
+    /** For milestone orders: true if client has already approved this milestone. */
+    approvedAt?: string | null;
   };
 
   const buildClientTimeline = (order: any): ClientTimelineEvent[] => {
@@ -775,9 +788,40 @@ export default function ClientOrdersSection() {
       );
     }
 
-    // Group delivery files by deliveryNumber to identify separate deliveries
-    // Each delivery is independent - files are grouped by deliveryNumber
-    if (order.deliveryFiles && order.deliveryFiles.length > 0) {
+    // Milestone orders: one "Work Delivered" event per milestone delivery (so we can approve per milestone)
+    const isMilestoneOrderTimeline =
+      order.metadata?.paymentType === "milestone" &&
+      Array.isArray(order.metadata?.milestoneDeliveries) &&
+      order.metadata.milestoneDeliveries.length > 0;
+    if (isMilestoneOrderTimeline) {
+      const milestoneDeliveries = order.metadata.milestoneDeliveries as Array<{
+        milestoneIndex: number;
+        deliveredAt?: string | Date;
+        deliveryMessage?: string;
+        approvedAt?: string | Date | null;
+      }>;
+      milestoneDeliveries.forEach((d) => {
+        const at = d.deliveredAt ? new Date(d.deliveredAt).toISOString() : undefined;
+        const files =
+          order.deliveryFiles && Array.isArray(order.deliveryFiles)
+            ? order.deliveryFiles.filter((f: any) => f.milestoneIndex === d.milestoneIndex)
+            : [];
+        push(
+          {
+            at,
+            title: "Work Delivered",
+            description: `${order.professional || "Professional"} delivered the work.`,
+            message: d.deliveryMessage || undefined,
+            files: files.length > 0 ? files : undefined,
+            colorClass: "bg-purple-500",
+            icon: <Truck className="w-5 h-5 text-blue-600" />,
+            milestoneIndex: d.milestoneIndex,
+            approvedAt: d.approvedAt ? (typeof d.approvedAt === "string" ? d.approvedAt : new Date(d.approvedAt).toISOString()) : null,
+          },
+          `delivered-milestone-${d.milestoneIndex}`
+        );
+      });
+    } else if (order.deliveryFiles && order.deliveryFiles.length > 0) {
       // Group files by deliveryNumber
       const deliveryGroupsMap = new Map<number, any[]>();
       order.deliveryFiles.forEach((file: any) => {
@@ -1449,7 +1493,7 @@ export default function ClientOrdersSection() {
     setRevisionMessage("");
     setRevisionFiles([]);
     toast.promise(
-      requestRevision(orderId, reason, message, files).then(() => { refreshOrders(); }),
+      requestRevision(orderId, reason, message, files, revisionRequestMilestoneIndex ?? undefined).then(() => { refreshOrders(); }),
       { loading: "Processing...", success: "Revision request submitted. The professional will review your request.", error: (e: any) => e.message || "Failed to request revision" }
     );
   };
@@ -1506,13 +1550,11 @@ export default function ClientOrdersSection() {
   // We intentionally route this through closeAllModals() like Revision Request,
   // because several dialogs use onOpenChange -> closeAllModals(), which can
   // otherwise immediately close a newly-opened dialog.
-  const handleAcceptDelivery = (orderId: string) => {
-    // Ensure we stay in the correct order context
+  const handleAcceptDelivery = (orderId: string, milestoneIndex?: number) => {
     setSelectedOrder(orderId);
-    // Close any other open dialogs first
     closeAllModals();
-    // Then open approve confirm
     setApproveOrderId(orderId);
+    setApproveMilestoneIndices(milestoneIndex !== undefined ? [milestoneIndex] : null);
     setIsApproveConfirmDialogOpen(true);
   };
 
@@ -1521,16 +1563,26 @@ export default function ClientOrdersSection() {
     if (!approveOrderId) return;
 
     const orderId = approveOrderId;
+    const milestoneIndices = approveMilestoneIndices ?? undefined;
     closeAllModals();
     setIsApproveConfirmDialogOpen(false);
     setApproveOrderId(null);
+    setApproveMilestoneIndices(null);
     setSelectedOrder(orderId);
     toast.promise(
-      acceptDelivery(orderId).then(() => {
-        openModal('rating');
-        refreshOrders(); // fire-and-forget – don't block toast
+      acceptDelivery(orderId, milestoneIndices).then((completed) => {
+        refreshOrders();
+        if (completed) openModal("rating");
+        return completed;
       }),
-      { loading: "Processing...", success: "Order completed! Funds have been released to the professional. You can now rate the service.", error: (e: any) => e.message || "Failed to complete order" }
+      {
+        loading: "Processing...",
+        success: (completed: boolean) =>
+          completed
+            ? "Order completed! Funds have been released to the professional. You can now rate the service."
+            : "Milestone(s) approved. Approve all delivered milestones to complete the order.",
+        error: (e: any) => e.message || "Failed to complete order",
+      }
     );
   };
 
@@ -3335,18 +3387,24 @@ export default function ClientOrdersSection() {
                     return bTime - aTime; // Newest first
                   });
 
-                // For "Work Delivered": show Approve/Request modification for every delivery that is not yet processed (order not completed, no active revision).
+                // For "Work Delivered": show Approve/Request modification for every delivery that is not yet processed (order not completed, no active revision for that milestone).
                 const orderCompleted = currentOrder.status === "Completed";
-                const hasActiveRevision = (() => {
+                const hasActiveRevisionForMilestone = (milestoneIdx: number | undefined) => {
                   const rr = (currentOrder as any).revisionRequest;
                   if (!rr) return false;
                   const arr = Array.isArray(rr) ? rr : [rr];
-                  return arr.some((r: any) => r && (r.status === "pending" || r.status === "in_progress"));
-                })();
-                const showDeliveryActions = (event: { title?: string }) =>
+                  return arr.some((r: any) => {
+                    if (!r || (r.status !== "pending" && r.status !== "in_progress")) return false;
+                    const revMi = r.milestoneIndex;
+                    if (revMi === undefined || revMi === null) return true; // legacy: blocks all
+                    return revMi === milestoneIdx;
+                  });
+                };
+                const showDeliveryActions = (event: { title?: string; milestoneIndex?: number; approvedAt?: string | null }) =>
                   event.title === "Work Delivered" &&
                   !orderCompleted &&
-                  !hasActiveRevision &&
+                  !hasActiveRevisionForMilestone(event.milestoneIndex) &&
+                  (event.milestoneIndex === undefined || !event.approvedAt) &&
                   (currentOrder.status === "delivered" ||
                     ((currentOrder as any).metadata?.paymentType === "milestone" &&
                       Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
@@ -3579,19 +3637,23 @@ export default function ClientOrdersSection() {
 
                           {/* Attachments Section (skip for Cancellation Requested - already shown above in order: reason, attachment, warning) */}
                           {event.files && event.files.length > 0 && event.id !== "cancellation-requested" && (() => {
-                            // For "Work Delivered" events, filter files by deliveryNumber
+                            // For "Work Delivered" events, filter files by milestoneIndex or deliveryNumber
                             // For other events (like "Revision Requested"), show all files
                             let filesToShow = event.files;
                             
-                            if (event.title === "Work Delivered" && event.id && event.id.startsWith('delivered-')) {
-                              // Extract delivery number from event id (format: "delivered-1", "delivered-2", etc.)
-                              const eventDeliveryNumber = parseInt(event.id.replace('delivered-', ''), 10);
-                              
-                              // Filter files by deliveryNumber
-                              filesToShow = event.files.filter((file: any) => {
-                                const fileDeliveryNumber = file.deliveryNumber || 1;
-                                return fileDeliveryNumber === eventDeliveryNumber;
-                              });
+                            if (event.title === "Work Delivered") {
+                              const ev = event as ClientTimelineEvent;
+                              if (ev.milestoneIndex !== undefined) {
+                                // Milestone order: filter by milestoneIndex
+                                filesToShow = event.files.filter((file: any) => file.milestoneIndex === ev.milestoneIndex);
+                              } else if (event.id && event.id.startsWith('delivered-') && !event.id.includes('milestone')) {
+                                // Non-milestone: filter by deliveryNumber (id format "delivered-1", "delivered-2")
+                                const eventDeliveryNumber = parseInt(event.id.replace('delivered-', ''), 10);
+                                filesToShow = event.files.filter((file: any) => {
+                                  const fileDeliveryNumber = file.deliveryNumber || 1;
+                                  return fileDeliveryNumber === eventDeliveryNumber;
+                                });
+                              }
                             }
                             
                             if (filesToShow.length === 0) return null;
@@ -3685,7 +3747,7 @@ export default function ClientOrdersSection() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleAcceptDelivery(currentOrder.id);
+                                      handleAcceptDelivery(currentOrder.id, (event as ClientTimelineEvent).milestoneIndex);
                                     }}
                                     className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] px-6 shadow-sm"
                                   >
@@ -3696,7 +3758,8 @@ export default function ClientOrdersSection() {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       setSelectedOrder(currentOrder.id);
-                                      openModal('revisionRequest');
+                                      const mi = (event as ClientTimelineEvent).milestoneIndex;
+                                      openModal('revisionRequest', mi !== undefined ? { revisionMilestoneIndex: mi } : undefined);
                                     }}
                                     variant="outline"
                                     className="font-['Poppins',sans-serif] text-[13px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6 shadow-sm"
@@ -4285,11 +4348,23 @@ export default function ClientOrdersSection() {
                   return bTime - aTime; // Newest first
                 });
 
+                const hasActiveRevisionForMilestoneInDelivery = (milestoneIdx: number | undefined) => {
+                  const rr = (currentOrder as any).revisionRequest;
+                  if (!rr) return false;
+                  const arr = Array.isArray(rr) ? rr : [rr];
+                  return arr.some((r: any) => {
+                    if (!r || (r.status !== "pending" && r.status !== "in_progress")) return false;
+                    const revMi = r.milestoneIndex;
+                    if (revMi === undefined || revMi === null) return true;
+                    return revMi === milestoneIdx;
+                  });
+                };
+
                 if (sortedDeliveries.length > 0) {
                   return (
                     <div className="space-y-6">
                       {sortedDeliveries.map((delivery, index) => {
-                        const deliveryNumber = deliveryNumberMap.get(delivery.at || 'no-date') || (index + 1);
+                        const deliveryNumber = delivery.milestoneIndex !== undefined ? delivery.milestoneIndex + 1 : (deliveryNumberMap.get(delivery.at || 'no-date') || (index + 1));
                         return (
                         <div key={index} className="flex gap-4">
                           <div className="flex flex-col items-center pt-1">
@@ -4328,11 +4403,9 @@ export default function ClientOrdersSection() {
                                 
                                 {/* Delivery Attachments */}
                                 {delivery.files && delivery.files.length > 0 && (() => {
-                                  // Filter files to only show those matching the delivery number
-                                  const filteredFiles = delivery.files.filter((file: any) => {
-                                    const fileDeliveryNumber = file.deliveryNumber || 1;
-                                    return fileDeliveryNumber === deliveryNumber;
-                                  });
+                                  const filteredFiles = delivery.milestoneIndex !== undefined
+                                    ? delivery.files.filter((file: any) => file.milestoneIndex === delivery.milestoneIndex)
+                                    : delivery.files.filter((file: any) => (file.deliveryNumber || 1) === deliveryNumber);
                                   
                                   if (filteredFiles.length === 0) return null;
                                   
@@ -4385,17 +4458,15 @@ export default function ClientOrdersSection() {
                               </div>
                             )}
 
-                            {/* Approval / Request modification - show for every delivery while order not completed and no active revision */}
+                            {/* Approval / Request modification - show only for deliveries not yet approved and not under active revision for that milestone */}
                             {currentOrder.status !== "Completed" &&
                              currentOrder.status !== "Cancelled" &&
+                             (delivery.milestoneIndex === undefined || !delivery.approvedAt) &&
+                             !hasActiveRevisionForMilestoneInDelivery(delivery.milestoneIndex) &&
                              (currentOrder.status === "delivered" || currentOrder.status === "In Progress" ||
                               ((currentOrder as any).metadata?.paymentType === "milestone" &&
                                Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
-                               (currentOrder as any).metadata.milestoneDeliveries.length > 0)) &&
-                             (!(currentOrder as any).revisionRequest ||
-                              (Array.isArray((currentOrder as any).revisionRequest)
-                                ? !(currentOrder as any).revisionRequest.some((r: any) => r && (r.status === "pending" || r.status === "in_progress"))
-                                : ((currentOrder as any).revisionRequest.status !== "pending" && (currentOrder as any).revisionRequest.status !== "in_progress"))) && (
+                               (currentOrder as any).metadata.milestoneDeliveries.length > 0)) && (
                               <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
                                 <div className="flex gap-2 mb-4">
                                   <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -4418,7 +4489,7 @@ export default function ClientOrdersSection() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleAcceptDelivery(currentOrder.id);
+                                      handleAcceptDelivery(currentOrder.id, delivery.milestoneIndex);
                                     }}
                                     className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
                                   >
@@ -4429,7 +4500,8 @@ export default function ClientOrdersSection() {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       setSelectedOrder(currentOrder.id);
-                                      openModal('revisionRequest');
+                                      const mi = delivery.milestoneIndex;
+                                      openModal('revisionRequest', mi !== undefined ? { revisionMilestoneIndex: mi } : undefined);
                                     }}
                                     variant="outline"
                                     className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
@@ -5972,8 +6044,7 @@ export default function ClientOrdersSection() {
           onOpenChange={(open) => {
             setIsRevisionRequestDialogOpen(open);
             if (!open) {
-              // Keep selectedOrder to stay on detail page
-              // setSelectedOrder(null); // Removed to keep order detail page open
+              setRevisionRequestMilestoneIndex(null);
               setRevisionReason("");
               setRevisionMessage("");
               setRevisionFiles([]);
@@ -6074,6 +6145,7 @@ export default function ClientOrdersSection() {
                 variant="outline"
                 onClick={() => {
                   closeAllModals();
+                  setRevisionRequestMilestoneIndex(null);
                   setRevisionReason("");
                   setRevisionMessage("");
                   setRevisionFiles([]);
@@ -6100,6 +6172,7 @@ export default function ClientOrdersSection() {
 	          setIsApproveConfirmDialogOpen(open);
 	          if (!open) {
 	            setApproveOrderId(null);
+	            setApproveMilestoneIndices(null);
 	          }
 	        }}
 	      >
@@ -6120,6 +6193,7 @@ export default function ClientOrdersSection() {
 	                onClick={() => {
 	                  setIsApproveConfirmDialogOpen(false);
 	                  setApproveOrderId(null);
+	                  setApproveMilestoneIndices(null);
 	                }}
 	                disabled={isApproving}
 	                className="font-['Poppins',sans-serif] text-[14px] px-6 border-[#3D78CB] text-[#3D78CB] hover:bg-blue-50"
@@ -7373,6 +7447,7 @@ export default function ClientOrdersSection() {
 	          setIsApproveConfirmDialogOpen(open);
 	          if (!open) {
 	            setApproveOrderId(null);
+	            setApproveMilestoneIndices(null);
 	          }
 	        }}
 	      >
@@ -7400,6 +7475,7 @@ export default function ClientOrdersSection() {
                 onClick={() => {
                   setIsApproveConfirmDialogOpen(false);
                   setApproveOrderId(null);
+                  setApproveMilestoneIndices(null);
                 }}
                 disabled={isApproving}
                 className="font-['Poppins',sans-serif] text-[14px] px-6 border-[#3D78CB] text-[#3D78CB] hover:bg-blue-50"

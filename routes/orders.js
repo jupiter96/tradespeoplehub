@@ -4228,10 +4228,12 @@ router.post('/:orderId/professional-complete', authenticateToken, requireRole(['
 });
 
 // Client: Accept delivery and release funds to professional
+// For milestone orders: optional body.milestoneIndices = [0, 1] to approve only those milestones.
+// Order is fully completed (funds released, status Completed) only when all milestones are approved.
 router.post('/:orderId/complete', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { rating, review } = req.body; // Optional rating and review
+    const { rating, review, milestoneIndices: bodyMilestoneIndices } = req.body; // Optional rating, review, and for milestone: indices to approve
 
     const order = await Order.findOne(await buildOrderQuery(orderId, { client: req.user.id })).populate('professional');
 
@@ -4239,31 +4241,70 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    // Milestone vs non-milestone orders have slightly different completion rules.
     const isMilestoneOrder =
       order.metadata?.fromCustomOffer &&
       order.metadata?.paymentType === 'milestone' &&
       Array.isArray(order.metadata?.milestones) &&
       order.metadata.milestones.length > 0;
 
+    const milestones = order.metadata?.milestones || [];
+    const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+    const disputeResolved = (order.metadata?.disputeResolvedMilestoneIndices || []);
+
     if (isMilestoneOrder) {
-      // For milestone custom offers: all milestones must be delivered or resolved by dispute
-      // before the client can mark the order as completed.
-      const milestones = order.metadata?.milestones || [];
-      const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
-      const disputeResolved = order.metadata?.disputeResolvedMilestoneIndices || [];
-      const allMilestonesComplete =
-        Array.isArray(milestones) &&
-        milestones.length > 0 &&
-        milestones.every(
+      const approvedIndices = Array.isArray(bodyMilestoneIndices)
+        ? bodyMilestoneIndices.filter((i) => Number.isInteger(i) && i >= 0 && i < milestones.length)
+        : null;
+
+      if (approvedIndices && approvedIndices.length > 0) {
+        // Approve only the specified milestone(s)
+        const approvedAt = new Date();
+        for (const idx of approvedIndices) {
+          const d = milestoneDeliveries.find((m) => m.milestoneIndex === idx);
+          if (d && !d.approvedAt) d.approvedAt = approvedAt;
+        }
+        order.markModified('metadata');
+        await order.save();
+        const allDeliveredAndApproved = milestones.every(
+          (_, idx) =>
+            disputeResolved.includes(idx) ||
+            (milestoneDeliveries.some((d) => d.milestoneIndex === idx) &&
+              milestoneDeliveries.some((d) => d.milestoneIndex === idx && d.approvedAt))
+        );
+        if (!allDeliveredAndApproved) {
+          return res.json({
+            message: 'Milestone(s) approved. Approve all delivered milestones to complete the order.',
+            order: {
+              status: order.status,
+              deliveryStatus: order.deliveryStatus,
+              completedDate: null,
+              metadata: order.metadata,
+            },
+            completed: false,
+          });
+        }
+        // Fall through to full completion below
+      } else {
+        // No milestoneIndices: require all milestones delivered AND approved before allowing full completion
+        const allDelivered = milestones.every(
           (_, idx) =>
             milestoneDeliveries.some((d) => d.milestoneIndex === idx) || disputeResolved.includes(idx)
         );
-
-      if (!allMilestonesComplete) {
-        return res.status(400).json({
-          error: 'All milestones must be delivered or resolved before completing this order',
-        });
+        if (!allDelivered) {
+          return res.status(400).json({
+            error: 'All milestones must be delivered or resolved before completing this order',
+          });
+        }
+        const allApproved = milestones.every(
+          (_, idx) =>
+            disputeResolved.includes(idx) ||
+            milestoneDeliveries.some((d) => d.milestoneIndex === idx && d.approvedAt)
+        );
+        if (!allApproved) {
+          return res.status(400).json({
+            error: 'All delivered milestones must be approved before completing this order. Please approve each milestone delivery.',
+          });
+        }
       }
     } else {
       // Non-milestone orders: keep existing delivered checks
@@ -4396,6 +4437,7 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
       },
       professionalPayoutAmount: professionalPayoutAmount,
       professionalNewBalance: professional.walletBalance,
+      completed: true,
     });
   } catch (error) {
     console.error('Complete order error:', error);

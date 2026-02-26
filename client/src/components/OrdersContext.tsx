@@ -278,7 +278,7 @@ interface OrdersContextType {
   deliverWork: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
   deliverMilestone: (orderId: string, milestoneIndex: number, deliveryMessage?: string, files?: File[]) => Promise<void>;
   professionalComplete: (orderId: string, completionMessage?: string, files?: File[]) => Promise<void>;
-  acceptDelivery: (orderId: string) => Promise<void>;
+  acceptDelivery: (orderId: string, milestoneIndices?: number[]) => Promise<boolean>;
   extendDeliveryTime: (orderId: string, days: number) => void;
   requestExtension: (orderId: string, newDeliveryDate: string, reason?: string) => Promise<void>;
   respondToExtension: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
@@ -291,7 +291,7 @@ interface OrdersContextType {
   requestCancellation: (orderId: string, reason?: string, files?: File[]) => Promise<void>;
   respondToCancellation: (orderId: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   withdrawCancellation: (orderId: string) => Promise<void>;
-  requestRevision: (orderId: string, reason: string, message?: string, files?: File[]) => Promise<void>;
+  requestRevision: (orderId: string, reason: string, message?: string, files?: File[], milestoneIndex?: number) => Promise<void>;
   respondToRevision: (orderId: string, action: 'accept' | 'reject', additionalNotes?: string) => Promise<void>;
   completeRevision: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
   respondToReview: (reviewId: string, response: string) => Promise<void>;
@@ -688,14 +688,16 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const acceptDelivery = async (orderId: string) => {
+  const acceptDelivery = async (orderId: string, milestoneIndices?: number[]): Promise<boolean> => {
     try {
+      const body = milestoneIndices != null && milestoneIndices.length > 0 ? { milestoneIndices } : {};
       const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/complete`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -704,21 +706,28 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      
-      // Update order status
+      const completed = data.completed !== false;
+
       setOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
+        if (order.id !== orderId) return order;
+        if (completed && data.order) {
           return {
             ...order,
             status: 'Completed',
             deliveryStatus: 'completed',
             completedDate: data.order.completedDate ? new Date(data.order.completedDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            ...(data.order.metadata != null && { metadata: data.order.metadata }),
           };
+        }
+        // Partial milestone approval: update order metadata (e.g. milestoneDeliveries approvedAt)
+        if (data.order?.metadata) {
+          return { ...order, metadata: data.order.metadata };
         }
         return order;
       }));
 
       scheduleDeferredRefresh();
+      return completed;
     } catch (error: any) {
       console.error('Accept delivery error:', error);
       throw error;
@@ -1131,7 +1140,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   // Revision Request Management
-  const requestRevision = async (orderId: string, reason: string, message?: string, files?: File[]): Promise<void> => {
+  const requestRevision = async (orderId: string, reason: string, message?: string, files?: File[], milestoneIndex?: number): Promise<void> => {
     try {
       const hasFiles = files && files.length > 0;
       const hasMessage = message && message.trim();
@@ -1139,6 +1148,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       formData.append('reason', reason);
       if (hasMessage) {
         formData.append('message', message!.trim());
+      }
+      if (milestoneIndex !== undefined && milestoneIndex !== null) {
+        formData.append('milestoneIndex', String(milestoneIndex));
       }
       if (hasFiles) {
         files!.forEach(file => formData.append('files', file));

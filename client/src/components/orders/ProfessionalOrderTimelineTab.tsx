@@ -86,6 +86,7 @@ export default function ProfessionalOrderTimelineTab({
   showDisputeSection,
   getOrderDisputeById,
   onOpenModal,
+  onOpenDeliveryForMilestone,
   onStartConversation,
   onRespondToCancellation,
   onRespondToRevision,
@@ -657,6 +658,8 @@ export default function ProfessionalOrderTimelineTab({
           </p>
           <Button
             onClick={() => {
+              // Always use generic delivery modal so pro can see milestone selection when re-delivering.
+              // (When pro delivered multiple milestones at once and client requested revision, pro must select which to re-deliver.)
               onOpenModal('delivery');
               onSetDeliveryMessage("");
               onSetDeliveryFiles([]);
