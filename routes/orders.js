@@ -3603,7 +3603,12 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
     }
 
     const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
-    if (milestoneDeliveries.some(d => d.milestoneIndex === milestoneIndex)) {
+    const existingDelivery = milestoneDeliveries.find(d => d.milestoneIndex === milestoneIndex);
+    const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
+    const activeRevisionForThisMilestone = revList.find(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress') && rr.milestoneIndex === milestoneIndex);
+    const isReDeliveryForRevision = !!existingDelivery && !!activeRevisionForThisMilestone;
+
+    if (existingDelivery && !isReDeliveryForRevision) {
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
       }
@@ -3611,7 +3616,7 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
     }
 
     const isInProgress = order.status === 'In Progress' || order.status === 'in_progress' ||
-      order.deliveryStatus === 'active' || order.deliveryStatus === 'pending';
+      order.deliveryStatus === 'active' || order.deliveryStatus === 'pending' || order.status === 'Revision';
     if (!isInProgress) {
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
@@ -3638,15 +3643,33 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
       order.deliveryFiles = order.deliveryFiles ? [...order.deliveryFiles, ...deliveryFiles] : deliveryFiles;
     }
 
-    const newDelivery = {
-      milestoneIndex,
-      deliveredAt: new Date(),
-      deliveryMessage: (deliveryMessage && String(deliveryMessage).trim()) || '',
-    };
     if (!order.metadata) order.metadata = {};
     order.metadata.milestoneDeliveries = order.metadata.milestoneDeliveries || [];
-    order.metadata.milestoneDeliveries.push(newDelivery);
-    order.markModified('metadata');
+
+    if (isReDeliveryForRevision) {
+      activeRevisionForThisMilestone.status = 'completed';
+      activeRevisionForThisMilestone.respondedAt = new Date();
+      order.markModified('revisionRequest');
+      const deliveryEntry = order.metadata.milestoneDeliveries.find(d => d.milestoneIndex === milestoneIndex);
+      if (deliveryEntry) {
+        deliveryEntry.deliveredAt = new Date();
+        deliveryEntry.deliveryMessage = (deliveryMessage && String(deliveryMessage).trim()) || deliveryEntry.deliveryMessage || '';
+      }
+      order.markModified('metadata');
+      const hasOtherActiveRevision = revList.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+      if (!hasOtherActiveRevision) {
+        order.status = 'In Progress';
+        order.deliveryStatus = 'active';
+      }
+    } else {
+      const newDelivery = {
+        milestoneIndex,
+        deliveredAt: new Date(),
+        deliveryMessage: (deliveryMessage && String(deliveryMessage).trim()) || '',
+      };
+      order.metadata.milestoneDeliveries.push(newDelivery);
+      order.markModified('metadata');
+    }
 
     const allDelivered = milestones.length === order.metadata.milestoneDeliveries.length;
     if (allDelivered) {

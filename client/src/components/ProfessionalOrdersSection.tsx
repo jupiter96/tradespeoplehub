@@ -2455,13 +2455,24 @@ function ProfessionalOrdersSection() {
                 const milestones = ((currentOrder as any).metadata?.milestones || []) as Array<{ name?: string; description?: string; amount?: number; dueInDays?: number; hours?: number }>;
                 const milestoneDeliveries = ((currentOrder as any).metadata?.milestoneDeliveries || []) as Array<{ milestoneIndex: number }>;
                 const disputeResolvedIndices = ((currentOrder as any).metadata?.disputeResolvedMilestoneIndices || []) as number[];
+                const revisionRequests = (currentOrder as any).revisionRequest
+                  ? Array.isArray((currentOrder as any).revisionRequest)
+                    ? (currentOrder as any).revisionRequest
+                    : [(currentOrder as any).revisionRequest]
+                  : [];
+                const inRevisionIndices = new Set(
+                  revisionRequests
+                    .filter((rr: { status?: string; milestoneIndex?: number }) => rr && (rr.status === "pending" || rr.status === "in_progress") && typeof rr.milestoneIndex === "number")
+                    .map((rr: { milestoneIndex: number }) => rr.milestoneIndex)
+                );
                 const deliveredIndices = new Set([
                   ...milestoneDeliveries.map((d: { milestoneIndex: number }) => d.milestoneIndex),
                   ...disputeResolvedIndices,
                 ]);
                 const undeliveredIndices = milestones.map((_, idx) => idx).filter((i) => !deliveredIndices.has(i));
-                if (undeliveredIndices.length === 0) return null;
-                const allSelected = undeliveredIndices.every((i) => deliverySelectedMilestoneIndices.includes(i));
+                const deliverableIndices = [...new Set([...undeliveredIndices, ...inRevisionIndices])].sort((a, b) => a - b);
+                if (deliverableIndices.length === 0) return null;
+                const allSelected = deliverableIndices.every((i) => deliverySelectedMilestoneIndices.includes(i));
                 return (
                   <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
@@ -2472,15 +2483,16 @@ function ProfessionalOrdersSection() {
                         <Checkbox
                           checked={allSelected}
                           onCheckedChange={(checked) => {
-                            if (checked) setDeliverySelectedMilestoneIndices([...undeliveredIndices]);
+                            if (checked) setDeliverySelectedMilestoneIndices([...deliverableIndices]);
                             else setDeliverySelectedMilestoneIndices([]);
                           }}
                         />
-                        Select all ({undeliveredIndices.length} undelivered)
+                        Select all ({deliverableIndices.length})
                       </label>
-                      {undeliveredIndices.map((idx) => {
+                      {deliverableIndices.map((idx) => {
                         const m = milestones[idx];
-                        const label = m?.name ? `Milestone ${idx + 1}: ${m.name}` : `Milestone ${idx + 1}`;
+                        const isRevision = inRevisionIndices.has(idx);
+                        const label = m?.name ? `Milestone ${idx + 1}: ${m.name}${isRevision ? " (Revision – re-deliver)" : ""}` : `Milestone ${idx + 1}${isRevision ? " (Revision – re-deliver)" : ""}`;
                         return (
                           <label key={idx} className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                             <Checkbox
