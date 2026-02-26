@@ -2710,6 +2710,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           disputeCancelledByRole: order.metadata?.disputeCancelledByRole || undefined,
           autoApprovedAt: order.metadata?.autoApprovedAt ? new Date(order.metadata.autoApprovedAt).toISOString() : undefined,
           autoApprovedDeadlineAt: order.metadata?.autoApprovedDeadlineAt ? new Date(order.metadata.autoApprovedDeadlineAt).toISOString() : undefined,
+          autoApprovedReason: order.metadata?.autoApprovedReason || undefined,
         },
         review: order.review || undefined,
         professionalResponse: order.professionalResponse || undefined,
@@ -2809,6 +2810,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
           ...(order.metadata && typeof order.metadata === 'object' ? order.metadata : {}),
           autoApprovedAt: order.metadata?.autoApprovedAt ? new Date(order.metadata.autoApprovedAt).toISOString() : undefined,
           autoApprovedDeadlineAt: order.metadata?.autoApprovedDeadlineAt ? new Date(order.metadata.autoApprovedDeadlineAt).toISOString() : undefined,
+          autoApprovedReason: order.metadata?.autoApprovedReason || undefined,
         },
         // Refundable amount (subtotal - discount); dispute max is this, service fee is not refundable
         refundableAmount: totalWithoutServiceFee,

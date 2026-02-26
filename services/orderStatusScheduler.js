@@ -127,14 +127,29 @@ async function processAutoCompleteDeliveredOrders() {
     const now = new Date();
     const threshold = new Date(now.getTime() - effectiveResponseHours * 60 * 60 * 1000);
 
-    // ---- 1) Regular orders (and milestone orders with all delivered): status delivered, deliveredDate past threshold
+    // ---- 1) Regular orders (and milestone orders with all delivered): status delivered, deadline passed
+    // Deadline = deliveredDate (or professionalCompleteRequest.requestedAt) + deliveredWorkResponseTime
     const deliveredOrders = await Order.find({
       status: { $in: ['delivered', 'Delivered'] },
-      deliveredDate: { $exists: true, $ne: null, $lte: threshold },
-      $or: [
-        { deliveryStatus: 'delivered' },
-        { deliveryStatus: { $exists: false } },
-        { deliveryStatus: null },
+      $and: [
+        {
+          $or: [
+            { deliveryStatus: 'delivered' },
+            { deliveryStatus: { $exists: false } },
+            { deliveryStatus: null },
+          ],
+        },
+        {
+          $or: [
+            { deliveredDate: { $exists: true, $ne: null, $lte: threshold } },
+            {
+              $and: [
+                { $or: [ { deliveredDate: { $exists: false } }, { deliveredDate: null } ] },
+                { 'metadata.professionalCompleteRequest.requestedAt': { $lte: threshold } },
+              ],
+            },
+          ],
+        },
       ],
     });
 
@@ -287,6 +302,15 @@ async function processAutoCompleteDeliveredOrders() {
           if (!order.metadata) order.metadata = {};
           order.metadata.autoApprovedAt = new Date();
           order.metadata.autoApprovedReason = 'no_client_response';
+          // Deadline = last milestone delivery time + response time (for client/pro message)
+          const lastDeliveredAt = Math.max(
+            ...(order.metadata.milestoneDeliveries || [])
+              .filter((d) => d.deliveredAt)
+              .map((d) => new Date(d.deliveredAt).getTime())
+          );
+          if (Number.isFinite(lastDeliveredAt)) {
+            order.metadata.autoApprovedDeadlineAt = new Date(lastDeliveredAt + effectiveResponseHours * 60 * 60 * 1000);
+          }
         }
 
         await order.save();
@@ -455,8 +479,8 @@ export function startOrderStatusScheduler() {
     scheduled: true,
     timezone: 'UTC',
   });
-  // Run every 10 minutes to auto-complete delivered orders after response time elapsed
-  cron.schedule('*/10 * * * *', async () => {
+  // Run every minute so orders complete at correct time (deliveredDate + delivered work response time)
+  cron.schedule('* * * * *', async () => {
     await processAutoCompleteDeliveredOrders();
   }, {
     scheduled: true,

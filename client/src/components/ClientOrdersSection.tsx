@@ -2665,8 +2665,8 @@ export default function ClientOrdersSection() {
                       currentOrder.metadata?.autoApprovedAt ||
                       (currentOrder.completedDate ? new Date(currentOrder.completedDate).toISOString() : null);
                     if (isAutoApproved && deadlineForDisplay) {
-                      const deadlineStr = formatDateOrdinal(deadlineForDisplay);
-                      return `Your order has been completed automatically.\nYour order has been approved and completed automatically due to no response before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.`;
+                      const deadlineStr = formatDateOrdinal(typeof deadlineForDisplay === "string" ? deadlineForDisplay : new Date(deadlineForDisplay).toISOString());
+                      return `Your order has been completed automatically. Your order has been approved and completed automatically due to no response before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the seller in the form of feedback.`;
                     }
                     const disputeInfo = currentOrder.disputeInfo;
                     const winnerId = disputeInfo?.winnerId?.toString?.() || disputeInfo?.winnerId;
