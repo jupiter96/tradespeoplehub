@@ -726,7 +726,7 @@ export default function ProfessionalOrderTimelineTab({
               if (isAutoApproved && deadlineForDisplay) {
                 const deadlineIso = typeof deadlineForDisplay === "string" ? deadlineForDisplay : new Date(deadlineForDisplay).toISOString();
                 const deadlineStr = formatDeliveredResponseDeadline(deadlineIso);
-                return `Your order has been completed automatically. Your order has been approved and completed automatically due to no response from the client before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the client in the form of feedback.`;
+                return `Your order has been approved and completed automatically due to no response from the client before ${deadlineStr}. Please assist other users on our platform by sharing your experience of working with the client in the form of feedback.`;
               }
               const disputeInfo = (currentOrder as any).disputeInfo;
               const isSettlementAccepted =
