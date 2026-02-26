@@ -3605,8 +3605,13 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
     const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
     const existingDelivery = milestoneDeliveries.find(d => d.milestoneIndex === milestoneIndex);
     const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
-    const activeRevisionForThisMilestone = revList.find(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress') && rr.milestoneIndex === milestoneIndex);
-    const isReDeliveryForRevision = !!existingDelivery && !!activeRevisionForThisMilestone;
+    const activeRevisions = revList.filter(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+    const activeRevisionForThisMilestone = activeRevisions.find(rr => rr.milestoneIndex === milestoneIndex);
+    const deliveredNotApproved = milestoneDeliveries.filter(d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt);
+    const isReDeliveryForRevision = !!existingDelivery && (
+      !!activeRevisionForThisMilestone ||
+      (activeRevisions.length === 1 && deliveredNotApproved.length === 1 && deliveredNotApproved[0].milestoneIndex === milestoneIndex)
+    );
 
     if (existingDelivery && !isReDeliveryForRevision) {
       if (req.files && req.files.length > 0) {
@@ -3615,9 +3620,11 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
       return res.status(400).json({ error: 'This milestone has already been delivered' });
     }
 
-    const isInProgress = order.status === 'In Progress' || order.status === 'in_progress' ||
-      order.deliveryStatus === 'active' || order.deliveryStatus === 'pending' || order.status === 'Revision';
-    if (!isInProgress) {
+    const statusLower = (order.status || '').toLowerCase();
+    const isAllowedForDelivery = statusLower === 'in progress' ||
+      order.deliveryStatus === 'active' || order.deliveryStatus === 'pending' ||
+      statusLower === 'revision';
+    if (!isAllowedForDelivery) {
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
       }
@@ -3647,8 +3654,11 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
     order.metadata.milestoneDeliveries = order.metadata.milestoneDeliveries || [];
 
     if (isReDeliveryForRevision) {
-      activeRevisionForThisMilestone.status = 'completed';
-      activeRevisionForThisMilestone.respondedAt = new Date();
+      const revisionToComplete = activeRevisionForThisMilestone || (activeRevisions.length === 1 ? activeRevisions[0] : null);
+      if (revisionToComplete) {
+        revisionToComplete.status = 'completed';
+        revisionToComplete.respondedAt = new Date();
+      }
       order.markModified('revisionRequest');
       const deliveryEntry = order.metadata.milestoneDeliveries.find(d => d.milestoneIndex === milestoneIndex);
       if (deliveryEntry) {
@@ -4894,12 +4904,10 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     await dispute.save();
 
     // Update order status and metadata so cancel/arbitration/cancel flow work for both client- and pro-initiated disputes
-    if (!order.metadata) order.metadata = {};
-    order.metadata.statusBeforeDispute = order.status;
-    order.metadata.deliveryStatusBeforeDispute = order.deliveryStatus;
     order.status = 'disputed';
     order.deliveryStatus = 'dispute';
     order.disputeId = disputeId;
+    if (!order.metadata) order.metadata = {};
     order.metadata.disputeStatus = 'open';
     order.metadata.disputeClaimantId = claimantId;
     order.metadata.disputeRespondentId = respondentId?.toString?.() || respondentId;
@@ -6205,32 +6213,19 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     }
 
     // Close dispute (keep dispute data) and restore order to previous state (before dispute).
-    const statusBeforeDispute = order.metadata?.statusBeforeDispute;
-    const deliveryStatusBeforeDispute = order.metadata?.deliveryStatusBeforeDispute;
-    if (statusBeforeDispute != null && statusBeforeDispute !== '' && statusBeforeDispute !== 'disputed') {
-      order.status = statusBeforeDispute;
-      const validDeliveryStatus = deliveryStatusBeforeDispute != null && deliveryStatusBeforeDispute !== '' && deliveryStatusBeforeDispute !== 'dispute';
-      if (validDeliveryStatus) {
-        order.deliveryStatus = deliveryStatusBeforeDispute;
-      } else {
-        if (statusBeforeDispute === 'Revision') order.deliveryStatus = 'revision';
-        else if (statusBeforeDispute === 'delivered' || statusBeforeDispute === 'Delivered') order.deliveryStatus = 'delivered';
-        else if (statusBeforeDispute === 'In Progress') order.deliveryStatus = 'active';
-        else order.deliveryStatus = order.deliveryStatus || 'active';
-      }
+    // For milestone orders: only set delivered if ALL milestones were delivered; otherwise restore to active.
+    // Do not modify milestoneDeliveries – only actually delivered milestones stay in the list.
+    const milestones = order.metadata?.milestones || [];
+    const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+    const isMilestoneOrder = Array.isArray(milestones) && milestones.length > 0;
+    const allMilestonesDelivered = isMilestoneOrder && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length >= milestones.length;
+
+    if (isMilestoneOrder && !allMilestonesDelivered) {
+      order.status = 'In Progress';
+      order.deliveryStatus = 'active';
     } else {
-      // Fallback when status was not saved (e.g. disputes created before this change)
-      const milestones = order.metadata?.milestones || [];
-      const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
-      const isMilestoneOrder = Array.isArray(milestones) && milestones.length > 0;
-      const allMilestonesDelivered = isMilestoneOrder && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length >= milestones.length;
-      if (isMilestoneOrder && !allMilestonesDelivered) {
-        order.status = 'In Progress';
-        order.deliveryStatus = 'active';
-      } else {
-        order.status = 'delivered';
-        order.deliveryStatus = 'delivered';
-      }
+      order.status = 'delivered';
+      order.deliveryStatus = 'delivered';
     }
 
     const cancelledAt = new Date();
@@ -6257,7 +6252,7 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     await syncCustomOfferMessageStatus(order);
 
     res.json({ 
-      message: 'Dispute cancelled successfully. Dispute closed and order restored to previous status.',
+      message: 'Dispute cancelled successfully. Dispute closed and order restored to delivered status.',
       order: {
         status: order.status,
         deliveryStatus: order.deliveryStatus,
