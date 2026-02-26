@@ -4894,10 +4894,12 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
     await dispute.save();
 
     // Update order status and metadata so cancel/arbitration/cancel flow work for both client- and pro-initiated disputes
+    if (!order.metadata) order.metadata = {};
+    order.metadata.statusBeforeDispute = order.status;
+    order.metadata.deliveryStatusBeforeDispute = order.deliveryStatus;
     order.status = 'disputed';
     order.deliveryStatus = 'dispute';
     order.disputeId = disputeId;
-    if (!order.metadata) order.metadata = {};
     order.metadata.disputeStatus = 'open';
     order.metadata.disputeClaimantId = claimantId;
     order.metadata.disputeRespondentId = respondentId?.toString?.() || respondentId;
@@ -6203,19 +6205,32 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     }
 
     // Close dispute (keep dispute data) and restore order to previous state (before dispute).
-    // For milestone orders: only set delivered if ALL milestones were delivered; otherwise restore to active.
-    // Do not modify milestoneDeliveries – only actually delivered milestones stay in the list.
-    const milestones = order.metadata?.milestones || [];
-    const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
-    const isMilestoneOrder = Array.isArray(milestones) && milestones.length > 0;
-    const allMilestonesDelivered = isMilestoneOrder && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length >= milestones.length;
-
-    if (isMilestoneOrder && !allMilestonesDelivered) {
-      order.status = 'In Progress';
-      order.deliveryStatus = 'active';
+    const statusBeforeDispute = order.metadata?.statusBeforeDispute;
+    const deliveryStatusBeforeDispute = order.metadata?.deliveryStatusBeforeDispute;
+    if (statusBeforeDispute != null && statusBeforeDispute !== '' && statusBeforeDispute !== 'disputed') {
+      order.status = statusBeforeDispute;
+      const validDeliveryStatus = deliveryStatusBeforeDispute != null && deliveryStatusBeforeDispute !== '' && deliveryStatusBeforeDispute !== 'dispute';
+      if (validDeliveryStatus) {
+        order.deliveryStatus = deliveryStatusBeforeDispute;
+      } else {
+        if (statusBeforeDispute === 'Revision') order.deliveryStatus = 'revision';
+        else if (statusBeforeDispute === 'delivered' || statusBeforeDispute === 'Delivered') order.deliveryStatus = 'delivered';
+        else if (statusBeforeDispute === 'In Progress') order.deliveryStatus = 'active';
+        else order.deliveryStatus = order.deliveryStatus || 'active';
+      }
     } else {
-      order.status = 'delivered';
-      order.deliveryStatus = 'delivered';
+      // Fallback when status was not saved (e.g. disputes created before this change)
+      const milestones = order.metadata?.milestones || [];
+      const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+      const isMilestoneOrder = Array.isArray(milestones) && milestones.length > 0;
+      const allMilestonesDelivered = isMilestoneOrder && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length >= milestones.length;
+      if (isMilestoneOrder && !allMilestonesDelivered) {
+        order.status = 'In Progress';
+        order.deliveryStatus = 'active';
+      } else {
+        order.status = 'delivered';
+        order.deliveryStatus = 'delivered';
+      }
     }
 
     const cancelledAt = new Date();
@@ -6242,7 +6257,7 @@ router.delete('/:orderId/dispute', authenticateToken, async (req, res) => {
     await syncCustomOfferMessageStatus(order);
 
     res.json({ 
-      message: 'Dispute cancelled successfully. Dispute closed and order restored to delivered status.',
+      message: 'Dispute cancelled successfully. Dispute closed and order restored to previous status.',
       order: {
         status: order.status,
         deliveryStatus: order.deliveryStatus,
