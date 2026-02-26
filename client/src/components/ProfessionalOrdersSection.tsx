@@ -2460,11 +2460,20 @@ function ProfessionalOrdersSection() {
                     ? (currentOrder as any).revisionRequest
                     : [(currentOrder as any).revisionRequest]
                   : [];
-                const inRevisionIndices = new Set(
-                  revisionRequests
-                    .filter((rr: { status?: string; milestoneIndex?: number }) => rr && (rr.status === "pending" || rr.status === "in_progress") && typeof rr.milestoneIndex === "number")
+                const activeRevisions = revisionRequests.filter(
+                  (rr: { status?: string; milestoneIndex?: number }) => rr && (rr.status === "pending" || rr.status === "in_progress")
+                );
+                const inRevisionIndices = new Set<number>(
+                  activeRevisions
+                    .filter((rr: { milestoneIndex?: number }) => typeof rr.milestoneIndex === "number")
                     .map((rr: { milestoneIndex: number }) => rr.milestoneIndex)
                 );
+                if (activeRevisions.length > 0 && inRevisionIndices.size === 0) {
+                  const deliveredNotApproved = (milestoneDeliveries as Array<{ milestoneIndex: number; approvedAt?: unknown }>).filter(
+                    (d) => d && typeof d.milestoneIndex === "number" && !d.approvedAt
+                  );
+                  deliveredNotApproved.forEach((d) => inRevisionIndices.add(d.milestoneIndex));
+                }
                 const deliveredIndices = new Set([
                   ...milestoneDeliveries.map((d: { milestoneIndex: number }) => d.milestoneIndex),
                   ...disputeResolvedIndices,
