@@ -5958,7 +5958,27 @@ interface NotificationItem {
   message: string;
   isRead: boolean;
   link?: string;
+  metadata?: { orderNumber?: string; disputeId?: string; [key: string]: unknown };
   createdAt: string;
+}
+
+// Same logic as header: order → order detail page, dispute → dispute discussion page, listing → services (pro)
+function getNotificationLink(notification: NotificationItem): string {
+  const meta = notification.metadata || {};
+  const type = notification.type || '';
+  if ((type === 'dispute_initiated' || type === 'dispute_responded' || type === 'dispute_resolved') && meta.disputeId) {
+    return `/dispute/${meta.disputeId}`;
+  }
+  if (meta.orderNumber) {
+    return `/account?tab=orders&orderId=${encodeURIComponent(meta.orderNumber)}`;
+  }
+  if (type === 'listing_approved' || type === 'listing_rejected' || type === 'listing_requires_modification') {
+    return '/account?tab=services';
+  }
+  if (notification.link && notification.link.trim()) {
+    return notification.link.startsWith('http') ? notification.link : notification.link;
+  }
+  return '/account?tab=notifications';
 }
 
 function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (count: number) => void }) {
@@ -6163,14 +6183,13 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
     fetchNotifications(nextPage, false);
   };
 
-  // Handle notification click
+  // Handle notification click: go to order detail or dispute discussion page (same logic as header dropdown)
   const handleNotificationClick = (notification: NotificationItem) => {
     if (!notification.isRead) {
       markAsRead(notification._id);
     }
-    if (notification.link) {
-      navigate(notification.link);
-    }
+    const targetLink = getNotificationLink(notification);
+    navigate(targetLink);
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;

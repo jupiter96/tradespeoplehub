@@ -821,6 +821,33 @@ export default function ClientOrdersSection() {
           `delivered-milestone-${d.milestoneIndex}`
         );
       });
+      // Milestone approved events (client approved – show "You approved milestone X on ...")
+      milestoneDeliveries.forEach((d) => {
+        if (!d || typeof d.milestoneIndex !== "number" || !d.approvedAt) return;
+        const approvedAtIso = typeof d.approvedAt === "string" ? d.approvedAt : new Date(d.approvedAt).toISOString();
+        const approvedAtFormatted = (() => {
+          const date = new Date(approvedAtIso);
+          if (isNaN(date.getTime())) return "";
+          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          const day = date.getDate();
+          const getOrdinal = (n: number) => { const s = ["th", "st", "nd", "rd"]; const v = n % 100; return s[(v - 20) % 10] || s[v] || s[0]; };
+          const hours = String(date.getHours()).padStart(2, "0");
+          const minutes = String(date.getMinutes()).padStart(2, "0");
+          return `${dayNames[date.getDay()]} ${day}${getOrdinal(day)} ${monthNames[date.getMonth()]}, ${date.getFullYear()} ${hours}:${minutes}`;
+        })();
+        const milestoneNum = d.milestoneIndex + 1;
+        push(
+          {
+            at: approvedAtIso,
+            title: "Milestone approved",
+            description: `You approved milestone ${milestoneNum}${approvedAtFormatted ? ` on ${approvedAtFormatted}` : ""}.`,
+            colorClass: "bg-green-600",
+            icon: <CheckCircle2 className="w-5 h-5 text-blue-600" />,
+          },
+          `milestone-approved-${d.milestoneIndex}`
+        );
+      });
     } else if (order.deliveryFiles && order.deliveryFiles.length > 0) {
       // Group files by deliveryNumber
       const deliveryGroupsMap = new Map<number, any[]>();
@@ -1660,11 +1687,13 @@ export default function ClientOrdersSection() {
         return;
       }
 
-      const milestoneDeliveries = (meta.milestoneDeliveries || []) as Array<{ milestoneIndex: number }>;
-      const deliveredIndices: number[] = milestoneDeliveries
-        .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+      const milestoneDeliveries = (meta.milestoneDeliveries || []) as Array<{ milestoneIndex: number; approvedAt?: string | Date | null }>;
+      /** Delivered but not yet approved – only these can be disputed. */
+      const disputableIndices: number[] = milestoneDeliveries
+        .filter((d) => d && typeof d.milestoneIndex === "number" && !d.approvedAt)
+        .map((d) => d.milestoneIndex)
         .filter((idx) => idx >= 0 && idx < milestones.length);
-      if (isMilestoneOrder && deliveredIndices.length > 1 && selectedMilestoneIndices.length === 1) {
+      if (isMilestoneOrder && disputableIndices.length > 1 && selectedMilestoneIndices.length === 1) {
         setIsSingleMilestoneDisputeConfirmOpen(true);
         return;
       }
@@ -1682,7 +1711,15 @@ export default function ClientOrdersSection() {
     const unmet = disputeUnmetRequirements;
     const offer = disputeOfferAmount;
     const evidenceFiles = disputeEvidenceFiles;
-    const milestoneInds = selectedMilestoneIndices;
+    // Only send milestone indices that are disputable (delivered, not approved); completed milestones must not be included
+    const milestoneDeliveries = (meta.milestoneDeliveries || []) as Array<{ milestoneIndex: number; approvedAt?: string | Date | null }>;
+    const disputableIndices: number[] = milestoneDeliveries
+      .filter((d) => d && typeof d.milestoneIndex === "number" && !d.approvedAt)
+      .map((d) => d.milestoneIndex)
+      .filter((idx) => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length);
+    const milestoneInds = isMilestoneOrder
+      ? selectedMilestoneIndices.filter((i) => disputableIndices.includes(i))
+      : selectedMilestoneIndices;
     const orderId = selectedOrder;
     closeAllModals();
     setDisputeRequirements("");
@@ -5821,24 +5858,23 @@ export default function ClientOrdersSection() {
                 )}
               </div>
 
-              {/* Milestone selection (custom offer + milestone payment only) */}
+              {/* Milestone selection (custom offer + milestone payment only) – only delivered-but-not-approved; completed milestones cannot be disputed */}
               {(() => {
                 const meta = (currentOrder as any)?.metadata || {};
                 const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
                 const milestones = (meta.milestones || []) as Array<{ name?: string; description?: string; price?: number; amount?: number; noOf?: number }>;
                 if (!isMilestoneOrder || milestones.length === 0) return null;
 
-                // Only allow disputes for milestones that have been delivered
-                const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
-                const deliveredIndices: number[] = Array.isArray(milestoneDeliveries)
+                const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number; approvedAt?: string | Date | null }> | undefined;
+                const disputableIndices: number[] = Array.isArray(milestoneDeliveries)
                   ? milestoneDeliveries
-                      .map(d => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+                      .filter(d => d && typeof d.milestoneIndex === "number" && !d.approvedAt)
+                      .map(d => d.milestoneIndex)
                       .filter(idx => idx >= 0 && idx < milestones.length)
                   : [];
-                if (deliveredIndices.length === 0) return null;
 
                 const toggleMilestone = (index: number) => {
-                  if (!deliveredIndices.includes(index)) return;
+                  if (!disputableIndices.includes(index)) return;
                   if (selectedMilestoneIndices.includes(index)) {
                     handleMilestoneIndicesChange(selectedMilestoneIndices.filter((i) => i !== index));
                   } else {
@@ -5846,10 +5882,10 @@ export default function ClientOrdersSection() {
                   }
                 };
                 const toggleAll = (checked: boolean) => {
-                  handleMilestoneIndicesChange(checked ? deliveredIndices : []);
+                  handleMilestoneIndicesChange(checked ? disputableIndices : []);
                 };
                 const totalFromSelection = selectedMilestoneIndices.reduce((s, i) => {
-                  if (!deliveredIndices.includes(i)) return s;
+                  if (!disputableIndices.includes(i)) return s;
                   const m = milestones[i];
                   const p = m?.price ?? m?.amount ?? 0;
                   const q = m?.noOf ?? 1;
@@ -5861,41 +5897,49 @@ export default function ClientOrdersSection() {
                       Select milestone(s) to dispute *
                     </Label>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
-                      Choose one or more delivered milestones. The total dispute amount you can dispute is limited to the sum of the selected milestones.
+                      Only milestones that have been delivered but not yet approved can be disputed. Approved (completed) milestones are not shown.
                     </p>
                     <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                      <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                        <Checkbox
-                          checked={
-                            deliveredIndices.length > 0 &&
-                            deliveredIndices.every((idx) => selectedMilestoneIndices.includes(idx))
-                          }
-                          onCheckedChange={(c) => toggleAll(!!c)}
-                        />
-                        Select all
-                      </label>
-                      {milestones.map((m, idx) => {
-                        if (!deliveredIndices.includes(idx)) {
-                          return null;
-                        }
-                        const p = m?.price ?? m?.amount ?? 0;
-                        const noOf = m?.noOf ?? 1;
-                        const total = p * noOf;
-                        return (
-                          <label key={idx} className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      {disputableIndices.length === 0 ? (
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                          No milestones available to dispute. All delivered milestones have been approved.
+                        </p>
+                      ) : (
+                        <>
+                          <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
                             <Checkbox
-                              checked={selectedMilestoneIndices.includes(idx)}
-                              onCheckedChange={() => toggleMilestone(idx)}
+                              checked={
+                                disputableIndices.length > 0 &&
+                                disputableIndices.every((idx) => selectedMilestoneIndices.includes(idx))
+                              }
+                              onCheckedChange={(c) => toggleAll(!!c)}
                             />
-                            <span>
-                              Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
-                              {m?.description && (
-                                <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
-                              )}
-                            </span>
+                            Select all
                           </label>
-                        );
-                      })}
+                          {milestones.map((m, idx) => {
+                            if (!disputableIndices.includes(idx)) {
+                              return null;
+                            }
+                            const p = m?.price ?? m?.amount ?? 0;
+                            const noOf = m?.noOf ?? 1;
+                            const total = p * noOf;
+                            return (
+                              <label key={idx} className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                <Checkbox
+                                  checked={selectedMilestoneIndices.includes(idx)}
+                                  onCheckedChange={() => toggleMilestone(idx)}
+                                />
+                                <span>
+                                  Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                                  {m?.description && (
+                                    <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
+                                  )}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </>
+                      )}
                     </div>
                     {selectedMilestoneIndices.length > 0 && (
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">

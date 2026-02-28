@@ -4876,6 +4876,16 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
         if (invalid) {
           return res.status(400).json({ error: 'Invalid milestone selection' });
         }
+        // Only allow disputing milestones that are delivered but not yet approved (completed)
+        const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+        const disputableIndices = milestoneDeliveries
+          .filter(d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt)
+          .map(d => d.milestoneIndex);
+        const filtered = milestoneIndices.filter(i => disputableIndices.includes(i));
+        if (filtered.length === 0) {
+          return res.status(400).json({ error: 'Only delivered, not-yet-approved milestones can be disputed. The selected milestone(s) have already been approved.' });
+        }
+        milestoneIndices = filtered;
         const maxAmount = milestoneIndices.reduce((sum, i) => sum + milestones[i].price * milestones[i].noOf, 0);
         if (parsedOfferAmount > maxAmount) {
           return res.status(400).json({ error: `Offer amount cannot exceed the total of selected milestones (£${maxAmount.toFixed(2)})` });

@@ -309,18 +309,24 @@ const formatRelativeTime = (dateString: string): string => {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 };
 
-// Helper to get navigation target for a notification (use link or derive from type)
+// Helper to get navigation target for a notification: order → order detail page, dispute → dispute discussion page, listing → services (pro)
 function getNotificationLink(notification: Notification): string {
-  if (notification.link && notification.link.trim()) {
-    return notification.link.startsWith('http') ? notification.link : notification.link;
-  }
   const meta = (notification as any).metadata || {};
   const type = notification.type || '';
-  if (type.startsWith('order_') && meta.orderNumber) {
-    return `/account?tab=orders&orderId=${encodeURIComponent(meta.orderNumber)}`;
-  }
+  // Dispute-related: go directly to dispute discussion page
   if ((type === 'dispute_initiated' || type === 'dispute_responded' || type === 'dispute_resolved') && meta.disputeId) {
     return `/dispute/${meta.disputeId}`;
+  }
+  // Order-related (any notification with orderNumber): go directly to order detail page
+  if (meta.orderNumber) {
+    return `/account?tab=orders&orderId=${encodeURIComponent(meta.orderNumber)}`;
+  }
+  // Service listing-related (for professionals): go directly to account Services (service management) section
+  if (type === 'listing_approved' || type === 'listing_rejected' || type === 'listing_requires_modification') {
+    return '/account?tab=services';
+  }
+  if (notification.link && notification.link.trim()) {
+    return notification.link.startsWith('http') ? notification.link : notification.link;
   }
   return '/account?tab=notifications';
 }

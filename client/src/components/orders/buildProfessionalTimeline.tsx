@@ -354,6 +354,34 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
+  // Milestone orders: "Milestone approved" events (client approved at approvedAt)
+  const meta = (order as any).metadata || {};
+  const isMilestoneOrderMeta =
+    meta.fromCustomOffer &&
+    meta.paymentType === "milestone" &&
+    Array.isArray(meta.milestones) &&
+    meta.milestones.length > 0;
+  const milestoneDeliveriesForApproval = meta.milestoneDeliveries as Array<{ milestoneIndex: number; approvedAt?: string | Date | null }> | undefined;
+  if (isMilestoneOrderMeta && Array.isArray(milestoneDeliveriesForApproval)) {
+    const clientName = order.client || "Client";
+    milestoneDeliveriesForApproval.forEach((d) => {
+      if (!d || typeof d.milestoneIndex !== "number" || !d.approvedAt) return;
+      const approvedAtIso = typeof d.approvedAt === "string" ? d.approvedAt : new Date(d.approvedAt).toISOString();
+      const approvedAtFormatted = formatAcceptedAt(approvedAtIso);
+      const milestoneNum = d.milestoneIndex + 1;
+      push(
+        {
+          at: approvedAtIso,
+          label: "Milestone approved",
+          description: `${clientName} approved milestone ${milestoneNum}${approvedAtFormatted ? ` on ${approvedAtFormatted}` : ""}.`,
+          colorClass: "bg-green-600",
+          icon: <ThumbsUp className="w-5 h-5 text-blue-600" />,
+        },
+        `milestone-approved-${d.milestoneIndex}`
+      );
+    });
+  }
+
   // Revision request events - handle as array (revisionRequests already declared above)
   // Cancellation request events
   const canc = (order as any).cancellationRequest;

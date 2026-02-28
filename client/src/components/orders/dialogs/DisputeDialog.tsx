@@ -59,10 +59,13 @@ export default function DisputeDialog({
     Array.isArray(meta.milestones) &&
     meta.milestones.length > 0;
   const milestones = (meta.milestones || []) as MilestoneItem[];
-  const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
-  const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
+  type DeliveryEntry = { milestoneIndex: number; approvedAt?: string | Date | null };
+  const milestoneDeliveries = meta.milestoneDeliveries as Array<DeliveryEntry> | undefined;
+  /** Delivered but not yet approved by client – only these can be disputed. Completed (approved) milestones are excluded. */
+  const disputableMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
     ? milestoneDeliveries
-        .map((d) => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+        .filter((d) => d && typeof d.milestoneIndex === "number" && !d.approvedAt)
+        .map((d) => d.milestoneIndex)
         .filter((idx) => idx >= 0 && idx < milestones.length)
     : [];
 
@@ -89,7 +92,7 @@ export default function DisputeDialog({
 
   const toggleMilestone = (index: number) => {
     if (!onSelectedMilestoneIndicesChange) return;
-    if (!deliveredMilestoneIndices.includes(index)) return; // Only delivered milestones can be toggled
+    if (!disputableMilestoneIndices.includes(index)) return; // Only disputable (delivered, not approved) milestones can be toggled
     if (selectedMilestoneIndices.includes(index)) {
       onSelectedMilestoneIndicesChange(selectedMilestoneIndices.filter((i) => i !== index));
     } else {
@@ -100,8 +103,8 @@ export default function DisputeDialog({
   const toggleAllMilestones = (checked: boolean) => {
     if (!onSelectedMilestoneIndicesChange) return;
     if (checked) {
-      // Select only delivered milestones
-      onSelectedMilestoneIndicesChange(deliveredMilestoneIndices);
+      // Select only disputable milestones
+      onSelectedMilestoneIndicesChange(disputableMilestoneIndices);
     } else {
       onSelectedMilestoneIndicesChange([]);
     }
@@ -109,8 +112,8 @@ export default function DisputeDialog({
 
   const allSelected =
     isMilestoneOrder &&
-    deliveredMilestoneIndices.length > 0 &&
-    deliveredMilestoneIndices.every((idx) => selectedMilestoneIndices.includes(idx));
+    disputableMilestoneIndices.length > 0 &&
+    disputableMilestoneIndices.every((idx) => selectedMilestoneIndices.includes(idx));
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -228,29 +231,35 @@ export default function DisputeDialog({
             )}
           </div>
 
-          {/* Milestone selection (custom offer + milestone payment only) – only delivered milestones are selectable */}
+          {/* Milestone selection (custom offer + milestone payment only) – only delivered-but-not-approved milestones are selectable; completed (approved) milestones cannot be disputed */}
           {isMilestoneOrder && onSelectedMilestoneIndicesChange && milestones.length > 0 && (
             <div>
               <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                 Select milestone(s) to dispute *
               </Label>
               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-3">
-                Choose one or more delivered milestones. The total dispute amount will be the sum of the selected milestones.
+                Only milestones that have been delivered but not yet approved can be disputed. Approved (completed) milestones are not shown.
               </p>
               <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
-                {deliveredMilestoneIndices.length > 0 && (
-                  <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={(c) => toggleAllMilestones(!!c)}
-                    />
-                    Select all delivered milestones
-                  </label>
-                )}
-                {milestones.map((m, idx) => {
-                  if (!deliveredMilestoneIndices.includes(idx)) {
-                    return null;
-                  }
+                {disputableMilestoneIndices.length === 0 ? (
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    No milestones available to dispute. All delivered milestones have been approved.
+                  </p>
+                ) : (
+                  <>
+                    {disputableMilestoneIndices.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={(c) => toggleAllMilestones(!!c)}
+                        />
+                        Select all
+                      </label>
+                    )}
+                    {milestones.map((m, idx) => {
+                      if (!disputableMilestoneIndices.includes(idx)) {
+                        return null;
+                      }
                   const p = m?.price ?? m?.amount ?? 0;
                   const noOf = m?.noOf ?? 1;
                   const total = p * noOf;
@@ -273,6 +282,8 @@ export default function DisputeDialog({
                     </label>
                   );
                 })}
+                  </>
+                )}
               </div>
               {selectedMilestoneIndices.length > 0 && (
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">

@@ -123,11 +123,19 @@ export default function ProfessionalOrderDetailSidebar({
     meta.paymentType === "milestone" &&
     Array.isArray(meta.milestones) &&
     meta.milestones.length > 0;
-  const milestoneDeliveries = meta.milestoneDeliveries as Array<{ milestoneIndex: number }> | undefined;
+  type DeliveryEntry = { milestoneIndex: number; approvedAt?: string | Date | null };
+  const milestoneDeliveries = meta.milestoneDeliveries as Array<DeliveryEntry> | undefined;
   const disputeResolvedIndices = (meta.disputeResolvedMilestoneIndices || []) as number[];
   const deliveredMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
     ? milestoneDeliveries
         .map(d => (d && typeof d.milestoneIndex === "number" ? d.milestoneIndex : -1))
+        .filter(idx => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length)
+    : [];
+  /** Delivered but not yet approved – pro can still open dispute for these */
+  const disputableMilestoneIndices: number[] = Array.isArray(milestoneDeliveries)
+    ? milestoneDeliveries
+        .filter(d => d && typeof d.milestoneIndex === "number" && !d.approvedAt)
+        .map(d => d.milestoneIndex)
         .filter(idx => idx >= 0 && Array.isArray(meta.milestones) && idx < meta.milestones.length)
     : [];
   const completeMilestoneIndices = [...new Set([...deliveredMilestoneIndices, ...disputeResolvedIndices.filter(i => typeof i === "number" && i >= 0 && Array.isArray(meta.milestones) && i < meta.milestones.length)])];
@@ -137,6 +145,13 @@ export default function ProfessionalOrderDetailSidebar({
     isMilestoneOrder &&
     Array.isArray(meta.milestones) &&
     meta.milestones.length > completeMilestoneIndices.length;
+
+  /** Show three-dots menu when there is an actionable item: cancellation (undelivered), dispute (delivered/revision), or disputable milestone (delivered but not approved) */
+  const hasActionableItem =
+    order.deliveryStatus === "pending" ||
+    order.deliveryStatus === "active" ||
+    order.status === "Revision" ||
+    (isMilestoneOrder && disputableMilestoneIndices.length > 0);
 
   return (
     <div className="lg:col-span-1">
@@ -148,7 +163,7 @@ export default function ProfessionalOrderDetailSidebar({
           {/* Three Dots Menu */}
           {order.status !== "Cancelled" && order.status !== "Cancellation Pending" && order.status !== "Completed" &&
            order.status?.toLowerCase() !== "disputed" &&
-           (order.deliveryStatus === "pending" || order.deliveryStatus === "active" || order.status === "Revision") && 
+           hasActionableItem &&
            (!cancellationRequest?.status || cancellationRequest.status !== "pending") && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
