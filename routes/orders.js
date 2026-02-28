@@ -345,6 +345,14 @@ function getOrderServiceName(order) {
   return (order.items && order.items[0] && order.items[0].title) ? order.items[0].title : 'Your order';
 }
 
+const REVIEW_CUTOFF_DAYS = 90;
+function isOrderCompletedOver90DaysAgo(order) {
+  if (!order.completedDate) return false;
+  const completedAt = new Date(order.completedDate).getTime();
+  const days = (Date.now() - completedAt) / (24 * 60 * 60 * 1000);
+  return days >= REVIEW_CUTOFF_DAYS;
+}
+
 async function sendCancellationRequestNotifications({ order, clientUser, professionalUser, requestedByUserId }) {
   try {
     const orderNumber = order.orderNumber;
@@ -700,6 +708,40 @@ async function sendOrderDeliveryApprovedNotifications({ order, clientUser, profe
     }
   } catch (error) {
     console.error('[Orders] Failed to send order delivery approved notifications/emails:', error);
+  }
+}
+
+/** Send "Leave a review" email + in-app notification to client (used once on order completion). */
+async function sendReviewInvitationToClient(order, clientUser) {
+  if (!clientUser || !clientUser.email) return;
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = getOrderServiceName(order);
+    const link = orderLinkBase();
+    const n = await Notification.createNotification({
+      userId: clientUser._id,
+      type: 'review_reminder',
+      title: 'Leave a review',
+      message: `Order ${orderNumber} is complete. How was your experience? Leave a rating and review.`,
+      relatedId: order._id,
+      relatedModel: 'Order',
+      link: '/account?tab=orders',
+      metadata: { orderNumber },
+    });
+    await emitNotificationToUser(clientUser._id, n);
+    await sendTemplatedEmail(
+      clientUser.email,
+      'order-review-reminder',
+      {
+        firstName: clientUser.firstName || 'there',
+        orderNumber,
+        serviceName,
+        orderLink: link,
+      },
+      'orders'
+    );
+  } catch (err) {
+    console.error('[Orders] Failed to send review invitation:', err);
   }
 }
 
@@ -4428,6 +4470,18 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
       'order-delivery-approved'
     );
 
+    // Send "Leave a review" email to client once, if they did not submit a review in this request
+    if (rating === undefined) {
+      if (!order.metadata) order.metadata = {};
+      order.metadata.reviewReminderWave = 0;
+      order.markModified('metadata');
+      await order.save();
+      runBackgroundTask(
+        () => sendReviewInvitationToClient(order, client),
+        'review-invitation'
+      );
+    }
+
     res.json({ 
       message: 'Order completed successfully. Funds have been released to the professional.',
       order: {
@@ -4518,6 +4572,9 @@ router.post('/:orderId/review', authenticateToken, requireRole(['client']), asyn
     if (order.status !== 'Completed' && order.status !== 'completed') {
       return res.status(400).json({ error: 'Can only review completed orders' });
     }
+    if (isOrderCompletedOver90DaysAgo(order)) {
+      return res.status(400).json({ error: 'Reviews can only be submitted within 90 days of order completion.' });
+    }
 
     // Get client user
     const client = await User.findById(req.user.id);
@@ -4596,6 +4653,9 @@ router.post('/:orderId/buyer-review', authenticateToken, requireRole(['professio
     if (order.status !== 'Completed' && order.status !== 'completed') {
       return res.status(400).json({ error: 'Can only review completed orders' });
     }
+    if (isOrderCompletedOver90DaysAgo(order)) {
+      return res.status(400).json({ error: 'Reviews can only be submitted within 90 days of order completion.' });
+    }
 
     // Get professional user
     const professional = await User.findById(req.user.id);
@@ -4649,8 +4709,11 @@ router.post('/:orderId/respond-to-review', authenticateToken, requireRole(['prof
     if (order.status !== 'Completed' && order.status !== 'completed') {
       return res.status(400).json({ error: 'Can only respond to reviews for completed orders' });
     }
+    if (isOrderCompletedOver90DaysAgo(order)) {
+      return res.status(400).json({ error: 'Review responses can only be submitted within 90 days of order completion.' });
+    }
 
-    // Find the Review document for this order (client's review of the service)
+    // Find the Review document for this order (client's review of the service) for this order (client's review of the service)
     const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
     const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
     let reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });

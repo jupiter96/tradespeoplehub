@@ -111,7 +111,130 @@ async function processDeliveryReminders() {
   }
 }
 
-const REVIEW_REMINDER_HOURS_AFTER = 24;
+const REVIEW_REMINDER_DAYS = [7, 30, 89]; // Reminder waves: 7d, 30d, 89d after completion (immediate sent on completion)
+const REVIEW_CUTOFF_DAYS = 90; // After this many days, no more reminders and no review/rating allowed
+
+/** Send "Leave a review" email + notification to client (used on completion and by processReviewReminders). */
+async function sendReviewInvitationToClient(order, clientUser) {
+  if (!clientUser || !clientUser.email) return;
+  try {
+    const orderNumber = order.orderNumber;
+    const serviceName = (order.items && order.items[0] && order.items[0].title) ? order.items[0].title : 'Your order';
+    const orderLink = `${CLIENT_ORIGIN}/account?tab=orders`;
+    const n = await Notification.createNotification({
+      userId: clientUser._id,
+      type: 'review_reminder',
+      title: 'Leave a review',
+      message: `Order ${orderNumber} is complete. How was your experience? Leave a rating and review.`,
+      relatedId: order._id,
+      relatedModel: 'Order',
+      link: '/account?tab=orders',
+      metadata: { orderNumber },
+    });
+    await emitNotificationToUser(clientUser._id, n);
+    await sendTemplatedEmail(
+      clientUser.email,
+      'order-review-reminder',
+      {
+        firstName: clientUser.firstName || 'there',
+        orderNumber,
+        serviceName,
+        orderLink,
+      },
+      'orders'
+    );
+  } catch (err) {
+    console.error('[Order Status Scheduler] Error sending review invitation:', err);
+  }
+}
+
+/**
+ * Send reminder to client to leave a review for a completed order.
+ * Only at 7, 30, 89 days after completion (immediate is sent on completion in orders route).
+ * Tracks wave in metadata.reviewReminderWave: 0 = immediate sent, 1 = 7d sent, 2 = 30d sent, 3 = 89d sent.
+ */
+async function processReviewReminders() {
+  try {
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - REVIEW_CUTOFF_DAYS * 24 * 60 * 60 * 1000);
+
+    const orders = await Order.find({
+      status: 'Completed',
+      completedDate: { $exists: true, $ne: null, $gt: cutoffDate },
+      $or: [
+        { 'metadata.reviewReminderWave': { $exists: false } },
+        { 'metadata.reviewReminderWave': null },
+        { 'metadata.reviewReminderWave': { $lt: 3 } },
+      ],
+    }).populate('client');
+
+    for (const order of orders) {
+      try {
+        const hasReview = await Review.findOne({ order: order._id });
+        if (hasReview) continue;
+
+        const client = order.client;
+        if (!client || !client.email) continue;
+
+        const completedAt = new Date(order.completedDate);
+        const wave = typeof order.metadata?.reviewReminderWave === 'number' ? order.metadata.reviewReminderWave : 0;
+
+        let nextWave = null;
+        if (wave < 1) {
+          const at7 = new Date(completedAt.getTime() + REVIEW_REMINDER_DAYS[0] * 24 * 60 * 60 * 1000);
+          if (now >= at7) nextWave = 1;
+        }
+        if (nextWave === null && wave < 2) {
+          const at30 = new Date(completedAt.getTime() + REVIEW_REMINDER_DAYS[1] * 24 * 60 * 60 * 1000);
+          if (now >= at30) nextWave = 2;
+        }
+        if (nextWave === null && wave < 3) {
+          const at89 = new Date(completedAt.getTime() + REVIEW_REMINDER_DAYS[2] * 24 * 60 * 60 * 1000);
+          if (now >= at89) nextWave = 3;
+        }
+
+        if (nextWave === null) continue;
+
+        const orderNumber = order.orderNumber;
+        const serviceName = (order.items && order.items[0] && order.items[0].title) ? order.items[0].title : 'Your order';
+        const orderLink = `${CLIENT_ORIGIN}/account?tab=orders`;
+
+        const n = await Notification.createNotification({
+          userId: client._id,
+          type: 'review_reminder',
+          title: 'Leave a review',
+          message: `Order ${orderNumber} is complete. How was your experience? Leave a rating and review.`,
+          relatedId: order._id,
+          relatedModel: 'Order',
+          link: '/account?tab=orders',
+          metadata: { orderNumber },
+        });
+        await emitNotificationToUser(client._id, n);
+
+        await sendTemplatedEmail(
+          client.email,
+          'order-review-reminder',
+          {
+            firstName: client.firstName || 'there',
+            orderNumber,
+            serviceName,
+            orderLink,
+          },
+          'orders'
+        );
+
+        if (!order.metadata) order.metadata = {};
+        order.metadata.reviewReminderWave = nextWave;
+        order.markModified('metadata');
+        await order.save();
+      } catch (orderErr) {
+        console.error(`[Order Status Scheduler] Error sending review reminder for order ${order.orderNumber}:`, orderErr);
+      }
+    }
+  } catch (error) {
+    console.error('[Order Status Scheduler] Error in processReviewReminders:', error);
+  }
+}
 
 async function processAutoCompleteDeliveredOrders() {
   try {
@@ -209,6 +332,12 @@ async function processAutoCompleteDeliveredOrders() {
         order.metadata.autoApprovedReason = 'no_client_response';
         order.markModified('metadata');
         await order.save();
+
+        order.metadata.reviewReminderWave = 0;
+        order.markModified('metadata');
+        await order.save();
+        const clientForReview = await User.findById(order.client);
+        if (clientForReview) await sendReviewInvitationToClient(order, clientForReview);
 
         if (order.metadata?.fromCustomOffer && order.metadata?.customOfferId) {
           try {
@@ -311,9 +440,15 @@ async function processAutoCompleteDeliveredOrders() {
           if (Number.isFinite(lastDeliveredAt)) {
             order.metadata.autoApprovedDeadlineAt = new Date(lastDeliveredAt + effectiveResponseHours * 60 * 60 * 1000);
           }
+          order.metadata.reviewReminderWave = 0;
         }
 
         await order.save();
+
+        if (order.status === 'Completed') {
+          const clientForReview = await User.findById(order.client);
+          if (clientForReview) await sendReviewInvitationToClient(order, clientForReview);
+        }
 
         if (order.status === 'Completed' && order.metadata?.fromCustomOffer && order.metadata?.customOfferId) {
           try {
@@ -336,72 +471,6 @@ async function processAutoCompleteDeliveredOrders() {
     }
   } catch (error) {
     console.error('[Order Status Scheduler] Error in processAutoCompleteDeliveredOrders:', error);
-  }
-}
-
-/**
- * Send reminder to client to leave a review/rating for a completed order.
- * Runs once per completed order when no review exists yet, at least REVIEW_REMINDER_HOURS_AFTER after completion.
- */
-async function processReviewReminders() {
-  try {
-    const now = new Date();
-    const reminderThreshold = new Date(now.getTime() - REVIEW_REMINDER_HOURS_AFTER * 60 * 60 * 1000);
-
-    const orders = await Order.find({
-      status: 'Completed',
-      completedDate: { $lte: reminderThreshold },
-      $or: [
-        { 'metadata.reviewReminderSentAt': null },
-        { 'metadata.reviewReminderSentAt': { $exists: false } },
-      ],
-    }).populate('client');
-
-    for (const order of orders) {
-      try {
-        const hasReview = await Review.findOne({ order: order._id });
-        if (hasReview) continue;
-
-        const client = order.client;
-        if (!client || !client.email) continue;
-
-        const orderNumber = order.orderNumber;
-        const serviceName = (order.items && order.items[0] && order.items[0].title) ? order.items[0].title : 'Your order';
-        const orderLink = `${CLIENT_ORIGIN}/account?tab=orders`;
-
-        const n = await Notification.createNotification({
-          userId: client._id,
-          type: 'review_reminder',
-          title: 'Leave a review',
-          message: `Order ${orderNumber} is complete. How was your experience? Leave a rating and review.`,
-          relatedId: order._id,
-          relatedModel: 'Order',
-          link: '/account?tab=orders',
-          metadata: { orderNumber },
-        });
-        await emitNotificationToUser(client._id, n);
-
-        await sendTemplatedEmail(
-          client.email,
-          'order-review-reminder',
-          {
-            firstName: client.firstName || 'there',
-            orderNumber,
-            serviceName,
-            orderLink,
-          },
-          'orders'
-        );
-
-        if (!order.metadata) order.metadata = {};
-        order.metadata.reviewReminderSentAt = new Date();
-        await order.save();
-      } catch (orderErr) {
-        console.error(`[Order Status Scheduler] Error sending review reminder for order ${order.orderNumber}:`, orderErr);
-      }
-    }
-  } catch (error) {
-    console.error('[Order Status Scheduler] Error in processReviewReminders:', error);
   }
 }
 

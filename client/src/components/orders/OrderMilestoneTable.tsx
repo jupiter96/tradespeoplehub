@@ -23,7 +23,7 @@ type OrderLike = {
       noOf?: number;
       chargePer?: string;
     }>;
-    milestoneDeliveries?: Array<{ milestoneIndex: number }>;
+    milestoneDeliveries?: Array<{ milestoneIndex: number; approvedAt?: string | Date | null }>;
     disputeResolvedMilestoneIndices?: number[];
   };
   revisionRequest?: RevisionRequestLike | RevisionRequestLike[];
@@ -91,16 +91,21 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
               const unitPrice = m.price ?? m.amount ?? 0;
               const noOfVal = m.noOf ?? m.hours ?? 1;
               const amt = unitPrice * (typeof noOfVal === "number" ? noOfVal : 1);
-              const isMilestoneDelivered =
-                Array.isArray(milestoneDeliveries) &&
-                milestoneDeliveries.some((d) => d.milestoneIndex === idx);
-              const isMilestoneResolvedByDispute =
-                Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx);
+              const deliveryEntry = Array.isArray(milestoneDeliveries)
+                ? milestoneDeliveries.find((d) => d.milestoneIndex === idx)
+                : undefined;
+              const isMilestoneDelivered = !!deliveryEntry;
+              const isMilestoneApprovedByClient =
+                !!deliveryEntry?.approvedAt ||
+                (Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx));
               const isThisMilestoneInRevision = activeRevisionMilestoneIndices.has(idx);
               const milestoneStatus = (() => {
                 if (isThisMilestoneInRevision) return { label: "Revision", color: "text-yellow-600" };
+                if (isMilestoneDelivered && isMilestoneApprovedByClient)
+                  return { label: "Completed", color: "text-green-700 font-semibold" };
                 if (isMilestoneDelivered) return { label: "Delivered", color: "text-green-600" };
-                if (isMilestoneResolvedByDispute) return { label: "Resolved (dispute)", color: "text-green-600" };
+                if (Array.isArray(disputeResolvedIndices) && disputeResolvedIndices.includes(idx))
+                  return { label: "Resolved (dispute)", color: "text-green-600" };
                 if (orderStatus === "offer created") return { label: "Offer created", color: "text-gray-500" };
                 if (orderStatus === "revision") return { label: inProgressLabel, color: "text-blue-600" };
                 if (orderStatus === "in progress") return { label: inProgressLabel, color: "text-blue-600" };
