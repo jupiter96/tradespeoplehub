@@ -74,10 +74,6 @@ interface ServiceCategory {
   }>;
   metaTitle?: string;
   metaDescription?: string;
-  serviceIdealFor?: Array<{
-    name: string;
-    order: number;
-  }>;
   extraServices?: Array<{
     name: string;
     price: number;
@@ -461,7 +457,6 @@ export default function AdminServiceCategoriesPage() {
       icon?: string;
       metadata?: Record<string, any>;
     }>;
-    serviceIdealFor: Array<{ name: string; order: number }>;
     extraServices: Array<{ name: string; price: number; days: number; order: number }>;
     pricePerUnit: {
       enabled: boolean;
@@ -480,7 +475,6 @@ export default function AdminServiceCategoriesPage() {
     isActive: true,
     level: 3,
     categoryLevelMapping: [],
-      serviceIdealFor: [],
       extraServices: [],
       pricePerUnit: {
         enabled: false,
@@ -1787,7 +1781,6 @@ export default function AdminServiceCategoriesPage() {
         isActive: formData.isActive,
         level: formData.level,
         categoryLevelMapping: formData.categoryLevelMapping || [],
-        serviceIdealFor: formData.serviceIdealFor || [],
         extraServices: formData.extraServices || [],
         pricePerUnit: formData.pricePerUnit || { enabled: false, units: [] },
       };
@@ -3166,69 +3159,6 @@ export default function AdminServiceCategoriesPage() {
                       }}
                     />
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Service Ideal For */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <Label className="text-black">Service Ideal For</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      serviceIdealFor: [
-                        ...(prev.serviceIdealFor || []),
-                        { name: "", order: (prev.serviceIdealFor || []).length + 1 },
-                      ],
-                    }));
-                  }}
-                  className="flex items-center gap-2 border-0 shadow-md shadow-gray-200  text-black hover:bg-[#FE8A0F]/10 hover:shadow-lg hover:shadow-[#FE8A0F]/30 transition-all"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Option
-                </Button>
-              </div>
-              <div className="space-y-3 border-0 rounded-lg p-4 bg-gray-50  shadow-md shadow-gray-200 ">
-                {(!formData.serviceIdealFor || formData.serviceIdealFor.length === 0) ? (
-                  <p className="text-sm text-black/50 text-center py-4">
-                    No options. Click "Add Option" to add one.
-                  </p>
-                ) : (
-                  (formData.serviceIdealFor || []).map((option, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm">
-                      <Input
-                        value={option.name || ""}
-                        onChange={(e) => {
-                          setFormData((prev) => {
-                            const updated = [...prev.serviceIdealFor];
-                            updated[index] = { ...updated[index], name: e.target.value };
-                            return { ...prev, serviceIdealFor: updated };
-                          });
-                        }}
-                        placeholder="e.g., Homeowners, Small businesses, Landlords"
-                        className="flex-1 bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            serviceIdealFor: prev.serviceIdealFor.filter((_, i) => i !== index),
-                          }));
-                        }}
-                        className="h-8 w-8 p-0 text-red-600  hover:bg-red-500/10"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))
                 )}
               </div>
             </div>

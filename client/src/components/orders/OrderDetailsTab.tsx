@@ -1,7 +1,6 @@
-import { Fragment, useState, useEffect } from "react";
+import { Fragment } from "react";
 import { Order } from "./types";
 import { formatDate, formatMoney } from "./utils";
-import { resolveApiUrl } from "../../config/api";
 
 interface OrderDetailsTabProps {
   order: Order;
@@ -23,12 +22,6 @@ export default function OrderDetailsTab({
   formatMoneyFn,
   hideServiceFee = false,
 }: OrderDetailsTabProps) {
-  const [serviceDetails, setServiceDetails] = useState<{
-    description?: string;
-    attributes?: string[];
-    idealFor?: string[];
-  } | null>(null);
-
   const formatVal = formatMoneyFn || formatMoney;
   const meta = (order as any).metadata || {};
   const primaryItem = order.items?.[0];
@@ -41,46 +34,15 @@ export default function OrderDetailsTab({
       ? "service"
       : priceUnitLabel;
 
-  // Use metadata first, then fetch from service if sourceServiceId exists
+  // About this service: custom offer description from meta (offer description from CustomOfferModal)
   const description =
     meta.serviceDescription ||
-    serviceDetails?.description ||
     (order as any).description ||
     "";
   const attributes: string[] =
-    meta.attributes && Array.isArray(meta.attributes)
-      ? meta.attributes
-      : serviceDetails?.attributes || [];
+    meta.attributes && Array.isArray(meta.attributes) ? meta.attributes : [];
   const idealFor: string[] =
-    meta.idealFor && Array.isArray(meta.idealFor)
-      ? meta.idealFor
-      : serviceDetails?.idealFor || [];
-
-  useEffect(() => {
-    const sourceServiceId = meta.sourceServiceId;
-    if (!sourceServiceId || meta.serviceDescription) return;
-
-    const fetchService = async () => {
-      try {
-        const res = await fetch(resolveApiUrl(`/api/services/${sourceServiceId}`), {
-          credentials: "include",
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        const svc = data.service || data;
-        setServiceDetails({
-          description: svc.description || undefined,
-          attributes:
-            (svc.packages?.[0]?.features || svc.highlights || []).filter(Boolean) ||
-            [],
-          idealFor: svc.idealFor || [],
-        });
-      } catch {
-        // Ignore
-      }
-    };
-    fetchService();
-  }, [meta.sourceServiceId, meta.serviceDescription]);
+    meta.idealFor && Array.isArray(meta.idealFor) ? meta.idealFor : [];
 
   // Delivery by: order date + delivery days
   const orderDate = order.date ? new Date(order.date) : new Date();
@@ -158,8 +120,8 @@ export default function OrderDetailsTab({
         </div>
       )}
 
-      {/* Offer Includes (attributes + ideal for) */}
-      {(attributes.length > 0 || idealFor.length > 0) && (
+      {/* Offer includes (attributes only) */}
+      {attributes.length > 0 && (
         <div className="mb-6">
           <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold mb-3">
             Offer includes
@@ -173,12 +135,23 @@ export default function OrderDetailsTab({
                 {attr}
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Ideal for (separate section; title once, then list items without prefix) */}
+      {idealFor.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-semibold mb-3">
+            Ideal for
+          </h3>
+          <ul className="space-y-2 list-disc list-inside">
             {idealFor.map((item, i) => (
               <li
                 key={`ideal-${i}`}
                 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]"
               >
-                Ideal for: {item}
+                {item}
               </li>
             ))}
           </ul>

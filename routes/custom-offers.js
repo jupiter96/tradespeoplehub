@@ -180,7 +180,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     const professionalUser = await User.findById(req.user.id).select('tradingName').lean();
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-    // Fetch service thumbnail and details when serviceId is available
+    // Prefer offer description for "About this service"; fall back to service description only when offer has none
     let itemImage = '';
     let serviceDescription = description || undefined;
     let attributes = undefined;
@@ -192,7 +192,7 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
           const first = serviceDoc.gallery?.[0] || serviceDoc.images?.[0];
           const thumbUrl = typeof first === 'object' && first?.url ? first.url : (typeof first === 'string' ? first : null);
           itemImage = thumbUrl || serviceDoc.image || '';
-          if (serviceDoc.description) serviceDescription = serviceDoc.description;
+          if (!serviceDescription && serviceDoc.description) serviceDescription = serviceDoc.description;
           attributes = (serviceDoc.highlights || [])?.filter(Boolean);
           if (serviceDoc.idealFor?.length) idealFor = serviceDoc.idealFor;
         }
@@ -203,6 +203,10 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     // Use attributes from request if provided (from CustomOfferModal selectedAttributes)
     if (req.body.attributes && Array.isArray(req.body.attributes) && req.body.attributes.length > 0) {
       attributes = req.body.attributes.filter(Boolean);
+    }
+    // Use idealFor from request if provided (from CustomOfferModal selected Ideal for options)
+    if (req.body.idealFor && Array.isArray(req.body.idealFor) && req.body.idealFor.length > 0) {
+      idealFor = req.body.idealFor.filter(Boolean);
     }
 
     const order = new Order({

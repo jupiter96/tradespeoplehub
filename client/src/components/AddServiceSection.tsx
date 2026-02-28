@@ -2316,45 +2316,75 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         });
       }
       
-      if (allSubCategoryIds.length === 0) {
+      // When path (or package selection) has IDs, fetch from those subcategories
+      if (allSubCategoryIds.length > 0) {
+        try {
+          const allIdealFor: string[] = [];
+          for (const subCategoryId of allSubCategoryIds) {
+            if (!subCategoryId) continue;
+            const response = await fetch(
+              resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
+              { credentials: "include" }
+            );
+            if (response.ok) {
+              const data = await response.json();
+              if (data.serviceSubCategory?.serviceIdealFor && Array.isArray(data.serviceSubCategory.serviceIdealFor)) {
+                data.serviceSubCategory.serviceIdealFor.forEach((option: string | { name?: string }) => {
+                  const label = typeof option === "string" ? option : (option?.name ?? "");
+                  if (label && !allIdealFor.includes(label)) allIdealFor.push(label);
+                });
+              }
+            }
+          }
+          setDynamicServiceIdealFor(allIdealFor);
+        } catch {
+          setDynamicServiceIdealFor([]);
+        }
+        return;
+      }
+      
+      // When no path selected yet but category is selected: load ideal for from category's subcategories
+      if (!selectedCategoryId) {
         setDynamicServiceIdealFor([]);
         return;
       }
-
       try {
-        // Collect all ideal for options from all selected subcategories
-        const allIdealFor: string[] = [];
-
-        for (const subCategoryId of allSubCategoryIds) {
-          if (!subCategoryId) continue;
-
         const response = await fetch(
-            resolveApiUrl(`/api/service-subcategories/${subCategoryId}`),
+          resolveApiUrl(`/api/service-categories/${selectedCategoryId}?includeSubCategories=true`),
           { credentials: "include" }
         );
-
-        if (response.ok) {
-          const data = await response.json();
-            if (data.serviceSubCategory?.serviceIdealFor && Array.isArray(data.serviceSubCategory.serviceIdealFor)) {
-              // Add ideal for options from this level (avoid duplicates)
-              data.serviceSubCategory.serviceIdealFor.forEach((option: string) => {
-                if (option && !allIdealFor.includes(option)) {
-                  allIdealFor.push(option);
-                }
+        if (!response.ok) {
+          setDynamicServiceIdealFor([]);
+          return;
+        }
+        const data = await response.json();
+        const category = data.serviceCategory;
+        if (!category?.subCategories || !Array.isArray(category.subCategories)) {
+          setDynamicServiceIdealFor([]);
+          return;
+        }
+        const allIdealFor: string[] = [];
+        const collectIdealFor = (subCats: any[]) => {
+          if (!subCats?.length) return;
+          subCats.forEach((sub: any) => {
+            if (sub.serviceIdealFor && Array.isArray(sub.serviceIdealFor)) {
+              sub.serviceIdealFor.forEach((option: string | { name?: string }) => {
+                const label = typeof option === "string" ? option : (option?.name ?? "");
+                if (label && !allIdealFor.includes(label)) allIdealFor.push(label);
               });
             }
-          }
-        }
-
+            if (sub.subCategories?.length) collectIdealFor(sub.subCategories);
+          });
+        };
+        collectIdealFor(category.subCategories);
         setDynamicServiceIdealFor(allIdealFor);
-      } catch (error) {
-        // console.error("Error fetching service ideal for:", error);
-            setDynamicServiceIdealFor([]);
-          }
+      } catch {
+        setDynamicServiceIdealFor([]);
+      }
     };
 
     fetchServiceIdealFor();
-  }, [selectedSubCategoryPath, isPackageService, selectedLastLevelSubCategories]);
+  }, [selectedCategoryId, selectedSubCategoryPath, isPackageService, selectedLastLevelSubCategories]);
 
   // Fetch extra services from selected category
   useEffect(() => {

@@ -309,6 +309,22 @@ const formatRelativeTime = (dateString: string): string => {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 };
 
+// Helper to get navigation target for a notification (use link or derive from type)
+function getNotificationLink(notification: Notification): string {
+  if (notification.link && notification.link.trim()) {
+    return notification.link.startsWith('http') ? notification.link : notification.link;
+  }
+  const meta = (notification as any).metadata || {};
+  const type = notification.type || '';
+  if (type.startsWith('order_') && meta.orderNumber) {
+    return `/account?tab=orders&orderId=${encodeURIComponent(meta.orderNumber)}`;
+  }
+  if ((type === 'dispute_initiated' || type === 'dispute_responded' || type === 'dispute_resolved') && meta.disputeId) {
+    return `/dispute/${meta.disputeId}`;
+  }
+  return '/account?tab=notifications';
+}
+
 // Map notification type to icon type for styling
 const getNotificationIconType = (type: string): string => {
   const typeMap: Record<string, string> = {
@@ -1183,10 +1199,9 @@ export default function Nav() {
                               if (!notification.isRead) {
                                 markAsRead(notification._id);
                               }
-                              if (notification.link) {
-                                navigate(notification.link);
-                                setShowNotifications(false);
-                              }
+                              const targetLink = getNotificationLink(notification);
+                              navigate(targetLink);
+                              setShowNotifications(false);
                             }}
                             className={`px-4 py-3 border-b border-gray-100 hover:bg-[#FFF5EB] transition-colors cursor-pointer ${
                               !notification.isRead ? 'bg-blue-50/30' : ''

@@ -63,6 +63,7 @@ interface ProfessionalService {
   thumbnailType?: "image" | "video";
   priceUnit?: string;
   features?: string[];
+  idealFor?: string[];
 }
 
 interface Milestone {
@@ -98,6 +99,7 @@ export default function CustomOfferModal({
   const [chargePer, setChargePer] = useState<string>("service");
   const [quantity, setQuantity] = useState<string>("1");
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
+  const [selectedIdealFor, setSelectedIdealFor] = useState<string[]>([]);
   const [categoryPriceUnits, setCategoryPriceUnits] = useState<PriceUnitOption[]>([]);
   const [savedMilestones, setSavedMilestones] = useState<Set<string>>(new Set());
   /** Hours until offer expires (client must accept/reject before this). Pro chooses in modal. */
@@ -141,6 +143,7 @@ export default function CustomOfferModal({
         const thumbType = typeof firstGallery === "object" && firstGallery?.type === "video" ? "video" : "image";
         const pkg = service.packages?.[0];
         const features = pkg?.features && Array.isArray(pkg.features) ? pkg.features : (service.highlights && Array.isArray(service.highlights) ? service.highlights : []);
+        const idealFor = service.idealFor && Array.isArray(service.idealFor) ? service.idealFor : [];
         const priceUnit = pkg?.priceUnit || service.priceUnit || "fixed";
         return {
           id: service._id || service.id,
@@ -153,6 +156,7 @@ export default function CustomOfferModal({
           thumbnailType: thumbType,
           priceUnit: priceUnit,
           features: features,
+          idealFor: idealFor,
         };
       });
 
@@ -176,6 +180,7 @@ export default function CustomOfferModal({
     setChargePer("service");
     setQuantity("1");
     setSelectedAttributes([]);
+    setSelectedIdealFor([]);
     setOfferExpireInHours("72");
     setCategoryPriceUnits([]);
     setSavedMilestones(new Set());
@@ -221,6 +226,7 @@ export default function CustomOfferModal({
       setChargePer(defaultUnit);
       setQuantity("1");
       setSelectedAttributes([]);
+      setSelectedIdealFor([]);
       // Reset milestones with the dynamic default chargePer
       setMilestones([{ id: "1", name: "", deliveryInDays: 1, price: 0, chargePer: defaultUnit, noOf: 1, description: "" }]);
       setStep("payment");
@@ -374,6 +380,7 @@ export default function CustomOfferModal({
           paymentType: paymentType,
           milestones: paymentType === "milestone" ? milestones.map(({ id, ...m }) => m) : undefined,
           attributes: selectedAttributes,
+          idealFor: selectedIdealFor.length > 0 ? selectedIdealFor : undefined,
           responseTimeHours: parseInt(offerExpireInHours, 10) || 72,
         }),
       });
@@ -990,6 +997,33 @@ export default function CustomOfferModal({
                               }}
                             />
                             <span>{attr}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ideal for (from selected service) */}
+                  {selectedService && selectedService.idealFor && selectedService.idealFor.length > 0 && (
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2 block">
+                        Ideal for
+                      </Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {selectedService.idealFor.map((item) => (
+                          <label
+                            key={item}
+                            className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px] text-[#2c353f]"
+                          >
+                            <Checkbox
+                              checked={selectedIdealFor.includes(item)}
+                              onCheckedChange={(checked) => {
+                                setSelectedIdealFor((prev) =>
+                                  checked ? [...prev, item] : prev.filter((i) => i !== item)
+                                );
+                              }}
+                            />
+                            <span>{item}</span>
                           </label>
                         ))}
                       </div>

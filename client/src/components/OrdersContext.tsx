@@ -229,6 +229,7 @@ export interface Order {
     adminDecision?: boolean;
     decisionNotes?: string;
     autoClosed?: boolean;
+    milestoneIndices?: number[];
   };
   additionalInformation?: {
     message?: string;
@@ -283,6 +284,7 @@ interface OrdersContextType {
   requestExtension: (orderId: string, newDeliveryDate: string, reason?: string) => Promise<void>;
   respondToExtension: (orderId: string, action: 'approve' | 'reject') => Promise<void>;
   createOrderDispute: (orderId: string, reason: string, evidence?: string) => Promise<string>;
+  updateOrderAfterDisputeCreated: (orderId: string, disputeId: string, disputeInfo: Order['disputeInfo']) => void;
   getOrderDisputeById: (disputeId: string) => OrderDispute | undefined;
   addOrderDisputeMessage: (disputeId: string, message: string) => Promise<void>;
   makeOrderDisputeOffer: (disputeId: string, amount: number) => Promise<void>;
@@ -910,6 +912,25 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       console.error('Create dispute error:', error);
       throw error;
     }
+  };
+
+  const updateOrderAfterDisputeCreated = (orderId: string, disputeId: string, disputeInfo: Order['disputeInfo']) => {
+    if (!disputeInfo) return;
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order;
+      return {
+        ...order,
+        status: 'disputed',
+        deliveryStatus: 'dispute',
+        disputeId,
+        disputeInfo: {
+          ...order.disputeInfo,
+          ...disputeInfo,
+          id: disputeInfo.id ?? disputeId,
+          milestoneIndices: Array.isArray(disputeInfo.milestoneIndices) ? disputeInfo.milestoneIndices : order.disputeInfo?.milestoneIndices,
+        },
+      };
+    }));
   };
 
   const getOrderDisputeById = (disputeId: string): OrderDispute | undefined => {
@@ -1722,6 +1743,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         requestExtension,
         respondToExtension,
         createOrderDispute,
+        updateOrderAfterDisputeCreated,
         getOrderDisputeById,
         addOrderDisputeMessage,
         makeOrderDisputeOffer,

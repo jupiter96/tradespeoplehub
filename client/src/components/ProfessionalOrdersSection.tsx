@@ -116,7 +116,7 @@ import {
 function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, deliverWork, deliverMilestone, professionalComplete, createOrderDispute, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
+  const { orders, cancelOrder, deliverWork, deliverMilestone, professionalComplete, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation, refreshMessages } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -1054,6 +1054,9 @@ function ProfessionalOrdersSection() {
           }
 
           const data = await response.json();
+          if (data.disputeId && data.disputeInfo) {
+            updateOrderAfterDisputeCreated(selectedOrder, data.disputeId, data.disputeInfo);
+          }
           refreshOrders();
           navigate(`/dispute/${data.disputeId}`);
           return data;

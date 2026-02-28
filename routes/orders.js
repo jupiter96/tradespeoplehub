@@ -169,7 +169,7 @@ async function sendOrderNotifications({ order, clientUser, professionalUser }) {
         message: `Your order ${orderNumber} has been created successfully.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
+        link: `/account?tab=orders&orderId=${encodeURIComponent(orderNumber)}`,
         metadata: { orderNumber, serviceName },
       });
       await emitNotificationToUser(clientUser._id, clientNotification);
@@ -197,7 +197,7 @@ async function sendOrderNotifications({ order, clientUser, professionalUser }) {
         message: `You received a new order (${orderNumber}) for "${serviceName}".`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
+        link: `/account?tab=orders&orderId=${encodeURIComponent(orderNumber)}`,
         metadata: { orderNumber, serviceName },
       });
       await emitNotificationToUser(professionalUser._id, professionalNotification);
@@ -745,11 +745,11 @@ async function sendReviewInvitationToClient(order, clientUser) {
   }
 }
 
-async function sendDisputeInitiatedNotifications({ order, clientUser, professionalUser, claimantId, responseDeadline }) {
+async function sendDisputeInitiatedNotifications({ order, clientUser, professionalUser, claimantId, responseDeadline, disputeId }) {
   try {
     const orderNumber = order.orderNumber;
     const serviceName = getOrderServiceName(order);
-    const link = orderLinkBase();
+    const link = disputeId ? `/dispute/${disputeId}` : orderLinkBase();
     const responseDeadlineStr = responseDeadline
       ? new Date(responseDeadline).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
@@ -767,8 +767,8 @@ async function sendDisputeInitiatedNotifications({ order, clientUser, profession
           : `A dispute was opened for order ${orderNumber}. Please respond by the deadline.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
-        metadata: { orderNumber },
+        link,
+        metadata: { orderNumber, disputeId: disputeId || undefined },
       });
       await emitNotificationToUser(clientUser._id, n);
       if (clientUser.email) {
@@ -792,8 +792,8 @@ async function sendDisputeInitiatedNotifications({ order, clientUser, profession
           : `A dispute was opened for order ${orderNumber}. Please respond by the deadline.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
-        metadata: { orderNumber },
+        link,
+        metadata: { orderNumber, disputeId: disputeId || undefined },
       });
       await emitNotificationToUser(professionalUser._id, n);
       if (professionalUser.email) {
@@ -810,11 +810,12 @@ async function sendDisputeInitiatedNotifications({ order, clientUser, profession
   }
 }
 
-async function sendDisputeRespondedNotifications({ order, clientUser, professionalUser, respondentId }) {
+async function sendDisputeRespondedNotifications({ order, clientUser, professionalUser, respondentId, disputeId }) {
   try {
     const orderNumber = order.orderNumber;
     const serviceName = getOrderServiceName(order);
-    const link = orderLinkBase();
+    const disputeLink = (disputeId || order.disputeId) ? `/dispute/${disputeId || order.disputeId}` : orderLinkBase();
+    const link = disputeLink;
 
     if (clientUser) {
       const isRespondent = clientUser._id.toString() === respondentId.toString();
@@ -827,8 +828,8 @@ async function sendDisputeRespondedNotifications({ order, clientUser, profession
           : `The other party responded to the dispute for order ${orderNumber}. The dispute is now in negotiation.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
-        metadata: { orderNumber },
+        link,
+        metadata: { orderNumber, disputeId: disputeId || order.disputeId },
       });
       await emitNotificationToUser(clientUser._id, n);
       if (clientUser.email) {
@@ -857,8 +858,8 @@ async function sendDisputeRespondedNotifications({ order, clientUser, profession
           : `The other party responded to the dispute for order ${orderNumber}. The dispute is now in negotiation.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
-        metadata: { orderNumber },
+        link,
+        metadata: { orderNumber, disputeId: disputeId || order.disputeId },
       });
       await emitNotificationToUser(professionalUser._id, n);
       if (professionalUser.email) {
@@ -880,11 +881,12 @@ async function sendDisputeRespondedNotifications({ order, clientUser, profession
   }
 }
 
-async function sendDisputeResolvedNotifications({ order, clientUser, professionalUser, agreedAmount }) {
+async function sendDisputeResolvedNotifications({ order, clientUser, professionalUser, agreedAmount, disputeId }) {
   try {
     const orderNumber = order.orderNumber;
     const serviceName = getOrderServiceName(order);
-    const link = orderLinkBase();
+    const disputeLink = (disputeId || order.disputeId) ? `/dispute/${disputeId || order.disputeId}` : orderLinkBase();
+    const link = disputeLink;
     const agreedAmountStr = (agreedAmount != null && agreedAmount !== '') ? Number(agreedAmount).toFixed(2) : '0.00';
 
     if (clientUser) {
@@ -895,8 +897,8 @@ async function sendDisputeResolvedNotifications({ order, clientUser, professiona
         message: `The dispute for order ${orderNumber} has been resolved. Agreed amount: £${agreedAmountStr}.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
-        metadata: { orderNumber },
+        link,
+        metadata: { orderNumber, disputeId: disputeId || order.disputeId },
       });
       await emitNotificationToUser(clientUser._id, n);
       if (clientUser.email) {
@@ -918,8 +920,8 @@ async function sendDisputeResolvedNotifications({ order, clientUser, professiona
         message: `The dispute for order ${orderNumber} has been resolved. Agreed amount: £${agreedAmountStr}.`,
         relatedId: order._id,
         relatedModel: 'Order',
-        link: '/account?tab=orders',
-        metadata: { orderNumber },
+        link,
+        metadata: { orderNumber, disputeId: disputeId || order.disputeId },
       });
       await emitNotificationToUser(professionalUser._id, n);
       if (professionalUser.email) {
@@ -5031,11 +5033,40 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
         professionalUser: order.professional,
         claimantId: req.user.id,
         responseDeadline,
+        disputeId,
       }),
       'dispute-initiated'
     );
 
-    res.json({ 
+    const disputeInfo = {
+      id: disputeId,
+      status: 'open',
+      amount: disputedAmount,
+      milestoneIndices: Array.isArray(dispute.milestoneIndices) ? dispute.milestoneIndices : undefined,
+      requirements: dispute.requirements || undefined,
+      unmetRequirements: dispute.unmetRequirements || undefined,
+      evidenceFiles: (dispute.evidenceFiles || []).map(p => (typeof p === 'string' ? p : p?.path || p)),
+      claimantId: claimantId,
+      respondentId: respondentId.toString(),
+      messages: (dispute.messages || []).map(msg => ({
+        id: msg.id,
+        userId: msg.userId?.toString?.() || msg.userId,
+        userName: msg.userName,
+        userAvatar: msg.userAvatar,
+        message: msg.message,
+        timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : undefined,
+        isTeamResponse: msg.isTeamResponse || false,
+      })),
+      clientOffer: dispute.offers?.clientOffer ?? undefined,
+      professionalOffer: dispute.offers?.professionalOffer ?? undefined,
+      responseDeadline: responseDeadline.toISOString(),
+      respondedAt: undefined,
+      negotiationDeadline: undefined,
+      arbitrationRequested: false,
+      createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : new Date().toISOString(),
+    };
+
+    res.json({
       message: 'Dispute created successfully',
       disputeId: disputeId,
       order: {
@@ -5048,7 +5079,8 @@ router.post('/:orderId/dispute', authenticateToken, upload.array('evidenceFiles'
         responseDeadline: responseDeadline.toISOString(),
         claimantId: claimantId,
         respondentId: respondentId.toString(),
-      }
+      },
+      disputeInfo,
     });
   } catch (error) {
     console.error('Create dispute error:', error);

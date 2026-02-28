@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs } from "./JobsContext";
 import { useOrders } from "./OrdersContext";
@@ -90,22 +90,28 @@ export default function DisputeDiscussionPage() {
   
   // Determine if this is an order dispute or job dispute
   const isOrderDispute = dispute && "orderId" in dispute;
+  const didRefetchForMissingDisputeInfo = useRef<string | null>(null);
 
   useEffect(() => {
     const jobDispute = getDisputeById(disputeId || "");
     const orderDispute = getOrderDisputeById(disputeId || "");
     const currentDispute = jobDispute || orderDispute;
     setDispute(currentDispute);
-    
+
     if (currentDispute) {
       if ("jobId" in currentDispute) {
         setJob(getJobById(currentDispute.jobId));
       } else if ("orderId" in currentDispute) {
         const foundOrder = orders.find(o => o.disputeId === disputeId);
         setOrder(foundOrder);
+        // If order has disputeId but no disputeInfo (e.g. arrived via link or stale state), refetch once so milestones etc. are available
+        if (disputeId && foundOrder && !foundOrder.disputeInfo && didRefetchForMissingDisputeInfo.current !== disputeId) {
+          didRefetchForMissingDisputeInfo.current = disputeId;
+          refreshOrders();
+        }
       }
     }
-  }, [disputeId, getDisputeById, getOrderDisputeById, getJobById, orders]);
+  }, [disputeId, getDisputeById, getOrderDisputeById, getJobById, orders, refreshOrders]);
 
   const handleSendMessage = async () => {
     if ((!message.trim() && selectedFiles.length === 0) || !disputeId) return;

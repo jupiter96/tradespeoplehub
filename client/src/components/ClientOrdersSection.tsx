@@ -198,7 +198,7 @@ function VideoThumbnail({
 export default function ClientOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, acceptDelivery, createOrderDispute, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
+  const { orders, cancelOrder, acceptDelivery, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
   const { startConversation, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
   const { setPendingOffer } = usePendingCustomOffer();
@@ -1714,6 +1714,9 @@ export default function ClientOrdersSection() {
         }
 
         const data = await response.json();
+        if (data.disputeId && data.disputeInfo) {
+          updateOrderAfterDisputeCreated(orderId, data.disputeId, data.disputeInfo);
+        }
         refreshOrders();
         navigate(`/dispute/${data.disputeId}`);
         return data;
