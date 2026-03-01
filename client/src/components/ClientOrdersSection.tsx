@@ -813,10 +813,17 @@ export default function ClientOrdersSection() {
       byAt.forEach((group, atKey) => {
         const at = atKey || undefined;
         const indices = group.map((d) => d.milestoneIndex).sort((a, b) => a - b);
-        const files =
+        const rawFiles =
           order.deliveryFiles && Array.isArray(order.deliveryFiles)
             ? order.deliveryFiles.filter((f: any) => indices.includes(f.milestoneIndex != null ? f.milestoneIndex : -1))
             : [];
+        const seenUrls = new Set<string>();
+        const files = rawFiles.filter((f: any) => {
+          const key = f.url || (f.fileName ? `url-${f.fileName}` : `idx-${seenUrls.size}`);
+          if (seenUrls.has(key)) return false;
+          seenUrls.add(key);
+          return true;
+        });
         const first = group[0];
         const message = first?.deliveryMessage || undefined;
         const allApproved = group.every((d) => d.approvedAt);
@@ -3700,14 +3707,14 @@ export default function ClientOrdersSection() {
 
                           {/* Attachments Section (skip for Cancellation Requested - already shown above in order: reason, attachment, warning) */}
                           {event.files && event.files.length > 0 && event.id !== "cancellation-requested" && (() => {
-                            // For "Work Delivered" events, filter files by milestoneIndex or deliveryNumber
-                            // For other events (like "Revision Requested"), show all files
+                            // For "Work Delivered" events, filter files by milestoneIndex or deliveryNumber when single milestone; batch events use event.files as-is (already deduplicated)
                             let filesToShow = event.files;
                             
                             if (event.title === "Work Delivered") {
                               const ev = event as ClientTimelineEvent;
-                              if (ev.milestoneIndex !== undefined) {
-                                // Milestone order: filter by milestoneIndex
+                              if ((ev as any).milestoneIndices && (ev as any).milestoneIndices.length > 1) {
+                                filesToShow = event.files;
+                              } else if (ev.milestoneIndex !== undefined) {
                                 filesToShow = event.files.filter((file: any) => file.milestoneIndex === ev.milestoneIndex);
                               } else if (event.id && event.id.startsWith('delivered-') && !event.id.includes('milestone')) {
                                 // Non-milestone: filter by deliveryNumber (id format "delivered-1", "delivered-2")

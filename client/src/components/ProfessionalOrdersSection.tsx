@@ -251,11 +251,18 @@ function ProfessionalOrdersSection() {
       case 'dispute':
         setIsDisputeDialogOpen(true);
         break;
-      case 'delivery':
+      case 'delivery': {
         setDeliveryForMilestoneIndex(null);
-        setDeliverySelectedMilestoneIndices([]);
+        const order = selectedOrder ? orders.find((o: { id: string }) => o.id === selectedOrder) : undefined;
+        const revs = order?.revisionRequest ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest]) : [];
+        const activeRev = revs.find((rr: { status?: string }) => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+        const initialIndices = Array.isArray(activeRev?.milestoneIndices) && activeRev.milestoneIndices.length > 0
+          ? [...activeRev.milestoneIndices]
+          : (typeof activeRev?.milestoneIndex === 'number' ? [activeRev.milestoneIndex] : []);
+        setDeliverySelectedMilestoneIndices(initialIndices);
         setIsDeliveryDialogOpen(true);
         break;
+      }
       case 'disputeResponse':
         setIsDisputeResponseDialogOpen(true);
         break;
@@ -2481,11 +2488,14 @@ function ProfessionalOrdersSection() {
                 const activeRevisions = revisionRequests.filter(
                   (rr: { status?: string; milestoneIndex?: number }) => rr && (rr.status === "pending" || rr.status === "in_progress")
                 );
-                const inRevisionIndices = new Set<number>(
-                  activeRevisions
-                    .filter((rr: { milestoneIndex?: number }) => typeof rr.milestoneIndex === "number")
-                    .map((rr: { milestoneIndex: number }) => rr.milestoneIndex)
-                );
+                const inRevisionIndices = new Set<number>();
+                activeRevisions.forEach((rr: { milestoneIndex?: number; milestoneIndices?: number[] }) => {
+                  if (Array.isArray(rr.milestoneIndices) && rr.milestoneIndices.length > 0) {
+                    rr.milestoneIndices.forEach((mi: number) => inRevisionIndices.add(mi));
+                  } else if (typeof rr.milestoneIndex === "number") {
+                    inRevisionIndices.add(rr.milestoneIndex);
+                  }
+                });
                 if (activeRevisions.length > 0 && inRevisionIndices.size === 0) {
                   const deliveredNotApproved = (milestoneDeliveries as Array<{ milestoneIndex: number; approvedAt?: unknown }>).filter(
                     (d) => d && typeof d.milestoneIndex === "number" && !d.approvedAt

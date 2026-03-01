@@ -264,9 +264,16 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     byAt.forEach((group, atKey) => {
       const at = atKey || (order as any).deliveredDate;
       const indices = group.map((d) => d.milestoneIndex).sort((a, b) => a - b);
-      const files = (order.deliveryFiles || []).filter((f: any) =>
+      const rawFiles = (order.deliveryFiles || []).filter((f: any) =>
         indices.includes(f.milestoneIndex != null ? f.milestoneIndex : -1)
       );
+      const seenUrls = new Set<string>();
+      const files = rawFiles.filter((f: any) => {
+        const key = f.url || (f.fileName ? `url-${f.fileName}` : `idx-${seenUrls.size}`);
+        if (seenUrls.has(key)) return false;
+        seenUrls.add(key);
+        return true;
+      });
       const first = group[0];
       const message = first?.deliveryMessage || "";
       const milestoneLabel =

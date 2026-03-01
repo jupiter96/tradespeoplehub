@@ -19,6 +19,7 @@ const router = express.Router();
 const baseUrl = () => process.env.CLIENT_ORIGIN || 'http://localhost:3000';
 const ordersTabPath = '/account?tab=orders';
 const messagesTabPath = '/account?tab=messages';
+const orderDetailLink = (orderNumberOrId) => `/account?tab=orders&orderId=${encodeURIComponent(String(orderNumberOrId))}`;
 function runBackgroundTask(task, label) {
   Promise.resolve()
     .then(task)
@@ -340,8 +341,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         message: `${proName} sent you a custom offer for ${customOffer.serviceName}.`,
         relatedId: customOffer._id,
         relatedModel: 'CustomOffer',
-        link: ordersTabPath,
-        metadata: { offerNumber: customOffer.offerNumber, orderNumber: order?.orderNumber },
+        link: order?.orderNumber ? orderDetailLink(order.orderNumber) : ordersTabPath,
+        metadata: { offerNumber: customOffer.offerNumber, orderNumber: order?.orderNumber, orderId: order?._id?.toString() },
       });
       await sendTemplatedEmail(professionalUser.email, 'custom-offer-made-professional', {
         firstName: professionalUser.firstName || 'there',
@@ -358,8 +359,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
         message: `You sent a custom offer to ${clientName} for ${customOffer.serviceName}.`,
         relatedId: customOffer._id,
         relatedModel: 'CustomOffer',
-        link: messagesTabPath,
-        metadata: { offerNumber: customOffer.offerNumber },
+        link: order?.orderNumber ? orderDetailLink(order.orderNumber) : messagesTabPath,
+        metadata: { offerNumber: customOffer.offerNumber, orderId: order?._id?.toString(), orderNumber: order?.orderNumber },
       });
     }, 'custom-offer-created');
 
@@ -801,8 +802,8 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
           message: `${clientName} accepted your custom offer for ${customOffer.serviceName}.`,
           relatedId: order._id,
           relatedModel: 'Order',
-          link: ordersTabPath,
-          metadata: { offerNumber: customOffer.offerNumber, orderNumber: order.orderNumber },
+          link: orderDetailLink(order.orderNumber),
+          metadata: { offerNumber: customOffer.offerNumber, orderNumber: order.orderNumber, orderId: order._id.toString() },
         });
       }
       if (clientUser?.email) {
@@ -820,8 +821,8 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
           message: `You accepted the custom offer from ${proName} for ${customOffer.serviceName}.`,
           relatedId: order._id,
           relatedModel: 'Order',
-          link: ordersTabPath,
-          metadata: { offerNumber: customOffer.offerNumber, orderNumber: order.orderNumber },
+          link: orderDetailLink(order.orderNumber),
+          metadata: { offerNumber: customOffer.offerNumber, orderNumber: order.orderNumber, orderId: order._id.toString() },
         });
       }
     }, 'custom-offer-accepted');
@@ -901,6 +902,7 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
       const professionalUser = await User.findById(customOffer.professional).select('firstName lastName tradingName email').lean();
       const clientUser = await User.findById(customOffer.client).select('firstName lastName').lean();
       const clientName = [clientUser?.firstName, clientUser?.lastName].filter(Boolean).join(' ') || 'Client';
+      const order = customOffer.order ? await Order.findById(customOffer.order).select('orderNumber').lean() : null;
       if (professionalUser?.email) {
         await sendTemplatedEmail(professionalUser.email, 'custom-offer-rejected-by-client-professional', {
           firstName: professionalUser.firstName || 'there',
@@ -915,8 +917,8 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
           message: `${clientName} declined your custom offer for ${customOffer.serviceName}.`,
           relatedId: customOffer._id,
           relatedModel: 'CustomOffer',
-          link: messagesTabPath,
-          metadata: { offerNumber: customOffer.offerNumber },
+          link: order?.orderNumber ? orderDetailLink(order.orderNumber) : messagesTabPath,
+          metadata: { offerNumber: customOffer.offerNumber, orderId: customOffer.order?.toString(), orderNumber: order?.orderNumber },
         });
       }
     }, 'custom-offer-rejected-by-client');
@@ -983,6 +985,7 @@ router.post('/:offerId/withdraw', authenticateToken, requireRole(['professional'
       const clientUser = await User.findById(customOffer.client).select('firstName lastName email').lean();
       const professionalUser = await User.findById(customOffer.professional).select('firstName lastName tradingName').lean();
       const proName = professionalUser?.tradingName || [professionalUser?.firstName, professionalUser?.lastName].filter(Boolean).join(' ') || 'Professional';
+      const order = customOffer.order ? await Order.findById(customOffer.order).select('orderNumber').lean() : null;
       if (clientUser?.email) {
         await sendTemplatedEmail(clientUser.email, 'custom-offer-rejected-by-pro-client', {
           firstName: clientUser.firstName || 'there',
@@ -997,8 +1000,8 @@ router.post('/:offerId/withdraw', authenticateToken, requireRole(['professional'
           message: `${proName} withdrew the custom offer for ${customOffer.serviceName}.`,
           relatedId: customOffer._id,
           relatedModel: 'CustomOffer',
-          link: messagesTabPath,
-          metadata: { offerNumber: customOffer.offerNumber },
+          link: order?.orderNumber ? orderDetailLink(order.orderNumber) : messagesTabPath,
+          metadata: { offerNumber: customOffer.offerNumber, orderId: customOffer.order?.toString(), orderNumber: order?.orderNumber },
         });
       }
     }, 'custom-offer-withdrawn');
