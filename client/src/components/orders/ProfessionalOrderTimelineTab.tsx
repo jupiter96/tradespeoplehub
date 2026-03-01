@@ -449,6 +449,7 @@ export default function ProfessionalOrderTimelineTab({
         currentOrder.status !== "Cancelled" &&
         currentOrder.status !== "Cancellation Pending" &&
         currentOrder.status !== "Completed" &&
+        currentOrder.status !== "offer created" &&
         currentOrder.deliveryStatus !== "delivered" && (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 shadow-md">
           <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-2">
