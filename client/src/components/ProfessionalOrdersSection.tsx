@@ -116,7 +116,7 @@ import {
 function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { orders, cancelOrder, deliverWork, deliverMilestone, professionalComplete, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
+  const { orders, cancelOrder, deliverWork, deliverMilestone, deliverMilestones, professionalComplete, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation, refreshMessages } = useMessenger();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -779,29 +779,44 @@ function ProfessionalOrdersSection() {
         const files = deliveryFiles.length > 0 ? deliveryFiles : undefined;
         setDeliveryMessage("");
         setDeliveryFiles([]);
-        setDeliverySelectedMilestoneIndices([]);
         const indices = [...deliverySelectedMilestoneIndices];
-        toast.promise(
-          (async () => {
-            for (const idx of indices) {
-              await deliverMilestone(selectedOrder, idx, message, files);
-            }
-            await refreshOrders?.();
-          })(),
-          { loading: "Delivering milestone(s)...", success: "Milestone(s) delivered successfully!", error: (e: any) => e.message || "Failed to deliver milestone(s)" }
-        );
+        setDeliverySelectedMilestoneIndices([]);
+        if (indices.length === 1) {
+          toast.promise(
+            deliverMilestone(selectedOrder, indices[0], message, files).then(() => refreshOrders?.()),
+            { loading: "Delivering milestone...", success: "Milestone delivered successfully!", error: (e: any) => e.message || "Failed to deliver milestone" }
+          );
+        } else {
+          toast.promise(
+            deliverMilestones(selectedOrder, indices, message, files).then(() => refreshOrders?.()),
+            { loading: "Delivering milestones...", success: "Milestones delivered successfully!", error: (e: any) => e.message || "Failed to deliver milestones" }
+          );
+        }
       } else if (isMilestoneOrder && deliverySelectedMilestoneIndices.length === 0) {
         toast.error("Please select at least one milestone for this delivery");
         return;
       } else if (hasInProgressRevision) {
-        closeAllModals();
-        setDeliveryMessage("");
-        setDeliveryFiles([]);
-        setDeliverySelectedMilestoneIndices([]);
-        toast.promise(
-          completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
-          { loading: "Processing...", success: "Revision completed and delivered successfully!", error: (e: any) => e.message || "Failed to complete revision" }
-        );
+        const activeRev = revisionRequests.find(rr => rr && rr.status === 'in_progress') as any;
+        const batchIndices = activeRev && (Array.isArray(activeRev.milestoneIndices) ? activeRev.milestoneIndices : (activeRev.milestoneIndex !== undefined && activeRev.milestoneIndex !== null ? [activeRev.milestoneIndex] : undefined));
+        if (isMilestoneOrder && batchIndices && batchIndices.length > 0) {
+          closeAllModals();
+          setDeliveryMessage("");
+          setDeliveryFiles([]);
+          setDeliverySelectedMilestoneIndices([]);
+          toast.promise(
+            deliverMilestones(selectedOrder, batchIndices, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined).then(() => refreshOrders?.()),
+            { loading: "Processing...", success: "Revision completed and delivered successfully!", error: (e: any) => e.message || "Failed to complete revision" }
+          );
+        } else {
+          closeAllModals();
+          setDeliveryMessage("");
+          setDeliveryFiles([]);
+          setDeliverySelectedMilestoneIndices([]);
+          toast.promise(
+            completeRevision(selectedOrder, deliveryMessage, deliveryFiles.length > 0 ? deliveryFiles : undefined),
+            { loading: "Processing...", success: "Revision completed and delivered successfully!", error: (e: any) => e.message || "Failed to complete revision" }
+          );
+        }
       } else {
         closeAllModals();
         setDeliveryMessage("");

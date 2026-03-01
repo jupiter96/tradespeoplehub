@@ -241,9 +241,53 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
     );
   }
 
-  // Work delivered - handle multiple deliveries (all deliveries as separate events)
-  // Group delivery files by deliveryNumber to identify separate deliveries
-  if (order.deliveryFiles && order.deliveryFiles.length > 0) {
+  // Work delivered - for milestone orders use milestoneDeliveries grouped by deliveredAt (one event per batch)
+  const metaForDelivery = (order as any).metadata || {};
+  const isMilestoneWithDeliveries =
+    metaForDelivery.paymentType === "milestone" &&
+    Array.isArray(metaForDelivery.milestoneDeliveries) &&
+    metaForDelivery.milestoneDeliveries.length > 0;
+
+  if (isMilestoneWithDeliveries) {
+    const milestoneDeliveriesList = metaForDelivery.milestoneDeliveries as Array<{
+      milestoneIndex: number;
+      deliveredAt: string | Date;
+      deliveryMessage?: string;
+    }>;
+    const byAt = new Map<string, typeof milestoneDeliveriesList>();
+    milestoneDeliveriesList.forEach((d) => {
+      if (!d || typeof d.milestoneIndex !== "number") return;
+      const atKey = d.deliveredAt ? new Date(d.deliveredAt).toISOString() : "";
+      if (!byAt.has(atKey)) byAt.set(atKey, []);
+      byAt.get(atKey)!.push(d);
+    });
+    byAt.forEach((group, atKey) => {
+      const at = atKey || (order as any).deliveredDate;
+      const indices = group.map((d) => d.milestoneIndex).sort((a, b) => a - b);
+      const files = (order.deliveryFiles || []).filter((f: any) =>
+        indices.includes(f.milestoneIndex != null ? f.milestoneIndex : -1)
+      );
+      const first = group[0];
+      const message = first?.deliveryMessage || "";
+      const milestoneLabel =
+        indices.length > 1
+          ? ` (Milestones ${indices.map((i) => i + 1).join(", ")})`
+          : ` (Milestone ${indices[0] + 1})`;
+      push(
+        {
+          at,
+          label: "Work Delivered",
+          description: `You delivered the work${milestoneLabel}.`,
+          message: message || undefined,
+          files: files.length > 0 ? files : undefined,
+          milestoneIndices: indices,
+          colorClass: "bg-purple-500",
+          icon: <Truck className="w-5 h-5 text-blue-600" />,
+        },
+        `delivered-batch-${atKey}-${indices.join("-")}`
+      );
+    });
+  } else if (order.deliveryFiles && order.deliveryFiles.length > 0) {
     // Group files by deliveryNumber
     const deliveryGroupsMap = new Map<number, any[]>();
     order.deliveryFiles.forEach((file: any) => {

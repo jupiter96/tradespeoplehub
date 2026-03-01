@@ -278,6 +278,7 @@ interface OrdersContextType {
   startWork: (orderId: string) => void;
   deliverWork: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
   deliverMilestone: (orderId: string, milestoneIndex: number, deliveryMessage?: string, files?: File[]) => Promise<void>;
+  deliverMilestones: (orderId: string, milestoneIndices: number[], deliveryMessage?: string, files?: File[]) => Promise<void>;
   professionalComplete: (orderId: string, completionMessage?: string, files?: File[]) => Promise<void>;
   acceptDelivery: (orderId: string, milestoneIndices?: number[]) => Promise<boolean>;
   extendDeliveryTime: (orderId: string, days: number) => void;
@@ -293,7 +294,7 @@ interface OrdersContextType {
   requestCancellation: (orderId: string, reason?: string, files?: File[]) => Promise<void>;
   respondToCancellation: (orderId: string, action: 'approve' | 'reject', reason?: string) => Promise<void>;
   withdrawCancellation: (orderId: string) => Promise<void>;
-  requestRevision: (orderId: string, reason: string, message?: string, files?: File[], milestoneIndex?: number) => Promise<void>;
+  requestRevision: (orderId: string, reason: string, message?: string, files?: File[], milestoneIndex?: number, milestoneIndices?: number[]) => Promise<void>;
   respondToRevision: (orderId: string, action: 'accept' | 'reject', additionalNotes?: string) => Promise<void>;
   completeRevision: (orderId: string, deliveryMessage?: string, files?: File[]) => Promise<void>;
   respondToReview: (reviewId: string, response: string) => Promise<void>;
@@ -639,6 +640,48 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       scheduleDeferredRefresh();
     } catch (error: any) {
       console.error('Deliver milestone error:', error);
+      throw error;
+    }
+  };
+
+  const deliverMilestones = async (orderId: string, milestoneIndices: number[], deliveryMessage?: string, files?: File[]) => {
+    try {
+      const formData = new FormData();
+      formData.append('milestoneIndices', JSON.stringify(milestoneIndices));
+      if (deliveryMessage && deliveryMessage.trim()) {
+        formData.append('deliveryMessage', deliveryMessage.trim());
+      }
+      if (files && files.length > 0) {
+        files.forEach((file) => formData.append('files', file));
+      }
+      const response = await fetch(resolveApiUrl(`/api/orders/${orderId}/deliver-milestones`), {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to deliver milestones');
+      }
+      const data = await response.json();
+      setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order;
+        return {
+          ...order,
+          status: data.order?.status ?? order.status,
+          deliveryStatus: data.order?.deliveryStatus ?? order.deliveryStatus,
+          deliveredDate: data.order?.deliveredDate ? new Date(data.order.deliveredDate).toISOString() : order.deliveredDate,
+          deliveryFiles: data.order?.deliveryFiles ?? order.deliveryFiles,
+          deliveryMessage: data.order?.deliveryMessage ?? order.deliveryMessage,
+          metadata: {
+            ...order.metadata,
+            milestoneDeliveries: data.order?.milestoneDeliveries ?? order.metadata?.milestoneDeliveries,
+          },
+        };
+      }));
+      scheduleDeferredRefresh();
+    } catch (error: any) {
+      console.error('Deliver milestones error:', error);
       throw error;
     }
   };
@@ -1161,7 +1204,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   };
 
   // Revision Request Management
-  const requestRevision = async (orderId: string, reason: string, message?: string, files?: File[], milestoneIndex?: number): Promise<void> => {
+  const requestRevision = async (orderId: string, reason: string, message?: string, files?: File[], milestoneIndex?: number, milestoneIndices?: number[]): Promise<void> => {
     try {
       const hasFiles = files && files.length > 0;
       const hasMessage = message && message.trim();
@@ -1170,7 +1213,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       if (hasMessage) {
         formData.append('message', message!.trim());
       }
-      if (milestoneIndex !== undefined && milestoneIndex !== null) {
+      if (milestoneIndices !== undefined && Array.isArray(milestoneIndices) && milestoneIndices.length > 0) {
+        formData.append('milestoneIndices', JSON.stringify(milestoneIndices));
+      } else if (milestoneIndex !== undefined && milestoneIndex !== null) {
         formData.append('milestoneIndex', String(milestoneIndex));
       }
       if (hasFiles) {
@@ -1197,7 +1242,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
             : [];
           
-          // Add new revision request to array
           const newRevisionRequest = {
             index: data.revisionRequest.index || (existingRevisionRequests.length > 0
               ? Math.max(...existingRevisionRequests.map(rr => rr.index || 0)) + 1
@@ -1210,6 +1254,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             respondedAt: undefined,
             additionalNotes: undefined,
             milestoneIndex: data.revisionRequest.milestoneIndex !== undefined ? data.revisionRequest.milestoneIndex : undefined,
+            milestoneIndices: Array.isArray(data.revisionRequest.milestoneIndices) ? data.revisionRequest.milestoneIndices : undefined,
           };
           
           return {
@@ -1737,6 +1782,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         startWork,
         deliverWork,
         deliverMilestone,
+        deliverMilestones,
         professionalComplete,
         acceptDelivery,
         extendDeliveryTime,

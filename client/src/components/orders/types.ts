@@ -146,6 +146,8 @@ export interface TimelineEvent {
   description?: string;
   message?: string;
   files?: OrderFile[];
+  /** For milestone batch delivery: indices included in this event */
+  milestoneIndices?: number[];
   colorClass: string;
   icon: React.ReactNode;
 }

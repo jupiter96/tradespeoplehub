@@ -236,6 +236,7 @@ export default function ClientOrdersSection() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [isRevisionRequestDialogOpen, setIsRevisionRequestDialogOpen] = useState(false);
   const [revisionRequestMilestoneIndex, setRevisionRequestMilestoneIndex] = useState<number | null>(null);
+  const [revisionRequestMilestoneIndices, setRevisionRequestMilestoneIndices] = useState<number[] | null>(null);
   const [revisionReason, setRevisionReason] = useState("");
   const [revisionMessage, setRevisionMessage] = useState("");
   const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
@@ -290,6 +291,7 @@ export default function ClientOrdersSection() {
     setIsCancellationRequestDialogOpen(false);
     setIsRevisionRequestDialogOpen(false);
     setRevisionRequestMilestoneIndex(null);
+    setRevisionRequestMilestoneIndices(null);
     setIsDisputeResponseDialogOpen(false);
     setIsAddInfoDialogOpen(false);
     setIsAcceptOfferConfirmOpen(false);
@@ -313,7 +315,7 @@ export default function ClientOrdersSection() {
 
   // Function to open a specific modal and close all others
   // For revisionRequest, pass milestoneIndex when requesting from a specific milestone's delivery
-  const openModal = (modalName: 'rating' | 'cancel' | 'dispute' | 'cancellationRequest' | 'revisionRequest' | 'disputeResponse' | 'addInfo', options?: { revisionMilestoneIndex?: number }) => {
+  const openModal = (modalName: 'rating' | 'cancel' | 'dispute' | 'cancellationRequest' | 'revisionRequest' | 'disputeResponse' | 'addInfo', options?: { revisionMilestoneIndex?: number; revisionMilestoneIndices?: number[] }) => {
     // Close all modals EXCEPT the one we're about to open
     // This avoids the false->true batching issue
     if (modalName !== 'rating') setIsRatingDialogOpen(false);
@@ -359,7 +361,8 @@ export default function ClientOrdersSection() {
         setIsCancellationRequestDialogOpen(true);
         break;
       case 'revisionRequest':
-        setRevisionRequestMilestoneIndex(options?.revisionMilestoneIndex ?? null);
+        setRevisionRequestMilestoneIndex(options?.revisionMilestoneIndices?.length ? options.revisionMilestoneIndices[0] : (options?.revisionMilestoneIndex ?? null));
+        setRevisionRequestMilestoneIndices(options?.revisionMilestoneIndices ?? null);
         setIsRevisionRequestDialogOpen(true);
         break;
       case 'disputeResponse':
@@ -788,7 +791,7 @@ export default function ClientOrdersSection() {
       );
     }
 
-    // Milestone orders: one "Work Delivered" event per milestone delivery (so we can approve per milestone)
+    // Milestone orders: group "Work Delivered" by deliveredAt (one event per batch)
     const isMilestoneOrderTimeline =
       order.metadata?.paymentType === "milestone" &&
       Array.isArray(order.metadata?.milestoneDeliveries) &&
@@ -800,25 +803,40 @@ export default function ClientOrdersSection() {
         deliveryMessage?: string;
         approvedAt?: string | Date | null;
       }>;
+      const byAt = new Map<string, typeof milestoneDeliveries>();
       milestoneDeliveries.forEach((d) => {
-        const at = d.deliveredAt ? new Date(d.deliveredAt).toISOString() : undefined;
+        if (!d || typeof d.milestoneIndex !== "number") return;
+        const atKey = d.deliveredAt ? new Date(d.deliveredAt).toISOString() : "";
+        if (!byAt.has(atKey)) byAt.set(atKey, []);
+        byAt.get(atKey)!.push(d);
+      });
+      byAt.forEach((group, atKey) => {
+        const at = atKey || undefined;
+        const indices = group.map((d) => d.milestoneIndex).sort((a, b) => a - b);
         const files =
           order.deliveryFiles && Array.isArray(order.deliveryFiles)
-            ? order.deliveryFiles.filter((f: any) => f.milestoneIndex === d.milestoneIndex)
+            ? order.deliveryFiles.filter((f: any) => indices.includes(f.milestoneIndex != null ? f.milestoneIndex : -1))
             : [];
+        const first = group[0];
+        const message = first?.deliveryMessage || undefined;
+        const allApproved = group.every((d) => d.approvedAt);
+        const approvedAt = allApproved && group.length > 0
+          ? (typeof group[0].approvedAt === "string" ? group[0].approvedAt : group[0].approvedAt ? new Date(group[0].approvedAt).toISOString() : null)
+          : null;
         push(
           {
             at,
             title: "Work Delivered",
-            description: `${order.professional || "Professional"} delivered the work.`,
-            message: d.deliveryMessage || undefined,
+            description: `${order.professional || "Professional"} delivered the work${indices.length > 1 ? ` (Milestones ${indices.map((i) => i + 1).join(", ")})` : ""}.`,
+            message: message || undefined,
             files: files.length > 0 ? files : undefined,
             colorClass: "bg-purple-500",
             icon: <Truck className="w-5 h-5 text-blue-600" />,
-            milestoneIndex: d.milestoneIndex,
-            approvedAt: d.approvedAt ? (typeof d.approvedAt === "string" ? d.approvedAt : new Date(d.approvedAt).toISOString()) : null,
+            milestoneIndex: indices[0],
+            milestoneIndices: indices,
+            approvedAt,
           },
-          `delivered-milestone-${d.milestoneIndex}`
+          `delivered-batch-${atKey}-${indices.join("-")}`
         );
       });
       // Milestone approved events (client approved – show "You approved milestone X on ...")
@@ -1520,7 +1538,7 @@ export default function ClientOrdersSection() {
     setRevisionMessage("");
     setRevisionFiles([]);
     toast.promise(
-      requestRevision(orderId, reason, message, files, revisionRequestMilestoneIndex ?? undefined).then(() => { refreshOrders(); }),
+      requestRevision(orderId, reason, message, files, revisionRequestMilestoneIndices?.length ? undefined : revisionRequestMilestoneIndex ?? undefined, revisionRequestMilestoneIndices ?? undefined).then(() => { refreshOrders(); }),
       { loading: "Processing...", success: "Revision request submitted. The professional will review your request.", error: (e: any) => e.message || "Failed to request revision" }
     );
   };
@@ -1577,11 +1595,12 @@ export default function ClientOrdersSection() {
   // We intentionally route this through closeAllModals() like Revision Request,
   // because several dialogs use onOpenChange -> closeAllModals(), which can
   // otherwise immediately close a newly-opened dialog.
-  const handleAcceptDelivery = (orderId: string, milestoneIndex?: number) => {
+  const handleAcceptDelivery = (orderId: string, milestoneIndexOrIndices?: number | number[]) => {
     setSelectedOrder(orderId);
     closeAllModals();
     setApproveOrderId(orderId);
-    setApproveMilestoneIndices(milestoneIndex !== undefined ? [milestoneIndex] : null);
+    const indices = Array.isArray(milestoneIndexOrIndices) ? milestoneIndexOrIndices : (milestoneIndexOrIndices !== undefined ? [milestoneIndexOrIndices] : null);
+    setApproveMilestoneIndices(indices);
     setIsApproveConfirmDialogOpen(true);
   };
 
@@ -3427,24 +3446,26 @@ export default function ClientOrdersSection() {
                     return bTime - aTime; // Newest first
                   });
 
-                // For "Work Delivered": show Approve/Request modification for every delivery that is not yet processed (order not completed, no active revision for that milestone).
+                // For "Work Delivered": show Approve/Request modification for every delivery that is not yet processed (order not completed, no active revision for that milestone/batch).
                 const orderCompleted = currentOrder.status === "Completed";
-                const hasActiveRevisionForMilestone = (milestoneIdx: number | undefined) => {
+                const hasActiveRevisionForMilestone = (milestoneIdx: number | number[] | undefined) => {
                   const rr = (currentOrder as any).revisionRequest;
                   if (!rr) return false;
                   const arr = Array.isArray(rr) ? rr : [rr];
+                  const indices = Array.isArray(milestoneIdx) ? milestoneIdx : (milestoneIdx !== undefined ? [milestoneIdx] : []);
                   return arr.some((r: any) => {
                     if (!r || (r.status !== "pending" && r.status !== "in_progress")) return false;
-                    const revMi = r.milestoneIndex;
-                    if (revMi === undefined || revMi === null) return true; // legacy: blocks all
-                    return revMi === milestoneIdx;
+                    const revIndices = Array.isArray(r.milestoneIndices) ? r.milestoneIndices : (r.milestoneIndex !== undefined && r.milestoneIndex !== null ? [r.milestoneIndex] : []);
+                    if (indices.length === 0) return revIndices.length === 0;
+                    if (revIndices.length === 0) return true;
+                    return indices.some((mi: number) => revIndices.includes(mi));
                   });
                 };
-                const showDeliveryActions = (event: { title?: string; milestoneIndex?: number; approvedAt?: string | null }) =>
+                const showDeliveryActions = (event: { title?: string; milestoneIndex?: number; milestoneIndices?: number[]; approvedAt?: string | null }) =>
                   event.title === "Work Delivered" &&
                   !orderCompleted &&
-                  !hasActiveRevisionForMilestone(event.milestoneIndex) &&
-                  (event.milestoneIndex === undefined || !event.approvedAt) &&
+                  !hasActiveRevisionForMilestone((event as any).milestoneIndices ?? event.milestoneIndex) &&
+                  ((event as any).milestoneIndices?.length || event.milestoneIndex !== undefined ? !event.approvedAt : true) &&
                   (currentOrder.status === "delivered" ||
                     ((currentOrder as any).metadata?.paymentType === "milestone" &&
                       Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
@@ -3472,7 +3493,9 @@ export default function ClientOrdersSection() {
                           {/* Title and Date */}
                           <div className="mb-3">
                             <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">
-                              {deliveryNumber ? `#${deliveryNumber} ${event.title}` : event.title}
+                              {(event as any).milestoneIndices?.length
+                                ? `Milestones ${(event as any).milestoneIndices.map((i: number) => i + 1).join(", ")} ${event.title}`
+                                : (deliveryNumber ? `#${deliveryNumber} ${event.title}` : event.title)}
                             </p>
                             {event.at && (
                               <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
@@ -3787,7 +3810,7 @@ export default function ClientOrdersSection() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleAcceptDelivery(currentOrder.id, (event as ClientTimelineEvent).milestoneIndex);
+                                      handleAcceptDelivery(currentOrder.id, (event as any).milestoneIndices ?? (event as ClientTimelineEvent).milestoneIndex);
                                     }}
                                     className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] px-6 shadow-sm"
                                   >
@@ -3798,8 +3821,12 @@ export default function ClientOrdersSection() {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       setSelectedOrder(currentOrder.id);
-                                      const mi = (event as ClientTimelineEvent).milestoneIndex;
-                                      openModal('revisionRequest', mi !== undefined ? { revisionMilestoneIndex: mi } : undefined);
+                                      const batchIndices = (event as any).milestoneIndices as number[] | undefined;
+                                      const singleIndex = (event as ClientTimelineEvent).milestoneIndex;
+                                      openModal('revisionRequest', {
+                                        revisionMilestoneIndices: batchIndices ?? (singleIndex !== undefined ? [singleIndex] : undefined),
+                                        revisionMilestoneIndex: batchIndices?.[0] ?? singleIndex,
+                                      });
                                     }}
                                     variant="outline"
                                     className="font-['Poppins',sans-serif] text-[13px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6 shadow-sm"
@@ -4388,15 +4415,17 @@ export default function ClientOrdersSection() {
                   return bTime - aTime; // Newest first
                 });
 
-                const hasActiveRevisionForMilestoneInDelivery = (milestoneIdx: number | undefined) => {
+                const hasActiveRevisionForMilestoneInDelivery = (milestoneIdx: number | number[] | undefined) => {
                   const rr = (currentOrder as any).revisionRequest;
                   if (!rr) return false;
                   const arr = Array.isArray(rr) ? rr : [rr];
+                  const indices = Array.isArray(milestoneIdx) ? milestoneIdx : (milestoneIdx !== undefined ? [milestoneIdx] : []);
                   return arr.some((r: any) => {
                     if (!r || (r.status !== "pending" && r.status !== "in_progress")) return false;
-                    const revMi = r.milestoneIndex;
-                    if (revMi === undefined || revMi === null) return true;
-                    return revMi === milestoneIdx;
+                    const revIndices = Array.isArray(r.milestoneIndices) ? r.milestoneIndices : (r.milestoneIndex !== undefined && r.milestoneIndex !== null ? [r.milestoneIndex] : []);
+                    if (indices.length === 0) return revIndices.length === 0;
+                    if (revIndices.length === 0) return true;
+                    return indices.some((mi: number) => revIndices.includes(mi));
                   });
                 };
 
@@ -4404,7 +4433,11 @@ export default function ClientOrdersSection() {
                   return (
                     <div className="space-y-6">
                       {sortedDeliveries.map((delivery, index) => {
-                        const deliveryNumber = delivery.milestoneIndex !== undefined ? delivery.milestoneIndex + 1 : (deliveryNumberMap.get(delivery.at || 'no-date') || (index + 1));
+                        const batchIndices = (delivery as any).milestoneIndices as number[] | undefined;
+                        const singleIndex = (delivery as any).milestoneIndex as number | undefined;
+                        const deliveryNumber = batchIndices?.length
+                          ? `Milestones ${batchIndices.map((i: number) => i + 1).join(", ")}`
+                          : (singleIndex !== undefined ? singleIndex + 1 : (deliveryNumberMap.get(delivery.at || 'no-date') || (index + 1)));
                         return (
                         <div key={index} className="flex gap-4">
                           <div className="flex flex-col items-center pt-1">
@@ -4417,7 +4450,7 @@ export default function ClientOrdersSection() {
                           </div>
                           <div className="flex-1 pb-6">
                             <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                              #{deliveryNumber} Work Delivered
+                              {typeof deliveryNumber === "string" ? deliveryNumber : `#${deliveryNumber}`} Work Delivered
                             </h4>
                             <p className="font-['Poppins',sans-serif] text-[13px] mb-3">
                               <span className="text-purple-600 hover:underline cursor-pointer">{currentOrder.professional}</span>{" "}
@@ -4443,9 +4476,10 @@ export default function ClientOrdersSection() {
                                 
                                 {/* Delivery Attachments */}
                                 {delivery.files && delivery.files.length > 0 && (() => {
-                                  const filteredFiles = delivery.milestoneIndex !== undefined
-                                    ? delivery.files.filter((file: any) => file.milestoneIndex === delivery.milestoneIndex)
-                                    : delivery.files.filter((file: any) => (file.deliveryNumber || 1) === deliveryNumber);
+                                  const indicesForFiles = batchIndices ?? (singleIndex !== undefined ? [singleIndex] : []);
+                                  const filteredFiles = indicesForFiles.length > 0
+                                    ? delivery.files.filter((file: any) => indicesForFiles.includes(file.milestoneIndex != null ? file.milestoneIndex : -1))
+                                    : delivery.files.filter((file: any) => (file.deliveryNumber || 1) === (typeof deliveryNumber === "number" ? deliveryNumber : index + 1));
                                   
                                   if (filteredFiles.length === 0) return null;
                                   
@@ -4498,11 +4532,11 @@ export default function ClientOrdersSection() {
                               </div>
                             )}
 
-                            {/* Approval / Request modification - show only for deliveries not yet approved and not under active revision for that milestone */}
+                            {/* Approval / Request modification - show only for deliveries not yet approved and not under active revision for that milestone/batch */}
                             {currentOrder.status !== "Completed" &&
                              currentOrder.status !== "Cancelled" &&
-                             (delivery.milestoneIndex === undefined || !delivery.approvedAt) &&
-                             !hasActiveRevisionForMilestoneInDelivery(delivery.milestoneIndex) &&
+                             ((batchIndices?.length || singleIndex !== undefined) ? !delivery.approvedAt : true) &&
+                             !hasActiveRevisionForMilestoneInDelivery(batchIndices ?? singleIndex) &&
                              (currentOrder.status === "delivered" || currentOrder.status === "In Progress" ||
                               ((currentOrder as any).metadata?.paymentType === "milestone" &&
                                Array.isArray((currentOrder as any).metadata?.milestoneDeliveries) &&
@@ -4529,7 +4563,7 @@ export default function ClientOrdersSection() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      handleAcceptDelivery(currentOrder.id, delivery.milestoneIndex);
+                                      handleAcceptDelivery(currentOrder.id, batchIndices ?? singleIndex);
                                     }}
                                     className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[14px] px-6"
                                   >
@@ -4540,8 +4574,10 @@ export default function ClientOrdersSection() {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       setSelectedOrder(currentOrder.id);
-                                      const mi = delivery.milestoneIndex;
-                                      openModal('revisionRequest', mi !== undefined ? { revisionMilestoneIndex: mi } : undefined);
+                                      openModal('revisionRequest', {
+                                        revisionMilestoneIndices: batchIndices ?? (singleIndex !== undefined ? [singleIndex] : undefined),
+                                        revisionMilestoneIndex: batchIndices?.[0] ?? singleIndex,
+                                      });
                                     }}
                                     variant="outline"
                                     className="font-['Poppins',sans-serif] text-[14px] border-blue-600 text-blue-600 hover:bg-blue-50 px-6"
@@ -6092,6 +6128,7 @@ export default function ClientOrdersSection() {
             setIsRevisionRequestDialogOpen(open);
             if (!open) {
               setRevisionRequestMilestoneIndex(null);
+              setRevisionRequestMilestoneIndices(null);
               setRevisionReason("");
               setRevisionMessage("");
               setRevisionFiles([]);

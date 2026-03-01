@@ -3650,7 +3650,9 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
     const existingDelivery = milestoneDeliveries.find(d => d.milestoneIndex === milestoneIndex);
     const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
     const activeRevisions = revList.filter(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
-    const activeRevisionForThisMilestone = activeRevisions.find(rr => rr.milestoneIndex === milestoneIndex);
+    const activeRevisionForThisMilestone = activeRevisions.find(rr =>
+      rr.milestoneIndex === milestoneIndex && (!Array.isArray(rr.milestoneIndices) || rr.milestoneIndices.length <= 1)
+    );
     const deliveredNotApproved = milestoneDeliveries.filter(d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt);
     const isReDeliveryForRevision = !!existingDelivery && (
       !!activeRevisionForThisMilestone ||
@@ -3777,6 +3779,198 @@ router.post('/:orderId/deliver-milestone', authenticateToken, requireRole(['prof
   }
 });
 
+// Professional: Deliver work for multiple milestones at once (batch – same deliveredAt for timeline grouping)
+router.post('/:orderId/deliver-milestones', authenticateToken, requireRole(['professional']), deliveryUpload.array('files', 10), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    let milestoneIndices = req.body.milestoneIndices;
+    const deliveryMessage = req.body.deliveryMessage;
+
+    if (milestoneIndices === undefined || milestoneIndices === null) {
+      return res.status(400).json({ error: 'milestoneIndices array is required' });
+    }
+    if (typeof milestoneIndices === 'string') {
+      try {
+        milestoneIndices = JSON.parse(milestoneIndices);
+      } catch {
+        return res.status(400).json({ error: 'milestoneIndices must be a JSON array of numbers' });
+      }
+    }
+    if (!Array.isArray(milestoneIndices) || milestoneIndices.length === 0) {
+      return res.status(400).json({ error: 'At least one milestone index is required' });
+    }
+    const indices = milestoneIndices.map(i => parseInt(String(i), 10)).filter(i => !isNaN(i) && i >= 0);
+    if (indices.length === 0) {
+      return res.status(400).json({ error: 'Valid milestone indices are required' });
+    }
+
+    const order = await Order.findOne(await buildOrderQuery(orderId, { professional: req.user.id })).populate('client professional');
+    if (!order) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const milestones = order.metadata?.milestones || [];
+    if (order.metadata?.paymentType !== 'milestone' || !Array.isArray(milestones) || milestones.length === 0) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'This order does not use milestones' });
+    }
+
+    const invalid = indices.some(i => i >= milestones.length);
+    if (invalid) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'Invalid milestone index in list' });
+    }
+
+    const milestoneDeliveries = order.metadata?.milestoneDeliveries || [];
+    const alreadyDelivered = indices.filter(i => milestoneDeliveries.some(d => d && d.milestoneIndex === i));
+    if (alreadyDelivered.length > 0) {
+      // Allow re-delivery if there is an active revision for this exact batch
+      const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
+      const activeRevisions = revList.filter(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+      const indicesSet = new Set(indices);
+      const batchRevision = activeRevisions.find(rr => {
+        const rrIndices = Array.isArray(rr.milestoneIndices) ? rr.milestoneIndices : (rr.milestoneIndex !== undefined && rr.milestoneIndex !== null ? [rr.milestoneIndex] : []);
+        if (rrIndices.length !== indicesSet.size) return false;
+        return rrIndices.every(mi => indicesSet.has(mi));
+      });
+      if (!batchRevision) {
+        if (req.files && req.files.length > 0) {
+          req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+        }
+        return res.status(400).json({ error: `Milestone(s) already delivered: ${alreadyDelivered.map(i => i + 1).join(', ')}` });
+      }
+      // Fall through: treat as re-delivery for batch revision (handled below)
+    }
+    const isBatchReDelivery = alreadyDelivered.length > 0;
+
+    const statusLower = (order.status || '').toLowerCase();
+    const isAllowed = statusLower === 'in progress' || order.deliveryStatus === 'active' || order.deliveryStatus === 'pending' || (isBatchReDelivery && statusLower === 'revision');
+    if (!isAllowed) {
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => { if (file.path) fs.unlink(file.path).catch(() => {}); });
+      }
+      return res.status(400).json({ error: 'Order must be in progress to deliver milestones' });
+    }
+
+    const batchDeliveredAt = new Date();
+    const messageTrimmed = (deliveryMessage && String(deliveryMessage).trim()) || '';
+
+    const deliveryFiles = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
+        for (const mi of indices) {
+          deliveryFiles.push({
+            url: `/api/orders/deliveries/${file.filename}`,
+            fileName: file.originalname,
+            fileType,
+            uploadedAt: batchDeliveredAt,
+            deliveryNumber: mi + 1,
+            milestoneIndex: mi,
+          });
+        }
+      }
+    }
+    order.deliveryFiles = order.deliveryFiles ? [...order.deliveryFiles, ...deliveryFiles] : deliveryFiles;
+
+    if (!order.metadata) order.metadata = {};
+    order.metadata.milestoneDeliveries = order.metadata.milestoneDeliveries || [];
+
+    if (isBatchReDelivery) {
+      const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
+      const indicesSet = new Set(indices);
+      const batchRevision = revList.find(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress') && (() => {
+        const rrIndices = Array.isArray(rr.milestoneIndices) ? rr.milestoneIndices : (rr.milestoneIndex !== undefined && rr.milestoneIndex !== null ? [rr.milestoneIndex] : []);
+        return rrIndices.length === indicesSet.size && rrIndices.every(mi => indicesSet.has(mi));
+      })());
+      if (batchRevision) {
+        batchRevision.status = 'completed';
+        batchRevision.respondedAt = batchDeliveredAt;
+        order.markModified('revisionRequest');
+      }
+      for (const mi of indices) {
+        const entry = order.metadata.milestoneDeliveries.find(d => d && d.milestoneIndex === mi);
+        if (entry) {
+          entry.deliveredAt = batchDeliveredAt;
+          entry.deliveryMessage = messageTrimmed || entry.deliveryMessage || '';
+        }
+      }
+      order.markModified('metadata');
+      const hasOtherActiveRevision = revList.some(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress'));
+      if (!hasOtherActiveRevision) {
+        order.status = 'In Progress';
+        order.deliveryStatus = 'active';
+      }
+    } else {
+      for (const mi of indices) {
+        order.metadata.milestoneDeliveries.push({
+          milestoneIndex: mi,
+          deliveredAt: batchDeliveredAt,
+          deliveryMessage: messageTrimmed,
+        });
+      }
+      order.markModified('metadata');
+    }
+
+    const allDelivered = !isBatchReDelivery && milestones.length <= order.metadata.milestoneDeliveries.length;
+    if (allDelivered) {
+      order.status = 'delivered';
+      order.deliveryStatus = 'delivered';
+      order.deliveredDate = batchDeliveredAt;
+      if (order.deliveryMessage) {
+        order.deliveryMessage = `${order.deliveryMessage}\n\n[All milestones delivered]\n${order.metadata.milestoneDeliveries.map((d, i) => `Milestone ${i + 1}: ${d.deliveryMessage || '(no message)'}`).join('\n')}`.trim();
+      } else {
+        order.deliveryMessage = `[All milestones delivered]\n${order.metadata.milestoneDeliveries.map((d, i) => `Milestone ${i + 1}: ${d.deliveryMessage || '(no message)'}`).join('\n')}`;
+      }
+    }
+
+    await order.save();
+    await syncCustomOfferMessageStatus(order);
+
+    if (allDelivered) {
+      runBackgroundTask(
+        () => sendOrderDeliveredNotifications({
+          order,
+          clientUser: order.client,
+          professionalUser: order.professional,
+        }),
+        'order-delivered'
+      );
+    }
+
+    res.json({
+      message: allDelivered
+        ? 'All milestones delivered. Order is now delivered for client approval.'
+        : 'Milestones delivered successfully.',
+      order: {
+        status: order.status,
+        deliveryStatus: order.deliveryStatus,
+        deliveredDate: order.deliveredDate,
+        deliveryFiles: order.deliveryFiles,
+        deliveryMessage: order.deliveryMessage,
+        milestoneDeliveries: order.metadata?.milestoneDeliveries,
+      },
+    });
+  } catch (error) {
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.path) {
+          try { unlinkSync(file.path); } catch (err) { console.error('Error deleting file:', err); }
+        }
+      });
+    }
+    console.error('Deliver milestones error:', error);
+    res.status(500).json({ error: error.message || 'Failed to deliver milestones' });
+  }
+});
+
 // Serve delivery files
 router.get('/deliveries/:filename', (req, res) => {
   try {
@@ -3838,7 +4032,7 @@ const maybeRevisionUpload = (req, res, next) => {
 router.post('/:orderId/revision-request', authenticateToken, requireRole(['client']), maybeRevisionUpload, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason, message, milestoneIndex: bodyMilestoneIndex } = req.body;
+    const { reason, message, milestoneIndex: bodyMilestoneIndex, milestoneIndices: bodyMilestoneIndices } = req.body;
 
     if (!reason || !reason.trim()) {
       return res.status(400).json({ error: 'Revision reason is required' });
@@ -3851,11 +4045,6 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     }
 
     // Check if order is delivered
-    // Revision can only be requested when:
-    // 1. Delivery files exist (professional has sent delivery result), OR
-    // 2. Status is 'delivered', OR
-    // 3. DeliveryStatus is 'delivered', OR
-    // 4. Milestone order with at least one milestone delivered
     const hasDeliveryFiles = order.deliveryFiles && order.deliveryFiles.length > 0;
     const isDeliveredStatus = order.status === 'delivered' || order.status === 'Delivered';
     const isDeliveredDeliveryStatus = order.deliveryStatus === 'delivered';
@@ -3867,30 +4056,49 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
     }
 
     let revisionMilestoneIndex = null;
+    let revisionMilestoneIndices = null;
     if (isMilestoneOrder) {
-      const parsed = bodyMilestoneIndex !== undefined && bodyMilestoneIndex !== '' ? parseInt(String(bodyMilestoneIndex), 10) : NaN;
-      if (Number.isInteger(parsed) && parsed >= 0) {
-        revisionMilestoneIndex = parsed;
+      // Support batch: milestoneIndices array (for "request modification" on a batch delivery)
+      let parsedIndices = null;
+      if (bodyMilestoneIndices !== undefined && bodyMilestoneIndices !== '') {
+        const raw = typeof bodyMilestoneIndices === 'string' ? (() => { try { return JSON.parse(bodyMilestoneIndices); } catch { return null; } })() : bodyMilestoneIndices;
+        if (Array.isArray(raw) && raw.length > 0) {
+          parsedIndices = raw.map(i => parseInt(String(i), 10)).filter(i => !isNaN(i) && i >= 0);
+        }
+      }
+      if (parsedIndices && parsedIndices.length > 0) {
+        revisionMilestoneIndices = parsedIndices;
+        revisionMilestoneIndex = parsedIndices[0]; // keep for backward compat
       } else {
-        // Infer: revision is for the delivered milestone that has no approvedAt
-        const deliveredNotApproved = (order.metadata.milestoneDeliveries || []).filter(
-          d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt
-        );
-        if (deliveredNotApproved.length === 1) {
-          // When there is only one delivery in the whole order, the revision is for the first (and only) delivered milestone = index 0
-          const totalDeliveries = (order.metadata.milestoneDeliveries || []).length;
-          if (totalDeliveries === 1) {
-            revisionMilestoneIndex = 0;
-          } else {
-            revisionMilestoneIndex = deliveredNotApproved[0].milestoneIndex;
+        const parsed = bodyMilestoneIndex !== undefined && bodyMilestoneIndex !== '' ? parseInt(String(bodyMilestoneIndex), 10) : NaN;
+        if (Number.isInteger(parsed) && parsed >= 0) {
+          revisionMilestoneIndex = parsed;
+          revisionMilestoneIndices = [parsed];
+        } else {
+          const deliveredNotApproved = (order.metadata.milestoneDeliveries || []).filter(
+            d => d && typeof d.milestoneIndex === 'number' && !d.approvedAt
+          );
+          if (deliveredNotApproved.length === 1) {
+            const totalDeliveries = (order.metadata.milestoneDeliveries || []).length;
+            if (totalDeliveries === 1) {
+              revisionMilestoneIndex = 0;
+              revisionMilestoneIndices = [0];
+            } else {
+              revisionMilestoneIndex = deliveredNotApproved[0].milestoneIndex;
+              revisionMilestoneIndices = [revisionMilestoneIndex];
+            }
           }
         }
       }
-      // Milestone orders: only one active revision per milestone
       const revList = order.revisionRequest && Array.isArray(order.revisionRequest) ? order.revisionRequest : [];
-      const activeForSameMilestone = revList.find(rr => rr && (rr.status === 'pending' || rr.status === 'in_progress') && (rr.milestoneIndex === revisionMilestoneIndex || (revisionMilestoneIndex === null && rr.milestoneIndex == null)));
+      const requestSet = new Set(revisionMilestoneIndices || (revisionMilestoneIndex !== null ? [revisionMilestoneIndex] : []));
+      const activeForSameMilestone = revList.find(rr => {
+        if (!rr || (rr.status !== 'pending' && rr.status !== 'in_progress')) return false;
+        const rrIndices = Array.isArray(rr.milestoneIndices) ? rr.milestoneIndices : (rr.milestoneIndex !== undefined && rr.milestoneIndex !== null ? [rr.milestoneIndex] : []);
+        return rrIndices.some(mi => requestSet.has(mi));
+      });
       if (activeForSameMilestone) {
-        return res.status(400).json({ error: 'There is already an active revision request for this milestone' });
+        return res.status(400).json({ error: 'There is already an active revision request for this milestone (or batch)' });
       }
     } else {
       // Non-milestone: only one active revision overall
@@ -3928,7 +4136,7 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       ? Math.max(...order.revisionRequest.map(rr => rr.index || 0)) + 1
       : 1;
 
-    // Create new revision request and add to array (milestoneIndex for milestone orders)
+    // Create new revision request and add to array (milestoneIndex / milestoneIndices for milestone orders)
     const newRevisionRequest = {
       index: nextIndex,
       status: 'pending',
@@ -3939,6 +4147,7 @@ router.post('/:orderId/revision-request', authenticateToken, requireRole(['clien
       respondedAt: null,
       additionalNotes: null,
       ...(revisionMilestoneIndex !== null ? { milestoneIndex: revisionMilestoneIndex } : {}),
+      ...(revisionMilestoneIndices && revisionMilestoneIndices.length > 0 ? { milestoneIndices: revisionMilestoneIndices } : {}),
     };
 
     order.revisionRequest.push(newRevisionRequest);
