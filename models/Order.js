@@ -390,6 +390,8 @@ const orderSchema = new mongoose.Schema(
         type: Number,
         default: null,
       },
+      // For batch revision: multiple milestones (e.g. [0, 1, 2] when 3 delivered at once)
+      milestoneIndices: [{ type: Number }],
     }],
   },
   {

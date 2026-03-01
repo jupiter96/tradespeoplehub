@@ -2823,6 +2823,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
               respondedAt: rr.respondedAt ? new Date(rr.respondedAt).toISOString() : undefined,
               additionalNotes: rr.additionalNotes || undefined,
               milestoneIndex: rr.milestoneIndex !== undefined && rr.milestoneIndex !== null ? rr.milestoneIndex : undefined,
+              milestoneIndices: Array.isArray(rr.milestoneIndices) && rr.milestoneIndices.length > 0 ? rr.milestoneIndices : undefined,
             }))
           : (order.revisionRequest && !Array.isArray(order.revisionRequest)
             ? [{
@@ -2840,6 +2841,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
                 respondedAt: order.revisionRequest.respondedAt ? new Date(order.revisionRequest.respondedAt).toISOString() : undefined,
                 additionalNotes: order.revisionRequest.additionalNotes || undefined,
                 milestoneIndex: order.revisionRequest.milestoneIndex !== undefined && order.revisionRequest.milestoneIndex !== null ? order.revisionRequest.milestoneIndex : undefined,
+                milestoneIndices: Array.isArray(order.revisionRequest.milestoneIndices) && order.revisionRequest.milestoneIndices.length > 0 ? order.revisionRequest.milestoneIndices : undefined,
               }]
             : undefined),
         additionalInformation: order.additionalInformation ? {

@@ -1235,34 +1235,52 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      // Update order with revision request (array format)
+      // Update order with revision request (array format). API returns full revisionRequest array.
       setOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          const existingRevisionRequests = order.revisionRequest 
-            ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
-            : [];
-          
-          const newRevisionRequest = {
-            index: data.revisionRequest.index || (existingRevisionRequests.length > 0
-              ? Math.max(...existingRevisionRequests.map(rr => rr.index || 0)) + 1
-              : 1),
-            status: data.revisionRequest.status,
-            reason: data.revisionRequest.reason,
-            clientMessage: data.revisionRequest.clientMessage,
-            clientFiles: data.revisionRequest.clientFiles || [],
-            requestedAt: data.revisionRequest.requestedAt,
-            respondedAt: undefined,
-            additionalNotes: undefined,
-            milestoneIndex: data.revisionRequest.milestoneIndex !== undefined ? data.revisionRequest.milestoneIndex : undefined,
-            milestoneIndices: Array.isArray(data.revisionRequest.milestoneIndices) ? data.revisionRequest.milestoneIndices : undefined,
-          };
-          
+        if (order.id !== orderId) return order;
+        const serverRevisionRequest = data.revisionRequest;
+        if (Array.isArray(serverRevisionRequest) && serverRevisionRequest.length > 0) {
           return {
             ...order,
-            revisionRequest: [...existingRevisionRequests, newRevisionRequest],
+            status: 'Revision',
+            deliveryStatus: 'revision',
+            revisionRequest: serverRevisionRequest.map((rr: any) => ({
+              index: rr.index,
+              status: rr.status,
+              reason: rr.reason,
+              clientMessage: rr.clientMessage,
+              clientFiles: rr.clientFiles || [],
+              requestedAt: rr.requestedAt,
+              respondedAt: rr.respondedAt,
+              additionalNotes: rr.additionalNotes,
+              milestoneIndex: rr.milestoneIndex !== undefined ? rr.milestoneIndex : undefined,
+              milestoneIndices: Array.isArray(rr.milestoneIndices) ? rr.milestoneIndices : undefined,
+            })),
           };
         }
-        return order;
+        const existingRevisionRequests = order.revisionRequest 
+          ? (Array.isArray(order.revisionRequest) ? order.revisionRequest : [order.revisionRequest])
+          : [];
+        const newRevisionRequest = {
+          index: (data.revisionRequest && data.revisionRequest.index) || (existingRevisionRequests.length > 0
+            ? Math.max(...existingRevisionRequests.map(rr => rr.index || 0)) + 1
+            : 1),
+          status: data.revisionRequest?.status ?? 'pending',
+          reason: data.revisionRequest?.reason ?? '',
+          clientMessage: data.revisionRequest?.clientMessage,
+          clientFiles: data.revisionRequest?.clientFiles || [],
+          requestedAt: data.revisionRequest?.requestedAt,
+          respondedAt: undefined,
+          additionalNotes: undefined,
+          milestoneIndex: data.revisionRequest?.milestoneIndex !== undefined ? data.revisionRequest.milestoneIndex : undefined,
+          milestoneIndices: Array.isArray(data.revisionRequest?.milestoneIndices) ? data.revisionRequest.milestoneIndices : undefined,
+        };
+        return {
+          ...order,
+          status: 'Revision',
+          deliveryStatus: 'revision',
+          revisionRequest: [...existingRevisionRequests, newRevisionRequest],
+        };
       }));
 
       scheduleDeferredRefresh();

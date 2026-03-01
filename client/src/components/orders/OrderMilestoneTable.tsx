@@ -5,6 +5,7 @@ type RevisionRequestLike = {
   index?: number;
   status?: string;
   milestoneIndex?: number;
+  milestoneIndices?: number[];
 };
 
 type OrderLike = {
@@ -56,14 +57,17 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
     const fromMilestoneIndex = revisionRequests
       .filter((rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && typeof rr.milestoneIndex === "number")
       .map((rr) => rr.milestoneIndex as number);
+    const fromMilestoneIndices = revisionRequests
+      .filter((rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && Array.isArray(rr.milestoneIndices) && rr.milestoneIndices.length > 0)
+      .flatMap((rr) => rr.milestoneIndices!);
     const fallback: number[] = [];
     const activeWithoutIndex = revisionRequests.filter(
-      (rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && (rr.milestoneIndex === undefined || rr.milestoneIndex === null)
+      (rr) => rr && (rr.status === "pending" || rr.status === "in_progress") && (rr.milestoneIndex === undefined || rr.milestoneIndex === null) && (!rr.milestoneIndices || rr.milestoneIndices.length === 0)
     );
     if (activeWithoutIndex.length > 0 && Array.isArray(milestoneDeliveries) && milestoneDeliveries.length === 1) {
       fallback.push(0);
     }
-    return new Set([...fromMilestoneIndex, ...fallback]);
+    return new Set([...fromMilestoneIndex, ...fromMilestoneIndices, ...fallback]);
   })();
 
   return (
