@@ -4433,10 +4433,17 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
     await order.save();
 
     // Create review if rating and/or review is provided (saved per service)
-    const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
+    const rawPrimaryServiceId = order.items?.[0]?.serviceId;
+    const primaryServiceIdForReview = rawPrimaryServiceId != null && rawPrimaryServiceId !== ''
+      ? (typeof rawPrimaryServiceId === 'string' ? rawPrimaryServiceId : rawPrimaryServiceId.toString())
+      : null;
+    const isValidServiceId = primaryServiceIdForReview &&
+      mongoose.Types.ObjectId.isValid(primaryServiceIdForReview) &&
+      String(primaryServiceIdForReview).length === 24;
+    const serviceObjIdForReview = isValidServiceId ? new mongoose.Types.ObjectId(primaryServiceIdForReview) : null;
     let reviewDoc = null;
     if (rating !== undefined || (review && review.trim())) {
-      const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
+      const serviceObjId = serviceObjIdForReview;
       reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });
 
       if (reviewDoc) {
@@ -4457,7 +4464,7 @@ router.post('/:orderId/complete', authenticateToken, requireRole(['client']), as
         });
       }
       await reviewDoc.save();
-      if (primaryServiceId) await updateServiceReviewStats(primaryServiceId);
+      if (serviceObjId) await updateServiceReviewStats(serviceObjId);
     }
 
     await order.save();
@@ -4585,8 +4592,17 @@ router.post('/:orderId/review', authenticateToken, requireRole(['client']), asyn
     }
 
     // Primary service for this order (review is stored per service)
-    const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
-    const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
+    const rawPrimaryServiceId = order.items?.[0]?.serviceId;
+    const primaryServiceId = rawPrimaryServiceId != null && rawPrimaryServiceId !== ''
+      ? (typeof rawPrimaryServiceId === 'string' ? rawPrimaryServiceId : rawPrimaryServiceId.toString())
+      : null;
+    // Only use ObjectId when it's a valid 24-char hex (avoids "input must be a 24 character hex string" for custom/milestone orders where serviceId may be missing or non-ObjectId)
+    const serviceObjId =
+      primaryServiceId &&
+      mongoose.Types.ObjectId.isValid(primaryServiceId) &&
+      String(primaryServiceId).length === 24
+        ? new mongoose.Types.ObjectId(primaryServiceId)
+        : null;
 
     // Check if review already exists for this order + service
     let reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });
@@ -4611,7 +4627,7 @@ router.post('/:orderId/review', authenticateToken, requireRole(['client']), asyn
     }
 
     await reviewDoc.save();
-    if (primaryServiceId) await updateServiceReviewStats(primaryServiceId);
+    if (serviceObjId) await updateServiceReviewStats(serviceObjId);
 
     // Update order with rating
     order.rating = rating;
@@ -4715,9 +4731,17 @@ router.post('/:orderId/respond-to-review', authenticateToken, requireRole(['prof
       return res.status(400).json({ error: 'Review responses can only be submitted within 90 days of order completion.' });
     }
 
-    // Find the Review document for this order (client's review of the service) for this order (client's review of the service)
-    const primaryServiceId = order.items?.[0]?.serviceId ? (typeof order.items[0].serviceId === 'string' ? order.items[0].serviceId : order.items[0].serviceId.toString()) : null;
-    const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId) : null;
+    // Find the Review document for this order (client's review of the service)
+    const rawPrimaryServiceId = order.items?.[0]?.serviceId;
+    const primaryServiceIdStr = rawPrimaryServiceId != null && rawPrimaryServiceId !== ''
+      ? (typeof rawPrimaryServiceId === 'string' ? rawPrimaryServiceId : rawPrimaryServiceId.toString())
+      : null;
+    const serviceObjId =
+      primaryServiceIdStr &&
+      mongoose.Types.ObjectId.isValid(primaryServiceIdStr) &&
+      primaryServiceIdStr.length === 24
+        ? new mongoose.Types.ObjectId(primaryServiceIdStr)
+        : null;
     let reviewDoc = await Review.findOne(serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null });
 
     if (!reviewDoc) {
@@ -4769,8 +4793,16 @@ router.get('/:orderId/review', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    const primaryServiceId = order.items?.[0]?.serviceId;
-    const serviceObjId = primaryServiceId ? new mongoose.Types.ObjectId(primaryServiceId.toString()) : null;
+    const primaryServiceIdRaw = order.items?.[0]?.serviceId;
+    const primaryServiceIdStr = primaryServiceIdRaw != null && primaryServiceIdRaw !== ''
+      ? (typeof primaryServiceIdRaw === 'string' ? primaryServiceIdRaw : primaryServiceIdRaw.toString())
+      : null;
+    const serviceObjId =
+      primaryServiceIdStr &&
+      mongoose.Types.ObjectId.isValid(primaryServiceIdStr) &&
+      primaryServiceIdStr.length === 24
+        ? new mongoose.Types.ObjectId(primaryServiceIdStr)
+        : null;
     let review = await Review.findOne(
       serviceObjId ? { order: order._id, service: serviceObjId } : { order: order._id, service: null }
     )
