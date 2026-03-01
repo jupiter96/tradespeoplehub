@@ -9,10 +9,21 @@ import PromoCode from '../models/PromoCode.js';
 import { getIO } from '../services/socket.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
+import { sendTemplatedEmail } from '../services/notifier.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
 
 const router = express.Router();
+
+const baseUrl = () => process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+const ordersTabPath = '/account?tab=orders';
+const messagesTabPath = '/account?tab=messages';
+function runBackgroundTask(task, label) {
+  Promise.resolve()
+    .then(task)
+    .catch((err) => console.error(`[CustomOffers] Background task failed${label ? ` (${label})` : ''}:`, err));
+}
 
 // Helper function to get Stripe instance
 function getStripeInstance(settings) {
@@ -272,8 +283,8 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
 
     // Populate for response
     await customOffer.populate([
-      { path: 'professional', select: 'firstName lastName tradingName avatar' },
-      { path: 'client', select: 'firstName lastName avatar' },
+      { path: 'professional', select: 'firstName lastName tradingName avatar email' },
+      { path: 'client', select: 'firstName lastName avatar email' },
     ]);
 
     // Emit socket event so both participants see the new custom offer message immediately
@@ -304,6 +315,53 @@ router.post('/', authenticateToken, requireRole(['professional']), async (req, r
     } catch (socketErr) {
       console.error('Socket emit for custom offer message:', socketErr);
     }
+
+    runBackgroundTask(async () => {
+      const clientUser = await User.findById(clientId).select('firstName lastName email').lean();
+      const professionalUser = await User.findById(req.user.id).select('firstName lastName tradingName email').lean();
+      if (!clientUser?.email || !professionalUser) return;
+      const proName = professionalUser.tradingName || [professionalUser.firstName, professionalUser.lastName].filter(Boolean).join(' ') || 'Professional';
+      const clientName = [clientUser.firstName, clientUser.lastName].filter(Boolean).join(' ') || 'Client';
+      const responseDeadlineStr = customOffer.responseDeadline ? new Date(customOffer.responseDeadline).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+      const offerLink = `${baseUrl()}/account?tab=orders`;
+      const messagesLink = `${baseUrl()}/account?tab=messages`;
+      await sendTemplatedEmail(clientUser.email, 'custom-offer-received-client', {
+        firstName: clientUser.firstName || 'there',
+        professionalName: proName,
+        serviceName: customOffer.serviceName,
+        price: customOffer.price.toFixed(2),
+        responseDeadline: responseDeadlineStr,
+        offerLink,
+      }, 'orders');
+      await Notification.createNotification({
+        userId: clientId,
+        type: 'custom_offer_received',
+        title: 'New custom offer',
+        message: `${proName} sent you a custom offer for ${customOffer.serviceName}.`,
+        relatedId: customOffer._id,
+        relatedModel: 'CustomOffer',
+        link: ordersTabPath,
+        metadata: { offerNumber: customOffer.offerNumber, orderNumber: order?.orderNumber },
+      });
+      await sendTemplatedEmail(professionalUser.email, 'custom-offer-made-professional', {
+        firstName: professionalUser.firstName || 'there',
+        clientName,
+        serviceName: customOffer.serviceName,
+        price: customOffer.price.toFixed(2),
+        responseDeadline: responseDeadlineStr,
+        offerLink: `${baseUrl()}/account?tab=messages`,
+      }, 'orders');
+      await Notification.createNotification({
+        userId: req.user.id,
+        type: 'custom_offer_made',
+        title: 'Offer sent',
+        message: `You sent a custom offer to ${clientName} for ${customOffer.serviceName}.`,
+        relatedId: customOffer._id,
+        relatedModel: 'CustomOffer',
+        link: messagesTabPath,
+        metadata: { offerNumber: customOffer.offerNumber },
+      });
+    }, 'custom-offer-created');
 
     res.json({
       message: 'Custom offer created successfully',
@@ -720,6 +778,54 @@ router.post('/:offerId/accept', authenticateToken, requireRole(['client']), asyn
       await Wallet.findByIdAndUpdate(paymentTransactionId, { orderId: order._id });
     }
 
+    runBackgroundTask(async () => {
+      const [clientUser, professionalUser] = await Promise.all([
+        User.findById(customOffer.client._id || customOffer.client).select('firstName lastName email').lean(),
+        User.findById(customOffer.professional._id || customOffer.professional).select('firstName lastName tradingName email').lean(),
+      ]);
+      const proName = professionalUser?.tradingName || [professionalUser?.firstName, professionalUser?.lastName].filter(Boolean).join(' ') || 'Professional';
+      const clientName = [clientUser?.firstName, clientUser?.lastName].filter(Boolean).join(' ') || 'Client';
+      const orderLink = `${baseUrl()}/account?tab=orders`;
+      if (professionalUser?.email) {
+        await sendTemplatedEmail(professionalUser.email, 'custom-offer-accepted-professional', {
+          firstName: professionalUser.firstName || 'there',
+          clientName,
+          serviceName: customOffer.serviceName,
+          orderNumber: order.orderNumber,
+          orderLink,
+        }, 'orders');
+        await Notification.createNotification({
+          userId: customOffer.professional._id || customOffer.professional,
+          type: 'custom_offer_accepted',
+          title: 'Offer accepted',
+          message: `${clientName} accepted your custom offer for ${customOffer.serviceName}.`,
+          relatedId: order._id,
+          relatedModel: 'Order',
+          link: ordersTabPath,
+          metadata: { offerNumber: customOffer.offerNumber, orderNumber: order.orderNumber },
+        });
+      }
+      if (clientUser?.email) {
+        await sendTemplatedEmail(clientUser.email, 'custom-offer-accepted-client', {
+          firstName: clientUser.firstName || 'there',
+          professionalName: proName,
+          serviceName: customOffer.serviceName,
+          orderNumber: order.orderNumber,
+          orderLink,
+        }, 'orders');
+        await Notification.createNotification({
+          userId: customOffer.client._id || customOffer.client,
+          type: 'custom_offer_accepted',
+          title: 'Offer accepted',
+          message: `You accepted the custom offer from ${proName} for ${customOffer.serviceName}.`,
+          relatedId: order._id,
+          relatedModel: 'Order',
+          link: ordersTabPath,
+          metadata: { offerNumber: customOffer.offerNumber, orderNumber: order.orderNumber },
+        });
+      }
+    }, 'custom-offer-accepted');
+
     res.json({
       message: 'Offer accepted and order created successfully',
       order: {
@@ -791,6 +897,30 @@ router.post('/:offerId/reject', authenticateToken, requireRole(['client']), asyn
       await message.save();
     }
 
+    runBackgroundTask(async () => {
+      const professionalUser = await User.findById(customOffer.professional).select('firstName lastName tradingName email').lean();
+      const clientUser = await User.findById(customOffer.client).select('firstName lastName').lean();
+      const clientName = [clientUser?.firstName, clientUser?.lastName].filter(Boolean).join(' ') || 'Client';
+      if (professionalUser?.email) {
+        await sendTemplatedEmail(professionalUser.email, 'custom-offer-rejected-by-client-professional', {
+          firstName: professionalUser.firstName || 'there',
+          clientName,
+          serviceName: customOffer.serviceName,
+          offerLink: `${baseUrl()}/account?tab=messages`,
+        }, 'orders');
+        await Notification.createNotification({
+          userId: customOffer.professional,
+          type: 'custom_offer_rejected_by_client',
+          title: 'Offer declined',
+          message: `${clientName} declined your custom offer for ${customOffer.serviceName}.`,
+          relatedId: customOffer._id,
+          relatedModel: 'CustomOffer',
+          link: messagesTabPath,
+          metadata: { offerNumber: customOffer.offerNumber },
+        });
+      }
+    }, 'custom-offer-rejected-by-client');
+
     res.json({
       message: 'Offer rejected successfully',
       offer: {
@@ -848,6 +978,30 @@ router.post('/:offerId/withdraw', authenticateToken, requireRole(['professional'
       message.markModified('orderDetails');
       await message.save();
     }
+
+    runBackgroundTask(async () => {
+      const clientUser = await User.findById(customOffer.client).select('firstName lastName email').lean();
+      const professionalUser = await User.findById(customOffer.professional).select('firstName lastName tradingName').lean();
+      const proName = professionalUser?.tradingName || [professionalUser?.firstName, professionalUser?.lastName].filter(Boolean).join(' ') || 'Professional';
+      if (clientUser?.email) {
+        await sendTemplatedEmail(clientUser.email, 'custom-offer-rejected-by-pro-client', {
+          firstName: clientUser.firstName || 'there',
+          professionalName: proName,
+          serviceName: customOffer.serviceName,
+          messagesLink: `${baseUrl()}/account?tab=messages`,
+        }, 'orders');
+        await Notification.createNotification({
+          userId: customOffer.client,
+          type: 'custom_offer_rejected_by_pro',
+          title: 'Offer withdrawn',
+          message: `${proName} withdrew the custom offer for ${customOffer.serviceName}.`,
+          relatedId: customOffer._id,
+          relatedModel: 'CustomOffer',
+          link: messagesTabPath,
+          metadata: { offerNumber: customOffer.offerNumber },
+        });
+      }
+    }, 'custom-offer-withdrawn');
 
     res.json({
       message: 'Offer withdrawn successfully',

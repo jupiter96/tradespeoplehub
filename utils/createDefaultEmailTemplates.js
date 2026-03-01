@@ -1987,6 +1987,222 @@ const defaultTemplates = [
     `,
     variables: ['firstName', 'orderNumber', 'serviceName', 'agreedAmount', 'orderLink', 'logoUrl'],
   },
+  // ---- Custom offer templates (client: offer received, rejected by pro, accepted; pro: offer made, rejected by client, accepted) ----
+  {
+    type: 'custom-offer-received-client',
+    category: 'orders',
+    subject: '📩 New custom offer from {{professionalName}} – {{serviceName}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom Offer Received</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{professionalName}}</strong> has sent you a custom offer.</p>
+    <div style="background-color: #e8f4fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Amount:</strong> £{{price}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Response by:</strong> {{responseDeadline}}</p>
+    </div>
+    <p>Please accept or decline the offer before the deadline.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{offerLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Offer</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'professionalName', 'serviceName', 'price', 'responseDeadline', 'offerLink', 'logoUrl'],
+  },
+  {
+    type: 'custom-offer-accepted-client',
+    category: 'orders',
+    subject: '✅ You accepted the custom offer – {{serviceName}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Accepted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have accepted the custom offer from <strong>{{professionalName}}</strong>.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Order:</strong> {{orderNumber}}</p>
+    </div>
+    <p>The professional has been notified and will start working on your order.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'professionalName', 'serviceName', 'orderNumber', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'custom-offer-rejected-by-pro-client',
+    category: 'orders',
+    subject: 'Custom offer withdrawn by {{professionalName}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Withdrawn</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{professionalName}}</strong> has withdrawn the custom offer for <strong>{{serviceName}}</strong>.</p>
+    <p>The offer is no longer available. You can start a new conversation or request a new offer from the professional.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{messagesLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Go to Messages</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'professionalName', 'serviceName', 'messagesLink', 'logoUrl'],
+  },
+  {
+    type: 'custom-offer-made-professional',
+    category: 'orders',
+    subject: '✅ You sent a custom offer – {{serviceName}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Sent</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have sent a custom offer to <strong>{{clientName}}</strong>.</p>
+    <div style="background-color: #e8f4fd; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Service:</strong> {{serviceName}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Amount:</strong> £{{price}}</p>
+      <p style="margin: 5px 0 0 0;"><strong>Response by:</strong> {{responseDeadline}}</p>
+    </div>
+    <p>The client will be notified and can accept or decline before the deadline.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{offerLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Conversation</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'clientName', 'serviceName', 'price', 'responseDeadline', 'offerLink', 'logoUrl'],
+  },
+  {
+    type: 'custom-offer-accepted-professional',
+    category: 'orders',
+    subject: '🎉 {{clientName}} accepted your custom offer – {{serviceName}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Accepted</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{clientName}}</strong> has accepted your custom offer for <strong>{{serviceName}}</strong>.</p>
+    <div style="background-color: #d4edda; border-left: 4px solid #27ae60; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Order:</strong> {{orderNumber}}</p>
+      <p style="margin: 5px 0 0 0;">You can now start working on the order.</p>
+    </div>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{orderLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Order</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'clientName', 'serviceName', 'orderNumber', 'orderLink', 'logoUrl'],
+  },
+  {
+    type: 'custom-offer-rejected-by-client-professional',
+    category: 'orders',
+    subject: '{{clientName}} declined your custom offer – {{serviceName}}',
+    body: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Declined</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <img src="{{logoUrl}}" alt="Sortars Logo" style="max-width: 200px; height: auto;">
+  </div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{clientName}}</strong> has declined your custom offer for <strong>{{serviceName}}</strong>.</p>
+    <p>You can send a new offer or continue the conversation in messages.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{offerLink}}" style="background-color: #FE8A0F; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">View Conversation</a>
+    </div>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p>
+  </div>
+</body>
+</html>
+    `,
+    variables: ['firstName', 'clientName', 'serviceName', 'offerLink', 'logoUrl'],
+  },
 ];
 
 async function createDefaultTemplates() {

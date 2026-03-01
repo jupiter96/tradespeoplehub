@@ -42,6 +42,11 @@ const notificationSchema = new mongoose.Schema(
         'dispute_initiated',
         'dispute_responded',
         'dispute_resolved',
+        'custom_offer_received',
+        'custom_offer_made',
+        'custom_offer_accepted',
+        'custom_offer_rejected_by_client',
+        'custom_offer_rejected_by_pro',
       ],
       required: true,
     },
@@ -70,7 +75,7 @@ const notificationSchema = new mongoose.Schema(
     },
     relatedModel: {
       type: String,
-      enum: ['Service', 'User', 'Wallet', 'Conversation', 'Message', 'Order', 'Review'],
+      enum: ['Service', 'User', 'Wallet', 'Conversation', 'Message', 'Order', 'Review', 'CustomOffer'],
     },
     // Link to navigate when notification is clicked
     link: {

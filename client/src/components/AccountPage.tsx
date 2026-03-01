@@ -6039,6 +6039,11 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
       'payment_received': 'payment',
       'abandoned_cart': 'info',
       'system': 'info',
+      'custom_offer_received': 'message',
+      'custom_offer_made': 'message',
+      'custom_offer_accepted': 'success',
+      'custom_offer_rejected_by_client': 'warning',
+      'custom_offer_rejected_by_pro': 'warning',
     };
     return typeMap[type] || 'info';
   };
