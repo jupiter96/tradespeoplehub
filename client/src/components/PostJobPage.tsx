@@ -435,7 +435,7 @@ export default function PostJobPage() {
     try {
     const createdJob = await addJob(newJob);
     toast.success("Job posted successfully! Professionals will start sending quotes soon.");
-    navigate(`/job/${createdJob.id}?tab=quotes`);
+    navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
     } catch (err: any) {
     toast.error(err?.message || "Failed to post job");
     }

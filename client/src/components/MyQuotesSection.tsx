@@ -265,7 +265,7 @@ export default function MyQuotesSection() {
             <div
               key={quote.id}
               className="border border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] transition-all cursor-pointer"
-              onClick={() => navigate(`/job/${job.id}`)}
+              onClick={() => navigate(`/job/${job.slug || job.id}`)}
             >
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 {/* Left Side - Job & Quote Info */}
@@ -321,7 +321,7 @@ export default function MyQuotesSection() {
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/job/${job.id}`);
+                      navigate(`/job/${job.slug || job.id}`);
                     }}
                     variant="outline"
                     className="w-full md:w-auto font-['Poppins',sans-serif]"

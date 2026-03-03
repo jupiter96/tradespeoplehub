@@ -276,7 +276,7 @@ export default function MyJobsSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/job/${job.id}`)}
+                    onClick={() => navigate(`/job/${job.slug || job.id}`)}
                     className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />

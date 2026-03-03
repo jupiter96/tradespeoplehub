@@ -71,6 +71,7 @@ export interface Milestone {
 
 export interface Job {
   id: string;
+  slug?: string;
   title: string;
   description: string;
   sector: string;
@@ -226,15 +227,16 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     setJobs((prev) => prev.filter((j) => j.id !== id));
   };
 
-  const getJobById = (id: string): Job | undefined => jobs.find((j) => j.id === id);
+  const getJobById = (idOrSlug: string): Job | undefined =>
+    jobs.find((j) => j.id === idOrSlug || j.slug === idOrSlug);
 
-  const fetchJobById = async (id: string): Promise<Job | null> => {
+  const fetchJobById = async (idOrSlug: string): Promise<Job | null> => {
     try {
-      const res = await fetch(resolveApiUrl(`/api/jobs/${id}`), { credentials: 'include' });
+      const res = await fetch(resolveApiUrl(`/api/jobs/${idOrSlug}`), { credentials: 'include' });
       if (!res.ok) return null;
       const job = await res.json();
       setJobs((prev) => {
-        const idx = prev.findIndex((j) => j.id === id);
+        const idx = prev.findIndex((j) => j.id === job.id || j.slug === idOrSlug || j.id === idOrSlug);
         if (idx >= 0) {
           const next = [...prev];
           next[idx] = job;
@@ -334,7 +336,11 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to award job');
+      const e = new Error(err.error || 'Failed to award job') as Error & { code?: string; required?: number; current?: number };
+      if (err.code) e.code = err.code;
+      if (err.required != null) e.required = err.required;
+      if (err.current != null) e.current = err.current;
+      throw e;
     }
     const job = await res.json();
     setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
@@ -445,7 +451,11 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to add milestone');
+      const e = new Error(err.error || 'Failed to add milestone') as Error & { code?: string; required?: number; current?: number };
+      if (err.code) e.code = err.code;
+      if (err.required != null) e.required = err.required;
+      if (err.current != null) e.current = err.current;
+      throw e;
     }
     const job = await res.json();
     setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));

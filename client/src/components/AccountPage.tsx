@@ -2784,12 +2784,16 @@ function BillingSection() {
   const location = useLocation();
   const [billingTab, setBillingTab] = useState<"wallet" | "card" | "invoice" | "history">("wallet");
   
-  // Check URL parameters for billing tab
+  // Check URL parameters for billing tab and add-fund (e.g. redirect from job award when balance insufficient)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const section = params.get("section");
     if (section === "card") {
       setBillingTab("card");
+    }
+    if (section === "fund") {
+      setBillingTab("wallet");
+      setShowFundSection(true);
     }
   }, [location.search]);
   const [walletBalance, setWalletBalance] = useState<number>(0);

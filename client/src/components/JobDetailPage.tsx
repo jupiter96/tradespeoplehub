@@ -60,13 +60,6 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -83,11 +76,11 @@ import hourglassIcon from "figma:asset/19b8318c4dd036819acec78c2311528585bbfe6b.
 import InviteProfessionalsList from "./InviteProfessionalsList";
 
 export default function JobDetailPage() {
-  const { jobId } = useParams<{ jobId: string }>();
+  const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, createDispute } = useJobs();
-  const { userInfo, userRole, isLoggedIn } = useAccount();
+  const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
@@ -142,37 +135,46 @@ export default function JobDetailPage() {
   }>>([]);
   const [recommendedProfessionalsLoading, setRecommendedProfessionalsLoading] = useState(false);
 
-  // Redirect to login if not logged in
+  // Redirect to login only after auth state is resolved (avoid redirect on refresh before session check)
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (authReady && !isLoggedIn) {
       navigate("/login");
     }
-  }, [isLoggedIn, navigate]);
+  }, [authReady, isLoggedIn, navigate]);
 
-  // Fetch job by id if not in context (e.g. direct URL or pro viewing)
+  // Fetch job by id if not in context (e.g. direct URL or refresh)
   const [jobLoading, setJobLoading] = useState(false);
   useEffect(() => {
-    if (!jobId || !isLoggedIn) return;
-    const inList = getJobById(jobId);
+    if (!jobSlug || !authReady || !isLoggedIn) return;
+    const inList = getJobById(jobSlug);
     if (inList) return;
     setJobLoading(true);
-    fetchJobById(jobId).finally(() => setJobLoading(false));
-  }, [jobId, isLoggedIn, getJobById, fetchJobById]);
+    fetchJobById(jobSlug).finally(() => setJobLoading(false));
+  }, [jobSlug, authReady, isLoggedIn, getJobById, fetchJobById]);
 
-  const job = getJobById(jobId || "");
+  const job = getJobById(jobSlug || "");
+
+  // Keep URL canonical: if we have job with slug and URL param differs (e.g. old id), replace with slug so refresh works
+  useEffect(() => {
+    if (!job?.slug || !jobSlug) return;
+    if (job.slug !== jobSlug) {
+      navigate(`/job/${job.slug}${window.location.search || ""}`, { replace: true });
+    }
+  }, [job?.slug, jobSlug, navigate]);
 
   // Fetch recommended professionals (same sector as job, sorted by rating then reviews)
   useEffect(() => {
-    if (!jobId || !job?.id) return;
+    if (!jobSlug || !job?.id) return;
     setRecommendedProfessionalsLoading(true);
-    fetch(resolveApiUrl(`/api/jobs/${jobId}/recommended-professionals`), { credentials: "include" })
+    fetch(resolveApiUrl(`/api/jobs/${jobSlug}/recommended-professionals`), { credentials: "include" })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
       .then((data) => setRecommendedProfessionals(data?.professionals ?? []))
       .catch(() => setRecommendedProfessionals([]))
       .finally(() => setRecommendedProfessionalsLoading(false));
-  }, [jobId, job?.id]);
+  }, [jobSlug, job?.id]);
 
-  if (jobLoading && !job) {
+  // Show loading while auth is resolving (e.g. on refresh) or job is fetching
+  if (!authReady || (jobLoading && !job)) {
     return (
       <div className="min-h-screen bg-[#f0f0f0]">
         <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
@@ -265,8 +267,15 @@ export default function JobDetailPage() {
         setSelectedQuoteForAward(null);
         setAwardMilestones([{ name: "", amount: "" }]);
         setAwardWithMilestone(true);
+        setActiveTab("payment");
+        navigate(`/job/${job.slug || jobSlug}?tab=payment`, { replace: true });
       } catch (e: any) {
-        toast.error(e?.message || "Failed to award job");
+        if (e?.code === "INSUFFICIENT_BALANCE") {
+          toast.error("Insufficient balance. Please add funds to your wallet.");
+          navigate("/account?tab=billing&section=fund");
+        } else {
+          toast.error(e?.message || "Failed to award job");
+        }
       }
       return;
     }
@@ -278,8 +287,15 @@ export default function JobDetailPage() {
       setSelectedQuoteForAward(null);
       setAwardMilestones([{ name: "", amount: "" }]);
       setAwardWithMilestone(true);
+      setActiveTab("payment");
+      navigate(`/job/${job.slug || jobSlug}?tab=payment`, { replace: true });
     } catch (e: any) {
-      toast.error(e?.message || "Failed to award job");
+      if (e?.code === "INSUFFICIENT_BALANCE") {
+        toast.error("Insufficient balance. Please add funds to your wallet.");
+        navigate("/account?tab=billing&section=fund");
+      } else {
+        toast.error(e?.message || "Failed to award job");
+      }
     }
   };
 
@@ -329,7 +345,12 @@ export default function JobDetailPage() {
       setShowNewMilestoneDialog(false);
       setNewMilestoneForm({ name: "", description: "", amount: "" });
     } catch (e: any) {
-      toast.error(e?.message || "Failed to create milestone");
+      if (e?.code === "INSUFFICIENT_BALANCE") {
+        toast.error("Insufficient balance. Please add funds to your wallet.");
+        navigate("/account?tab=billing&section=fund");
+      } else {
+        toast.error(e?.message || "Failed to create milestone");
+      }
     }
   };
 
@@ -1063,7 +1084,7 @@ export default function JobDetailPage() {
                               </td>
                               <td className="py-3 px-4 text-right text-[#2c353f]">£{milestone.amount}</td>
                               <td className="py-3 px-4 text-right">
-                                {/* Client: awaiting-accept → Cancel only */}
+                                {/* Client: awaiting-accept (pro not accepted yet) → Close to cancel and refund */}
                                 {isJobOwner && milestone.status === "awaiting-accept" && (
                                   <Button
                                     variant="outline"
@@ -1071,14 +1092,14 @@ export default function JobDetailPage() {
                                     onClick={async () => {
                                       try {
                                         await deleteMilestone(job.id, milestone.id);
-                                        toast.success("Milestone cancelled");
+                                        toast.success("Milestone closed and refunded to your balance");
                                       } catch (e: any) {
-                                        toast.error(e?.message || "Failed to cancel milestone");
+                                        toast.error(e?.message || "Failed to close milestone");
                                       }
                                     }}
-                                    className="h-8 px-3 text-[13px] border-red-300 text-red-600 hover:bg-red-50"
+                                    className="h-8 px-3 text-[13px] border-orange-300 text-orange-600 hover:bg-orange-50"
                                   >
-                                    Cancel
+                                    Close
                                   </Button>
                                 )}
                                 {/* Client: in-progress → Cancel request + Dispute (or Accept/Reject if cancel requested by pro) */}
@@ -1153,23 +1174,7 @@ export default function JobDetailPage() {
                                     )}
                                   </div>
                                 )}
-                                {/* Pro: awaiting-accept → Accept (job-level, shown in banner) - no per-row action */}
-                                {!isJobOwner && milestone.status === "awaiting-accept" && (
-                                  <Button
-                                    size="sm"
-                                    onClick={async () => {
-                                      try {
-                                        await acceptMilestone(job.id, milestone.id);
-                                        toast.success("Job accepted!");
-                                      } catch (e: any) {
-                                        toast.error(e?.message || "Failed");
-                                      }
-                                    }}
-                                    className="h-8 px-3 bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
-                                  >
-                                    Accept
-                                  </Button>
-                                )}
+                                {/* Pro: awaiting-accept → no per-row action (use banner Accept/Reject) */}
                                 {/* Pro: in-progress → Cancel + Open dispute (or Accept/Reject cancel if pending by client) */}
                                 {!isJobOwner && milestone.status === "in-progress" && (
                                   <div className="flex items-center justify-end gap-1">
@@ -1418,11 +1423,11 @@ export default function JobDetailPage() {
                 <FileText className="w-5 h-5" />
                 Job Summary
               </h3>
-              <div className="bg-white rounded-lg p-4 border border-blue-100">
+                <div className="bg-white rounded-lg p-4 border border-blue-100">
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
                   {job.description}
                 </p>
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="pt-3 border-t border-gray-100 space-y-2">
                   <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                     {job.budgetMin != null && job.budgetMax != null
                       ? `£${job.budgetMin.toFixed(0)} - £${job.budgetMax.toFixed(0)}`
@@ -1477,20 +1482,20 @@ export default function JobDetailPage() {
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                     Delivery Time <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={quoteForm.deliveryTime} onValueChange={(value) => setQuoteForm({ ...quoteForm, deliveryTime: value })}>
-                    <SelectTrigger className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12">
-                      <SelectValue placeholder="Select delivery time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Same day">Same day</SelectItem>
-                      <SelectItem value="Within 24 hours">Within 24 hours</SelectItem>
-                      <SelectItem value="1-2 days">1-2 days</SelectItem>
-                      <SelectItem value="3-5 days">3-5 days</SelectItem>
-                      <SelectItem value="1 week">1 week</SelectItem>
-                      <SelectItem value="2 weeks">2 weeks</SelectItem>
-                      <SelectItem value="1 month">1 month</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative flex items-center">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      placeholder=""
+                      value={quoteForm.deliveryTime}
+                      onChange={(e) => setQuoteForm({ ...quoteForm, deliveryTime: e.target.value })}
+                      className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12 pr-16 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] font-['Poppins',sans-serif] text-[14px] pointer-events-none">
+                      day(s)
+                    </span>
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-lg p-4 border border-orange-100">

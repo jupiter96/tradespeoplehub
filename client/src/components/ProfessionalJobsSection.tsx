@@ -234,7 +234,7 @@ function ActiveJobsSection() {
               <div
                 key={job.id}
                 className="border border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] transition-all cursor-pointer"
-                onClick={() => navigate(`/job/${job.id}`)}
+                onClick={() => navigate(`/job/${job.slug || job.id}`)}
               >
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                   {/* Left Side */}
@@ -284,7 +284,7 @@ function ActiveJobsSection() {
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/job/${job.id}`);
+                        navigate(`/job/${job.slug || job.id}`);
                       }}
                       className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
                     >

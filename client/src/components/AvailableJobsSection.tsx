@@ -282,7 +282,7 @@ export default function AvailableJobsSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/job/${job.id}`)}
+                    onClick={() => navigate(`/job/${job.slug || job.id}`)}
                     className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                   >
                     <Eye className="w-4 h-4 mr-1.5" />
@@ -337,7 +337,7 @@ export default function AvailableJobsSection() {
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
                     {currentJob.description}
                   </p>
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="pt-3 border-t border-gray-100 space-y-2">
                     <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                       {currentJob.budgetMin != null && currentJob.budgetMax != null
                       ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
@@ -392,20 +392,20 @@ export default function AvailableJobsSection() {
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
                       Delivery Time <span className="text-red-500">*</span>
                     </Label>
-                    <Select value={quoteDeliveryTime} onValueChange={setQuoteDeliveryTime}>
-                      <SelectTrigger className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12">
-                        <SelectValue placeholder="Select delivery time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Same day">Same day</SelectItem>
-                        <SelectItem value="Within 24 hours">Within 24 hours</SelectItem>
-                        <SelectItem value="1-2 days">1-2 days</SelectItem>
-                        <SelectItem value="3-5 days">3-5 days</SelectItem>
-                        <SelectItem value="1 week">1 week</SelectItem>
-                        <SelectItem value="2 weeks">2 weeks</SelectItem>
-                        <SelectItem value="1 month">1 month</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="relative flex items-center">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder=""
+                        value={quoteDeliveryTime}
+                        onChange={(e) => setQuoteDeliveryTime(e.target.value)}
+                        className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12 pr-16 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] font-['Poppins',sans-serif] text-[14px] pointer-events-none">
+                        day(s)
+                      </span>
+                    </div>
                   </div>
 
                   <div className="bg-white rounded-lg p-4 border border-orange-100">

@@ -90,14 +90,47 @@ const jobSchema = new mongoose.Schema(
     quotes: { type: [jobQuoteSchema], default: [] },
     awardedProfessionalId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     milestones: { type: [milestoneSchema], default: [] },
+    slug: { type: String, trim: true, unique: true, sparse: true },
   },
   { timestamps: true }
 );
+
+function slugify(title) {
+  return String(title)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'job';
+}
+
+function randomDigits(len = 6) {
+  let s = '';
+  for (let i = 0; i < len; i++) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
+jobSchema.pre('save', async function (next) {
+  if (this.isNew && !this.slug) {
+    let base = slugify(this.title).slice(0, 40);
+    let slug = `${base}-${randomDigits(6)}`;
+    let exists = await mongoose.model('Job').exists({ slug });
+    while (exists) {
+      slug = `${base}-${randomDigits(8)}`;
+      exists = await mongoose.model('Job').exists({ slug });
+    }
+    this.slug = slug;
+  }
+  next();
+});
 
 jobSchema.index({ clientId: 1, status: 1 });
 jobSchema.index({ status: 1, sector: 1 });
 jobSchema.index({ status: 1, sectorSlug: 1 });
 jobSchema.index({ postedAt: -1 });
+jobSchema.index({ slug: 1 }, { unique: true, sparse: true });
 
 const Job = mongoose.models?.Job || mongoose.model('Job', jobSchema);
+export { slugify, randomDigits };
 export default Job;

@@ -66,7 +66,7 @@ function AppContent() {
         <Route path="/how-it-work" element={<HowItWorkPage />} />
         <Route path="/how-it-work-pro" element={<HowItWorkProPage />} />
         <Route path="/post-job" element={<PostJobPage />} />
-        <Route path="/job/:jobId" element={<JobDetailPage />} />
+        <Route path="/job/:jobSlug" element={<JobDetailPage />} />
         <Route path="/disputes/:disputeId" element={<DisputeDiscussionPage />} />
         <Route path="/dispute/:disputeId" element={<DisputeDiscussionPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

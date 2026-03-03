@@ -1,11 +1,12 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import Job from '../models/Job.js';
+import Job, { slugify, randomDigits } from '../models/Job.js';
 import User from '../models/User.js';
 import Review from '../models/Review.js';
 import Sector from '../models/Sector.js';
 import JobDispute from '../models/JobDispute.js';
+import Wallet from '../models/Wallet.js';
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ function toJobResponse(doc) {
   const job = doc.toObject ? doc.toObject() : doc;
   return {
     id: job._id.toString(),
+    slug: job.slug || job._id.toString(),
     title: job.title,
     description: job.description,
     sector: job.sectorName,
@@ -180,6 +182,9 @@ router.get('/', authenticateToken, async (req, res) => {
       const query = { clientId: req.user.id };
       if (status && status !== 'all') query.status = status;
       const jobs = await Job.find(query).sort({ postedAt: -1 }).lean();
+      for (const job of jobs) {
+        await ensureJobSlug(job);
+      }
       return res.json(jobs.map((j) => toJobResponse(j)));
     }
 
@@ -210,6 +215,9 @@ router.get('/', authenticateToken, async (req, res) => {
         ],
       };
       const jobs = await Job.find(query).sort({ postedAt: -1 }).lean();
+      for (const job of jobs) {
+        await ensureJobSlug(job);
+      }
       return res.json(jobs.map((j) => toJobResponse(j)));
     }
 
@@ -220,13 +228,41 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get single job
+function isMongoId(str) {
+  return typeof str === 'string' && str.length === 24 && /^[a-f0-9]{24}$/i.test(str);
+}
+
+/** Ensure job has a slug in format title-slug-6digits; backfill and save if missing */
+async function ensureJobSlug(job) {
+  if (job.slug) return job.slug;
+  const base = slugify(job.title).slice(0, 40);
+  let slug = `${base}-${randomDigits(6)}`;
+  let exists = await Job.findOne({ slug, _id: { $ne: job._id } });
+  while (exists) {
+    slug = `${base}-${randomDigits(8)}`;
+    exists = await Job.findOne({ slug });
+  }
+  await Job.findByIdAndUpdate(job._id, { slug });
+  job.slug = slug;
+  return slug;
+}
+
+async function findJobByIdOrSlug(idOrSlug) {
+  if (isMongoId(idOrSlug)) {
+    const byId = await Job.findById(idOrSlug).lean();
+    if (byId) return byId;
+  }
+  return Job.findOne({ slug: idOrSlug }).lean();
+}
+
+// Get single job (by id or slug)
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id).lean();
+    const job = await findJobByIdOrSlug(req.params.id);
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
     }
+    await ensureJobSlug(job);
     const isClient = req.user.role === 'client' && job.clientId.toString() === req.user.id;
     const isPro = req.user.role === 'professional';
     const user = isPro ? await User.findById(req.user.id).select('sectors sector').lean() : null;
@@ -250,7 +286,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // Get recommended professionals for a job (same sector, sorted by rating then reviews)
 router.get('/:id/recommended-professionals', authenticateToken, async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id).lean();
+    const job = await findJobByIdOrSlug(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
     const jobSectorId = job.sector ? job.sector.toString() : null;
     if (!jobSectorId) return res.json({ professionals: [] });
@@ -474,6 +510,43 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
         if (q._id.toString() !== req.params.quoteId) q.status = 'rejected';
       });
       const milestonesPayload = Array.isArray(req.body.milestones) ? req.body.milestones : null;
+      let totalMilestoneAmount = 0;
+      if (milestonesPayload && milestonesPayload.length > 0) {
+        for (const item of milestonesPayload) {
+          const amount = item.amount != null && !isNaN(Number(item.amount)) ? Number(item.amount) : 0;
+          if (amount > 0) totalMilestoneAmount += amount;
+        }
+      } else {
+        const amount = req.body.milestoneAmount != null && !isNaN(Number(req.body.milestoneAmount)) ? Number(req.body.milestoneAmount) : null;
+        if (amount != null && amount >= 0) totalMilestoneAmount = amount;
+      }
+
+      if (totalMilestoneAmount > 0) {
+        const client = await User.findById(job.clientId).select('walletBalance');
+        if (!client) return res.status(400).json({ error: 'Client not found' });
+        const currentBalance = client.walletBalance || 0;
+        if (currentBalance < totalMilestoneAmount) {
+          return res.status(400).json({
+            error: 'Insufficient wallet balance',
+            code: 'INSUFFICIENT_BALANCE',
+            required: totalMilestoneAmount,
+            current: currentBalance,
+          });
+        }
+        client.walletBalance = currentBalance - totalMilestoneAmount;
+        await client.save();
+        await Wallet.create({
+          userId: job.clientId,
+          type: 'payment',
+          amount: totalMilestoneAmount,
+          balance: client.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          description: `Job milestones - ${job.title || 'Job'}`,
+          metadata: { jobId: job._id.toString(), source: 'job_milestones' },
+        });
+      }
+
       if (milestonesPayload && milestonesPayload.length > 0) {
         job.milestones = job.milestones || [];
         for (const item of milestonesPayload) {
@@ -489,7 +562,7 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
           });
         }
         job.markModified('milestones');
-      } else {
+      } else if (totalMilestoneAmount > 0) {
         const amount = req.body.milestoneAmount != null && !isNaN(Number(req.body.milestoneAmount)) ? Number(req.body.milestoneAmount) : null;
         if (amount != null && amount >= 0) {
           job.milestones = job.milestones || [];
@@ -562,13 +635,32 @@ router.post('/:id/reject-award', authenticateToken, requireRole(['professional']
     if (!job.awardedProfessionalId || job.awardedProfessionalId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'You are not the awarded professional for this job' });
     }
+    const refundTotal = (job.milestones || []).reduce((sum, m) => sum + (m.amount || 0), 0);
+    if (refundTotal > 0) {
+      const client = await User.findById(job.clientId).select('walletBalance');
+      if (client) {
+        client.walletBalance = (client.walletBalance || 0) + refundTotal;
+        await client.save();
+        await Wallet.create({
+          userId: job.clientId,
+          type: 'refund',
+          amount: refundTotal,
+          balance: client.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          description: `Job award rejected - refund - ${job.title || 'Job'}`,
+          metadata: { jobId: job._id.toString(), source: 'job_award_rejected' },
+        });
+      }
+    }
     job.status = 'active';
     job.awardedProfessionalId = null;
     const awardedQuote = (job.quotes || []).find(
       (q) => q.professionalId && q.professionalId.toString() === req.user.id
     );
-    if (awardedQuote) awardedQuote.status = 'rejected';
-    job.milestones = []; // clear milestones on reject
+    // Revert quote to pending so client can re-award or message
+    if (awardedQuote) awardedQuote.status = 'pending';
+    job.milestones = [];
     job.markModified('quotes');
     job.markModified('milestones');
     await job.save();
@@ -579,7 +671,7 @@ router.post('/:id/reject-award', authenticateToken, requireRole(['professional']
   }
 });
 
-// Client: add milestone (only when job is awaiting-accept or in-progress)
+// Client: add milestone (only when job is awaiting-accept or in-progress); deduct from wallet
 router.post('/:id/milestones', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
@@ -592,17 +684,42 @@ router.post('/:id/milestones', authenticateToken, requireRole(['client']), async
     }
     const { description, amount, name } = req.body;
     const milestoneName = (name && String(name).trim()) || (description && String(description).trim()) || 'Milestone';
-    if (!description || !String(description).trim()) {
-      return res.status(400).json({ error: 'Description is required' });
+    if (!milestoneName) {
+      return res.status(400).json({ error: 'Name or description is required' });
     }
     const numAmount = amount != null && !isNaN(Number(amount)) ? Number(amount) : null;
     if (numAmount == null || numAmount < 0) {
       return res.status(400).json({ error: 'Valid amount is required' });
     }
+
+    const client = await User.findById(job.clientId).select('walletBalance');
+    if (!client) return res.status(400).json({ error: 'Client not found' });
+    const currentBalance = client.walletBalance || 0;
+    if (currentBalance < numAmount) {
+      return res.status(400).json({
+        error: 'Insufficient wallet balance',
+        code: 'INSUFFICIENT_BALANCE',
+        required: numAmount,
+        current: currentBalance,
+      });
+    }
+    client.walletBalance = currentBalance - numAmount;
+    await client.save();
+    await Wallet.create({
+      userId: job.clientId,
+      type: 'payment',
+      amount: numAmount,
+      balance: client.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      description: `Job milestone - ${job.title || 'Job'} - ${milestoneName}`,
+      metadata: { jobId: job._id.toString(), source: 'job_milestone' },
+    });
+
     job.milestones = job.milestones || [];
     job.milestones.push({
       name: milestoneName,
-      description: String(description).trim(),
+      description: String(description || name || milestoneName).trim(),
       amount: numAmount,
       status: 'awaiting-accept',
     });
@@ -643,7 +760,7 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
   }
 });
 
-// Client: delete milestone (only when awaiting-accept)
+// Client: close/delete milestone (only when awaiting-accept); refund to wallet
 router.delete('/:id/milestones/:milestoneId', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
@@ -654,7 +771,25 @@ router.delete('/:id/milestones/:milestoneId', authenticateToken, requireRole(['c
     const milestone = (job.milestones || []).find((m) => m._id.toString() === req.params.milestoneId);
     if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
     if (milestone.status !== 'awaiting-accept') {
-      return res.status(400).json({ error: 'Only awaiting-accept milestones can be deleted' });
+      return res.status(400).json({ error: 'Only awaiting-accept milestones can be closed' });
+    }
+    const refundAmount = milestone.amount || 0;
+    if (refundAmount > 0) {
+      const client = await User.findById(job.clientId).select('walletBalance');
+      if (client) {
+        client.walletBalance = (client.walletBalance || 0) + refundAmount;
+        await client.save();
+        await Wallet.create({
+          userId: job.clientId,
+          type: 'refund',
+          amount: refundAmount,
+          balance: client.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          description: `Milestone closed (refund) - ${job.title || 'Job'} - ${milestone.name || 'Milestone'}`,
+          metadata: { jobId: job._id.toString(), milestoneId: req.params.milestoneId, source: 'job_milestone_close' },
+        });
+      }
     }
     job.milestones = (job.milestones || []).filter((m) => m._id.toString() !== req.params.milestoneId);
     job.markModified('milestones');
