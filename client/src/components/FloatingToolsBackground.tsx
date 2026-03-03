@@ -1,3 +1,4 @@
+import { useMemo, memo } from "react";
 import { motion } from "motion/react";
 import { 
   Wrench, 
@@ -86,44 +87,52 @@ interface FloatingTool {
   startY: number;
   endX: number;
   endY: number;
+  mid1X: number;
+  mid1Y: number;
+  mid2X: number;
+  mid2Y: number;
   duration: number;
   size: number;
 }
 
 const generateRandomPath = (): FloatingTool[] => {
   return tools.map((tool) => {
-    // Generate positions across the entire screen (0-100%)
-    // But avoid the center area (35-65%) to not obstruct content
     const generateX = () => {
       const rand = Math.random();
-      if (rand < 0.5) {
-        // Left side: 0-35%
-        return Math.random() * 35;
-      } else {
-        // Right side: 65-100%
-        return 65 + Math.random() * 35;
-      }
+      if (rand < 0.5) return Math.random() * 35;
+      return 65 + Math.random() * 35;
     };
-    
+    const startX = generateX();
+    const startY = Math.random() * 100;
+    const endX = generateX();
+    const endY = Math.random() * 100;
+    const mid1X = (startX + endX) / 2 + (Math.random() - 0.5) * 15;
+    const mid1Y = (startY + endY) / 2 + (Math.random() - 0.5) * 30;
+    const mid2X = (endX + startX) / 2 + (Math.random() - 0.5) * 15;
+    const mid2Y = (endY + startY) / 2 + (Math.random() - 0.5) * 30;
     return {
       ...tool,
-      startX: generateX(),
-      startY: Math.random() * 100,
-      endX: generateX(),
-      endY: Math.random() * 100,
+      startX,
+      startY,
+      endX,
+      endY,
+      mid1X,
+      mid1Y,
+      mid2X,
+      mid2Y,
       duration: 20 + Math.random() * 15,
       size: 24 + Math.random() * 28,
     };
   });
 };
 
-export default function FloatingToolsBackground() {
-  const floatingTools = generateRandomPath();
+function FloatingToolsBackgroundInner() {
+  const floatingTools = useMemo(() => generateRandomPath(), []);
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
       {floatingTools.map((tool, index) => {
-        const { Icon, color, delay, startX, startY, endX, endY, duration, size } = tool;
+        const { Icon, color, delay, startX, startY, endX, endY, mid1X, mid1Y, mid2X, mid2Y, duration, size } = tool;
 
         return (
           <motion.div
@@ -137,20 +146,8 @@ export default function FloatingToolsBackground() {
               scale: 0.8,
             }}
             animate={{
-              left: [
-                `${startX}%`,
-                `${(startX + endX) / 2 + (Math.random() - 0.5) * 15}%`,
-                `${endX}%`,
-                `${(endX + startX) / 2 + (Math.random() - 0.5) * 15}%`,
-                `${startX}%`,
-              ],
-              top: [
-                `${startY}%`,
-                `${(startY + endY) / 2 + (Math.random() - 0.5) * 30}%`,
-                `${endY}%`,
-                `${(endY + startY) / 2 + (Math.random() - 0.5) * 30}%`,
-                `${startY}%`,
-              ],
+              left: [`${startX}%`, `${mid1X}%`, `${endX}%`, `${mid2X}%`, `${startX}%`],
+              top: [`${startY}%`, `${mid1Y}%`, `${endY}%`, `${mid2Y}%`, `${startY}%`],
               opacity: [0, 0.3, 0.4, 0.35, 0],
               rotate: [0, 180, 360, 540, 720],
               scale: [0.8, 1, 0.9, 1.1, 0.8],
@@ -174,3 +171,8 @@ export default function FloatingToolsBackground() {
     </div>
   );
 }
+
+const FloatingToolsBackground = memo(function FloatingToolsBackground() {
+  return <FloatingToolsBackgroundInner />;
+});
+export default FloatingToolsBackground;

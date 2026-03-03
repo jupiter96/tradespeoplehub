@@ -1893,8 +1893,10 @@ function DetailsSection() {
   // Load sectors from API
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
   
-  // Find selected sector object
-  const selectedSectorObj = sectorsData.find((s: Sector) => s.name === userInfo?.sector);
+  // Find selected sector object (userInfo.sector now stores Sector ID; support legacy name as fallback)
+  const selectedSectorObj = sectorsData.find(
+    (s: Sector) => s._id === userInfo?.sector || s.name === userInfo?.sector
+  );
   const selectedSectorId = selectedSectorObj?._id;
   
   // Load categories for selected sector (with subcategories)

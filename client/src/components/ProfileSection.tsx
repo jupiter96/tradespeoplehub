@@ -136,7 +136,9 @@ export default function ProfileSection() {
   
   // Load sectors and categories to match with user's services
   const { sectors: sectorsData } = useSectors();
-  const selectedSectorObj = sectorsData.find((s: Sector) => s.name === userInfo?.sector);
+  const selectedSectorObj = sectorsData.find(
+    (s: Sector) => s._id === userInfo?.sector || s.name === userInfo?.sector
+  );
   const selectedSectorId = selectedSectorObj?._id;
   const { categories: availableCategories } = useCategories(
     selectedSectorId,

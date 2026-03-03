@@ -196,23 +196,24 @@ const categoriesBySector: { [key: string]: { value: string; label: string }[] } 
   ],
 };
 
-// Budget ranges
+// Budget ranges: value -> { min, max } for storage and display
 const budgetRanges = [
-  { value: "under-500", label: "Under £500" },
-  { value: "500-1000", label: "£500 - £1,000" },
-  { value: "1000-2500", label: "£1,000 - £2,500" },
-  { value: "2500-5000", label: "£2,500 - £5,000" },
-  { value: "5000-10000", label: "£5,000 - £10,000" },
-  { value: "10000-15000", label: "£10,000 - £15,000" },
-  { value: "15000-20000", label: "£15,000 - £20,000" },
-  { value: "over-20000", label: "Over £20,000" },
-  { value: "custom-budget", label: "Custom Budget" },
+  { value: "under-500", label: "Under £500", min: 0, max: 500 },
+  { value: "500-1000", label: "£500 - £1,000", min: 500, max: 1000 },
+  { value: "1000-2500", label: "£1,000 - £2,500", min: 1000, max: 2500 },
+  { value: "2500-5000", label: "£2,500 - £5,000", min: 2500, max: 5000 },
+  { value: "5000-10000", label: "£5,000 - £10,000", min: 5000, max: 10000 },
+  { value: "10000-15000", label: "£10,000 - £15,000", min: 10000, max: 15000 },
+  { value: "15000-20000", label: "£15,000 - £20,000", min: 15000, max: 20000 },
+  { value: "over-20000", label: "Over £20,000", min: 20000, max: 500000 },
+  { value: "custom-budget", label: "Custom Budget", min: null, max: null },
 ];
 
 export default function PostJobPage() {
   const { isLoggedIn, userInfo } = useAccount();
   const { addJob } = useJobs();
   const navigate = useNavigate();
+  const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
   const [categoriesBySectorData, setCategoriesBySectorData] = useState<{ [key: string]: { value: string; label: string }[] }>({});
   const [currentStep, setCurrentStep] = useState(1);
@@ -221,6 +222,7 @@ export default function PostJobPage() {
   const sectors = sectorsData.map((s) => ({
     value: s.slug,
     label: s.name,
+    id: s._id,
   }));
   
   // Load categories for each sector
@@ -286,6 +288,8 @@ export default function PostJobPage() {
   
   // Step 5: Budget
   const [selectedBudget, setSelectedBudget] = useState("");
+  const [customBudgetMin, setCustomBudgetMin] = useState("");
+  const [customBudgetMax, setCustomBudgetMax] = useState("");
   
   // Account Creation (if not logged in)
   const [firstName, setFirstName] = useState("John");
@@ -341,8 +345,14 @@ export default function PostJobPage() {
         // Require postcode and urgency
         return postcode.trim() !== "" && urgency !== "";
       case 5:
-        // Require budget
-        return selectedBudget !== "";
+        // Require budget; if custom, require valid min/max and min <= max
+        if (selectedBudget === "") return false;
+        if (selectedBudget === "custom-budget") {
+          const min = parseFloat(customBudgetMin);
+          const max = parseFloat(customBudgetMax);
+          return !isNaN(min) && !isNaN(max) && min >= 0 && max >= 0 && min <= max;
+        }
+        return true;
       case 6: // Account creation (if not logged in)
         return firstName.trim() !== "" && 
                lastName.trim() !== "" && 
@@ -356,24 +366,32 @@ export default function PostJobPage() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isLoggedIn) {
       // Handle account creation first
       // console.log("Creating account and posting job...");
     }
-    
-    // Get budget amount from selected budget range
-    const budgetMap: { [key: string]: number } = {
-      "under-500": 400,
-      "500-1000": 750,
-      "1000-2500": 1750,
-      "2500-5000": 3750,
-      "5000-10000": 7500,
-      "10000-15000": 12500,
-      "15000-20000": 17500,
-      "over-20000": 25000,
-      "custom-budget": 1000,
-    };
+
+    // Resolve budget range from preset or custom
+    let budgetMin: number;
+    let budgetMax: number;
+    if (selectedBudget === "custom-budget") {
+      budgetMin = parseFloat(customBudgetMin);
+      budgetMax = parseFloat(customBudgetMax);
+      if (isNaN(budgetMin) || isNaN(budgetMax) || budgetMin < 0 || budgetMax < 0 || budgetMin > budgetMax) {
+        toast.error("Please enter a valid custom budget range (min ≤ max)");
+        return;
+      }
+    } else {
+      const preset = budgetRanges.find((r) => r.value === selectedBudget);
+      if (!preset || preset.min == null || preset.max == null) {
+        toast.error("Please select a budget range");
+        return;
+      }
+      budgetMin = preset.min;
+      budgetMax = preset.max;
+    }
+    const budgetAmount = Math.round((budgetMin + budgetMax) / 2);
 
     // Convert urgency to timing
     const timingMap: { [key: string]: "urgent" | "flexible" | "specific" } = {
@@ -381,11 +399,11 @@ export default function PostJobPage() {
       "flexible": "flexible",
       "specific-date": "specific",
     };
-    const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
 
-    // Get sector label from sectors array
-    const sectorLabel = sectors.find(s => s.value === selectedSector)?.label || selectedSector;
-    
+    // Get sector info from sectors array
+    const sectorEntry = sectors.find(s => s.value === selectedSector);
+    const sectorLabel = sectorEntry?.label || selectedSector;
+
     // Get category labels
     const categoryLabels = selectedCategories
       .map(catValue => {
@@ -393,29 +411,34 @@ export default function PostJobPage() {
         return categories.find(c => c.value === catValue)?.label || catValue;
       });
 
-    // Create job object
     const newJob = {
       title: jobTitle,
       description: jobDescription,
       sector: sectorLabel,
+      sectorId: sectorEntry?.id,
+      sectorSlug: selectedSector,
       categories: categoryLabels,
+      categorySlugs: selectedCategories,
       postcode: postcode,
       address: address,
-      location: address || postcode, // Use address if available, otherwise postcode
+      location: address || postcode,
       timing: timingMap[urgency] || "flexible",
       specificDate: urgency === "specific-date" ? preferredStartDate : undefined,
       budgetType: "fixed" as const,
-      budgetAmount: budgetMap[selectedBudget] || 1000,
+      budgetAmount,
+      budgetMin,
+      budgetMax,
       status: "active" as const,
-      clientId: userInfo?.id || "client-1",
+      clientId: userInfo?.id || "",
     };
 
-    // Add job to context and get the created job with ID
-    const createdJob = addJob(newJob);
-    
+    try {
+    const createdJob = await addJob(newJob);
     toast.success("Job posted successfully! Professionals will start sending quotes soon.");
-    // Redirect to job detail page with quotes tab
     navigate(`/job/${createdJob.id}?tab=quotes`);
+    } catch (err: any) {
+    toast.error(err?.message || "Failed to post job");
+    }
   };
 
   return (
@@ -953,6 +976,55 @@ export default function PostJobPage() {
                     ))}
                   </div>
                 </RadioGroup>
+
+                {selectedBudget === "custom-budget" && (
+                  <div className="mt-6 p-4 border-2 border-[#FE8A0F]/50 rounded-xl bg-[#FFF5EB]/30 space-y-4">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Enter your budget range (min and max in £)
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                          Minimum (£) <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            placeholder="e.g. 500"
+                            value={customBudgetMin}
+                            onChange={(e) => setCustomBudgetMin(e.target.value)}
+                            className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                          Maximum (£) <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            placeholder="e.g. 1000"
+                            value={customBudgetMax}
+                            onChange={(e) => setCustomBudgetMax(e.target.value)}
+                            className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {customBudgetMin !== "" && customBudgetMax !== "" && parseFloat(customBudgetMin) > parseFloat(customBudgetMax) && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-red-600">
+                        Minimum must be less than or equal to maximum
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

@@ -5,8 +5,10 @@ import imgRectangle13 from "figma:asset/552aa6a2ab864900418cd17dabcb4627fbb80d42
 import imgRectangle29 from "figma:asset/0e944ae825916234b6dfadd9ea362b6ac507e753.png";
 import imgConfetti1 from "figma:asset/16f87142f626c781659c1db02943abdceac4a69c.png";
 import Group17 from "../imports/Group17";
+import { useNavigate } from "react-router-dom";
 
 export default function GrowBusinessSection() {
+  const navigate = useNavigate();
   return (
     <section className="w-full bg-[#f0f0f0] py-16 md:py-24">
       <div className="max-w-[1280px] mx-auto px-4 md:px-6">
@@ -36,7 +38,10 @@ export default function GrowBusinessSection() {
               </p>
 
               {/* CTA Button */}
-              <button className="bg-[#fe8a0f] text-white px-8 py-3 rounded-[20px] font-['Poppins:Regular',sans-serif] text-[15px] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300">
+              <button
+                className="bg-[#fe8a0f] text-white px-8 py-3 rounded-[20px] font-['Poppins:Regular',sans-serif] text-[15px] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300"
+                onClick={() => navigate("/login?tab=register&role=professional")}
+              >
                 Start Selling Now!
               </button>
 

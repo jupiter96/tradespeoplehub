@@ -60,17 +60,24 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
 import { toast } from "sonner@2.0.3";
+import { resolveApiUrl } from "../config/api";
 import awardImage from "figma:asset/5c876de928ca711ee9770734c2254c71ec8d2988.png";
 import milestoneStep1 from "figma:asset/a0de430b25f40690ee801be2a6d5041990689f12.png";
 import milestoneStep2 from "figma:asset/e1c037263ad447fb88ea0f991b3910b9cdd26dec.png";
 import milestoneStep3 from "figma:asset/27504741573e0946b791d837bb57de9ad9c0f981.png";
-import { allServices } from "./servicesData";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import hourglassIcon from "figma:asset/19b8318c4dd036819acec78c2311528585bbfe6b.png";
 import InviteProfessionalsList from "./InviteProfessionalsList";
@@ -79,7 +86,7 @@ export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { getJobById, updateQuoteStatus, addQuoteToJob, awardJobWithMilestone, awardJobWithoutMilestone, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, createDispute } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, createDispute } = useJobs();
   const { userInfo, userRole, isLoggedIn } = useAccount();
   const { startConversation } = useMessenger();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
@@ -100,17 +107,24 @@ export default function JobDetailPage() {
   const [showAwardModal, setShowAwardModal] = useState(false);
   const [selectedQuoteForAward, setSelectedQuoteForAward] = useState<JobQuote | null>(null);
   const [awardWithMilestone, setAwardWithMilestone] = useState(true);
-  const [milestoneAmount, setMilestoneAmount] = useState("");
+  const [awardMilestones, setAwardMilestones] = useState<Array<{ name: string; amount: string }>>([{ name: "", amount: "" }]);
+
+  // Cancel request modal (for milestone)
+  const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
+  const [cancelRequestMilestone, setCancelRequestMilestone] = useState<Milestone | null>(null);
+  const [cancelRequestReason, setCancelRequestReason] = useState("");
 
   // New milestone state
   const [showNewMilestoneDialog, setShowNewMilestoneDialog] = useState(false);
   const [newMilestoneForm, setNewMilestoneForm] = useState({
+    name: "",
     description: "",
     amount: "",
   });
 
   // Dispute modal state
   const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeMilestone, setDisputeMilestone] = useState<Milestone | null>(null);
   const [disputeForm, setDisputeForm] = useState({
     requirements: "",
     notCompleted: "",
@@ -122,6 +136,11 @@ export default function JobDetailPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<{ id: string; name: string; category: string } | null>(null);
   const [invitedProfessionals, setInvitedProfessionals] = useState<Set<string>>(new Set());
+  const [recommendedProfessionals, setRecommendedProfessionals] = useState<Array<{
+    id: string; name: string; title: string; category: string; image: string;
+    rating: number; reviewCount: number; completedJobs: number; location: string; skills?: string[];
+  }>>([]);
+  const [recommendedProfessionalsLoading, setRecommendedProfessionalsLoading] = useState(false);
 
   // Redirect to login if not logged in
   useEffect(() => {
@@ -130,7 +149,41 @@ export default function JobDetailPage() {
     }
   }, [isLoggedIn, navigate]);
 
+  // Fetch job by id if not in context (e.g. direct URL or pro viewing)
+  const [jobLoading, setJobLoading] = useState(false);
+  useEffect(() => {
+    if (!jobId || !isLoggedIn) return;
+    const inList = getJobById(jobId);
+    if (inList) return;
+    setJobLoading(true);
+    fetchJobById(jobId).finally(() => setJobLoading(false));
+  }, [jobId, isLoggedIn, getJobById, fetchJobById]);
+
   const job = getJobById(jobId || "");
+
+  // Fetch recommended professionals (same sector as job, sorted by rating then reviews)
+  useEffect(() => {
+    if (!jobId || !job?.id) return;
+    setRecommendedProfessionalsLoading(true);
+    fetch(resolveApiUrl(`/api/jobs/${jobId}/recommended-professionals`), { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
+      .then((data) => setRecommendedProfessionals(data?.professionals ?? []))
+      .catch(() => setRecommendedProfessionals([]))
+      .finally(() => setRecommendedProfessionalsLoading(false));
+  }, [jobId, job?.id]);
+
+  if (jobLoading && !job) {
+    return (
+      <div className="min-h-screen bg-[#f0f0f0]">
+        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+          <Nav />
+        </header>
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-12 text-center mt-[50px] md:mt-0">
+          <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">Loading job...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!job) {
     return (
@@ -143,10 +196,10 @@ export default function JobDetailPage() {
             Job not found
           </h1>
           <Button
-            onClick={() => navigate("/account")}
+            onClick={() => navigate("/account?tab=my-jobs")}
             className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
           >
-            Back to Account
+            Back to My Jobs
           </Button>
         </div>
       </div>
@@ -163,78 +216,6 @@ export default function JobDetailPage() {
   const myAwardedQuote = userRole === "professional" ? job.quotes.find(
     (quote) => quote.professionalId === userInfo?.id && quote.status === "awarded"
   ) : null;
-
-  // Get recommended professionals matching job categories
-  const recommendedProfessionals = allServices
-    .filter((service) => {
-      // Don't show professionals who already quoted
-      const hasntQuoted = !job.quotes.some(quote => quote.professionalName === service.tradingName);
-      if (!hasntQuoted) return false;
-
-      // Match by categories, subcategories, or skills
-      const matchesCategory = job.categories.some(jobCat => {
-        const jobCatLower = jobCat.toLowerCase();
-        const categoryLower = service.category.toLowerCase();
-        const subcategoryLower = (service.subcategory || "").toLowerCase();
-        const detailedSubcategoryLower = (service.detailedSubcategory || "").toLowerCase();
-        
-        // Check if job category matches service category/subcategory
-        if (categoryLower.includes(jobCatLower) || jobCatLower.includes(categoryLower)) {
-          return true;
-        }
-        if (subcategoryLower.includes(jobCatLower) || jobCatLower.includes(subcategoryLower)) {
-          return true;
-        }
-        if (detailedSubcategoryLower.includes(jobCatLower) || jobCatLower.includes(detailedSubcategoryLower)) {
-          return true;
-        }
-        
-        // Check if job category matches any of the professional's skills
-        if (service.skills && service.skills.length > 0) {
-          return service.skills.some(skill => 
-            skill.toLowerCase().includes(jobCatLower) || jobCatLower.includes(skill.toLowerCase())
-          );
-        }
-        
-        return false;
-      });
-
-      return matchesCategory;
-    })
-    .map((service) => {
-      // Calculate relevance score for sorting
-      let relevanceScore = 0;
-      job.categories.forEach(jobCat => {
-        const jobCatLower = jobCat.toLowerCase();
-        if (service.category.toLowerCase() === jobCatLower) relevanceScore += 10;
-        else if (service.category.toLowerCase().includes(jobCatLower)) relevanceScore += 5;
-        if (service.subcategory && service.subcategory.toLowerCase() === jobCatLower) relevanceScore += 8;
-        else if (service.subcategory && service.subcategory.toLowerCase().includes(jobCatLower)) relevanceScore += 4;
-      });
-      
-      return {
-        id: service.id.toString(),
-        name: service.tradingName,
-        title: service.specialization || service.category,
-        category: service.category,
-        image: service.providerImage,
-        rating: service.rating,
-        reviewCount: service.reviewCount,
-        completedJobs: service.completedTasks,
-        location: service.location,
-        skills: service.skills || [],
-        responseTime: service.responseTime || "Within 24 hours",
-        portfolioImages: service.portfolioImages || [],
-        relevanceScore,
-      };
-    })
-    .sort((a, b) => {
-      // Sort by relevance score, then by rating, then by completed jobs
-      if (b.relevanceScore !== a.relevanceScore) return b.relevanceScore - a.relevanceScore;
-      if (b.rating !== a.rating) return b.rating - a.rating;
-      return b.completedJobs - a.completedJobs;
-    })
-    .slice(0, 10); // Show top 10 recommendations
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -263,69 +244,76 @@ export default function JobDetailPage() {
 
   const handleOpenAwardModal = (quote: JobQuote) => {
     setSelectedQuoteForAward(quote);
-    setMilestoneAmount(quote.price.toString());
+    setAwardMilestones([{ name: "", amount: quote.price.toString() }]);
     setShowAwardModal(true);
   };
 
-  const handleAwardJob = () => {
+  const handleAwardJob = async () => {
     if (!selectedQuoteForAward) return;
 
-    if (awardWithMilestone && !milestoneAmount) {
-      toast.error("Please enter the milestone amount");
-      return;
-    }
-
-    const amount = parseFloat(milestoneAmount);
-    if (awardWithMilestone && (isNaN(amount) || amount <= 0)) {
-      toast.error("Please enter a valid milestone amount");
-      return;
-    }
-
     if (awardWithMilestone) {
-      awardJobWithMilestone(job.id, selectedQuoteForAward.id, selectedQuoteForAward.professionalId, amount);
-      toast.success(`Job awarded with £${amount} milestone payment!`);
-    } else {
-      awardJobWithoutMilestone(job.id, selectedQuoteForAward.id, selectedQuoteForAward.professionalId);
+      const valid = awardMilestones.filter((m) => m.name?.trim() && m.amount && !isNaN(parseFloat(m.amount)) && parseFloat(m.amount) > 0);
+      if (valid.length === 0) {
+        toast.error("Add at least one milestone with a name and valid amount");
+        return;
+      }
+      const milestones = valid.map((m) => ({ name: m.name.trim(), amount: parseFloat(m.amount) }));
+      try {
+        await awardJobWithMilestone(job.id, selectedQuoteForAward.id, selectedQuoteForAward.professionalId, milestones);
+        toast.success(`Job awarded with ${milestones.length} milestone(s)!`);
+        setShowAwardModal(false);
+        setSelectedQuoteForAward(null);
+        setAwardMilestones([{ name: "", amount: "" }]);
+        setAwardWithMilestone(true);
+      } catch (e: any) {
+        toast.error(e?.message || "Failed to award job");
+      }
+      return;
+    }
+
+    try {
+      await awardJobWithoutMilestone(job.id, selectedQuoteForAward.id, selectedQuoteForAward.professionalId);
       toast.success("Job awarded successfully!");
+      setShowAwardModal(false);
+      setSelectedQuoteForAward(null);
+      setAwardMilestones([{ name: "", amount: "" }]);
+      setAwardWithMilestone(true);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to award job");
     }
-    
-    setShowAwardModal(false);
-    setSelectedQuoteForAward(null);
-    setMilestoneAmount("");
-    setAwardWithMilestone(true);
   };
 
-  const handleAcceptAward = () => {
-    if (!myAwardedQuote) return;
-    updateQuoteStatus(job.id, myAwardedQuote.id, "accepted");
-    updateJob(job.id, { status: "in-progress" });
-    
-    // Update all awaiting-accept milestones to in-progress status
-    if (job.milestones && job.milestones.length > 0) {
-      job.milestones.forEach((milestone) => {
-        if (milestone.status === "awaiting-accept") {
-          updateMilestoneStatus(job.id, milestone.id, "in-progress");
-        }
-      });
+  const handleAcceptAward = async () => {
+    try {
+      await acceptAward(job.id);
+      toast.success("Job accepted! You can now start working on it.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to accept");
     }
-    
-    toast.success("Job accepted! You can now start working on it.");
   };
 
-  const handleRejectAward = () => {
-    if (!myAwardedQuote) return;
-    updateQuoteStatus(job.id, myAwardedQuote.id, "rejected");
-    toast.success("Job award rejected.");
+  const handleRejectAward = async () => {
+    try {
+      await rejectAward(job.id);
+      toast.success("Job award rejected.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to reject");
+    }
   };
 
-  const handleRejectQuote = (quoteId: string) => {
-    updateQuoteStatus(job.id, quoteId, "rejected");
-    toast.success("Quote rejected");
+  const handleRejectQuote = async (quoteId: string) => {
+    try {
+      await updateQuoteStatus(job.id, quoteId, "rejected");
+      toast.success("Quote rejected");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to reject quote");
+    }
   };
 
-  const handleCreateMilestone = () => {
-    if (!newMilestoneForm.description || !newMilestoneForm.amount) {
-      toast.error("Please fill in all fields");
+  const handleCreateMilestone = async () => {
+    const nameOrDesc = (newMilestoneForm.name || newMilestoneForm.description || "").trim();
+    if (!nameOrDesc || !newMilestoneForm.amount) {
+      toast.error("Please fill in milestone name and amount");
       return;
     }
 
@@ -335,13 +323,18 @@ export default function JobDetailPage() {
       return;
     }
 
-    addMilestone(job.id, newMilestoneForm.description, amount);
-    toast.success("Milestone created successfully!");
-    setShowNewMilestoneDialog(false);
-    setNewMilestoneForm({ description: "", amount: "" });
+    try {
+      await addMilestone(job.id, nameOrDesc, amount);
+      toast.success("Milestone created successfully!");
+      setShowNewMilestoneDialog(false);
+      setNewMilestoneForm({ name: "", description: "", amount: "" });
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create milestone");
+    }
   };
 
-  const handleOpenDisputeModal = () => {
+  const handleOpenDisputeModal = (milestone: Milestone) => {
+    setDisputeMilestone(milestone);
     setShowDisputeModal(true);
     setDisputeForm({
       requirements: "",
@@ -370,32 +363,31 @@ export default function JobDetailPage() {
     }));
   };
 
-  const handleSubmitDispute = () => {
-    if (!disputeForm.requirements || !disputeForm.notCompleted) {
-      toast.error("Please fill in all required fields");
+  const handleSubmitDispute = async () => {
+    const reason = [disputeForm.requirements, disputeForm.notCompleted].filter(Boolean).join("\n\n");
+    if (!reason.trim()) {
+      toast.error("Please describe the reason for the dispute");
+      return;
+    }
+    const milestoneToUse = disputeMilestone || (job.milestones && disputeForm.selectedMilestones[0]
+      ? job.milestones.find((m) => m.id === disputeForm.selectedMilestones[0])
+      : null);
+    if (!milestoneToUse) {
+      toast.error("Please select a milestone to dispute");
       return;
     }
 
-    if (disputeForm.selectedMilestones.length === 0) {
-      toast.error("Please select at least one milestone to dispute");
-      return;
-    }
-
-    // Create dispute for the first selected milestone and navigate to dispute page
-    const milestoneId = disputeForm.selectedMilestones[0];
-    const reason = `Requirements: ${disputeForm.requirements}\n\nWhat was not completed: ${disputeForm.notCompleted}`;
-    const evidence = disputeForm.evidenceFiles.length > 0 
-      ? `${disputeForm.evidenceFiles.length} file(s) attached` 
-      : undefined;
-    
-    const disputeId = createDispute(job.id, milestoneId, reason, evidence);
-
-    if (disputeId) {
+    try {
+      const evidence = disputeForm.evidenceFiles.length > 0
+        ? `${disputeForm.evidenceFiles.length} file(s) attached`
+        : undefined;
+      const disputeId = await createDispute(job.id, milestoneToUse.id, reason.trim(), evidence);
       toast.success("Dispute submitted successfully");
       setShowDisputeModal(false);
-      navigate(`/disputes/${disputeId}`);
-    } else {
-      toast.error("Failed to create dispute");
+      setDisputeMilestone(null);
+      if (disputeId) navigate(`/disputes/${disputeId}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create dispute");
     }
   };
 
@@ -410,27 +402,40 @@ export default function JobDetailPage() {
     });
   };
 
-  const handleSubmitQuote = () => {
+  const handleSubmitQuote = async () => {
     if (!quoteForm.price || !quoteForm.deliveryTime || !quoteForm.message) {
       toast.error("Please fill in all fields");
       return;
     }
-
-    addQuoteToJob(job.id, {
-      professionalId: userInfo?.id || `pro-${Date.now()}`,
-      professionalName: userInfo?.businessName || userInfo?.name || "Professional",
-      professionalAvatar: userInfo?.avatar,
-      professionalRating: 4.8,
-      professionalReviews: 0,
-      price: parseFloat(quoteForm.price),
-      deliveryTime: quoteForm.deliveryTime,
-      message: quoteForm.message,
-    });
-
-    toast.success("Quote submitted successfully!");
-    setShowQuoteDialog(false);
-    setQuoteForm({ price: "", deliveryTime: "", message: "" });
-    setMilestones([{ description: "", amount: "" }]);
+    const price = parseFloat(quoteForm.price);
+    if (isNaN(price) || price <= 0) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+    const minPrice = job.budgetMin ?? job.budgetAmount;
+    const maxPrice = job.budgetMax ?? job.budgetAmount * 1.2;
+    if (price < minPrice || price > maxPrice) {
+      toast.error(`Price must be between £${minPrice.toFixed(0)} and £${maxPrice.toFixed(0)} (job budget range)`);
+      return;
+    }
+    try {
+      await addQuoteToJob(job.id, {
+        professionalId: userInfo?.id || "",
+        professionalName: userInfo?.businessName || userInfo?.name || "Professional",
+        professionalAvatar: userInfo?.avatar,
+        professionalRating: 4.8,
+        professionalReviews: 0,
+        price,
+        deliveryTime: quoteForm.deliveryTime,
+        message: quoteForm.message,
+      });
+      toast.success("Quote submitted successfully!");
+      setShowQuoteDialog(false);
+      setQuoteForm({ price: "", deliveryTime: "", message: "" });
+      setMilestones([{ description: "", amount: "" }]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to submit quote");
+    }
   };
 
   // Milestone functions for quote form
@@ -533,7 +538,7 @@ export default function JobDetailPage() {
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16">
           <Button
             variant="ghost"
-            onClick={() => navigate("/account")}
+            onClick={() => navigate("/account?tab=my-jobs")}
             className="text-[#2c353f] hover:bg-gray-100 mb-3 md:mb-4 font-['Poppins',sans-serif] text-[13px] md:text-[14px] h-8 md:h-10 px-2 md:px-4"
           >
             <ChevronLeft className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
@@ -626,7 +631,9 @@ export default function JobDetailPage() {
                   </h2>
                   <div className="text-right">
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
-                      £{job.budgetAmount.toFixed(0)} - £{(job.budgetAmount * 1.2).toFixed(0)}
+                      {job.budgetMin != null && job.budgetMax != null
+                        ? `£${job.budgetMin.toFixed(0)} - £${job.budgetMax.toFixed(0)}`
+                        : `£${job.budgetAmount.toFixed(0)} - £${(job.budgetAmount * 1.2).toFixed(0)}`}
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       Posted: {formatDate(job.postedAt)}
@@ -911,13 +918,6 @@ export default function JobDetailPage() {
                               >
                                 Message
                               </Button>
-                              <Button
-                                onClick={() => handleRejectQuote(quote.id)}
-                                variant="ghost"
-                                className="font-['Poppins',sans-serif] text-[14px] h-10 px-6 text-red-600 hover:bg-red-50"
-                              >
-                                Reject
-                              </Button>
                             </div>
                           )}
                           {quote.status === "awarded" && (
@@ -940,13 +940,23 @@ export default function JobDetailPage() {
                   ))
                 )}
 
-                {/* Invite Professionals List */}
+                {/* Invite Professionals List - dynamic by job sector, sorted by rating/reviews */}
                 {isJobOwner && (
-                  <InviteProfessionalsList
-                    professionals={recommendedProfessionals}
-                    onInvite={handleInviteProfessional}
-                    invitedProfessionalIds={invitedProfessionals}
-                  />
+                  <>
+                    {recommendedProfessionalsLoading ? (
+                      <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                          Loading professionals who match your job…
+                        </p>
+                      </div>
+                    ) : (
+                      <InviteProfessionalsList
+                        professionals={recommendedProfessionals}
+                        onInvite={handleInviteProfessional}
+                        invitedProfessionalIds={invitedProfessionals}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -968,6 +978,30 @@ export default function JobDetailPage() {
                     </Button>
                   )}
                 </div>
+
+                {/* Professional: Accept/Reject job award when status is awaiting-accept */}
+                {!isJobOwner && job.status === "awaiting-accept" && job.awardedProfessionalId === userInfo?.id && (
+                  <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
+                      You&apos;ve been awarded this job. Accept to start working or reject to decline.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleAcceptAward}
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleRejectAward}
+                        className="border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Empty state if no milestones */}
                 {(!job.milestones || job.milestones.length === 0) && (
@@ -991,213 +1025,231 @@ export default function JobDetailPage() {
                   </div>
                 )}
 
-                {/* Milestones list */}
+                {/* Milestones table */}
                 {job.milestones && job.milestones.length > 0 && (
                   <>
-                    <div className="space-y-3">
-                      {job.milestones.map((milestone) => (
-                        <div key={milestone.id} className="border border-gray-200 rounded-lg p-3">
-                          <div className="flex items-center justify-between gap-4">
-                        {/* Left side - Description and date */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] truncate">
-                              {milestone.description}
-                            </h3>
-                            {/* Status Badge */}
-                            {milestone.status === "awaiting-accept" && (
-                              <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
-                                Awaiting Accept
-                              </Badge>
-                            )}
-
-                            {milestone.status === "in-progress" && (
-                              <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
-                                In Progress
-                              </Badge>
-                            )}
-                            {milestone.status === "released" && (
-                              <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
-                                Released
-                              </Badge>
-                            )}
-                            {milestone.status === "disputed" && (
-                              <Badge className="bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif] text-[10px] px-2 py-0 flex-shrink-0">
-                                Disputed
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
-                            Created: {formatDate(milestone.createdAt)}
-                            {milestone.releasedAt && ` • Released: ${formatDate(milestone.releasedAt)}`}
-                          </p>
-                          {/* Status Helper Text */}
-                          <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1 italic">
-                            {milestone.status === "awaiting-accept" && isJobOwner && "Waiting for professional to accept"}
-                            {milestone.status === "awaiting-accept" && !isJobOwner && "Review and accept this milestone to start work"}
-                            {milestone.status === "in-progress" && isJobOwner && "Professional is working on this - review and release when complete"}
-                            {milestone.status === "in-progress" && !isJobOwner && "Work in progress - request release when complete"}
-                            {milestone.status === "disputed" && "This milestone is under dispute - support will review"}
-                            {milestone.status === "released" && "Payment has been released"}
-                          </p>
-                        </div>
-
-                        {/* Right side - Amount and Actions */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                            £{milestone.amount}
-                          </p>
-                          
-                          {/* Awaiting Accept - Show Cancel button for client or Accept button for professional */}
-                          {milestone.status === "awaiting-accept" ? (
-                            isJobOwner ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => deleteMilestone(job.id, milestone.id)}
-                                className="h-8 px-3 font-['Poppins',sans-serif] text-[13px] border-red-300 text-red-600 hover:bg-red-50"
-                              >
-                                Cancel
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                onClick={() => acceptMilestone(job.id, milestone.id)}
-                                className="h-8 px-3 font-['Poppins',sans-serif] text-[13px] bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white"
-                              >
-                                Accept
-                              </Button>
-                            )
-                          ) : milestone.status !== "released" ? (
-                            // Three-dot menu for other statuses
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 hover:bg-gray-100"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56 font-['Poppins',sans-serif]">
-                                {isJobOwner ? (
-                                  <>
-                                    {/* Client Actions */}
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        updateMilestoneStatus(job.id, milestone.id, "released");
-                                        toast.success("Payment released successfully!");
-                                      }}
-                                      disabled={milestone.status !== "in-progress"}
-                                      className="cursor-pointer"
-                                    >
-                                      <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
-                                      Release Payment
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        if (milestone.status === "awaiting-accept") {
-                                          deleteMilestone(job.id, milestone.id);
-                                          toast.success("Milestone cancelled successfully");
-                                        } else {
-                                          toast.error("Cannot cancel milestone in current status");
-                                        }
-                                      }}
-                                      disabled={milestone.status !== "awaiting-accept"}
-                                      className="cursor-pointer text-red-600 focus:text-red-600"
-                                    >
-                                      <XCircle className="w-4 h-4 mr-2" />
-                                      Cancel Request
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        toast.info("Invoice feature coming soon");
-                                      }}
-                                      className="cursor-pointer"
-                                    >
-                                      <FileText className="w-4 h-4 mr-2 text-blue-600" />
-                                      Download Invoice
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={handleOpenDisputeModal}
-                                      disabled={milestone.status === "pending" || milestone.status === "awaiting-accept"}
-                                      className="cursor-pointer text-orange-600 focus:text-orange-600"
-                                    >
-                                      <Flag className="w-4 h-4 mr-2" />
-                                      Dispute Milestone
-                                    </DropdownMenuItem>
-                                  </>
-                                ) : (
-                                  <>
-                                    {/* Professional Actions */}
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        toast.info("Contact client to request work review and payment release");
-                                      }}
-                                      disabled={milestone.status !== "in-progress"}
-                                      className="cursor-pointer"
-                                    >
-                                      <CheckCircle2 className="w-4 h-4 mr-2 text-green-600" />
-                                      Request Release
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        toast.info("Contact client to cancel this milestone");
-                                      }}
-                                      className="cursor-pointer text-red-600 focus:text-red-600"
-                                    >
-                                      <XCircle className="w-4 h-4 mr-2" />
-                                      Cancel Milestone
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        toast.info("Invoice feature coming soon");
-                                      }}
-                                      className="cursor-pointer"
-                                    >
-                                      <FileText className="w-4 h-4 mr-2 text-blue-600" />
-                                      Generate Invoice
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={handleOpenDisputeModal}
-                                      disabled={milestone.status === "awaiting-accept"}
-                                      className="cursor-pointer text-orange-600 focus:text-orange-600"
-                                    >
-                                      <Flag className="w-4 h-4 mr-2" />
-                                      Dispute Milestone
-                                    </DropdownMenuItem>
-                                  </>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                      <table className="w-full font-['Poppins',sans-serif] text-[14px]">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            <th className="text-left py-3 px-4 text-[#2c353f] font-medium">Milestone name</th>
+                            <th className="text-left py-3 px-4 text-[#2c353f] font-medium">Created date</th>
+                            <th className="text-left py-3 px-4 text-[#2c353f] font-medium">Status</th>
+                            <th className="text-right py-3 px-4 text-[#2c353f] font-medium">Amount</th>
+                            <th className="text-right py-3 px-4 text-[#2c353f] font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {job.milestones.map((milestone) => (
+                            <tr key={milestone.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                              <td className="py-3 px-4 text-[#2c353f]">{milestone.name || milestone.description || "Milestone"}</td>
+                              <td className="py-3 px-4 text-[#6b6b6b]">{formatDate(milestone.createdAt)}</td>
+                              <td className="py-3 px-4">
+                                {milestone.status === "awaiting-accept" && (
+                                  <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] px-2 py-0">Funded</Badge>
                                 )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : null}
-                        </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
+                                {milestone.status === "in-progress" && (
+                                  <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-2 py-0">In Progress</Badge>
+                                )}
+                                {milestone.status === "released" && (
+                                  <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0">Released</Badge>
+                                )}
+                                {milestone.status === "disputed" && (
+                                  <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px] px-2 py-0">Disputed</Badge>
+                                )}
+                                {milestone.status === "cancelled" && (
+                                  <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] px-2 py-0">Cancelled</Badge>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right text-[#2c353f]">£{milestone.amount}</td>
+                              <td className="py-3 px-4 text-right">
+                                {/* Client: awaiting-accept → Cancel only */}
+                                {isJobOwner && milestone.status === "awaiting-accept" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await deleteMilestone(job.id, milestone.id);
+                                        toast.success("Milestone cancelled");
+                                      } catch (e: any) {
+                                        toast.error(e?.message || "Failed to cancel milestone");
+                                      }
+                                    }}
+                                    className="h-8 px-3 text-[13px] border-red-300 text-red-600 hover:bg-red-50"
+                                  >
+                                    Cancel
+                                  </Button>
+                                )}
+                                {/* Client: in-progress → Cancel request + Dispute (or Accept/Reject if cancel requested by pro) */}
+                                {isJobOwner && milestone.status === "in-progress" && (
+                                  <div className="flex items-center justify-end gap-1 flex-wrap">
+                                    {milestone.cancelRequestStatus === "pending" && milestone.cancelRequestedBy !== userInfo?.id ? (
+                                      <>
+                                        <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 border-green-300 hover:bg-green-50"
+                                          onClick={async () => {
+                                            try {
+                                              await respondToCancelRequest(job.id, milestone.id, true);
+                                              toast.success("Cancel request accepted");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed");
+                                            }
+                                          }}
+                                        >
+                                          Accept
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="h-8 px-2 text-red-600 border-red-300 hover:bg-red-50"
+                                          onClick={async () => {
+                                            try {
+                                              await respondToCancelRequest(job.id, milestone.id, false);
+                                              toast.success("Cancel request rejected");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed");
+                                            }
+                                          }}
+                                        >
+                                          Reject
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          className="h-8 px-2 bg-green-600 hover:bg-green-700 text-white"
+                                          onClick={async () => {
+                                            try {
+                                              await updateMilestoneStatus(job.id, milestone.id, "released");
+                                              toast.success("Payment released");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed");
+                                            }
+                                          }}
+                                        >
+                                          Release
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={milestone.cancelRequestStatus === "pending"}
+                                          onClick={() => {
+                                            setCancelRequestMilestone(milestone);
+                                            setCancelRequestReason("");
+                                            setShowCancelRequestModal(true);
+                                          }}
+                                          className="h-8 px-2 text-[13px] border-orange-300 text-orange-600 hover:bg-orange-50"
+                                        >
+                                          Cancel request
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenDisputeModal(milestone)}
+                                          className="h-8 px-2 text-[13px] border-red-300 text-red-600 hover:bg-red-50"
+                                        >
+                                          <Flag className="w-4 h-4 mr-1" />
+                                          Dispute
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                                {/* Pro: awaiting-accept → Accept (job-level, shown in banner) - no per-row action */}
+                                {!isJobOwner && milestone.status === "awaiting-accept" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await acceptMilestone(job.id, milestone.id);
+                                        toast.success("Job accepted!");
+                                      } catch (e: any) {
+                                        toast.error(e?.message || "Failed");
+                                      }
+                                    }}
+                                    className="h-8 px-3 bg-[#FE8A0F] hover:bg-[#FFB347] text-white"
+                                  >
+                                    Accept
+                                  </Button>
+                                )}
+                                {/* Pro: in-progress → Cancel + Open dispute (or Accept/Reject cancel if pending by client) */}
+                                {!isJobOwner && milestone.status === "in-progress" && (
+                                  <div className="flex items-center justify-end gap-1">
+                                    {milestone.cancelRequestStatus === "pending" && milestone.cancelRequestedBy !== userInfo?.id ? (
+                                      <>
+                                        <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 border-green-300 hover:bg-green-50"
+                                          onClick={async () => {
+                                            try {
+                                              await respondToCancelRequest(job.id, milestone.id, true);
+                                              toast.success("Cancel request accepted");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed");
+                                            }
+                                          }}
+                                        >
+                                          Accept
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="h-8 px-2 text-red-600 border-red-300 hover:bg-red-50"
+                                          onClick={async () => {
+                                            try {
+                                              await respondToCancelRequest(job.id, milestone.id, false);
+                                              toast.success("Cancel request rejected");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed");
+                                            }
+                                          }}
+                                        >
+                                          Reject
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={milestone.cancelRequestStatus === "pending"}
+                                          onClick={() => {
+                                            setCancelRequestMilestone(milestone);
+                                            setCancelRequestReason("");
+                                            setShowCancelRequestModal(true);
+                                          }}
+                                          className="h-8 px-2 text-[13px] border-red-300 text-red-600 hover:bg-red-50"
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleOpenDisputeModal(milestone)}
+                                          className="h-8 px-2 text-[13px] border-orange-300 text-orange-600 hover:bg-orange-50"
+                                        >
+                                          <Flag className="w-4 h-4 mr-1" />
+                                          Open dispute
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  {/* Total Summary */}
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                        Total Milestones:
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                        £{job.milestones.reduce((sum, m) => sum + m.amount, 0)}
-                      </p>
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">Total Milestones:</p>
+                        <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                          £{job.milestones.reduce((sum, m) => sum + m.amount, 0)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Released:</p>
+                        <p className="font-['Poppins',sans-serif] text-[16px] text-green-600">
+                          £{job.milestones.filter((m) => m.status === "released").reduce((sum, m) => sum + m.amount, 0)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        Released:
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-green-600">
-                        £{job.milestones.filter(m => m.status === "released").reduce((sum, m) => sum + m.amount, 0)}
-                      </p>
-                    </div>
-                  </div>
-                </>
+                  </>
                 )}
               </div>
             )}
@@ -1347,159 +1399,234 @@ export default function JobDetailPage() {
 
       <Footer />
 
-      {/* Quote Submission Dialog for Professionals */}
+      {/* Quote Submission Dialog for Professionals - same format as Account My Jobs Send Quote */}
       <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
-        <DialogContent className="w-[70vw]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
-              Submit Your Quote
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b border-gray-200 pb-4 mb-6">
+            <DialogTitle className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
+              Send Quote
             </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
-              Provide your best quote for this job. The client will review all quotes and may contact you.
+            <DialogDescription className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mt-2">
+              Submit your quote for: <span className="text-[#FE8A0F]">{job.title}</span>
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="quote-price" className="font-['Poppins',sans-serif] text-[14px]">
-                Your Price (£)
-              </Label>
-              <Input
-                id="quote-price"
-                type="number"
-                placeholder="150"
-                value={quoteForm.price}
-                onChange={(e) => setQuoteForm({ ...quoteForm, price: e.target.value })}
-                className="font-['Poppins',sans-serif] mt-2"
-              />
-              <p className="text-[12px] text-[#6b6b6b] mt-1 font-['Poppins',sans-serif]">
-                Client's budget: £{job.budgetAmount} - £{(job.budgetAmount * 1.2).toFixed(0)}
-              </p>
+
+          <div className="space-y-6">
+            {/* Job Summary */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
+              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#1976D2] mb-3 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Job Summary
+              </h3>
+              <div className="bg-white rounded-lg p-4 border border-blue-100">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
+                  {job.description}
+                </p>
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
+                    {job.budgetMin != null && job.budgetMax != null
+                      ? `£${job.budgetMin.toFixed(0)} - £${job.budgetMax.toFixed(0)}`
+                      : `£${job.budgetAmount.toFixed(0)} - £${(job.budgetAmount * 1.2).toFixed(0)}`}
+                  </div>
+                  {job.location && (
+                    <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
+                      <MapPin className="w-4 h-4 text-red-600" />
+                      {job.location}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="quote-delivery" className="font-['Poppins',sans-serif] text-[14px]">
-                Delivery Time
-              </Label>
-              <Input
-                id="quote-delivery"
-                type="text"
-                placeholder="e.g., Same day, 2-3 days, Within a week"
-                value={quoteForm.deliveryTime}
-                onChange={(e) => setQuoteForm({ ...quoteForm, deliveryTime: e.target.value })}
-                className="font-['Poppins',sans-serif] mt-2"
-              />
-            </div>
+            {/* Quote Details Section */}
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-5 shadow-sm">
+              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Quote Details
+              </h3>
+              <div className="space-y-5">
+                <div className="bg-white rounded-lg p-4 border border-orange-100">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Your Price (£) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter your price"
+                    min={job.budgetMin ?? job.budgetAmount}
+                    max={job.budgetMax ?? job.budgetAmount * 1.2}
+                    step="0.01"
+                    value={quoteForm.price}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, price: e.target.value })}
+                    onBlur={() => {
+                      const v = parseFloat(quoteForm.price);
+                      if (quoteForm.price !== "" && !isNaN(v)) {
+                        const maxB = job.budgetMax ?? job.budgetAmount * 1.2;
+                        const minB = job.budgetMin ?? job.budgetAmount;
+                        const clamped = Math.min(maxB, Math.max(minB, v));
+                        if (clamped !== v) setQuoteForm((f) => ({ ...f, price: String(clamped) }));
+                      }
+                    }}
+                    className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
+                  />
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
+                    💡 Client's budget: £{(job.budgetMin ?? job.budgetAmount).toFixed(0)} - £{(job.budgetMax ?? job.budgetAmount * 1.2).toFixed(0)} (price must be within this range)
+                  </p>
+                </div>
 
-            <div>
-              <Label htmlFor="quote-message" className="font-['Poppins',sans-serif] text-[14px]">
-                Cover Message
-              </Label>
-              <Textarea
-                id="quote-message"
-                placeholder="Describe your experience, approach, and why you're the best fit for this job..."
-                value={quoteForm.message}
-                onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })}
-                className="font-['Poppins',sans-serif] mt-2 min-h-[240px]"
-              />
+                <div className="bg-white rounded-lg p-4 border border-orange-100">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Delivery Time <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={quoteForm.deliveryTime} onValueChange={(value) => setQuoteForm({ ...quoteForm, deliveryTime: value })}>
+                    <SelectTrigger className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12">
+                      <SelectValue placeholder="Select delivery time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Same day">Same day</SelectItem>
+                      <SelectItem value="Within 24 hours">Within 24 hours</SelectItem>
+                      <SelectItem value="1-2 days">1-2 days</SelectItem>
+                      <SelectItem value="3-5 days">3-5 days</SelectItem>
+                      <SelectItem value="1 week">1 week</SelectItem>
+                      <SelectItem value="2 weeks">2 weeks</SelectItem>
+                      <SelectItem value="1 month">1 month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 border border-orange-100">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                    Message to Client <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Explain your approach, experience, and why you're the best fit for this job..."
+                    value={quoteForm.message}
+                    onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })}
+                    className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
+                  />
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
+                    💡 Tip: Mention your relevant experience and availability
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Milestone Section */}
-            <div className="border-t border-gray-200 pt-4">
-              <div className="flex items-center gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => setIsMilestoneOpen(!isMilestoneOpen)}
-                        className="flex items-center gap-2 text-[#6b6b6b] hover:text-[#2c353f] transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span className="font-['Poppins',sans-serif] text-[12px]">
-                          Suggest Milestone Payment
-                        </span>
-                        <Info className="w-4 h-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[300px]">
-                      <p className="font-['Poppins',sans-serif] text-[12px]">
-                        Break down your quote into smaller milestones to help build trust with the client. 
-                        Each milestone represents a stage of work and its corresponding payment.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+            <Collapsible
+              open={isMilestoneOpen}
+              onOpenChange={setIsMilestoneOpen}
+              className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-5 shadow-sm"
+            >
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between p-0 hover:bg-transparent font-['Poppins',sans-serif] mb-2"
+                >
+                  <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#059669] flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Suggest Milestone Payment
+                  </h3>
+                  <ChevronDown
+                    className={`h-5 w-5 text-[#059669] transition-transform duration-200 ${
+                      isMilestoneOpen ? "transform rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+              </CollapsibleTrigger>
 
-              {isMilestoneOpen && (
-                <div className="space-y-3 mt-4">{/* Milestone content will go here */}
+              <CollapsibleContent className="space-y-4">
+                <div className="mb-4 pl-7">
+                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                    Suggest Milestone Payment Break Down!{" "}
+                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">Optional</span>
+                  </p>
+                </div>
 
+                <div className="bg-white rounded-lg p-4 border border-green-100">
                   <div className="space-y-3">
                     {milestones.map((milestone, index) => (
-                      <div key={index} className="flex gap-2 items-start">
-                        <Input
-                          placeholder="Define the tasks that you will complete for this"
-                          value={milestone.description}
-                          onChange={(e) => updateMilestone(index, "description", e.target.value)}
-                          className="flex-1 font-['Poppins',sans-serif] text-[14px]"
-                        />
-                        <div className="relative w-32">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
-                            £
-                          </span>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={milestone.amount}
-                            onChange={(e) => updateMilestone(index, "amount", e.target.value)}
-                            className="pl-7 font-['Poppins',sans-serif] text-[14px]"
-                          />
+                      <div key={index} className="bg-green-50/50 p-3 rounded-lg border border-green-200">
+                        <div className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                              Milestone {index + 1} Description
+                            </Label>
+                            <Input
+                              placeholder="Define the tasks that you will complete for this milestone"
+                              value={milestone.description}
+                              onChange={(e) => updateMilestone(index, "description", e.target.value)}
+                              className="font-['Poppins',sans-serif] text-[14px] border-2 border-gray-200"
+                            />
+                          </div>
+                          <div className="w-32">
+                            <Label className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1 block">
+                              Amount
+                            </Label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
+                                £
+                              </span>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={milestone.amount}
+                                onChange={(e) => updateMilestone(index, "amount", e.target.value)}
+                                className="pl-7 font-['Poppins',sans-serif] text-[14px] border-2 border-gray-200"
+                              />
+                            </div>
+                          </div>
+                          {milestones.length > 1 && (
+                            <div className="pt-5">
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => removeMilestone(index)}
+                                className="px-3 font-['Poppins',sans-serif] h-10"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        {milestones.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeMilestone(index)}
-                            className="px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
                     ))}
                   </div>
 
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={addMilestoneToForm}
-                    className="mt-3 text-[#3B82F6] hover:text-[#2563EB] hover:bg-blue-50 font-['Poppins',sans-serif]"
+                    className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Poppins',sans-serif] h-10"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add another milestone
                   </Button>
                 </div>
-              )}
-            </div>
-          </div>
+              </CollapsibleContent>
+            </Collapsible>
 
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowQuoteDialog(false)}
-              className="flex-1 font-['Poppins',sans-serif]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitQuote}
-              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-            >
-              Submit Quote
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-6 border-t-2 border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowQuoteDialog(false);
+                  setQuoteForm({ price: "", deliveryTime: "", message: "" });
+                  setMilestones([{ description: "", amount: "" }]);
+                }}
+                className="flex-1 font-['Poppins',sans-serif] h-12 text-[15px] border-2"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitQuote}
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Send Quote
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1586,26 +1713,68 @@ export default function JobDetailPage() {
                 </div>
               </RadioGroup>
 
-              {/* Amount Input */}
+              {/* Amount Input - Multiple milestones with name + amount */}
               {awardWithMilestone && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] text-[#2c353f] w-6 sm:w-8">£</span>
-                    <Input
-                      type="number"
-                      value={milestoneAmount}
-                      onChange={(e) => setMilestoneAmount(e.target.value)}
-                      className="flex-1 font-['Poppins',sans-serif] text-[14px] sm:text-[16px]"
-                      placeholder="122.00"
-                    />
-                  </div>
+                <div className="space-y-3">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">Milestones</Label>
+                  {awardMilestones.map((row, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <Input
+                        value={row.name}
+                        onChange={(e) => {
+                          const next = [...awardMilestones];
+                          next[index] = { ...next[index], name: e.target.value };
+                          setAwardMilestones(next);
+                        }}
+                        placeholder="Milestone name"
+                        className="flex-1 font-['Poppins',sans-serif] text-[14px]"
+                      />
+                      <div className="flex items-center gap-1 w-[120px]">
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">£</span>
+                        <Input
+                          type="number"
+                          value={row.amount}
+                          onChange={(e) => {
+                            const next = [...awardMilestones];
+                            next[index] = { ...next[index], amount: e.target.value };
+                            setAwardMilestones(next);
+                          }}
+                          placeholder="0.00"
+                          className="font-['Poppins',sans-serif] text-[14px]"
+                        />
+                      </div>
+                      {awardMilestones.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setAwardMilestones((prev) => prev.filter((_, i) => i !== index))}
+                          className="text-red-600 hover:bg-red-50 h-10 w-10 p-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAwardMilestones((prev) => [...prev, { name: "", amount: "" }])}
+                    className="font-['Poppins',sans-serif] text-[13px]"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add another milestone
+                  </Button>
                 </div>
               )}
 
               {/* Total */}
               <div className="border-t border-gray-200 pt-3 sm:pt-4">
                 <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
-                  Total: <strong>£{awardWithMilestone ? (milestoneAmount || "0.00") : selectedQuoteForAward.price} GBP</strong>
+                  Total: <strong>£{awardWithMilestone
+                    ? awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0).toFixed(2)
+                    : selectedQuoteForAward.price} GBP</strong>
                 </p>
               </div>
 
@@ -1630,10 +1799,9 @@ export default function JobDetailPage() {
                 onClick={handleAwardJob}
                 className="w-full bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] py-5 sm:py-6 text-[14px] sm:text-[16px]"
               >
-                {awardWithMilestone 
-                  ? `Award and Create £${milestoneAmount || "0.00"} GBP Milestone`
-                  : `Award Job`
-                }
+                {awardWithMilestone
+                  ? `Award and Create ${awardMilestones.length} Milestone(s)`
+                  : `Award Job`}
               </Button>
 
               {/* Guide Tip with Steps - Moved below button */}
@@ -1690,17 +1858,31 @@ export default function JobDetailPage() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
+            {/* Name */}
+            <div>
+              <Label htmlFor="milestone-name" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                Milestone name
+              </Label>
+              <Input
+                id="milestone-name"
+                value={newMilestoneForm.name}
+                onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, name: e.target.value })}
+                placeholder="e.g., Phase 1 - Plumbing"
+                className="font-['Poppins',sans-serif] text-[14px]"
+              />
+            </div>
+
             {/* Description */}
             <div>
               <Label htmlFor="milestone-description" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Milestone Description
+                Description (optional)
               </Label>
               <Textarea
                 id="milestone-description"
                 value={newMilestoneForm.description}
                 onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, description: e.target.value })}
                 placeholder="e.g., Complete plumbing installation"
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[80px]"
+                className="font-['Poppins',sans-serif] text-[14px] min-h-[60px]"
               />
             </div>
 
@@ -1737,7 +1919,7 @@ export default function JobDetailPage() {
                 variant="outline"
                 onClick={() => {
                   setShowNewMilestoneDialog(false);
-                  setNewMilestoneForm({ description: "", amount: "" });
+                  setNewMilestoneForm({ name: "", description: "", amount: "" });
                 }}
                 className="flex-1 font-['Poppins',sans-serif]"
               >
@@ -1754,15 +1936,66 @@ export default function JobDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Cancel Request Modal */}
+      <Dialog open={showCancelRequestModal} onOpenChange={(open) => { setShowCancelRequestModal(open); if (!open) { setCancelRequestMilestone(null); setCancelRequestReason(""); } }}>
+        <DialogContent className="max-w-md font-['Poppins',sans-serif]">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+              Request to cancel milestone
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+              {cancelRequestMilestone && (
+                <>Request cancellation for &quot;{cancelRequestMilestone.name || cancelRequestMilestone.description}&quot; (£{cancelRequestMilestone.amount}). The other party can accept or reject.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">Reason (optional)</Label>
+              <Textarea
+                value={cancelRequestReason}
+                onChange={(e) => setCancelRequestReason(e.target.value)}
+                placeholder="Why do you want to cancel this milestone?"
+                className="font-['Poppins',sans-serif] text-[14px] min-h-[80px]"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setShowCancelRequestModal(false); setCancelRequestMilestone(null); setCancelRequestReason(""); }} className="font-['Poppins',sans-serif]">
+                Cancel
+              </Button>
+              <Button
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                onClick={async () => {
+                  if (!cancelRequestMilestone) return;
+                  try {
+                    await requestMilestoneCancel(job.id, cancelRequestMilestone.id, cancelRequestReason);
+                    toast.success("Cancel request sent");
+                    setShowCancelRequestModal(false);
+                    setCancelRequestMilestone(null);
+                    setCancelRequestReason("");
+                  } catch (e: any) {
+                    toast.error(e?.message || "Failed to send cancel request");
+                  }
+                }}
+              >
+                Send request
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Dispute Modal */}
-      <Dialog open={showDisputeModal} onOpenChange={setShowDisputeModal}>
+      <Dialog open={showDisputeModal} onOpenChange={(open) => { setShowDisputeModal(open); if (!open) setDisputeMilestone(null); }}>
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto font-['Poppins',sans-serif]">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Dispute Milestone
+              Open Dispute
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              If there's an issue with the milestone, you can raise a dispute. Our support team will review and help resolve the issue.
+              {disputeMilestone
+                ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - £${disputeMilestone.amount}`
+                : "If there's an issue with the milestone, you can raise a dispute. Our support team will review and help resolve the issue."}
             </DialogDescription>
           </DialogHeader>
 
@@ -1780,26 +2013,26 @@ export default function JobDetailPage() {
             {/* Requirements Description */}
             <div>
               <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Please describe in detail what the requirements were for the milestone(s) you wish to dispute.
+                Please describe in detail what the requirements were for the milestone and what was not completed.
               </Label>
               <Textarea
                 value={disputeForm.requirements}
                 onChange={(e) => setDisputeForm({ ...disputeForm, requirements: e.target.value })}
                 placeholder="Describe the requirements..."
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[120px]"
+                className="font-['Poppins',sans-serif] text-[14px] min-h-[80px]"
               />
             </div>
 
             {/* Not Completed Description */}
             <div>
               <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Please describe in detail which of these requirements were not completed.
+                What was not completed or what is the issue?
               </Label>
               <Textarea
                 value={disputeForm.notCompleted}
                 onChange={(e) => setDisputeForm({ ...disputeForm, notCompleted: e.target.value })}
                 placeholder="Describe what was not completed..."
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[120px]"
+                className="font-['Poppins',sans-serif] text-[14px] min-h-[80px]"
               />
             </div>
 
@@ -1821,37 +2054,34 @@ export default function JobDetailPage() {
               )}
             </div>
 
-            {/* Milestone Selection */}
+            {/* Milestone Selection - only when opened without a specific milestone (e.g. from more menu) */}
+            {!disputeMilestone && job.milestones && job.milestones.length > 0 && (
             <div>
               <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
                 Select the milestone you want to dispute
               </Label>
               <div className="space-y-2">
-                {job.milestones && job.milestones.length > 0 ? (
-                  job.milestones
-                    .filter((m) => m.status !== "released" && m.status !== "disputed" && m.status !== "awaiting-accept")
-                    .map((milestone) => (
-                      <div key={milestone.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                        <Checkbox
-                          id={`dispute-${milestone.id}`}
-                          checked={disputeForm.selectedMilestones.includes(milestone.id)}
-                          onCheckedChange={(checked) => handleMilestoneSelection(milestone.id, checked as boolean)}
-                        />
-                        <label
-                          htmlFor={`dispute-${milestone.id}`}
-                          className="flex-1 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
-                        >
-                          {milestone.description} - £{milestone.amount}
-                        </label>
-                      </div>
-                    ))
-                ) : (
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    No milestones available to dispute
-                  </p>
-                )}
+                {job.milestones
+                  .filter((m) => m.status !== "released" && m.status !== "disputed" && m.status !== "awaiting-accept")
+                  .map((milestone) => (
+                    <div key={milestone.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                      <Checkbox
+                        id={`dispute-${milestone.id}`}
+                        checked={disputeForm.selectedMilestones.includes(milestone.id)}
+                        onCheckedChange={(checked) => handleMilestoneSelection(milestone.id, checked as boolean)}
+                      />
+                      <label
+                        htmlFor={`dispute-${milestone.id}`}
+                        className="flex-1 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                        onClick={() => { setDisputeMilestone(milestone); setDisputeForm((p) => ({ ...p, selectedMilestones: [milestone.id] })); }}
+                      >
+                        {milestone.name || milestone.description} - £{milestone.amount}
+                      </label>
+                    </div>
+                  ))}
               </div>
             </div>
+            )}
 
             {/* Buttons */}
             <div className="flex items-center gap-3 pt-4 border-t">

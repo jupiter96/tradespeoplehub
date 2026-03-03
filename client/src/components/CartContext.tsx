@@ -66,7 +66,7 @@ function generateItemKey(item: Omit<CartItem, "quantity">) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { isLoggedIn } = useAccount();
+  const { isLoggedIn, userRole } = useAccount();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [cartCleared, setCartCleared] = useState(false);
@@ -74,7 +74,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Load cart from API when user logs in
   useEffect(() => {
     const fetchCart = async () => {
-      if (!isLoggedIn) {
+      // Cart is only relevant for logged-in clients
+      if (!isLoggedIn || userRole === "professional") {
         setCartItems([]);
         setCartCleared(false);
         return;
@@ -107,7 +108,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     fetchCart();
-  }, [isLoggedIn, cartCleared]);
+  }, [isLoggedIn, userRole, cartCleared]);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce((sum, item) => {
@@ -150,8 +151,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return newItems;
     });
 
-    // Sync with API if logged in
-    if (isLoggedIn) {
+    // Sync with API if logged-in client
+    if (isLoggedIn && userRole === "client") {
       try {
         const response = await fetch(resolveApiUrl("/api/cart/items"), {
           method: "POST",
@@ -216,8 +217,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return itemKey !== key;
     }));
 
-    // Sync with API if logged in
-    if (isLoggedIn) {
+    // Sync with API if logged-in client
+    if (isLoggedIn && userRole === "client") {
       try {
         const response = await fetch(resolveApiUrl(`/api/cart/items/${encodeURIComponent(key)}`), {
           method: "DELETE",
@@ -275,8 +276,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })
     );
 
-    // Sync with API if logged in
-    if (isLoggedIn) {
+    // Sync with API if logged-in client
+    if (isLoggedIn && userRole === "client") {
       try {
         const response = await fetch(resolveApiUrl(`/api/cart/items/${encodeURIComponent(key)}`), {
           method: "PUT",
@@ -343,8 +344,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return newItems;
     });
 
-    // Sync with API if logged in
-    if (isLoggedIn) {
+    // Sync with API if logged-in client
+    if (isLoggedIn && userRole === "client") {
       try {
         // Update cart item via API
         const response = await fetch(resolveApiUrl(`/api/cart/items/${encodeURIComponent(key)}`), {

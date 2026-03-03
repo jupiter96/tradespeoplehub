@@ -3,6 +3,7 @@ import img22 from "figma:asset/01f369f7145a1bda02cadae942ff191c7c2cda51.png";
 import img0125 from "figma:asset/10d3d015685dee0b00951bf262608d69093ccde4.png";
 import img127 from "figma:asset/f1d010159c6cb7c35142621cdde2a80e22049b68.png";
 import { img021, img126 } from "./svg-42a4a";
+import { useNavigate } from "react-router-dom";
 
 function MaskGroup() {
   return (
@@ -104,17 +105,20 @@ function Group2() {
   );
 }
 
-function Cta() {
+function Cta({ onClick }: { onClick: () => void }) {
   return (
     <div className="absolute left-[60px] top-[383px]" data-name="CTA">
-      <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-6 py-3 font-['Poppins:Regular',sans-serif] text-[15px] text-white cursor-pointer">
+      <button
+        className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-6 py-3 font-['Poppins:Regular',sans-serif] text-[15px] text-white cursor-pointer"
+        onClick={onClick}
+      >
         Join US Now
       </button>
     </div>
   );
 }
 
-function Banner() {
+function Banner({ onCtaClick }: { onCtaClick: () => void }) {
   return (
     <div className="absolute contents left-0 top-[26px]" data-name="Banner">
       <div className="absolute bg-[#002f77] h-[438px] left-0 rounded-[20px] top-[38px] w-[1241px]" />
@@ -161,15 +165,19 @@ function Banner() {
       <Group />
       <Group1 />
       <Group2 />
-      <Cta />
+      <Cta onClick={onCtaClick} />
     </div>
   );
 }
 
 function Hero() {
+  const navigate = useNavigate();
+  const handleCtaClick = () => {
+    navigate("/login?tab=register&role=professional");
+  };
   return (
     <div className="absolute h-[507px] left-[calc(50%+0.5px)] top-0 translate-x-[-50%] w-[1241px]" data-name="Hero">
-      <Banner />
+      <Banner onCtaClick={handleCtaClick} />
       <p className="absolute font-['Poppins:Bold',sans-serif] h-[108px] leading-[32px] left-[calc(50%-560.5px)] not-italic text-[0px] text-[24px] text-white top-[113px] w-[478px]">
         <span>{`Join a Thriving Community of Skilled Professionals and Watch Your Business `}</span>
         <span className="font-['Poppins:Black',sans-serif] text-[#fe8a0f]">Flourish!</span>

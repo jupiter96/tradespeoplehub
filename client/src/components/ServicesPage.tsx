@@ -2731,15 +2731,22 @@ export default function ServicesPage() {
                   Sorry, no services found
                 </h3>
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#7a7a7a] mb-6 max-w-[500px] mx-auto">
-                  Try searching with different criteria. Can't find what you are looking for?<br />
-                  Post a project and get instant quotes from our professionals.
+                  Try searching with different criteria. Can't find what you are looking for?
+                  {(!isLoggedIn || userRole === "client") && (
+                    <>
+                      <br />
+                      Post a project and get instant quotes from our professionals.
+                    </>
+                  )}
                 </p>
-                <Button
-                  onClick={() => navigate('/post-job')}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 px-8 text-[15px] uppercase"
-                >
-                  POST A PROJECT
-                </Button>
+                {(!isLoggedIn || userRole === "client") && (
+                  <Button
+                    onClick={() => navigate('/post-job')}
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 px-8 text-[15px] uppercase"
+                  >
+                    POST A PROJECT
+                  </Button>
+                )}
               </div>
             ) : (
               <div className={`grid gap-4 md:gap-6 ${

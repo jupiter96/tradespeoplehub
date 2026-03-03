@@ -36,14 +36,14 @@ export default function AdminAdminsPage() {
         title="Admins"
         description="Manage admin accounts and permissions"
       >
-        <AdminUsersTable
-          ref={tableRef}
-          role="admin"
-          title="Admins"
-          onCreateNew={handleCreateNew}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+      <AdminUsersTable
+        ref={tableRef}
+        role="admin"
+        title="Admins"
+        onCreateNew={handleCreateNew}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
       </AdminPageLayout>
 
       <AdminUserModal

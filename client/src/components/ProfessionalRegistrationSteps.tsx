@@ -68,7 +68,7 @@ export default function ProfessionalRegistrationSteps() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Find selected sector object (after sector state is declared)
-  const selectedSectorObj = sortedSectors.find((s: Sector) => s.name === sector);
+  const selectedSectorObj = sortedSectors.find((s: Sector) => s.name === sector || s._id === sector);
   const selectedSectorId = selectedSectorObj?._id;
   
   // Load categories for selected sector
@@ -117,7 +117,11 @@ export default function ProfessionalRegistrationSteps() {
       setQualifications([]);
     }
     if (userInfo?.sector) {
-      setSector(userInfo.sector);
+      // userInfo.sector now stores Sector ID; try to map back to name for the select
+      const existingSector = sortedSectors.find((s: Sector) => s._id === userInfo.sector || s.name === userInfo.sector);
+      if (existingSector) {
+        setSector(existingSector.name);
+      }
     }
     // Services will be loaded after categories are available
     // This is handled in a separate useEffect below
@@ -203,9 +207,9 @@ export default function ProfessionalRegistrationSteps() {
             };
           }
         }
-        // Always update sector if provided (during registration)
-        if (currentStep >= 2 && sector) {
-          updateData.sector = sector;
+        // Always update sector if provided (during registration); use ID as canonical value
+        if (currentStep >= 2 && selectedSectorId) {
+          updateData.sector = selectedSectorId.toString();
         }
         if (currentStep >= 3) {
           // Store category and subcategory IDs in services array
@@ -282,8 +286,11 @@ export default function ProfessionalRegistrationSteps() {
         updateData.insuranceExpiryDate = null;
       }
 
-      // Always update sector if provided (during registration)
-      if (sector) {
+      // Always update sector if provided (during registration); use ID as canonical value
+      if (selectedSectorId) {
+        updateData.sector = selectedSectorId.toString();
+      } else if (sector) {
+        // Fallback for legacy data if ID is not available
         updateData.sector = sector;
       }
       

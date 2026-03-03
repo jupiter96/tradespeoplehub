@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Star, MapPin, Info, Check } from "lucide-react";
 import serviceVector from "../assets/service_vector.jpg";
+import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 
 interface Professional {
   id: string;
@@ -151,16 +152,22 @@ export default function InviteProfessionalsList({
               {/* Mobile Layout */}
               <div className="block sm:hidden">
                 <div className="flex gap-3 p-4">
-                  {/* Image - Square */}
+                  {/* Image - Square: avatar or initials from trading name */}
                   <div 
-                    className="w-24 h-24 flex-shrink-0 relative bg-gray-100 rounded-xl overflow-hidden cursor-pointer shadow-sm"
+                    className="w-24 h-24 flex-shrink-0 relative bg-gray-100 rounded-xl overflow-hidden cursor-pointer shadow-sm flex items-center justify-center"
                     onClick={() => handleNavigateToProfile(pro.id)}
                   >
-                    <img
-                      src={pro.image}
-                      alt={pro.name}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    />
+                    {resolveAvatarUrl(pro.image) ? (
+                      <img
+                        src={resolveAvatarUrl(pro.image)!}
+                        alt={pro.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <span className="font-['Poppins',sans-serif] text-[28px] font-semibold text-[#FE8A0F] bg-[#FFF5EB] w-full h-full flex items-center justify-center">
+                        {getTwoLetterInitials(pro.name, "P")}
+                      </span>
+                    )}
                   </div>
 
                   {/* Content */}
@@ -224,16 +231,22 @@ export default function InviteProfessionalsList({
 
               {/* Desktop Layout - 2 Column Layout */}
               <div className="hidden sm:flex h-[260px] hover:shadow-xl transition-all duration-300">
-                {/* Left Column - Image */}
+                {/* Left Column - Image or letter avatar */}
                 <div 
-                  className="w-[200px] h-[260px] flex-shrink-0 relative bg-gray-100 cursor-pointer overflow-hidden group"
+                  className="w-[200px] h-[260px] flex-shrink-0 relative bg-gray-100 cursor-pointer overflow-hidden group flex items-center justify-center"
                   onClick={() => handleNavigateToProfile(pro.id)}
                 >
-                  <img
-                    src={pro.image}
-                    alt={pro.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
+                  {resolveAvatarUrl(pro.image) ? (
+                    <img
+                      src={resolveAvatarUrl(pro.image)!}
+                      alt={pro.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <span className="font-['Poppins',sans-serif] text-[48px] font-semibold text-[#FE8A0F] bg-[#FFF5EB] w-full h-full flex items-center justify-center">
+                      {getTwoLetterInitials(pro.name, "P")}
+                    </span>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
 

@@ -9,12 +9,14 @@ import Footer from "./Footer";
 import AppDownloadSection from "./AppDownloadSection";
 import FaqSection from "./FaqSection";
 import GrowBusinessSection from "./GrowBusinessSection";
+import { useNavigate } from "react-router-dom";
 import img22 from "figma:asset/01f369f7145a1bda02cadae942ff191c7c2cda51.png";
 import img0125 from "figma:asset/10d3d015685dee0b00951bf262608d69093ccde4.png";
 import img127 from "figma:asset/f1d010159c6cb7c35142621cdde2a80e22049b68.png";
 import { SEOHead } from "./SEOHead";
 
 export default function HowItWorkProPage() {
+  const navigate = useNavigate();
   const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   return (
     <div className="min-h-screen bg-[#f0f0f0]">
@@ -78,7 +80,10 @@ export default function HowItWorkProPage() {
                   <br /><br />
                   Start today, build your reputation, and unlock your potential to earn and grow.
                 </p>
-                <button className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-6 py-3 text-white text-[15px] cursor-pointer">
+                <button
+                  className="bg-[#fe8a0f] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 rounded-[20px] px-6 py-3 text-white text-[15px] cursor-pointer"
+                  onClick={() => navigate("/login?tab=register&role=professional")}
+                >
                   Join US Now
                 </button>
               </div>

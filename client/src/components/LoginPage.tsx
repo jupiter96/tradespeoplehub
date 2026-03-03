@@ -54,6 +54,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userType, setUserType] = useState<"client" | "professional">("client");
+  const initialTab = (searchParams.get('tab') === 'register' ? 'register' : 'login') as "login" | "register";
+  const [tabValue, setTabValue] = useState<"login" | "register">(initialTab);
   const [isCompletingRegistration, setIsCompletingRegistration] = useState(false);
   
   // Email & Phone Verification states (after registration)
@@ -71,14 +73,17 @@ export default function LoginPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  // Redirect to account page if already logged in (but not during registration)
+  // Redirect to account page if already logged in (but not during registration or explicit register flow)
   useEffect(() => {
-    // Don't redirect if user is in the middle of registration process
-    if (isLoggedIn && !showEmailVerification && !isCompletingRegistration) {
+    // If URL explicitly asks for register tab (e.g. from how-it-work-pro CTAs), don't auto-redirect
+    const explicitRegister = searchParams.get("tab") === "register";
+
+    // Don't redirect if user is in the middle of registration process or explicit register view is requested
+    if (isLoggedIn && !showEmailVerification && !isCompletingRegistration && !explicitRegister) {
       // Professionals should land on Account after login (even if profile setup is incomplete).
       navigate("/account", { replace: true });
     }
-  }, [isLoggedIn, navigate, showEmailVerification, userInfo, isCompletingRegistration]);
+  }, [isLoggedIn, navigate, showEmailVerification, isCompletingRegistration, searchParams]);
 
   // Start email resend timer when email verification modal opens
   useEffect(() => {
@@ -157,8 +162,14 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Load rememberMe state and email from localStorage on mount
+  // Load rememberMe state, email and initial userType from URL/localStorage on mount
   useEffect(() => {
+    const roleParam = searchParams.get('role');
+    if (roleParam === 'professional') {
+      setUserType('professional');
+    } else if (roleParam === 'client') {
+      setUserType('client');
+    }
     const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
     const savedEmail = localStorage.getItem('savedEmail');
     
@@ -687,7 +698,7 @@ export default function LoginPage() {
       <div className="pt-[50px] py-6 md:py-6 px-4 md:px-6">
         <div className="max-w-[500px] mx-auto">
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-5 md:p-6">
-            <Tabs defaultValue="login" className="w-full">
+          <Tabs value={tabValue} onValueChange={(val) => setTabValue(val as "login" | "register")} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-5 bg-[#f5f5f5] p-1 rounded-xl h-10">
                 <TabsTrigger 
                   value="login"

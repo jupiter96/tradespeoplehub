@@ -31,8 +31,10 @@ export default function ProfessionalJobsSection() {
   const { getProfessionalActiveJobs, getProfessionalQuotes, getAvailableJobs } = useJobs();
   const { userInfo } = useAccount();
 
-  // Get counts for badges
-  const availableJobsCount = getAvailableJobs().length;
+  // Get counts for badges (Available Jobs: exclude jobs the pro already quoted)
+  const availableJobsCount = getAvailableJobs().filter(
+    (job) => !(job.quotes || []).some((q) => q.professionalId === userInfo?.id)
+  ).length;
   const myQuotesCount = getProfessionalQuotes(userInfo?.id || "").length;
   const activeJobsCount = getProfessionalActiveJobs(userInfo?.id || "").length;
 
@@ -138,7 +140,7 @@ function ActiveJobsSection() {
             new Date(a.postedAt).getTime() - new Date(b.postedAt).getTime();
           break;
         case "budget":
-          comparison = a.budgetAmount - b.budgetAmount;
+          comparison = (a.budgetMax ?? a.budgetAmount) - (b.budgetMax ?? b.budgetAmount);
           break;
         default:
           break;
@@ -272,7 +274,7 @@ function ActiveJobsSection() {
                   <div className="flex flex-col items-start md:items-end gap-3">
                     <div className="text-right">
                       <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                        £{acceptedQuote?.price || job.budgetAmount}
+                        {acceptedQuote?.price != null ? `£${acceptedQuote.price}` : (job.budgetMin != null && job.budgetMax != null ? `£${job.budgetMin} - £${job.budgetMax}` : `£${job.budgetAmount}`)}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                         Your Quote

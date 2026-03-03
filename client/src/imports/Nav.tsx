@@ -1121,21 +1121,25 @@ export default function Nav() {
 
         {/* Navigation Items - Right Aligned with Equal Spacing */}
         <div className="flex items-center gap-4 lg:gap-6 xl:gap-8 flex-shrink-0">
-          <GetQuote />
+          {(!isLoggedIn || userRole === "client") && <GetQuote />}
 
-          <Link
-            to="/services"
-            className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
-          >
-            Services
-          </Link>
+          {userRole !== "professional" && (
+            <>
+              <Link
+                to="/services"
+                className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
+              >
+                Services
+              </Link>
 
-          <Link
-            to="/how-it-work-pro"
-            className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
-          >
-            Become a Seller
-          </Link>
+              <Link
+                to="/how-it-work-pro"
+                className="font-['Poppins:Regular',sans-serif] text-[15px] text-[#5b5b5b] hover:text-[#FE8A0F] cursor-pointer transition-colors whitespace-nowrap"
+              >
+                Become a Seller
+              </Link>
+            </>
+          )}
 
           {/* Notification Icon with Badge and Dropdown */}
           {isLoggedIn && (

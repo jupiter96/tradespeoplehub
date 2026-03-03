@@ -62,8 +62,8 @@ export default function MyJobsSection() {
   const [selectedQuote, setSelectedQuote] = useState<JobQuote | null>(null);
   const [chatMessage, setChatMessage] = useState("");
 
-  // Get user's jobs
-  const userJobs = getUserJobs(userInfo?.id || "client-1");
+  // Get user's jobs (from API-backed list when client)
+  const userJobs = getUserJobs(userInfo?.id ?? "");
 
   // Filter jobs based on status and search
   const filteredJobs = userJobs.filter((job) => {
@@ -98,24 +98,33 @@ export default function MyJobsSection() {
     return <Calendar className="w-4 h-4 text-gray-500" />;
   };
 
-  const handleDeleteJob = (jobId: string) => {
-    if (window.confirm("Are you sure you want to delete this job posting?")) {
-      deleteJob(jobId);
+  const handleDeleteJob = async (jobId: string) => {
+    if (!window.confirm("Are you sure you want to delete this job posting?")) return;
+    try {
+      await deleteJob(jobId);
       toast.success("Job deleted successfully");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete job");
     }
   };
 
-  const handleAcceptQuote = (quoteId: string) => {
-    if (currentJob) {
-      updateQuoteStatus(currentJob.id, quoteId, "accepted");
+  const handleAcceptQuote = async (quoteId: string) => {
+    if (!currentJob) return;
+    try {
+      await updateQuoteStatus(currentJob.id, quoteId, "accepted");
       toast.success("Quote accepted! The professional will be notified.");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to accept quote");
     }
   };
 
-  const handleRejectQuote = (quoteId: string) => {
-    if (currentJob) {
-      updateQuoteStatus(currentJob.id, quoteId, "rejected");
+  const handleRejectQuote = async (quoteId: string) => {
+    if (!currentJob) return;
+    try {
+      await updateQuoteStatus(currentJob.id, quoteId, "rejected");
       toast.success("Quote rejected");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to reject quote");
     }
   };
 
@@ -246,7 +255,9 @@ export default function MyJobsSection() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
-                          £{job.budgetAmount} ({job.budgetType})
+                          {job.budgetMin != null && job.budgetMax != null
+                          ? `£${job.budgetMin} - £${job.budgetMax}`
+                          : `£${job.budgetAmount}`} ({job.budgetType})
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4" />
@@ -347,7 +358,9 @@ export default function MyJobsSection() {
                         Budget
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        £{currentJob.budgetAmount} ({currentJob.budgetType})
+                        {currentJob.budgetMin != null && currentJob.budgetMax != null
+                        ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
+                        : `£${currentJob.budgetAmount}`} ({currentJob.budgetType})
                       </p>
                     </div>
                   </div>

@@ -17,6 +17,7 @@ import {
   X,
   Plus,
   ChevronDown,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -113,42 +114,47 @@ export default function AvailableJobsSection() {
     return distance.toFixed(1);
   };
 
-  const handleSubmitQuote = () => {
-    // Check if user is blocked
+  const handleSubmitQuote = async () => {
     if (userInfo?.isBlocked) {
       toast.error("Your account has been blocked. You cannot submit quotes. Please contact support.");
       return;
     }
-
     if (!currentJob || !quotePrice || !quoteDeliveryTime || !quoteMessage) {
       toast.error("Please fill in all fields");
       return;
     }
-
     const price = parseFloat(quotePrice);
     if (isNaN(price) || price <= 0) {
       toast.error("Please enter a valid price");
       return;
     }
-
-    addQuoteToJob(currentJob.id, {
-      professionalId: userInfo?.id || "pro-1",
-      professionalName: userInfo?.businessName || userInfo?.name || "Professional",
-      professionalAvatar: userInfo?.avatar,
-      professionalRating: 4.8,
-      professionalReviews: 127,
-      price: price,
-      deliveryTime: quoteDeliveryTime,
-      message: quoteMessage,
-    });
-
-    toast.success("Quote sent successfully!");
-    setIsQuoteDialogOpen(false);
-    setSelectedJob(null);
-    setQuotePrice("");
-    setQuoteDeliveryTime("");
-    setQuoteMessage("");
-    setMilestones([{ description: "", amount: "" }]);
+    const minPrice = currentJob.budgetMin ?? currentJob.budgetAmount;
+    const maxPrice = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
+    if (price < minPrice || price > maxPrice) {
+      toast.error(`Price must be between £${minPrice.toFixed(0)} and £${maxPrice.toFixed(0)} (job budget range)`);
+      return;
+    }
+    try {
+      await addQuoteToJob(currentJob.id, {
+        professionalId: userInfo?.id || "",
+        professionalName: userInfo?.businessName || userInfo?.name || "Professional",
+        professionalAvatar: userInfo?.avatar,
+        professionalRating: 4.8,
+        professionalReviews: 127,
+        price: price,
+        deliveryTime: quoteDeliveryTime,
+        message: quoteMessage,
+      });
+      toast.success("Quote sent successfully!");
+      setIsQuoteDialogOpen(false);
+      setSelectedJob(null);
+      setQuotePrice("");
+      setQuoteDeliveryTime("");
+      setQuoteMessage("");
+      setMilestones([{ description: "", amount: "" }]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send quote");
+    }
   };
 
   // Milestone functions
@@ -248,7 +254,9 @@ export default function AvailableJobsSection() {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
-                          £{job.budgetAmount} budget
+                          {job.budgetMin != null && job.budgetMax != null
+                          ? `£${job.budgetMin} - £${job.budgetMax} budget`
+                          : `£${job.budgetAmount} budget`}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4" />
@@ -280,17 +288,24 @@ export default function AvailableJobsSection() {
                     <Eye className="w-4 h-4 mr-1.5" />
                     View Details
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedJob(job.id);
-                      setIsQuoteDialogOpen(true);
-                    }}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-                  >
-                    <Send className="w-4 h-4 mr-1.5" />
-                    Send Quote
-                  </Button>
+                  {(job.quotes || []).some((q) => q.professionalId === userInfo?.id) ? (
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium inline-flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-[#059669]" />
+                      Quote Submitted
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedJob(job.id);
+                        setIsQuoteDialogOpen(true);
+                      }}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                    >
+                      <Send className="w-4 h-4 mr-1.5" />
+                      Send Quote
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -324,7 +339,9 @@ export default function AvailableJobsSection() {
                   </p>
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
-                      £{currentJob.budgetAmount}
+                      {currentJob.budgetMin != null && currentJob.budgetMax != null
+                      ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
+                      : `£${currentJob.budgetAmount}`}
                     </div>
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
@@ -348,12 +365,26 @@ export default function AvailableJobsSection() {
                     <Input
                       type="number"
                       placeholder="Enter your price"
+                      min={currentJob.budgetMin ?? currentJob.budgetAmount}
+                      max={currentJob.budgetMax ?? currentJob.budgetAmount * 1.2}
+                      step="0.01"
                       value={quotePrice}
                       onChange={(e) => setQuotePrice(e.target.value)}
+                      onBlur={() => {
+                        const v = parseFloat(quotePrice);
+                        if (quotePrice !== "" && !isNaN(v)) {
+                          const minB = currentJob.budgetMin ?? currentJob.budgetAmount;
+                          const maxB = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
+                          const clamped = Math.min(maxB, Math.max(minB, v));
+                          if (clamped !== v) setQuotePrice(String(clamped));
+                        }
+                      }}
                       className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                     />
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                      💡 Client's budget: £{currentJob.budgetAmount}
+                      💡 Client's budget: {currentJob.budgetMin != null && currentJob.budgetMax != null
+                      ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
+                      : `£${currentJob.budgetAmount}`}
                     </p>
                   </div>
 

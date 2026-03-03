@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import AddressAutocomplete from "../AddressAutocomplete";
 
-import API_BASE_URL from "../../config/api";
+import API_BASE_URL, { resolveApiUrl } from "../../config/api";
 import { validatePassword, getPasswordHint } from "../../utils/passwordValidation";
 
 interface User {
@@ -56,6 +56,7 @@ export default function AdminUserModal({
 }: AdminUserModalProps) {
   const isEditMode = !!user;
   const [loading, setLoading] = useState(false);
+  const [sectors, setSectors] = useState<{ _id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -75,6 +76,9 @@ export default function AdminUserModal({
 
   useEffect(() => {
     if (user) {
+      const sectorValue = user.sector != null
+        ? (typeof user.sector === "string" ? user.sector : (user.sector as { _id?: string })?._id ?? "")
+        : "";
       setFormData({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
@@ -86,7 +90,7 @@ export default function AdminUserModal({
         county: user.county || "",
         address: user.address || "",
         travelDistance: user.travelDistance || "",
-        sector: user.sector || "",
+        sector: sectorValue,
         tradingName: user.tradingName || "",
         referralCode: user.referralCode || "",
         stripeCustomerId: user.stripeCustomerId || "",
@@ -208,8 +212,10 @@ export default function AdminUserModal({
           payload.county = formData.county.trim();
         }
         payload.travelDistance = formData.travelDistance.trim();
-        if (formData.sector) {
-          payload.sector = formData.sector.trim();
+        if (formData.sector?.trim()) {
+          payload.sectorId = formData.sector.trim();
+        } else {
+          payload.sectorId = null;
         }
       }
 
@@ -459,13 +465,25 @@ export default function AdminUserModal({
                   <Label htmlFor="sector" className="text-black">
                     Sector
                   </Label>
-                  <Input
-                    id="sector"
-                    value={formData.sector}
-                    onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                    className="bg-white border-0 shadow-md shadow-gray-200  text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow"
-                    placeholder="e.g., Home & Garden"
-                  />
+                  <Select
+                    value={formData.sector || ""}
+                    onValueChange={(value) => setFormData({ ...formData, sector: value })}
+                  >
+                    <SelectTrigger className="bg-white border-0 shadow-md shadow-gray-200 text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
+                      <SelectValue placeholder="Select sector" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300">
+                      <SelectItem value="" className="text-black hover:bg-[#FE8A0F]/10">
+                        (None)
+                      </SelectItem>
+                      {sectors.map((s) => (
+                        <SelectItem key={s._id} value={s._id} className="text-black hover:bg-[#FE8A0F]/10">
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-[11px] text-gray-500">Stored as sector ID for job matching</p>
                 </div>
               </>
             )}

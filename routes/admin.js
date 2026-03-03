@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
@@ -1519,7 +1520,7 @@ router.get('/disputes-ask-step-in', requireAdmin, async (req, res) => {
 // Create user
 router.post('/users', requireAdmin, async (req, res) => {
   try {
-    const { firstName, lastName, email, password, phone, postcode, role, townCity, address, travelDistance, sector, tradingName, referralCode } = req.body || {};
+    const { firstName, lastName, email, password, phone, postcode, role, townCity, address, travelDistance, sector, sectorId, tradingName, referralCode } = req.body || {};
 
     if (!firstName || !lastName || !email || !password || !phone || !postcode) {
       return res.status(400).json({ error: 'First name, last name, email, password, phone, and postcode are required' });
@@ -1542,6 +1543,15 @@ router.post('/users', requireAdmin, async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // Sector for professionals: store sector ID string (prefer sectorId)
+    let sectorIdStr = null;
+    if (role === 'professional' && (sectorId || sector)) {
+      const id = sectorId || sector;
+      if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id.trim())) {
+        sectorIdStr = id.trim();
+      }
+    }
+
     const userData = {
       firstName,
       lastName,
@@ -1553,7 +1563,7 @@ router.post('/users', requireAdmin, async (req, res) => {
       ...(townCity && { townCity }),
       ...(address && { address }),
       ...(travelDistance && { travelDistance }),
-      ...(sector && { sector }),
+      ...(sectorIdStr && { sector: sectorIdStr }),
       ...(tradingName && { tradingName }),
       ...(referralCode && { referralCode }),
     };
@@ -1576,6 +1586,16 @@ router.put('/users/:id', requireAdmin, async (req, res) => {
     // Prevent changing admin or subadmin role
     if ((updates.role === 'admin' || updates.role === 'subadmin') && userId !== req.session.userId) {
       return res.status(403).json({ error: 'Cannot change user to admin or subadmin role' });
+    }
+
+    // Sector: accept sectorId and store as sector ID (string); ensures ObjectId-compatible value for matching
+    if (updates.sectorId !== undefined) {
+      if (updates.sectorId && typeof updates.sectorId === 'string' && mongoose.Types.ObjectId.isValid(updates.sectorId)) {
+        updates.sector = updates.sectorId.trim();
+      } else {
+        updates.sector = null;
+      }
+      delete updates.sectorId;
     }
 
     // If password is provided, validate and hash it
