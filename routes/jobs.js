@@ -67,6 +67,69 @@ function toJobResponse(doc) {
   };
 }
 
+// Generate job title and description using OpenAI (client only; sector + key points)
+router.post('/generate-description', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { sectorName, sectorSlug, keyPoints } = req.body;
+    const sectorLabel = sectorName || sectorSlug || '';
+    const points = typeof keyPoints === 'string' ? keyPoints.trim() : '';
+    if (!sectorLabel) {
+      return res.status(400).json({ error: 'Sector is required' });
+    }
+
+    const apiKey = process.env.OPENAI_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'AI generation is not configured' });
+    }
+
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey });
+
+    const systemPrompt = `You are a helpful assistant that writes clear, professional job postings for a trades and services platform (UK). Given a sector and optional key points or keywords from the client, you must respond in valid JSON only with exactly two keys: "title" and "description".
+1. title: A short job headline (one concise line, e.g. "Install new bathroom suite" or "Fix leaking kitchen tap").
+2. description: A full job description - well structured with clear sections (e.g. Overview, What we need, Scope of work, Timing/Preferences if relevant). Use plain text, no markdown headers. Write in a professional but friendly tone. Keep description between 150 and 400 words.`;
+
+    const userPrompt = points
+      ? `Sector: ${sectorLabel}. Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description. Return valid JSON with "title" and "description".`
+      : `Sector: ${sectorLabel}. Generate a job title and a full, structured job description for a typical job in this sector. Return valid JSON with "title" and "description".`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const raw = completion.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      return res.status(502).json({ error: 'Empty response from AI' });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.status(502).json({ error: 'Invalid AI response format' });
+    }
+
+    const title = (parsed.title || parsed.jobTitle || parsed.headline || '').trim();
+    const description = (parsed.description || parsed.jobDescription || parsed.body || '').trim();
+    if (!title || !description) {
+      return res.status(502).json({ error: 'AI did not return title and description' });
+    }
+
+    return res.json({ title, description });
+  } catch (err) {
+    console.error('[Jobs] Generate description error:', err);
+    if (err.status === 401) {
+      return res.status(503).json({ error: 'AI service configuration error' });
+    }
+    return res.status(500).json({ error: err.message || 'Failed to generate description' });
+  }
+});
+
 // Create job (client only)
 router.post('/', authenticateToken, requireRole(['client']), async (req, res) => {
   try {

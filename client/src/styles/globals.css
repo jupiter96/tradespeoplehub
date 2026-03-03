@@ -381,3 +381,25 @@ input[type="checkbox"]:checked {
   background-color: #FE8A0F;
   border-color: #FE8A0F;
 }
+
+/* Rainbow gradient button (Generate by AI) */
+@keyframes rainbow-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.btn-rainbow-ai {
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #f97316 12%,
+    #eab308 25%,
+    #22c55e 40%,
+    #3b82f6 55%,
+    #8b5cf6 72%,
+    #ec4899 88%,
+    #ef4444 100%
+  );
+  background-size: 200% 100%;
+  animation: rainbow-shift 3s ease-in-out infinite;
+}

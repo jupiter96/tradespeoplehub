@@ -27,7 +27,8 @@ import {
   Flame,
   Clock,
   Calendar as CalendarIcon,
-  ChevronDown
+  ChevronDown,
+  Sparkles
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -55,7 +56,7 @@ const stepGroups = [
     title: "Job Details",
     description: "Tell us about your job",
     icon: "file",
-    steps: [1, 2, 3] // Category Selection, Headline, Description
+    steps: [1, 2, 3] // Category Selection, Description, Headline
   },
   {
     id: 2,
@@ -75,8 +76,8 @@ const stepGroups = [
 
 const steps: Step[] = [
   { id: 1, title: "Category", description: "Choose categories" },
-  { id: 2, title: "Headline", description: "Job title" },
-  { id: 3, title: "Description", description: "Add details" },
+  { id: 2, title: "Description", description: "Add details" },
+  { id: 3, title: "Headline", description: "Job title" },
   { id: 4, title: "Location & Timing", description: "Where & when" },
   { id: 5, title: "Budget", description: "Set budget" },
 ];
@@ -275,8 +276,9 @@ export default function PostJobPage() {
   const [jobDescription, setJobDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
   
-  // Step 3: Headline
+  // Step 3: Headline (pre-filled when using Generate by AI)
   const [jobTitle, setJobTitle] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
   
   // Step 4: Postcode & Timing
   const [postcode, setPostcode] = useState("SW1A 1AA");
@@ -330,17 +332,51 @@ export default function PostJobPage() {
     setImages(images.filter((_, i) => i !== index));
   };
 
+  const handleGenerateByAI = async () => {
+    const sectorEntry = sectors.find((s) => s.value === selectedSector);
+    const sectorLabel = sectorEntry?.label || selectedSector;
+    if (!sectorLabel) {
+      toast.error("Select a sector first");
+      return;
+    }
+    setAiGenerating(true);
+    try {
+      const res = await fetch(resolveApiUrl("/api/jobs/generate-description"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sectorName: sectorLabel,
+          sectorSlug: selectedSector,
+          keyPoints: jobDescription.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to generate");
+        return;
+      }
+      if (data.title) setJobTitle(data.title);
+      if (data.description) setJobDescription(data.description);
+      toast.success("Description and title generated. You can edit them before continuing.");
+    } catch (e) {
+      toast.error("Failed to generate. Please try again.");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
         // Require sector and at least 3 categories
         return selectedSector !== "" && selectedCategories.length >= 3;
       case 2:
-        // Require job title
-        return jobTitle.trim() !== "";
-      case 3:
         // Require description
         return jobDescription.trim() !== "";
+      case 3:
+        // Require job title
+        return jobTitle.trim() !== "";
       case 4:
         // Require postcode and urgency
         return postcode.trim() !== "" && urgency !== "";
@@ -710,49 +746,49 @@ export default function PostJobPage() {
               </div>
             )}
 
-            {/* Step 2: Headline */}
+            {/* Step 2: Description (key points + Generate by AI → full description; next step gets title pre-filled) */}
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Give your job a headline
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Write a short title that summarizes what you need done.
-                  </p>
-                </div>
-
-                <div>
-                  <Input
-                    placeholder="e.g., Install new bathroom suite"
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Description */}
-            {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
                   <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     Describe your job
                   </h2>
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Provide details about what you need done. Be as specific as possible.
+                    Enter key points or a few words about what you need. Then use &quot;Generate by AI&quot; to create a full, structured description (and we&apos;ll suggest a title for the next step).
                   </p>
                 </div>
 
                 <div>
                   <Textarea
-                    placeholder="e.g., I need a plumber to fix a leaking pipe in my bathroom. The leak is coming from under the sink..."
+                    placeholder="e.g., leaking tap, kitchen, need fix by weekend"
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
-                    rows={8}
+                    rows={6}
                     className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
                   />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGenerateByAI}
+                      disabled={!selectedSector || aiGenerating}
+                      className={cn(
+                        "relative inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl overflow-hidden transition-all duration-300",
+                        "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]",
+                        "shadow-[0_4px_14px_0_rgba(0,0,0,0.25)] hover:shadow-[0_6px_24px_2px_rgba(0,0,0,0.2)] hover:scale-[1.03] active:scale-[0.98]",
+                        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-lg",
+                        !selectedSector || aiGenerating ? "bg-gray-400" : "btn-rainbow-ai"
+                      )}
+                    >
+                      <span className="absolute inset-0 bg-white/0 hover:bg-white/20 transition-colors duration-200 rounded-xl pointer-events-none" aria-hidden />
+                      <Sparkles className={cn("w-5 h-5 flex-shrink-0 drop-shadow-sm", aiGenerating && "animate-pulse")} />
+                      {aiGenerating ? "Generating…" : "Generate by AI"}
+                    </button>
+                    {!selectedSector && (
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        Select a sector in step 1 first.
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Image Upload */}
@@ -786,6 +822,29 @@ export default function PostJobPage() {
                       </label>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Headline (pre-filled from AI when Generate by AI was used) */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Give your job a headline
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Write a short title that summarizes what you need done. This may be pre-filled if you used Generate by AI.
+                  </p>
+                </div>
+
+                <div>
+                  <Input
+                    placeholder="e.g., Install new bathroom suite"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                  />
                 </div>
               </div>
             )}
