@@ -130,6 +130,79 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
   }
 });
 
+// Generate quote message to client using OpenAI (professional only)
+router.post('/generate-quote-message', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const { jobTitle, jobDescription, sectorName, keyPoints, tradingName } = req.body;
+    const title = typeof jobTitle === 'string' ? jobTitle.trim() : '';
+    const description = typeof jobDescription === 'string' ? jobDescription.trim() : '';
+    const sector = typeof sectorName === 'string' ? sectorName.trim() : '';
+    const points = typeof keyPoints === 'string' ? keyPoints.trim() : '';
+    const proName = typeof tradingName === 'string' ? tradingName.trim() : '';
+    if (!title) {
+      return res.status(400).json({ error: 'Job title is required' });
+    }
+
+    const apiKey = process.env.OPENAI_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'AI generation is not configured' });
+    }
+
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey });
+
+    const systemPrompt = `You are a helpful assistant for UK trades professionals. You write a quote message that a professional sends to a client when submitting a quote. The message must be in valid JSON only with a single key "message".
+
+Structure the "message" exactly as follows (do not invent random content):
+1. Greeting: A short, professional greeting to the client.
+2. Introduction: One sentence introducing the professional by their trading/business name (use the name provided).
+3. Body: Content that is clearly tied to THIS specific job. Reference the job title and what the client needs. Briefly describe relevant experience and track record that shows confidence and fit for this job. Keep it concise (2-4 sentences). If the client provided key points, weave them in naturally.
+Do not generate generic or random text. Every sentence should relate to the job or the professional's relevant experience. Use short paragraphs. Total length under 200 words. Output valid JSON with key "message".`;
+
+    const context = [
+      sector ? `Sector: ${sector}.` : '',
+      description ? `Full job description (use this to tailor your response): ${description.slice(0, 600)}.` : '',
+      points ? `Professional's key points to include: ${points}.` : '',
+      proName ? `Professional's trading/business name to introduce: ${proName}.` : '',
+    ].filter(Boolean).join(' ');
+    const userPrompt = `Job title: "${title}". ${context} Write the quote message in valid JSON with one key "message". Start with a greeting, then introduce the trading name, then a short paragraph tied to this job and the professional's relevant experience.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const raw = completion.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      return res.status(502).json({ error: 'Empty response from AI' });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.status(502).json({ error: 'Invalid AI response format' });
+    }
+
+    const message = (parsed.message || parsed.text || '').trim();
+    if (!message) {
+      return res.status(502).json({ error: 'AI did not return a message' });
+    }
+
+    return res.json({ message });
+  } catch (err) {
+    console.error('[Jobs] Generate quote message error:', err);
+    if (err.status === 401) {
+      return res.status(503).json({ error: 'AI service configuration error' });
+    }
+    return res.status(500).json({ error: err.message || 'Failed to generate message' });
+  }
+});
+
 // Create job (client only)
 router.post('/', authenticateToken, requireRole(['client']), async (req, res) => {
   try {

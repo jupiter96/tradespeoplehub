@@ -30,7 +30,9 @@ import {
   ChevronDown,
   Info,
   Inbox,
+  Sparkles,
 } from "lucide-react";
+import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -89,6 +91,7 @@ export default function JobDetailPage() {
     deliveryTime: "",
     message: "",
   });
+  const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
   
   // Milestone state for sending quote
   const [milestones, setMilestones] = useState<Array<{ description: string; amount: string }>>([
@@ -253,6 +256,36 @@ export default function JobDetailPage() {
       navigate(`/account?tab=messenger`);
     toast.success(`Opening chat with ${pro.name}`);
     });
+  };
+
+  const handleGenerateQuoteMessage = async () => {
+    if (!job) return;
+    setAiQuoteMessageGenerating(true);
+    try {
+      const res = await fetch(resolveApiUrl("/api/jobs/generate-quote-message"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          jobTitle: job.title,
+          jobDescription: job.description,
+          sectorName: job.sector,
+          keyPoints: quoteForm.message.trim() || undefined,
+          tradingName: userInfo?.businessName || userInfo?.tradingName || userInfo?.name || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to generate message");
+        return;
+      }
+      if (data.message) setQuoteForm((f) => ({ ...f, message: data.message }));
+      toast.success("Message generated. You can edit it before sending.");
+    } catch {
+      toast.error("Failed to generate message. Please try again.");
+    } finally {
+      setAiQuoteMessageGenerating(false);
+    }
   };
 
   const handleOpenAwardModal = (quote: JobQuote) => {
@@ -1516,11 +1549,27 @@ export default function JobDetailPage() {
                     Message to Client <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
-                    placeholder="Explain your approach, experience, and why you're the best fit for this job..."
+                    placeholder="Enter key points or a few words, then use Generate by AI to write a full message..."
                     value={quoteForm.message}
                     onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })}
                     className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                   />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGenerateQuoteMessage}
+                      disabled={aiQuoteMessageGenerating}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-5 py-2.5 rounded-xl border-2 transition-all duration-200",
+                        aiQuoteMessageGenerating
+                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
+                      )}
+                    >
+                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiQuoteMessageGenerating && "animate-pulse")} />
+                      {aiQuoteMessageGenerating ? "Generating…" : "Generate by AI"}
+                    </button>
+                  </div>
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
                     💡 Tip: Mention your relevant experience and availability
                   </p>

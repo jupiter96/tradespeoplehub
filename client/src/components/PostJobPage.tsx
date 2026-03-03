@@ -772,15 +772,13 @@ export default function PostJobPage() {
                       onClick={handleGenerateByAI}
                       disabled={!selectedSector || aiGenerating}
                       className={cn(
-                        "relative inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl overflow-hidden transition-all duration-300",
-                        "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]",
-                        "shadow-[0_4px_14px_0_rgba(0,0,0,0.25)] hover:shadow-[0_6px_24px_2px_rgba(0,0,0,0.2)] hover:scale-[1.03] active:scale-[0.98]",
-                        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-lg",
-                        !selectedSector || aiGenerating ? "bg-gray-400" : "btn-rainbow-ai"
+                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
+                        !selectedSector || aiGenerating
+                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
                       )}
                     >
-                      <span className="absolute inset-0 bg-white/0 hover:bg-white/20 transition-colors duration-200 rounded-xl pointer-events-none" aria-hidden />
-                      <Sparkles className={cn("w-5 h-5 flex-shrink-0 drop-shadow-sm", aiGenerating && "animate-pulse")} />
+                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
                       {aiGenerating ? "Generating…" : "Generate by AI"}
                     </button>
                     {!selectedSector && (
