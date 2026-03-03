@@ -47,6 +47,7 @@ const notificationSchema = new mongoose.Schema(
         'custom_offer_accepted',
         'custom_offer_rejected_by_client',
         'custom_offer_rejected_by_pro',
+        'job_invitation',
       ],
       required: true,
     },
@@ -75,7 +76,7 @@ const notificationSchema = new mongoose.Schema(
     },
     relatedModel: {
       type: String,
-      enum: ['Service', 'User', 'Wallet', 'Conversation', 'Message', 'Order', 'Review', 'CustomOffer'],
+      enum: ['Service', 'User', 'Wallet', 'Conversation', 'Message', 'Order', 'Review', 'CustomOffer', 'Job'],
     },
     // Link to navigate when notification is clicked
     link: {

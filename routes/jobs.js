@@ -7,6 +7,7 @@ import Review from '../models/Review.js';
 import Sector from '../models/Sector.js';
 import JobDispute from '../models/JobDispute.js';
 import Wallet from '../models/Wallet.js';
+import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -357,6 +358,38 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
   } catch (err) {
     console.error('[Jobs] Recommended professionals error:', err);
     res.status(500).json({ error: err.message || 'Failed to get recommended professionals' });
+  }
+});
+
+// Client: invite professional to quote (sends notification to professional; link to job detail)
+router.post('/:id/invite-professional', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const job = await findJobByIdOrSlug(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.clientId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to invite for this job' });
+    }
+    const { professionalId } = req.body;
+    if (!professionalId) return res.status(400).json({ error: 'professionalId is required' });
+    const pro = await User.findById(professionalId).select('_id role tradingName firstName lastName').lean();
+    if (!pro || pro.role !== 'professional') return res.status(404).json({ error: 'Professional not found' });
+    const jobSlug = job.slug || job._id.toString();
+    const jobTitle = job.title || 'Job';
+    const clientName = req.user.name || req.user.firstName || 'A client';
+    await Notification.createNotification({
+      userId: pro._id,
+      type: 'job_invitation',
+      title: 'Job quote invitation',
+      message: `${clientName} invited you to submit a quote for "${jobTitle}".`,
+      relatedId: job._id,
+      relatedModel: 'Job',
+      link: `/job/${jobSlug}`,
+      metadata: { jobId: job._id.toString(), jobSlug, jobTitle, clientId: req.user.id },
+    });
+    return res.json({ success: true, message: 'Invitation sent' });
+  } catch (err) {
+    console.error('[Jobs] Invite professional error:', err);
+    res.status(500).json({ error: err.message || 'Failed to send invitation' });
   }
 });
 

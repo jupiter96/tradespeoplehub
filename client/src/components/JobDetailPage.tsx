@@ -29,6 +29,7 @@ import {
   Plus,
   ChevronDown,
   Info,
+  Inbox,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -72,7 +73,6 @@ import milestoneStep1 from "figma:asset/a0de430b25f40690ee801be2a6d5041990689f12
 import milestoneStep2 from "figma:asset/e1c037263ad447fb88ea0f991b3910b9cdd26dec.png";
 import milestoneStep3 from "figma:asset/27504741573e0946b791d837bb57de9ad9c0f981.png";
 import InviteToQuoteModal from "./InviteToQuoteModal";
-import hourglassIcon from "figma:asset/19b8318c4dd036819acec78c2311528585bbfe6b.png";
 import InviteProfessionalsList from "./InviteProfessionalsList";
 
 export default function JobDetailPage() {
@@ -228,12 +228,23 @@ export default function JobDetailPage() {
     });
   };
 
-  const handleInviteProfessional = (pro: typeof recommendedProfessionals[0]) => {
-    // Add to invited professionals set
-    setInvitedProfessionals(prev => new Set(prev).add(pro.id));
-    
-    // Show success toast
-    toast.success(`Sent invitation to ${pro.name} on project "${job.title}"`);
+  const handleInviteProfessional = async (pro: typeof recommendedProfessionals[0]) => {
+    try {
+      const res = await fetch(resolveApiUrl(`/api/jobs/${job.id}/invite-professional`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ professionalId: pro.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to send invitation");
+      }
+      setInvitedProfessionals((prev) => new Set(prev).add(pro.id));
+      toast.success(`Sent invitation to ${pro.name} on project "${job.title}"`);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send invitation");
+    }
   };
 
   const handleMessageProfessional = (pro: typeof recommendedProfessionals[0]) => {
@@ -778,9 +789,11 @@ export default function JobDetailPage() {
                 )}
 
                 {job.quotes.length === 0 ? (
-                  <div className="bg-white rounded-xl shadow-sm p-16 md:p-20 text-center">
-                    <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center bg-[#3B82F6] rounded-lg">
-                      <img src={hourglassIcon} alt="Hourglass" className="w-10 h-10 brightness-0 invert" />
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 md:p-24 text-center">
+                    <div className="mx-auto mb-6 flex justify-center">
+                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                        <Inbox className="h-12 w-12" strokeWidth={1.25} aria-hidden />
+                      </div>
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b7280] leading-relaxed max-w-xl mx-auto">
                       Thank you for posting your job, our vetted professionals will quote soon.

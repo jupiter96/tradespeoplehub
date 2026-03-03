@@ -352,6 +352,7 @@ const getNotificationIconType = (type: string): string => {
     'custom_offer_accepted': 'success',
     'custom_offer_rejected_by_client': 'warning',
     'custom_offer_rejected_by_pro': 'warning',
+    'job_invitation': 'message',
   };
   return typeMap[type] || 'info';
 };
