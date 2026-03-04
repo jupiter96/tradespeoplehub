@@ -343,7 +343,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   };
 
   const getAvailableJobs = (): Job[] =>
-    userInfo?.role === 'professional' ? jobs : [];
+    userInfo?.role === 'professional' ? jobs.filter((job) => job.status === 'active') : [];
 
   const getProfessionalQuotes = (professionalId: string): { job: Job; quote: JobQuote }[] => {
     const result: { job: Job; quote: JobQuote }[] = [];
@@ -356,13 +356,17 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   };
 
   const getProfessionalActiveJobs = (professionalId: string): Job[] =>
-    jobs.filter(
-      (job) =>
-        job.status === 'in-progress' &&
-        (job.quotes || []).some(
+    jobs.filter((job) => {
+      if (job.status === 'awaiting-accept' || job.status === 'completed') {
+        return job.awardedProfessionalId === professionalId;
+      }
+      if (job.status === 'in-progress') {
+        return (job.quotes || []).some(
           (q) => q.professionalId === professionalId && (q.status === 'accepted' || q.status === 'awarded')
-        )
-    );
+        );
+      }
+      return false;
+    });
 
   const normalizeAvatar = (value?: string) =>
     value && !/images\.unsplash\.com/i.test(value) ? value : undefined;

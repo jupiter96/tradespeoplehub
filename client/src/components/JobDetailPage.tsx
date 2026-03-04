@@ -854,8 +854,8 @@ export default function JobDetailPage() {
                   Submit Quote
                 </Button>
               )}
-              {/* Professional: Already submitted */}
-              {!isJobOwner && hasSubmittedQuote && (
+              {/* Professional: Already submitted – hide from In Progress onwards */}
+              {!isJobOwner && hasSubmittedQuote && job?.status === "active" && (
                 <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
                   <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                   Quote Submitted
