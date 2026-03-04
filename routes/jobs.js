@@ -95,6 +95,12 @@ function toJobResponse(doc) {
       message: q.message,
       submittedAt: q.submittedAt ? new Date(q.submittedAt).toISOString() : null,
       status: q.status,
+      suggestedMilestones: (q.suggestedMilestones || []).map((m) => ({
+        id: m._id.toString(),
+        description: m.description,
+        amount: m.amount,
+        status: m.status || 'pending',
+      })),
     })),
     awardedProfessionalId: job.awardedProfessionalId?.toString?.() || job.awardedProfessionalId || undefined,
     milestones: (job.milestones || []).map((m) => ({
@@ -475,6 +481,16 @@ router.get('/:id', authenticateToken, async (req, res) => {
       response.clientAvatar = clientUser.avatar;
       response.clientMemberSince = clientUser.createdAt ? new Date(clientUser.createdAt).toISOString() : undefined;
     }
+    // Ensure each quote has the professional's current avatar (from User) so avatars always display
+    const quoteProIds = [...new Set((response.quotes || []).map((q) => q.professionalId).filter(Boolean))];
+    if (quoteProIds.length > 0) {
+      const proAvatars = await User.find({ _id: { $in: quoteProIds } }).select('avatar').lean();
+      const avatarByProId = Object.fromEntries(proAvatars.map((u) => [u._id.toString(), u.avatar]).filter(([, v]) => v != null));
+      response.quotes = response.quotes.map((q) => ({
+        ...q,
+        professionalAvatar: avatarByProId[q.professionalId] ?? q.professionalAvatar,
+      }));
+    }
     res.json(response);
   } catch (err) {
     console.error('[Jobs] Get error:', err);
@@ -716,6 +732,21 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
       return res.status(400).json({ error: 'Delivery time is required' });
     }
 
+    // Optional suggested milestones from professional
+    const rawSuggested = Array.isArray(req.body.suggestedMilestones) ? req.body.suggestedMilestones : [];
+    const suggestedMilestones = rawSuggested
+      .map((item) => {
+        const amount =
+          item && item.amount != null && !isNaN(Number(item.amount)) ? Number(item.amount) : null;
+        const description =
+          item && typeof item.description === 'string' ? item.description.trim() : '';
+        if (!amount || amount <= 0 || !description) {
+          return null;
+        }
+        return { description, amount, status: 'pending' };
+      })
+      .filter(Boolean);
+
     const professionalName =
       fullUser?.tradingName || [fullUser?.firstName, fullUser?.lastName].filter(Boolean).join(' ') || 'Professional';
 
@@ -743,6 +774,7 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
       deliveryTime: String(deliveryTime).trim(),
       message: message ? String(message).trim() : '',
       status: 'pending',
+      suggestedMilestones,
     });
     job.markModified('quotes');
     await job.save();
@@ -918,6 +950,149 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
     res.status(500).json({ error: err.message || 'Failed to update quote' });
   }
 });
+
+// Client: accept a single suggested milestone from the awarded quote -> create real funded milestone
+router.post(
+  '/:id/quotes/:quoteId/suggested-milestones/:suggestedId/accept',
+  authenticateToken,
+  requireRole(['client']),
+  async (req, res) => {
+    try {
+      const job = await Job.findById(req.params.id);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+      if (job.clientId.toString() !== req.user.id) {
+        return res.status(403).json({ error: 'Not allowed to update this job' });
+      }
+      if (!['awaiting-accept', 'in-progress'].includes(job.status)) {
+        return res
+          .status(400)
+          .json({ error: 'Cannot accept suggested milestones in current job status' });
+      }
+
+      const quote = (job.quotes || []).find((q) => q._id.toString() === req.params.quoteId);
+      if (!quote) return res.status(404).json({ error: 'Quote not found' });
+
+      // Only allow accepting milestones from the awarded professional
+      if (
+        !job.awardedProfessionalId ||
+        !quote.professionalId ||
+        quote.professionalId.toString() !== job.awardedProfessionalId.toString()
+      ) {
+        return res.status(400).json({ error: 'Suggested milestones can only be accepted for awarded quote' });
+      }
+
+      const suggested =
+        (quote.suggestedMilestones || []).find((m) => m._id.toString() === req.params.suggestedId) ||
+        null;
+      if (!suggested) {
+        return res.status(404).json({ error: 'Suggested milestone not found' });
+      }
+      if (suggested.status === 'accepted') {
+        return res.status(400).json({ error: 'Suggested milestone is already accepted' });
+      }
+      if (suggested.status === 'rejected') {
+        return res.status(400).json({ error: 'Suggested milestone has been rejected' });
+      }
+
+      const numAmount = suggested.amount != null && !isNaN(Number(suggested.amount))
+        ? Number(suggested.amount)
+        : null;
+      if (numAmount == null || numAmount <= 0) {
+        return res.status(400).json({ error: 'Suggested milestone amount is invalid' });
+      }
+
+      const description =
+        (suggested.description && String(suggested.description).trim()) || 'Milestone';
+
+      // Wallet balance check and deduction (same behaviour as creating a normal milestone)
+      const client = await User.findById(job.clientId).select('walletBalance');
+      if (!client) return res.status(400).json({ error: 'Client not found' });
+      const currentBalance = client.walletBalance || 0;
+      if (currentBalance < numAmount) {
+        return res.status(400).json({
+          error: 'Insufficient wallet balance',
+          code: 'INSUFFICIENT_BALANCE',
+          required: numAmount,
+          current: currentBalance,
+        });
+      }
+      client.walletBalance = currentBalance - numAmount;
+      await client.save();
+      await Wallet.create({
+        userId: job.clientId,
+        type: 'payment',
+        amount: numAmount,
+        balance: client.walletBalance,
+        status: 'completed',
+        paymentMethod: 'wallet',
+        description: `Job milestone - ${job.title || 'Job'} - ${description}`,
+        metadata: { jobId: job._id.toString(), source: 'job_suggested_milestone' },
+      });
+
+      job.milestones = job.milestones || [];
+      const newMilestoneStatus = job.status === 'in-progress' ? 'in-progress' : 'awaiting-accept';
+      job.milestones.push({
+        name: description,
+        description,
+        amount: numAmount,
+        status: newMilestoneStatus,
+      });
+
+      suggested.status = 'accepted';
+      job.markModified('milestones');
+      job.markModified('quotes');
+      await job.save();
+      return res.json(toJobResponse(job));
+    } catch (err) {
+      console.error('[Jobs] Accept suggested milestone error:', err);
+      return res
+        .status(500)
+        .json({ error: err.message || 'Failed to accept suggested milestone' });
+    }
+  }
+);
+
+// Client: reject a suggested milestone from the awarded quote
+router.post(
+  '/:id/quotes/:quoteId/suggested-milestones/:suggestedId/reject',
+  authenticateToken,
+  requireRole(['client']),
+  async (req, res) => {
+    try {
+      const job = await Job.findById(req.params.id);
+      if (!job) return res.status(404).json({ error: 'Job not found' });
+      if (job.clientId.toString() !== req.user.id) {
+        return res.status(403).json({ error: 'Not allowed to update this job' });
+      }
+
+      const quote = (job.quotes || []).find((q) => q._id.toString() === req.params.quoteId);
+      if (!quote) return res.status(404).json({ error: 'Quote not found' });
+
+      const suggested =
+        (quote.suggestedMilestones || []).find((m) => m._id.toString() === req.params.suggestedId) ||
+        null;
+      if (!suggested) {
+        return res.status(404).json({ error: 'Suggested milestone not found' });
+      }
+      if (suggested.status === 'accepted') {
+        return res.status(400).json({ error: 'Suggested milestone is already accepted' });
+      }
+      if (suggested.status === 'rejected') {
+        return res.status(400).json({ error: 'Suggested milestone is already rejected' });
+      }
+
+      suggested.status = 'rejected';
+      job.markModified('quotes');
+      await job.save();
+      return res.json(toJobResponse(job));
+    } catch (err) {
+      console.error('[Jobs] Reject suggested milestone error:', err);
+      return res
+        .status(500)
+        .json({ error: err.message || 'Failed to reject suggested milestone' });
+    }
+  }
+);
 
 // Professional: accept job award (job moves to in-progress, milestones to in-progress)
 router.post('/:id/accept-award', authenticateToken, requireRole(['professional']), async (req, res) => {

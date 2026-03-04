@@ -111,16 +111,15 @@ type ProfileData = {
   }>;
 };
 
-// Helper function to resolve media URLs (images/videos)
+// Helper function to resolve media URLs (images/videos) to full API URL
 const resolveMediaUrl = (url: string | undefined): string => {
-  if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) {
-    return url;
+  if (!url || !url.trim()) return "";
+  const u = url.trim();
+  if (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("blob:") || u.startsWith("data:")) {
+    return u;
   }
-  if (url.startsWith("/")) {
-    return resolveApiUrl(url);
-  }
-  return url;
+  const pathWithSlash = u.startsWith("/") ? u : `/${u}`;
+  return resolveApiUrl(pathWithSlash);
 };
 
 export default function ProfilePage() {
@@ -763,7 +762,8 @@ export default function ProfilePage() {
     );
   }
 
-  const avatarUrl = profile.avatar;
+  // Resolve avatar to full API URL so /uploads/avatars/... loads from backend
+  const avatarUrl = resolveMediaUrl(profile.avatar) || undefined;
   // TODO: wire to real presence when backend supports it.
   const isOnline = true;
 

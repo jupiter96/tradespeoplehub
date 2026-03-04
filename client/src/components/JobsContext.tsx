@@ -14,6 +14,12 @@ export interface JobQuote {
   message: string;
   submittedAt: string;
   status: "pending" | "accepted" | "rejected" | "awarded";
+  suggestedMilestones?: {
+    id: string;
+    description: string;
+    amount: number;
+    status: "pending" | "accepted" | "rejected";
+  }[];
 }
 
 export interface DisputeMessage {
@@ -113,7 +119,12 @@ interface JobsContextType {
   getJobById: (id: string) => Job | undefined;
   fetchJobById: (id: string) => Promise<Job | null>;
   getUserJobs: (userId: string) => Job[];
-  addQuoteToJob: (jobId: string, quote: Omit<JobQuote, "id" | "submittedAt" | "status">) => Promise<void>;
+  addQuoteToJob: (
+    jobId: string,
+    quote: Omit<JobQuote, "id" | "submittedAt" | "status" | "suggestedMilestones"> & {
+      suggestedMilestones?: { description: string; amount: number }[];
+    }
+  ) => Promise<void>;
   updateQuoteStatus: (jobId: string, quoteId: string, status: "accepted" | "rejected" | "awarded") => Promise<void>;
   withdrawQuote: (jobId: string, quoteId: string) => Promise<void>;
   updateQuoteByProfessional: (jobId: string, quoteId: string, data: { price: number; deliveryTime: string; message: string }) => Promise<void>;
@@ -267,7 +278,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
 
   const addQuoteToJob = async (
     jobId: string,
-    quoteData: Omit<JobQuote, "id" | "submittedAt" | "status">
+    quoteData: Omit<JobQuote, "id" | "submittedAt" | "status" | "suggestedMilestones"> & {
+      suggestedMilestones?: { description: string; amount: number }[];
+    }
   ): Promise<void> => {
     const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/quotes`), {
       method: 'POST',
@@ -277,6 +290,12 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         price: quoteData.price,
         deliveryTime: quoteData.deliveryTime,
         message: quoteData.message || '',
+        suggestedMilestones: (quoteData.suggestedMilestones || [])
+          .map((m) => ({
+            description: (m.description || '').trim(),
+            amount: typeof m.amount === 'string' ? Number(m.amount) : m.amount,
+          }))
+          .filter((m) => m.description && !isNaN(Number(m.amount)) && Number(m.amount) > 0),
       }),
     });
     if (!res.ok) {

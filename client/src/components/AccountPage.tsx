@@ -2240,7 +2240,7 @@ function DetailsSection() {
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
           <Avatar className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-[#3B82F6]/20 flex-shrink-0 shadow-lg">
             <AvatarImage 
-              src={avatarPreview || userInfo?.avatar || undefined} 
+              src={avatarPreview || resolveAvatarUrl(userInfo?.avatar) || undefined} 
               alt={userInfo?.name || 'User avatar'}
               className="object-cover"
             />

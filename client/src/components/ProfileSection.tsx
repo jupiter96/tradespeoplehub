@@ -12,6 +12,7 @@ import { Badge } from "./ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { resolveAvatarUrl } from "./orders/utils";
 import {
   Dialog,
   DialogContent,
@@ -1122,7 +1123,7 @@ export default function ProfileSection() {
         <div className="flex items-center gap-6">
           <Avatar className="w-24 h-24 border-4 border-[#FE8A0F]/20 flex-shrink-0 shadow-lg">
             <AvatarImage 
-              src={avatarPreview || userInfo?.avatar || undefined} 
+              src={avatarPreview || resolveAvatarUrl(userInfo?.avatar) || undefined} 
               alt={userInfo?.name || 'User avatar'}
               className="object-cover"
             />
@@ -1825,7 +1826,7 @@ export default function ProfileSection() {
                 <div className="flex-shrink-0 relative">
                   <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-gray-100 relative">
                     <AvatarImage 
-                      src={avatarPreview || userInfo?.avatar} 
+                      src={avatarPreview || resolveAvatarUrl(userInfo?.avatar) || undefined} 
                       alt={displayName}
                       className="object-cover"
                     />

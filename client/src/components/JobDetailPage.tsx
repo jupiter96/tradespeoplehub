@@ -117,6 +117,7 @@ export default function JobDetailPage() {
     { description: "", amount: "" }
   ]);
   const [isMilestoneOpen, setIsMilestoneOpen] = useState(false);
+  const [updatingSuggestedMilestoneId, setUpdatingSuggestedMilestoneId] = useState<string | null>(null);
 
   // Award modal state
   const [showAwardModal, setShowAwardModal] = useState(false);
@@ -708,6 +709,15 @@ export default function JobDetailPage() {
       return;
     }
     try {
+      const cleanedSuggestedMilestones = milestones
+        .map((m) => {
+          const description = (m.description || "").trim();
+          const amount = m.amount != null && m.amount !== "" ? Number(m.amount) : NaN;
+          if (!description || isNaN(amount) || amount <= 0) return null;
+          return { description, amount };
+        })
+        .filter((m): m is { description: string; amount: number } => !!m);
+
       await addQuoteToJob(job.id, {
         professionalId: userInfo?.id || "",
         professionalName: userInfo?.businessName || userInfo?.name || "Professional",
@@ -717,6 +727,7 @@ export default function JobDetailPage() {
         price,
         deliveryTime: quoteForm.deliveryTime,
         message: quoteForm.message,
+        suggestedMilestones: cleanedSuggestedMilestones,
       });
       toast.success("Quote submitted successfully!");
       setShowQuoteDialog(false);
@@ -1071,6 +1082,7 @@ export default function JobDetailPage() {
                       const expanded = expandedQuoteMessages.has(quote.id);
                       const displayMsg = expanded ? msg : (isLong ? msg.slice(0, 400) + "..." : msg);
                       const showAcceptedBadge = job?.status === "in-progress" && quote.status === "accepted";
+                      const quoteAvatarSrc = resolveAvatarUrl(quote.professionalAvatar);
                       return (
                         <div key={quote.id} className="relative flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg mt-4 first:mt-0 overflow-hidden">
                           {showAcceptedBadge && (
@@ -1085,7 +1097,7 @@ export default function JobDetailPage() {
                             <div className="flex items-start gap-4 flex-1 min-w-0">
                               <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
-                                  {resolveAvatarUrl(quote.professionalAvatar) && <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />}
+                                  {quoteAvatarSrc && <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />}
                                   <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
                                     {getTwoLetterInitials(quote.professionalName, "P")}
                                   </AvatarFallback>
@@ -1156,6 +1168,7 @@ export default function JobDetailPage() {
                     const msgExpanded = expandedQuoteMessages.has(quote.id);
                     const showMsg = msgExpanded ? msg : (isLongMsg ? msg.slice(0, 400) + "..." : msg);
                     const isAwarded = quote.status === "awarded";
+                    const quoteAvatarSrc = resolveAvatarUrl(quote.professionalAvatar);
                     return (
                     <div
                       key={quote.id}
@@ -1174,8 +1187,8 @@ export default function JobDetailPage() {
                         <div className="flex items-start gap-3 mb-3">
                           <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                             <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
-                              {resolveAvatarUrl(quote.professionalAvatar) && (
-                                <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                              {quoteAvatarSrc && (
+                                <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
                               )}
                               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                 {getTwoLetterInitials(quote.professionalName, "P")}
@@ -1277,9 +1290,9 @@ export default function JobDetailPage() {
                           <div className="flex items-center gap-4 flex-1 min-w-0">
                             <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                               <Avatar className="w-14 h-14 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
-                                {resolveAvatarUrl(quote.professionalAvatar) && (
-                                <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
-                              )}
+                                {quoteAvatarSrc && (
+                                  <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
+                                )}
                                 <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                   {getTwoLetterInitials(quote.professionalName, "P")}
                                 </AvatarFallback>
@@ -1410,6 +1423,144 @@ export default function JobDetailPage() {
             {/* Payment Tab */}
             {activeTab === "payment" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
+                {/* Suggested milestones from awarded quote (if any) */}
+                {job.awardedProfessionalId && job.quotes && job.quotes.length > 0 && (() => {
+                  const awardedQuote = job.quotes.find(
+                    (q) => q.professionalId === job.awardedProfessionalId
+                  );
+                  const suggested = awardedQuote?.suggestedMilestones || [];
+                  if (!awardedQuote || suggested.length === 0) return null;
+                  const hasPending = suggested.some((m) => m.status === "pending");
+                  return (
+                    <div className="mb-6 border border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/60">
+                      <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#047857] mb-2 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Milestones Suggested
+                      </h3>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#166534] mb-3">
+                        The professional suggested the following milestone payment plan when sending their quote.
+                        You can accept items to create funded milestones, or reject items you don&apos;t want.
+                      </p>
+                      <div className="overflow-x-auto rounded-lg border border-emerald-100 bg-white">
+                        <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                          <thead>
+                            <tr className="bg-emerald-50 border-b border-emerald-100">
+                              <th className="text-left py-2.5 px-3 text-[#064e3b] font-medium">Description</th>
+                              <th className="text-right py-2.5 px-3 text-[#064e3b] font-medium">Amount</th>
+                              <th className="text-center py-2.5 px-3 text-[#064e3b] font-medium">Status</th>
+                              <th className="text-right py-2.5 px-3 text-[#064e3b] font-medium">
+                                {isJobOwner && hasPending ? "Actions" : ""}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {suggested.map((m) => (
+                              <tr key={m.id} className="border-b border-emerald-50 last:border-0">
+                                <td className="py-2.5 px-3 text-[#1f2933]">
+                                  {m.description || "Milestone"}
+                                </td>
+                                <td className="py-2.5 px-3 text-right text-[#1f2933]">
+                                  £{formatNumber(Number(m.amount || 0), 1)}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  {m.status === "pending" && (
+                                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                      Pending
+                                    </Badge>
+                                  )}
+                                  {m.status === "accepted" && (
+                                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                      Accepted
+                                    </Badge>
+                                  )}
+                                  {m.status === "rejected" && (
+                                    <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                      rejected
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-right">
+                                  {isJobOwner && m.status === "pending" && (
+                                    <div className="inline-flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        disabled={!!updatingSuggestedMilestoneId}
+                                        className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        onClick={async () => {
+                                          if (!job) return;
+                                          setUpdatingSuggestedMilestoneId(m.id);
+                                          try {
+                                            const res = await fetch(
+                                              resolveApiUrl(
+                                                `/api/jobs/${job.id}/quotes/${awardedQuote.id}/suggested-milestones/${m.id}/accept`
+                                              ),
+                                              {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                credentials: "include",
+                                              }
+                                            );
+                                            const data = await res.json().catch(() => ({}));
+                                            if (!res.ok) {
+                                              throw new Error(data.error || "Failed to accept milestone");
+                                            }
+                                            await fetchJobById(job.id);
+                                            toast.success("Milestone created from suggestion.");
+                                          } catch (e: any) {
+                                            toast.error(e?.message || "Failed to accept milestone");
+                                          } finally {
+                                            setUpdatingSuggestedMilestoneId(null);
+                                          }
+                                        }}
+                                      >
+                                        {updatingSuggestedMilestoneId === m.id ? "..." : "Accept"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={!!updatingSuggestedMilestoneId}
+                                        className="h-8 px-3 border-red-300 text-red-600 hover:bg-red-50"
+                                        onClick={async () => {
+                                          if (!job) return;
+                                          setUpdatingSuggestedMilestoneId(m.id);
+                                          try {
+                                            const res = await fetch(
+                                              resolveApiUrl(
+                                                `/api/jobs/${job.id}/quotes/${awardedQuote.id}/suggested-milestones/${m.id}/reject`
+                                              ),
+                                              {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                credentials: "include",
+                                              }
+                                            );
+                                            const data = await res.json().catch(() => ({}));
+                                            if (!res.ok) {
+                                              throw new Error(data.error || "Failed to reject milestone");
+                                            }
+                                            await fetchJobById(job.id);
+                                            toast.success("Suggested milestone rejected.");
+                                          } catch (e: any) {
+                                            toast.error(e?.message || "Failed to reject milestone");
+                                          } finally {
+                                            setUpdatingSuggestedMilestoneId(null);
+                                          }
+                                        }}
+                                      >
+                                        {updatingSuggestedMilestoneId === m.id ? "..." : "Reject"}
+                                      </Button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                     Milestone Payments

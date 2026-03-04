@@ -5,28 +5,22 @@ export const resolveApiUrl = (path: string): string => {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
-  
+  // Ensure path has leading slash so base + path is valid
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
   // Always determine base URL at runtime
   if (typeof window !== 'undefined') {
     const env = (import.meta as any).env;
-    
-    // Check for environment variable first
-    if (env?.VITE_API_BASE_URL) {
-      return `${env.VITE_API_BASE_URL}${path}`;
-    }
-    
-    // In production or when not on localhost, use current origin
-    if (env?.PROD || env?.MODE === 'production' || 
-        (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) {
-      return `${window.location.origin}${path}`;
-    }
-    
-    // Development: use localhost:5000
-    return `http://localhost:5000${path}`;
+    const base = env?.VITE_API_BASE_URL
+      ? (env.VITE_API_BASE_URL as string).replace(/\/$/, '')
+      : (env?.PROD || env?.MODE === 'production' ||
+          (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'))
+        ? window.location.origin
+        : 'http://localhost:5000';
+    return `${base}${normalizedPath}`;
   }
-  
-  // Server-side rendering fallback
-  return `http://localhost:5000${path}`;
+
+  return `http://localhost:5000${normalizedPath}`;
 };
 
 // Get API base URL (for backward compatibility)

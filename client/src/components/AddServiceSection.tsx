@@ -58,6 +58,7 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { resolveAvatarUrl } from "./orders/utils";
 
 interface AddServiceSectionProps {
   onClose: () => void;
@@ -6808,7 +6809,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                     <div className="flex-shrink-0">
                       <div className="relative">
                         <Avatar className="w-24 h-24 md:w-32 md:h-32 border-2 border-gray-200">
-                          <AvatarImage src={profileImage || userInfo?.avatar} alt="Profile" />
+                          <AvatarImage src={profileImage?.startsWith("data:") ? profileImage : (resolveAvatarUrl(profileImage || userInfo?.avatar) || undefined)} alt="Profile" />
                           <AvatarFallback className="bg-[#FE8A0F] text-white text-lg md:text-xl font-semibold">
                             {userInfo?.firstName?.charAt(0) || userInfo?.tradingName?.charAt(0) || "U"}
                           </AvatarFallback>

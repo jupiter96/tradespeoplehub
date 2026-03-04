@@ -226,20 +226,16 @@ export const resolveAvatarUrl = (avatar?: string): string | undefined => {
     return trimmedAvatar;
   }
   
-  // Otherwise, resolve using API URL
-  const baseUrl = import.meta.env.VITE_API_URL || "";
-  const resolvedUrl = `${baseUrl}${trimmedAvatar.startsWith("/") ? "" : "/"}${trimmedAvatar}`;
-  
-  // Final check - don't return if it looks invalid
-  if (!resolvedUrl || resolvedUrl === baseUrl || resolvedUrl === `${baseUrl}/`) {
-    return undefined;
+  // Relative path (e.g. /uploads/avatars/xxx): resolve against API origin so image loads from backend
+  const pathWithLeadingSlash = trimmedAvatar.startsWith("/") ? trimmedAvatar : `/${trimmedAvatar}`;
+  // Server-stored avatars: always resolve so img loads from API origin
+  if (pathWithLeadingSlash.startsWith("/uploads/")) {
+    const resolved = resolveApiUrl(pathWithLeadingSlash);
+    return resolved || undefined;
   }
-  
-  // Final hash pattern check on resolved URL
-  if (hashPattern.test(filename)) {
-    return undefined;
-  }
-  
+  const resolvedUrl = resolveApiUrl(pathWithLeadingSlash);
+  if (!resolvedUrl) return undefined;
+  if (hashPattern.test(filename)) return undefined;
   return resolvedUrl;
 };
 

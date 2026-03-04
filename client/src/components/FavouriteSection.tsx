@@ -440,7 +440,7 @@ export default function FavouriteSection() {
                   <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
                     <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
                       <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center cursor-pointer hover:opacity-80 transition-opacity">
-                        <AvatarImage src={service.providerImage} alt={service.tradingName} />
+                        <AvatarImage src={resolveMediaUrl(service.providerImage) || undefined} alt={service.tradingName} />
                         <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
                           {service.tradingName?.slice(0, 2).toUpperCase() || '??'}
                         </AvatarFallback>

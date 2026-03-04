@@ -2,8 +2,13 @@ import express from 'express';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
+import path from 'path';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import User from '../models/User.js';
 import Admin from '../models/Admin.js';
 import SEOContent from '../models/SEOContent.js';
@@ -27,19 +32,6 @@ import Review from '../models/Review.js';
 // Load environment variables
 dotenv.config();
 
-// Cloudinary configuration
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
-
-if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
-  cloudinary.config({
-    cloud_name: CLOUDINARY_CLOUD_NAME,
-    api_key: CLOUDINARY_API_KEY,
-    api_secret: CLOUDINARY_API_SECRET,
-  });
-}
-
 /** Sync order status to the associated custom offer message in chat */
 async function syncCustomOfferMessageStatus(order) {
   if (!order?.metadata?.fromCustomOffer || !order.metadata.customOfferId) return;
@@ -61,27 +53,42 @@ async function syncCustomOfferMessageStatus(order) {
   }
 }
 
-// Helper function to extract public ID from Cloudinary URL
-const extractPublicId = (url) => {
-  if (!url) return null;
-  const match = url.match(/\/v\d+\/(.+)\./);
-  return match ? match[1] : null;
+// Delete local file if URL is under /uploads/
+const deleteLocalUploadByUrl = async (url) => {
+  if (!url || typeof url !== 'string') return;
+  const normalized = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+  if (!normalized.startsWith('/uploads/')) return;
+  const filePath = path.join(__dirname, '..', normalized);
+  try {
+    await fs.unlink(filePath);
+  } catch {
+    // ignore
+  }
 };
 
-// Configure multer for avatar uploads
-const avatarUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
-    }
+// Admin avatars: uploads/admin-avatars
+const adminAvatarsDir = path.join(__dirname, '..', 'uploads', 'admin-avatars');
+fs.mkdir(adminAvatarsDir, { recursive: true }).catch(() => {});
+
+const adminAvatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, adminAvatarsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname) || '.jpg';
+    const base = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `admin-avatar-${base}-${uniqueSuffix}${ext}`);
   },
 });
 
+const avatarUpload = multer({
+  storage: adminAvatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
+  },
+});
 const avatarUploadMiddleware = avatarUpload.single('avatar');
 
 const sanitizeUser = (user) => user.toSafeObject();
@@ -264,78 +271,37 @@ router.post(
   requireAdmin,
   (req, res, next) => {
     avatarUploadMiddleware(req, res, (err) => {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
+      if (err) return res.status(400).json({ error: err.message });
       return next();
     });
   },
   async (req, res) => {
     try {
-      // Check if Cloudinary is configured
-      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-        return res.status(500).json({ 
-          error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-        });
-      }
-
       if (!req.file) {
         return res.status(400).json({ error: 'Avatar file is required' });
       }
 
       const admin = await Admin.findById(req.session.adminId);
       if (!admin) {
+        if (req.file.path) fs.unlink(req.file.path).catch(() => {});
         return res.status(401).json({ error: 'Admin not found' });
       }
 
-      // Delete old avatar from Cloudinary if exists
       if (admin.avatar) {
-        const oldPublicId = extractPublicId(admin.avatar);
-        if (oldPublicId) {
-          try {
-            await cloudinary.uploader.destroy(oldPublicId);
-          } catch (error) {
-            // console.warn('Failed to delete old avatar from Cloudinary:', error);
-          }
-        }
+        await deleteLocalUploadByUrl(admin.avatar);
       }
 
-      // Upload to Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'admin-avatars',
-            public_id: `admin-avatar-${admin._id}-${Date.now()}`,
-            transformation: [
-              { width: 400, height: 400, crop: 'fill', gravity: 'face' },
-              { quality: 'auto' },
-            ],
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        uploadStream.end(req.file.buffer);
-      });
-
-      // Update only the avatar field to avoid validation issues
+      const avatarUri = `/uploads/admin-avatars/${req.file.filename}`;
       const updatedAdmin = await Admin.findByIdAndUpdate(
         admin._id,
-        { avatar: uploadResult.secure_url },
+        { avatar: avatarUri },
         { new: true, runValidators: false }
       );
 
-      if (!updatedAdmin) {
-        return res.status(404).json({ error: 'Admin not found' });
-      }
-
       return res.json({ user: updatedAdmin.toSafeObject() });
     } catch (error) {
-      // console.error('Avatar upload error', error);
-      return res.status(500).json({ 
-        error: error.message || 'Failed to upload avatar' 
-      });
+      if (req.file && req.file.path) fs.unlink(req.file.path).catch(() => {});
+      return res.status(500).json({ error: error.message || 'Failed to upload avatar' });
     }
   }
 );
@@ -343,190 +309,105 @@ router.post(
 // Delete admin avatar
 router.delete('/profile/avatar', requireAdmin, async (req, res) => {
   try {
-    // Check if Cloudinary is configured
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-      return res.status(500).json({ 
-        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-      });
-    }
-
     const admin = await Admin.findById(req.session.adminId);
-    if (!admin) {
-      return res.status(401).json({ error: 'Admin not found' });
-    }
+    if (!admin) return res.status(401).json({ error: 'Admin not found' });
 
     if (admin.avatar) {
-      // Delete from Cloudinary
-      const publicId = extractPublicId(admin.avatar);
-      if (publicId) {
-        try {
-          await cloudinary.uploader.destroy(publicId);
-        } catch (error) {
-          // console.warn('Failed to delete avatar from Cloudinary:', error);
-        }
-      }
-
-      // Update only the avatar field to avoid validation issues
+      await deleteLocalUploadByUrl(admin.avatar);
       const updatedAdmin = await Admin.findByIdAndUpdate(
         admin._id,
         { avatar: null },
         { new: true, runValidators: false }
       );
-
-      if (!updatedAdmin) {
-        return res.status(404).json({ error: 'Admin not found' });
-      }
-
       return res.json({ user: updatedAdmin.toSafeObject() });
-    } else {
-      return res.json({ user: admin.toSafeObject() });
     }
+    return res.json({ user: admin.toSafeObject() });
   } catch (error) {
-    // console.error('Avatar removal error', error);
     return res.status(500).json({ error: 'Failed to remove avatar' });
   }
 });
 
-// Configure multer for sector/category image uploads
-const imageUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
-    }
+// Sector/category images: uploads/images/{entityType}s/{type}s
+const imagesBaseDir = path.join(__dirname, '..', 'uploads', 'images');
+const imageStorage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    const { type, entityType } = req.params;
+    const sub = `${entityType}s/${type}s`;
+    const dir = path.join(imagesBaseDir, sub);
+    fs.mkdir(dir, { recursive: true }).then(() => cb(null, dir)).catch(cb);
+  },
+  filename: (req, file, cb) => {
+    const { type, entityType, entityId } = req.params;
+    const ext = path.extname(file.originalname) || '.jpg';
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `${entityType}-${type}-${entityId}-${unique}${ext}`);
   },
 });
 
+const imageUpload = multer({
+  storage: imageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
+  },
+});
 const imageUploadMiddleware = imageUpload.single('image');
 
 // Upload sector/category icon or banner image
 router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res, next) => {
   imageUploadMiddleware(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+    if (err) return res.status(400).json({ error: err.message });
     return next();
   });
 }, async (req, res) => {
   try {
-    // Check if Cloudinary is configured
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-      return res.status(500).json({ 
-        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-      });
-    }
-
-    const { type, entityType, entityId } = req.params; // type: 'icon' or 'banner', entityType: 'sector' or 'category'
+    const { type, entityType, entityId } = req.params;
 
     if (!['icon', 'banner'].includes(type)) {
       return res.status(400).json({ error: 'Invalid image type. Must be "icon" or "banner"' });
     }
-
     if (!['sector', 'category', 'service-category', 'service-subcategory'].includes(entityType)) {
-      return res.status(400).json({ error: 'Invalid entity type. Must be "sector", "category", "service-category", or "service-subcategory"' });
+      return res.status(400).json({ error: 'Invalid entity type' });
     }
-
     if (!req.file) {
       return res.status(400).json({ error: 'Image file is required' });
     }
 
-    // Handle temporary uploads (for new entities that don't exist yet)
-    if (entityId === 'temp') {
-      // Upload to Cloudinary without saving to entity
-      const folder = `${entityType}s/${type}s`;
-      const uploadResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: folder,
-            public_id: `${entityType}-${type}-temp-${Date.now()}`,
-            transformation: type === 'icon' 
-              ? [{ width: 200, height: 200, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }]
-              : [{ width: 1200, height: 400, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }],
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        uploadStream.end(req.file.buffer);
-      });
+    const relativeDir = `images/${entityType}s/${type}s`;
+    const imageUri = `/uploads/${relativeDir}/${req.file.filename}`;
 
-      return res.json({ 
-        imageUrl: uploadResult.secure_url,
-        [type]: uploadResult.secure_url
-      });
+    if (entityId === 'temp') {
+      return res.json({ imageUrl: imageUri, [type]: imageUri });
     }
 
-    // Find the entity for existing entities
     let entity;
-    if (entityType === 'sector') {
-      entity = await Sector.findById(entityId);
-    } else if (entityType === 'category') {
-      entity = await Category.findById(entityId);
-    } else if (entityType === 'service-category') {
-      const ServiceCategory = (await import('../models/ServiceCategory.js')).default;
-      entity = await ServiceCategory.findById(entityId);
+    if (entityType === 'sector') entity = await Sector.findById(entityId);
+    else if (entityType === 'category') entity = await Category.findById(entityId);
+    else if (entityType === 'service-category') {
+      const ServiceCategoryModel = (await import('../models/ServiceCategory.js')).default;
+      entity = await ServiceCategoryModel.findById(entityId);
     } else if (entityType === 'service-subcategory') {
       entity = await ServiceSubCategory.findById(entityId);
     }
 
     if (!entity) {
+      if (req.file.path) fs.unlink(req.file.path).catch(() => {});
       return res.status(404).json({ error: `${entityType} not found` });
     }
 
-    // Delete old image from Cloudinary if exists
     const oldImageUrl = type === 'icon' ? entity.icon : entity.bannerImage;
-    if (oldImageUrl && (oldImageUrl.startsWith('http') || oldImageUrl.startsWith('https'))) {
-      const oldPublicId = extractPublicId(oldImageUrl);
-      if (oldPublicId) {
-        try {
-          await cloudinary.uploader.destroy(oldPublicId);
-        } catch (error) {
-          // console.warn(`Failed to delete old ${type} from Cloudinary:`, error);
-        }
-      }
-    }
+    if (oldImageUrl) await deleteLocalUploadByUrl(oldImageUrl);
 
-    // Upload to Cloudinary
-    const folder = `${entityType}s/${type}s`;
-    const uploadResult = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          public_id: `${entityType}-${type}-${entityId}-${Date.now()}`,
-          transformation: type === 'icon' 
-            ? [{ width: 200, height: 200, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }]
-            : [{ width: 1200, height: 400, crop: 'fill', gravity: 'auto' }, { quality: 'auto' }],
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(req.file.buffer);
-    });
-
-    // Update entity with new image URL
-    if (type === 'icon') {
-      entity.icon = uploadResult.secure_url;
-    } else {
-      entity.bannerImage = uploadResult.secure_url;
-    }
+    if (type === 'icon') entity.icon = imageUri;
+    else entity.bannerImage = imageUri;
     await entity.save();
 
-    return res.json({ 
-      imageUrl: uploadResult.secure_url,
-      [type]: uploadResult.secure_url
-    });
+    return res.json({ imageUrl: imageUri, [type]: imageUri });
   } catch (error) {
-    // console.error('Image upload error', error);
-    return res.status(500).json({ 
-      error: error.message || 'Failed to upload image' 
-    });
+    if (req.file && req.file.path) fs.unlink(req.file.path).catch(() => {});
+    return res.status(500).json({ error: error.message || 'Failed to upload image' });
   }
 });
 

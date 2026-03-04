@@ -20,6 +20,18 @@ const jobQuoteSchema = new mongoose.Schema(
       enum: ['pending', 'accepted', 'rejected', 'awarded'],
       default: 'pending',
     },
+    // Optional milestone payment plan suggested by professional when sending the quote
+    suggestedMilestones: [
+      {
+        description: { type: String, trim: true },
+        amount: { type: Number, required: true },
+        status: {
+          type: String,
+          enum: ['pending', 'accepted', 'rejected'],
+          default: 'pending',
+        },
+      },
+    ],
   },
   { _id: true }
 );

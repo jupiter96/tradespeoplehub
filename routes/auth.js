@@ -8,7 +8,6 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { v2 as cloudinary } from 'cloudinary';
 import User from '../models/User.js';
 import Service from '../models/Service.js';
 import Review from '../models/Review.js';
@@ -270,52 +269,54 @@ const facebookAuthEnabled =
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configure Cloudinary
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+// Avatars: local storage under uploads/avatars
+const avatarsDir = path.join(__dirname, '..', 'uploads', 'avatars');
+fs.mkdir(avatarsDir, { recursive: true }).catch(() => {});
 
-if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-  // console.warn('⚠️ Cloudinary credentials not found in environment variables.');
-  // console.warn('   Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.');
-}
-
-cloudinary.config({
-  cloud_name: CLOUDINARY_CLOUD_NAME,
-  api_key: CLOUDINARY_API_KEY,
-  api_secret: CLOUDINARY_API_SECRET,
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, avatarsDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname) || '.jpg';
+    const base = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `avatar-${base}-${uniqueSuffix}${ext}`);
+  },
 });
 
-// Configure multer for memory storage (Cloudinary requires buffer)
 const avatarUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
-    }
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Unsupported file type. Please upload JPG, PNG, GIF, or WEBP.'));
   },
 });
-
 const avatarUploadMiddleware = avatarUpload.single('avatar');
 
-// Configure multer for verification documents
-const verificationUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Unsupported file type. Please upload PDF, JPG, or PNG.'));
-    }
+// Verification documents: local storage under uploads/verification
+const verificationDir = path.join(__dirname, '..', 'uploads', 'verification');
+fs.mkdir(verificationDir, { recursive: true }).catch(() => {});
+
+const verificationStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, verificationDir),
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname) || '.pdf';
+    const base = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    cb(null, `${base}-${uniqueSuffix}${ext}`);
   },
 });
 
+const verificationUpload = multer({
+  storage: verificationStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Unsupported file type. Please upload PDF, JPG, or PNG.'));
+  },
+});
 const verificationUploadMiddleware = verificationUpload.single('document');
 
 const generateCode = () => {
@@ -350,18 +351,16 @@ const requireAuth = async (req, res, next) => {
   return next();
 };
 
-// Helper function to extract public_id from Cloudinary URL
-const extractPublicId = (url) => {
-  if (!url) return null;
+// Delete local file if URL is under /uploads/ (e.g. /uploads/avatars/xxx, /uploads/verification/xxx)
+const deleteLocalUploadByUrl = async (url) => {
+  if (!url || typeof url !== 'string') return;
+  const normalized = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+  if (!normalized.startsWith('/uploads/')) return;
+  const filePath = path.join(__dirname, '..', normalized);
   try {
-    // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/image/upload/{folder}/{public_id}.{format}
-    const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
-    if (match && match[1]) {
-      return match[1];
-    }
-    return null;
+    await fs.unlink(filePath);
   } catch {
-    return null;
+    // ignore
   }
 };
 
@@ -3242,63 +3241,32 @@ router.post(
   },
   async (req, res) => {
     try {
-      // Check if Cloudinary is configured
-      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-        return res.status(500).json({ 
-          error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-        });
-      }
-
       if (!req.file) {
         return res.status(400).json({ error: 'Avatar file is required' });
       }
 
       const user = await User.findById(req.session.userId);
       if (!user) {
+        if (req.file.path) fs.unlink(req.file.path).catch(() => {});
         return res.status(401).json({ error: 'Session expired. Please login again.' });
       }
 
-      // Delete old avatar from Cloudinary if exists
+      // Delete old avatar file if it was stored locally
       if (user.avatar) {
-        const oldPublicId = extractPublicId(user.avatar);
-        if (oldPublicId) {
-          try {
-            await cloudinary.uploader.destroy(oldPublicId);
-          } catch (error) {
-            // console.warn('Failed to delete old avatar from Cloudinary:', error);
-      }
-        }
+        await deleteLocalUploadByUrl(user.avatar);
       }
 
-      // Upload to Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: 'avatars',
-            public_id: `avatar-${user._id}-${Date.now()}`,
-            transformation: [
-              { width: 400, height: 400, crop: 'fill', gravity: 'face' },
-              { quality: 'auto' },
-            ],
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-
-        uploadStream.end(req.file.buffer);
-      });
-
-      // Save Cloudinary URL to user
-      user.avatar = uploadResult.secure_url;
+      const avatarUri = `/uploads/avatars/${req.file.filename}`;
+      user.avatar = avatarUri;
       await user.save();
 
       return res.json({ user: sanitizeUser(user) });
     } catch (error) {
-      // console.error('Avatar upload error', error);
-      return res.status(500).json({ 
-        error: error.message || 'Failed to upload avatar' 
+      if (req.file && req.file.path) {
+        fs.unlink(req.file.path).catch(() => {});
+      }
+      return res.status(500).json({
+        error: error.message || 'Failed to upload avatar',
       });
     }
   }
@@ -3361,16 +3329,8 @@ router.delete('/profile', async (req, res) => {
       return res.status(403).json({ error: 'Admin users cannot delete their account through this endpoint. Please contact system administrator.' });
     }
 
-    // Delete user's avatar from Cloudinary if exists
     if (user.avatar) {
-      try {
-        const publicId = user.avatar.match(/\/v\d+\/(.+)\./)?.[1];
-        if (publicId) {
-          await cloudinary.uploader.destroy(publicId);
-        }
-      } catch (cloudinaryError) {
-        // console.warn('Failed to delete avatar from Cloudinary:', cloudinaryError);
-      }
+      await deleteLocalUploadByUrl(user.avatar);
     }
 
     // Delete user account
@@ -3616,29 +3576,13 @@ router.get('/videos/thumbnail/:filename', (req, res) => {
 
 router.delete('/profile/avatar', requireAuth, async (req, res) => {
   try {
-    // Check if Cloudinary is configured
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-      return res.status(500).json({ 
-        error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-      });
-    }
-
     const user = await User.findById(req.session.userId);
     if (!user) {
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
 
     if (user.avatar) {
-      // Delete from Cloudinary
-      const publicId = extractPublicId(user.avatar);
-      if (publicId) {
-        try {
-          await cloudinary.uploader.destroy(publicId);
-        } catch (error) {
-          // console.warn('Failed to delete avatar from Cloudinary:', error);
-        }
-      }
-
+      await deleteLocalUploadByUrl(user.avatar);
       user.avatar = null;
       await user.save();
     }
@@ -3804,115 +3748,66 @@ router.post(
         return res.status(400).json({ error: 'Document file is required' });
       }
 
-      // Check if Cloudinary is configured
-      if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-        return res.status(500).json({ 
-          error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
-        });
-      }
-
       const user = await User.findById(req.session.userId);
       if (!user) {
+        if (req.file.path) fs.unlink(req.file.path).catch(() => {});
         return res.status(401).json({ error: 'Session expired. Please login again.' });
       }
 
-      // Initialize verification object if it doesn't exist
-      if (!user.verification) {
-        user.verification = {};
-      }
-      if (!user.verification[type]) {
-        user.verification[type] = { status: 'not-started' };
-      }
+      if (!user.verification) user.verification = {};
+      if (!user.verification[type]) user.verification[type] = { status: 'not-started' };
 
-      // Delete old document from Cloudinary if exists
+      // Delete old document file if stored locally
       if (user.verification[type].documentUrl) {
-        const oldPublicId = extractPublicId(user.verification[type].documentUrl);
-        if (oldPublicId) {
-          try {
-            await cloudinary.uploader.destroy(oldPublicId);
-          } catch (error) {
-            // console.warn('Failed to delete old document from Cloudinary:', error);
-          }
-        }
+        await deleteLocalUploadByUrl(user.verification[type].documentUrl);
       }
 
-      // Upload to Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: `verification/${type}`,
-            public_id: `verification-${user._id}-${type}-${Date.now()}`,
-            resource_type: 'auto',
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        uploadStream.end(req.file.buffer);
-      });
+      const documentUri = `/uploads/verification/${req.file.filename}`;
 
       // For paymentMethod, also save account details from form data
       if (type === 'paymentMethod') {
         const { firstName, lastName, address, sortCode, accountNumber, bankStatementDate } = req.body;
         
         if (!firstName || !lastName || !address || !sortCode || !accountNumber || !bankStatementDate) {
+          if (req.file.path) fs.unlink(req.file.path).catch(() => {});
           return res.status(400).json({ error: 'All payment method fields are required' });
         }
 
-        // Validate bank statement date (must be within 3 months)
         const statementDate = new Date(bankStatementDate);
         const today = new Date();
         const threeMonthsAgo = new Date();
         threeMonthsAgo.setMonth(today.getMonth() - 3);
         
         if (statementDate > today) {
+          if (req.file.path) fs.unlink(req.file.path).catch(() => {});
           return res.status(400).json({ error: 'Bank statement date cannot be in the future' });
         }
         if (statementDate < threeMonthsAgo) {
+          if (req.file.path) fs.unlink(req.file.path).catch(() => {});
           return res.status(400).json({ error: 'Bank statement must be issued within the last 3 months' });
         }
 
-        // Store account details in verification object
-        if (!user.verification[type]) {
-          user.verification[type] = { status: 'not-started' };
-        }
+        if (!user.verification[type]) user.verification[type] = { status: 'not-started' };
         user.verification[type].firstName = firstName.trim();
         user.verification[type].lastName = lastName.trim();
         user.verification[type].address = address.trim();
-        user.verification[type].sortCode = sortCode.replace(/\D/g, ''); // Store as digits only
-        user.verification[type].accountNumber = accountNumber.replace(/\D/g, ''); // Store as digits only
+        user.verification[type].sortCode = sortCode.replace(/\D/g, '');
+        user.verification[type].accountNumber = accountNumber.replace(/\D/g, '');
         user.verification[type].bankStatementDate = new Date(bankStatementDate);
       }
 
-      // Update only the specific verification type being uploaded
-      // When re-submitting a rejected document, change status from 'rejected' to 'pending'
-      // Do NOT modify any other verification types (e.g., if ID is verified, keep it verified)
       const currentStatus = user.verification[type].status;
-      
-      // Only update status if it's not already verified
-      // If it's rejected or pending, set to pending (new document submitted)
-      // If it's verified, keep it verified (don't reset verified statuses)
       if (currentStatus !== 'verified') {
         user.verification[type].status = 'pending';
       }
       
-      // Update document information for this type only
-      user.verification[type].documentUrl = uploadResult.secure_url;
+      user.verification[type].documentUrl = documentUri;
       user.verification[type].documentName = req.file.originalname;
-      // Set uploadedAt timestamp when document is uploaded
       user.verification[type].uploadedAt = new Date();
-      // Reset viewedByAdmin to false when new document is uploaded
       user.verification[type].viewedByAdmin = false;
-      
-      // Clear rejection reason only for this type (since new document is being submitted)
       if (currentStatus === 'rejected') {
         user.verification[type].rejectionReason = undefined;
       }
-      
-      // Preserve verifiedAt timestamp if status was already verified
-      // (Don't overwrite it when re-submitting a different document type)
-      // Note: We use markModified to ensure Mongoose properly saves nested object changes
       user.markModified(`verification.${type}`);
 
       await user.save();
@@ -3922,7 +3817,7 @@ router.post(
         message: 'Document uploaded successfully. Under review...'
       });
     } catch (error) {
-      // console.error('Verification upload error', error);
+      if (req.file && req.file.path) fs.unlink(req.file.path).catch(() => {});
       return res.status(500).json({ 
         error: error.message || 'Failed to upload document' 
       });
@@ -3988,16 +3883,8 @@ router.delete('/verification/:type', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Verification document not found' });
     }
 
-    // Delete document from Cloudinary if exists
     if (user.verification[type].documentUrl) {
-      const publicId = extractPublicId(user.verification[type].documentUrl);
-      if (publicId) {
-        try {
-          await cloudinary.uploader.destroy(publicId);
-        } catch (error) {
-          // console.warn('Failed to delete document from Cloudinary:', error);
-        }
-      }
+      await deleteLocalUploadByUrl(user.verification[type].documentUrl);
     }
 
     // Reset verification status

@@ -40,7 +40,7 @@ const categories = [
   { value: "no-reply", label: "No-Reply", icon: "📧", color: "bg-indigo-500" },
 ];
 
-const defaultLogoUrl = "https://res.cloudinary.com/drv3pneh8/image/upload/v1765138083/71632be70905a17fd389a8d053249645c4e8a4df_wvs6z6.png";
+const defaultLogoUrl = ""; // Set via EMAIL_LOGO_URL or upload logo to /uploads
 
 interface SmtpSettings {
   smtpUser: string;

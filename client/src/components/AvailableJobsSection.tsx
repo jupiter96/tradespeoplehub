@@ -143,6 +143,15 @@ export default function AvailableJobsSection() {
       return;
     }
     try {
+      const cleanedSuggestedMilestones = milestones
+        .map((m) => {
+          const description = (m.description || "").trim();
+          const amount = m.amount != null && m.amount !== "" ? Number(m.amount) : NaN;
+          if (!description || isNaN(amount) || amount <= 0) return null;
+          return { description, amount };
+        })
+        .filter((m): m is { description: string; amount: number } => !!m);
+
       await addQuoteToJob(currentJob.id, {
         professionalId: userInfo?.id || "",
         professionalName: userInfo?.businessName || userInfo?.name || "Professional",
@@ -152,6 +161,7 @@ export default function AvailableJobsSection() {
         price: price,
         deliveryTime: quoteDeliveryTime,
         message: quoteMessage,
+          suggestedMilestones: cleanedSuggestedMilestones,
       });
       toast.success("Quote sent successfully!");
       setIsQuoteDialogOpen(false);
