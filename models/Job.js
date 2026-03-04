@@ -86,8 +86,8 @@ const jobSchema = new mongoose.Schema(
     budgetMax: { type: Number, default: null },
     status: {
       type: String,
-      enum: ['active', 'awaiting-accept', 'in-progress', 'completed', 'cancelled'],
-      default: 'active',
+      enum: ['open', 'awaiting-accept', 'in-progress', 'completed', 'cancelled'],
+      default: 'open',
     },
     clientId: {
       type: mongoose.Schema.Types.ObjectId,

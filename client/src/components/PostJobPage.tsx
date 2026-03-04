@@ -466,7 +466,7 @@ export default function PostJobPage() {
       budgetAmount,
       budgetMin,
       budgetMax,
-      status: "active" as const,
+      status: "open" as const,
       clientId: userInfo?.id || "",
     };
 

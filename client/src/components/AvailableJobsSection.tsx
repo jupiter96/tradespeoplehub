@@ -70,7 +70,10 @@ export default function AvailableJobsSection() {
   ]);
   const [isMilestoneOpen, setIsMilestoneOpen] = useState(false);
 
-  const availableJobs = getAvailableJobs();
+  // Open jobs only; exclude jobs the pro has already submitted a quote for (those appear in My Quotes)
+  const availableJobs = getAvailableJobs().filter(
+    (job) => !(job.quotes || []).some((q) => q.professionalId === userInfo?.id)
+  );
 
   // Get user's selected sectors (professional only)
   const userSectors = userInfo?.sectors || (userInfo?.sector ? [userInfo.sector] : []);

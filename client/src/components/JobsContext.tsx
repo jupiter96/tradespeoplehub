@@ -88,7 +88,7 @@ export interface Job {
   budgetAmount: number;
   budgetMin?: number;
   budgetMax?: number;
-  status: "active" | "awaiting-accept" | "in-progress" | "completed" | "cancelled";
+  status: "open" | "awaiting-accept" | "in-progress" | "completed" | "cancelled";
   postedAt: string;
   quotes: JobQuote[];
   clientId: string;
@@ -343,7 +343,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   };
 
   const getAvailableJobs = (): Job[] =>
-    userInfo?.role === 'professional' ? jobs.filter((job) => job.status === 'active') : [];
+    userInfo?.role === 'professional' ? jobs.filter((job) => job.status === 'open') : [];
 
   const getProfessionalQuotes = (professionalId: string): { job: Job; quote: JobQuote }[] => {
     const result: { job: Job; quote: JobQuote }[] = [];

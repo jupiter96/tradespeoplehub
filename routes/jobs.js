@@ -348,7 +348,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       specificDate: specificDate ? new Date(specificDate) : null,
       budgetType: budgetType === 'hourly' ? 'hourly' : 'fixed',
       budgetAmount: resolvedBudgetAmount,
-      status: 'active',
+      status: 'open',
       clientId: req.user.id,
     };
     if (resolvedBudgetMin != null) jobPayload.budgetMin = resolvedBudgetMin;
@@ -399,7 +399,7 @@ router.get('/', authenticateToken, async (req, res) => {
       // Include: active jobs in sector (to quote) OR jobs awarded to this pro (awaiting-accept / in-progress)
       const query = {
         $or: [
-          { status: 'active', sector: { $in: sectorObjectIds } },
+          { status: 'open', sector: { $in: sectorObjectIds } },
           {
             status: { $in: ['awaiting-accept', 'in-progress'] },
             awardedProfessionalId: new mongoose.Types.ObjectId(req.user.id),
@@ -657,7 +657,7 @@ router.patch('/:id', authenticateToken, requireRole(['client']), async (req, res
         else if (key === 'budgetAmount') job[key] = Number(req.body[key]);
         else if (key === 'budgetMin') job.budgetMin = req.body[key] === null || req.body[key] === '' ? null : Number(req.body[key]);
         else if (key === 'budgetMax') job.budgetMax = req.body[key] === null || req.body[key] === '' ? null : Number(req.body[key]);
-        else if (key === 'status' && ['active', 'cancelled'].includes(req.body[key])) job[key] = req.body[key];
+        else if (key === 'status' && ['open', 'cancelled'].includes(req.body[key])) job[key] = req.body[key];
         else if (key !== 'status') job[key] = req.body[key];
       }
     }
@@ -690,7 +690,7 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
   try {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
-    if (job.status !== 'active') {
+    if (job.status !== 'open') {
       return res.status(400).json({ error: 'Job is not accepting quotes' });
     }
     const fullUser = await User.findById(req.user.id)
@@ -977,7 +977,7 @@ router.post('/:id/reject-award', authenticateToken, requireRole(['professional']
         });
       }
     }
-    job.status = 'active';
+    job.status = 'open';
     job.awardedProfessionalId = null;
     const awardedQuote = (job.quotes || []).find(
       (q) => q.professionalId && q.professionalId.toString() === req.user.id

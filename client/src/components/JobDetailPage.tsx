@@ -775,11 +775,11 @@ export default function JobDetailPage() {
       : "";
     
     switch (job.status) {
-      case "active":
+      case "open":
         return (
           <Badge className={`bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
             <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Active
+            Open
           </Badge>
         );
       case "awaiting-accept":
@@ -842,7 +842,7 @@ export default function JobDetailPage() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Professional: Submit Quote button */}
-              {!isJobOwner && job.status === "active" && !hasSubmittedQuote && (
+              {!isJobOwner && job.status === "open" && !hasSubmittedQuote && (
                 <Button
                   onClick={() => {
                     setEditingQuoteMeta(null);
@@ -855,7 +855,7 @@ export default function JobDetailPage() {
                 </Button>
               )}
               {/* Professional: Already submitted – hide from In Progress onwards */}
-              {!isJobOwner && hasSubmittedQuote && job?.status === "active" && (
+              {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
                 <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
                   <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                   Quote Submitted

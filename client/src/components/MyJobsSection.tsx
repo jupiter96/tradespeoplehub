@@ -78,7 +78,7 @@ export default function MyJobsSection() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case "open":
         return "bg-green-50 text-green-700 border-green-200";
       case "awaiting-accept":
         return "bg-blue-50 text-blue-700 border-blue-200";
@@ -202,7 +202,7 @@ export default function MyJobsSection() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Jobs</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
             <SelectItem value="awaiting-accept">Awaiting Accept</SelectItem>
             <SelectItem value="in-progress">In Progress</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
@@ -249,7 +249,7 @@ export default function MyJobsSection() {
                         </h3>
                         {getTimingIcon(job.timing)}
                         <Badge className={`${getStatusBadge(job.status)} border font-['Poppins',sans-serif] text-[11px]`}>
-                          {job.status === "awaiting-accept" ? "Awaiting Accept" : job.status === "in-progress" ? "In Progress" : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          {job.status === "awaiting-accept" ? "Awaiting Accept" : job.status === "in-progress" ? "In Progress" : job.status === "open" ? "Open" : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                         </Badge>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
