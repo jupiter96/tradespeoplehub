@@ -45,6 +45,14 @@ const milestoneSchema = new mongoose.Schema(
       enum: ['pending', 'accepted', 'rejected'],
       default: null,
     },
+    // Release request (pro requests client to release; client can accept/reject)
+    releaseRequestedAt: { type: Date, default: null },
+    releaseRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    releaseRequestStatus: {
+      type: String,
+      enum: ['pending', 'accepted', 'rejected'],
+      default: null,
+    },
   },
   { _id: true, timestamps: true }
 );

@@ -8,6 +8,7 @@ import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
 import Order from '../models/Order.js';
+import Job from '../models/Job.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isUserOnline, io } from '../services/socket.js';
 
@@ -152,13 +153,18 @@ router.post('/conversations', requireAuth, async (req, res) => {
     const userIdObj = new mongoose.Types.ObjectId(userId);
     const participantIdObj = new mongoose.Types.ObjectId(participantId);
 
-    // Professionals can initiate only if there is an order with the client
+    // Professionals can initiate if there is an order with the client OR a job in progress (pro is awarded)
     if (isProfessionalToClient) {
       const hasOrder = await Order.exists({
         client: participantIdObj,
         professional: userIdObj,
       });
-      if (!hasOrder) {
+      const hasJobInProgress = await Job.exists({
+        clientId: participantIdObj,
+        awardedProfessionalId: userIdObj,
+        status: 'in-progress',
+      });
+      if (!hasOrder && !hasJobInProgress) {
         return res.status(403).json({ error: 'Professionals can only start conversations with their clients' });
       }
     }

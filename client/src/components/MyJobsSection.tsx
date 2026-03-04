@@ -434,7 +434,7 @@ export default function MyJobsSection() {
                             </div>
                             <div className="text-right whitespace-nowrap">
                               <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-1">
-                                £{formatCurrency(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
+                                £{formatNumber(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
                               </p>
                               {quote.status === "accepted" && (
                                 <Badge className="bg-green-100 text-green-700 border-green-300">

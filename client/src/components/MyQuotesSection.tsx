@@ -412,7 +412,7 @@ export default function MyQuotesSection() {
                       </div>
                     </div>
                     <div className="text-left sm:text-right flex-shrink-0 whitespace-nowrap">
-                      <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatCurrency(Number(quote.price))}</span>
+                      <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatNumber(Number(quote.price))}</span>
                       <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                     </div>
                   </div>

@@ -1,6 +1,10 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import { createRequire } from 'module';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+
+const requirePdf = createRequire(import.meta.url);
+const PDFDocument = requirePdf('pdfkit');
 import Job, { slugify, randomDigits } from '../models/Job.js';
 import User from '../models/User.js';
 import Review from '../models/Review.js';
@@ -8,8 +12,51 @@ import Sector from '../models/Sector.js';
 import JobDispute from '../models/JobDispute.js';
 import Wallet from '../models/Wallet.js';
 import Notification from '../models/Notification.js';
+import JobReport from '../models/JobReport.js';
 
 const router = express.Router();
+
+// Haversine distance in miles between two WGS84 coordinates
+function haversineMiles(lat1, lon1, lat2, lon2) {
+  const R = 3959; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Bulk geocode UK postcodes via postcodes.io (returns array of { latitude, longitude } or null, same order as input)
+async function bulkGeocodePostcodes(postcodes) {
+  const trimmed = postcodes.map((pc) => String(pc || '').trim().toUpperCase());
+  const toLookup = trimmed.filter(Boolean);
+  if (toLookup.length === 0) return trimmed.map(() => null);
+  const url = 'https://api.postcodes.io/postcodes';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ postcodes: toLookup }),
+  });
+  if (!res.ok) return trimmed.map(() => null);
+  const data = await res.json();
+  const results = (data.result || []).map((item) => {
+    const r = item && item.result;
+    if (r && typeof r.latitude === 'number' && typeof r.longitude === 'number') {
+      return { latitude: r.latitude, longitude: r.longitude };
+    }
+    return null;
+  });
+  let idx = 0;
+  return trimmed.map((pc) => {
+    if (!pc) return null;
+    const r = results[idx];
+    idx += 1;
+    return r ?? null;
+  });
+}
 
 function toJobResponse(doc) {
   if (!doc) return null;
@@ -63,6 +110,9 @@ function toJobResponse(doc) {
       cancelRequestedBy: m.cancelRequestedBy?.toString?.() || m.cancelRequestedBy || undefined,
       cancelRequestReason: m.cancelRequestReason || undefined,
       cancelRequestStatus: m.cancelRequestStatus || undefined,
+      releaseRequestedAt: m.releaseRequestedAt ? new Date(m.releaseRequestedAt).toISOString() : undefined,
+      releaseRequestedBy: m.releaseRequestedBy?.toString?.() || m.releaseRequestedBy || undefined,
+      releaseRequestStatus: m.releaseRequestStatus || undefined,
     })),
   };
 }
@@ -418,7 +468,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
     if (!canView) {
       return res.status(403).json({ error: 'Not allowed to view this job' });
     }
-    res.json(toJobResponse(job));
+    const response = toJobResponse(job);
+    const clientUser = await User.findById(job.clientId).select('firstName lastName tradingName avatar createdAt').lean();
+    if (clientUser) {
+      response.clientName = clientUser.tradingName || [clientUser.firstName, clientUser.lastName].filter(Boolean).join(' ') || 'Client';
+      response.clientAvatar = clientUser.avatar;
+      response.clientMemberSince = clientUser.createdAt ? new Date(clientUser.createdAt).toISOString() : undefined;
+    }
+    res.json(response);
   } catch (err) {
     console.error('[Jobs] Get error:', err);
     res.status(500).json({ error: err.message || 'Failed to get job' });
@@ -471,11 +528,27 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
       };
     });
 
+    // Geocode job + all professionals for distance (same order: job first, then each pro)
+    const jobPostcode = (job.postcode || '').trim();
+    const postcodesToGeocode = [jobPostcode, ...professionals.map((p) => (p.postcode || '').trim())];
+    let coords = [];
+    try {
+      coords = await bulkGeocodePostcodes(postcodesToGeocode);
+    } catch (e) {
+      console.warn('[Jobs] Geocode for recommended professionals failed:', e?.message);
+    }
+    const jobCoords = coords[0] || null;
+
     const sectorName = job.sectorName || 'Professional';
     const list = professionals
-      .map((pro) => {
+      .map((pro, index) => {
         const id = pro._id.toString();
         const stats = statsByPro[id] || { rating: 0, reviewCount: 0 };
+        const proCoords = coords[index + 1] || null;
+        const distanceMiles =
+          jobCoords && proCoords
+            ? Math.round(haversineMiles(jobCoords.latitude, jobCoords.longitude, proCoords.latitude, proCoords.longitude) * 10) / 10
+            : null;
         return {
           id,
           name: pro.tradingName || [pro.firstName, pro.lastName].filter(Boolean).join(' ') || 'Professional',
@@ -485,8 +558,9 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
           rating: stats.rating,
           reviewCount: stats.reviewCount,
           completedJobs: 0,
-          location: [pro.townCity, pro.address, pro.postcode].filter(Boolean).join(', ') || pro.postcode || '',
+          location: [pro.townCity, pro.postcode].filter(Boolean).join(', ') || pro.postcode || '',
           skills: [],
+          distanceMiles,
         };
       })
       .sort((a, b) => {
@@ -531,6 +605,27 @@ router.post('/:id/invite-professional', authenticateToken, requireRole(['client'
   } catch (err) {
     console.error('[Jobs] Invite professional error:', err);
     res.status(500).json({ error: err.message || 'Failed to send invitation' });
+  }
+});
+
+// Report job (send message to admin; logged-in client or professional only)
+router.post('/:id/report', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.isAdmin) return res.status(403).json({ error: 'Not allowed' });
+    const job = await findJobByIdOrSlug(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
+    if (!message) return res.status(400).json({ error: 'Message is required' });
+    await JobReport.create({
+      jobId: job._id,
+      reporterId: new mongoose.Types.ObjectId(req.user.id),
+      reporterRole: req.user.role === 'client' ? 'client' : req.user.role === 'professional' ? 'professional' : undefined,
+      message,
+    });
+    return res.json({ success: true, message: 'Report submitted. Our team will review it.' });
+  } catch (err) {
+    console.error('[Jobs] Report job error:', err);
+    res.status(500).json({ error: err.message || 'Failed to submit report' });
   }
 });
 
@@ -946,11 +1041,12 @@ router.post('/:id/milestones', authenticateToken, requireRole(['client']), async
     });
 
     job.milestones = job.milestones || [];
+    const newMilestoneStatus = job.status === 'in-progress' ? 'in-progress' : 'awaiting-accept';
     job.milestones.push({
       name: milestoneName,
       description: String(description || name || milestoneName).trim(),
       amount: numAmount,
-      status: 'awaiting-accept',
+      status: newMilestoneStatus,
     });
     job.markModified('milestones');
     await job.save();
@@ -978,9 +1074,42 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
     if (milestone.status !== 'in-progress') {
       return res.status(400).json({ error: 'Only in-progress milestones can be released' });
     }
+    const amount = Number(milestone.amount) || 0;
+    const professionalId = job.awardedProfessionalId;
+    if (amount > 0 && professionalId) {
+      const professional = await User.findById(professionalId).select('walletBalance');
+      if (professional) {
+        professional.walletBalance = (professional.walletBalance || 0) + amount;
+        await professional.save();
+        const milestoneName = milestone.name || milestone.description || 'Milestone';
+        await Wallet.create({
+          userId: professional._id,
+          type: 'deposit',
+          amount,
+          balance: professional.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          description: `Job milestone release - ${job.title || 'Job'} - ${milestoneName}`,
+          jobId: job._id,
+          milestoneId: milestone._id.toString(),
+          metadata: {
+            source: 'job_milestone_release',
+            jobSlug: job.slug || job._id.toString(),
+            jobTitle: job.title || 'Job',
+            milestoneName,
+            releasedBy: req.user.id,
+          },
+        });
+      }
+    }
     milestone.status = 'released';
     milestone.releasedAt = new Date();
     job.markModified('milestones');
+    const totalMilestones = (job.milestones || []).reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+    const totalReleased = (job.milestones || []).filter((m) => m.status === 'released').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+    if (totalMilestones > 0 && totalReleased >= totalMilestones) {
+      job.status = 'completed';
+    }
     await job.save();
     res.json(toJobResponse(job));
   } catch (err) {
@@ -1097,6 +1226,101 @@ router.patch('/:id/milestones/:milestoneId/respond-cancel', authenticateToken, a
   } catch (err) {
     console.error('[Jobs] Respond cancel error:', err);
     res.status(500).json({ error: err.message || 'Failed to respond to cancel request' });
+  }
+});
+
+// Professional: request client to release milestone
+router.post('/:id/milestones/:milestoneId/request-release', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.awardedProfessionalId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to request release for this job' });
+    }
+    const milestone = (job.milestones || []).find((m) => m._id.toString() === req.params.milestoneId);
+    if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
+    if (milestone.status !== 'in-progress') {
+      return res.status(400).json({ error: 'Only in-progress milestones can have a release request' });
+    }
+    if (milestone.releaseRequestStatus === 'pending') {
+      return res.status(400).json({ error: 'A release request is already pending' });
+    }
+    milestone.releaseRequestedAt = new Date();
+    milestone.releaseRequestedBy = req.user.id;
+    milestone.releaseRequestStatus = 'pending';
+    job.markModified('milestones');
+    await job.save();
+    res.json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Request release error:', err);
+    res.status(500).json({ error: err.message || 'Failed to request release' });
+  }
+});
+
+// Client: respond to release request (accept -> release milestone; reject -> clear release request)
+router.patch('/:id/milestones/:milestoneId/respond-release', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.clientId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to respond to release for this job' });
+    }
+    const milestone = (job.milestones || []).find((m) => m._id.toString() === req.params.milestoneId);
+    if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
+    if (milestone.releaseRequestStatus !== 'pending') {
+      return res.status(400).json({ error: 'No pending release request' });
+    }
+    const { accept } = req.body;
+    if (accept === true) {
+      const amount = Number(milestone.amount) || 0;
+      const professionalId = job.awardedProfessionalId;
+      if (amount > 0 && professionalId) {
+        const professional = await User.findById(professionalId).select('walletBalance');
+        if (professional) {
+          professional.walletBalance = (professional.walletBalance || 0) + amount;
+          await professional.save();
+          const milestoneName = milestone.name || milestone.description || 'Milestone';
+          await Wallet.create({
+            userId: professional._id,
+            type: 'deposit',
+            amount,
+            balance: professional.walletBalance,
+            status: 'completed',
+            paymentMethod: 'wallet',
+            description: `Job milestone release - ${job.title || 'Job'} - ${milestoneName}`,
+            jobId: job._id,
+            milestoneId: milestone._id.toString(),
+            metadata: {
+              source: 'job_milestone_release',
+              jobSlug: job.slug || job._id.toString(),
+              jobTitle: job.title || 'Job',
+              milestoneName,
+              releasedBy: req.user.id,
+            },
+          });
+        }
+      }
+      milestone.status = 'released';
+      milestone.releasedAt = new Date();
+      milestone.releaseRequestStatus = 'accepted';
+      milestone.releaseRequestedAt = null;
+      milestone.releaseRequestedBy = null;
+    } else {
+      milestone.releaseRequestStatus = 'rejected';
+      milestone.releaseRequestedAt = null;
+      milestone.releaseRequestedBy = null;
+    }
+    job.markModified('milestones');
+    const totalMilestones = (job.milestones || []).reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+    const totalReleased = (job.milestones || []).filter((m) => m.status === 'released').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+    if (totalMilestones > 0 && totalReleased >= totalMilestones) {
+      job.status = 'completed';
+    }
+    await job.save();
+    res.json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Respond release error:', err);
+    res.status(500).json({ error: err.message || 'Failed to respond to release request' });
   }
 });
 
@@ -1255,6 +1479,111 @@ router.post('/:id/disputes/:disputeId/messages', authenticateToken, async (req, 
   } catch (err) {
     console.error('[Jobs] Add dispute message error:', err);
     res.status(500).json({ error: err.message || 'Failed to add message' });
+  }
+});
+
+// Milestone invoice PDF (client: any milestone; pro: only when released)
+router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id)
+      .populate('clientId', 'firstName lastName')
+      .populate('awardedProfessionalId', 'firstName lastName');
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const isClient = job.clientId && job.clientId._id.toString() === req.user.id;
+    const isPro = job.awardedProfessionalId && job.awardedProfessionalId._id.toString() === req.user.id;
+    if (!isClient && !isPro) return res.status(403).json({ error: 'Not allowed to view this invoice' });
+    const milestone = (job.milestones || []).find((m) => m._id.toString() === req.params.milestoneId);
+    if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
+    if (isPro && milestone.status !== 'released') {
+      return res.status(403).json({ error: 'Invoice is available after the milestone is released' });
+    }
+
+    const clientName = job.clientId
+      ? [job.clientId.firstName, job.clientId.lastName].filter(Boolean).join(' ') || 'Client'
+      : 'Client';
+    const proName = job.awardedProfessionalId
+      ? [job.awardedProfessionalId.firstName, job.awardedProfessionalId.lastName].filter(Boolean).join(' ') || 'Professional'
+      : 'Professional';
+    const jobTitle = job.title || 'Job';
+    const milestoneName = milestone.name || milestone.description || 'Milestone';
+    const amount = Number(milestone.amount) || 0;
+    const invoiceNumber = `INV-${(job.slug || job._id.toString()).slice(-8)}-${milestone._id.toString().slice(-6)}`;
+    const invoiceDate = (milestone.releasedAt ? new Date(milestone.releasedAt) : new Date()).toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="invoice-${invoiceNumber}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    doc.pipe(res);
+
+    // Logo area – top left (placeholder: site name / logo)
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a2e');
+    doc.text('Trades Platform', 50, 50);
+    doc.moveDown(0.5);
+
+    // Right side: Invoice title and number
+    doc.fontSize(24).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('INVOICE', 400, 50, { width: 150, align: 'right' });
+    doc.fontSize(10).font('Helvetica').fillColor('#6b6b6b');
+    doc.text(`Invoice # ${invoiceNumber}`, 400, 78, { width: 150, align: 'right' });
+    doc.text(`Date: ${invoiceDate}`, 400, 92, { width: 150, align: 'right' });
+
+    let y = 120;
+
+    // Bill To / From section (ecommerce style)
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Bill To', 50, y);
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(clientName, 50, y + 14);
+    doc.text(jobTitle, 50, y + 28);
+
+    doc.font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Service Provider', 320, y);
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(proName, 320, y + 14);
+    y += 60;
+
+    // Line
+    doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
+    y += 20;
+
+    // Table header
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Description', 50, y);
+    doc.text('Amount', 450, y, { width: 95, align: 'right' });
+    y += 22;
+    doc.strokeColor('#e0e0e0').lineWidth(0.3).moveTo(50, y).lineTo(545, y).stroke();
+    y += 12;
+
+    // Milestone line
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(milestoneName, 50, y, { width: 390 });
+    doc.text(`£${amount.toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    y += 24;
+
+    doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
+    y += 16;
+
+    // Total
+    doc.font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Total', 50, y);
+    doc.text(`£${amount.toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    y += 30;
+
+    doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');
+    doc.text(
+      'This invoice relates to the milestone payment for the job listed above. Thank you for your business.',
+      50,
+      y,
+      { width: 495, align: 'left' }
+    );
+
+    doc.end();
+  } catch (err) {
+    console.error('[Jobs] Invoice PDF error:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Failed to generate invoice' });
   }
 });
 

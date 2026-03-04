@@ -67,6 +67,9 @@ export interface Milestone {
   cancelRequestedBy?: string;
   cancelRequestReason?: string;
   cancelRequestStatus?: "pending" | "accepted" | "rejected";
+  releaseRequestedAt?: string;
+  releaseRequestedBy?: string;
+  releaseRequestStatus?: "pending" | "accepted" | "rejected";
 }
 
 export interface Job {
@@ -89,6 +92,12 @@ export interface Job {
   postedAt: string;
   quotes: JobQuote[];
   clientId: string;
+  /** Client display name (for About the Client card) */
+  clientName?: string;
+  /** Client avatar URL (for About the Client card) */
+  clientAvatar?: string;
+  /** Client account creation date (for Member Since) */
+  clientMemberSince?: string;
   milestones?: Milestone[];
   awardedProfessionalId?: string;
 }
@@ -116,12 +125,13 @@ interface JobsContextType {
   acceptAward: (jobId: string) => Promise<void>;
   rejectAward: (jobId: string) => Promise<void>;
   updateMilestoneStatus: (jobId: string, milestoneId: string, status: Milestone["status"]) => void | Promise<void>;
-  requestMilestoneRelease: (jobId: string, milestoneId: string) => void;
   addMilestone: (jobId: string, nameOrDescription: string, amount: number) => void | Promise<void>;
   deleteMilestone: (jobId: string, milestoneId: string) => void | Promise<void>;
   acceptMilestone: (jobId: string, milestoneId: string) => void | Promise<void>;
   requestMilestoneCancel: (jobId: string, milestoneId: string, reason?: string) => Promise<void>;
   respondToCancelRequest: (jobId: string, milestoneId: string, accept: boolean) => Promise<void>;
+  requestMilestoneRelease: (jobId: string, milestoneId: string) => Promise<void>;
+  respondToReleaseRequest: (jobId: string, milestoneId: string, accept: boolean) => Promise<void>;
   createDispute: (jobId: string, milestoneId: string, reason: string, evidence?: string) => Promise<string>;
   getDisputeById: (disputeId: string) => Dispute | undefined;
   addDisputeMessage: (disputeId: string, message: string) => void;
@@ -471,11 +481,6 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const requestMilestoneRelease = (jobId: string, milestoneId: string) => {
-    // Professional requests release - could trigger notification to client
-    updateMilestoneStatus(jobId, milestoneId, "in-progress");
-  };
-
   const addMilestone = async (jobId: string, nameOrDescription: string, amount: number) => {
     const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/milestones`), {
       method: 'POST',
@@ -484,7 +489,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({
         name: nameOrDescription?.trim() || 'Milestone',
         description: nameOrDescription?.trim() || 'Milestone',
-        amount,
+      amount,
       }),
     });
     if (!res.ok) {
@@ -541,6 +546,36 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to respond to cancel request');
+    }
+    const job = await res.json();
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
+  };
+
+  const requestMilestoneRelease = async (jobId: string, milestoneId: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/milestones/${milestoneId}/request-release`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to request release');
+    }
+    const job = await res.json();
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
+  };
+
+  const respondToReleaseRequest = async (jobId: string, milestoneId: string, accept: boolean): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/milestones/${milestoneId}/respond-release`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ accept }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to respond to release request');
     }
     const job = await res.json();
     setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
@@ -661,6 +696,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         acceptMilestone,
         requestMilestoneCancel,
         respondToCancelRequest,
+        respondToReleaseRequest,
         createDispute,
         getDisputeById,
         addDisputeMessage,

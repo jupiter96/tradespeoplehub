@@ -21,6 +21,8 @@ interface Professional {
   responseTime?: string;
   portfolioImages?: string[];
   relevanceScore?: number;
+  /** Distance in miles from job location (from backend). */
+  distanceMiles?: number | null;
 }
 
 interface InviteProfessionalsListProps {
@@ -204,7 +206,7 @@ export default function InviteProfessionalsList({
                     <div className="flex items-center gap-1 mb-2">
                       <MapPin className="w-3.5 h-3.5 text-[#FE8A0F] flex-shrink-0" />
                       <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-bold truncate">
-                        {Math.floor(Math.random() * 50 + 1)} miles away
+                        {pro.distanceMiles != null ? `${Number(pro.distanceMiles).toFixed(1)} miles away` : pro.location || '—'}
                       </span>
                     </div>
 
@@ -263,14 +265,13 @@ export default function InviteProfessionalsList({
                         {pro.name}
                       </h3>
                       
-                      {/* Location with Distance - BOLD */}
+                      {/* Location with Distance - BOLD (show location once: either "X miles away • City, Postcode" or just "City, Postcode") */}
                       <div className="flex items-center gap-1.5 mb-3">
                         <MapPin className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold truncate">
-                          {Math.floor(Math.random() * 50 + 1)} miles away
-                        </span>
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          • {pro.location}
+                          {pro.distanceMiles != null
+                            ? `${Number(pro.distanceMiles).toFixed(1)} miles away${pro.location ? ` • ${pro.location}` : ''}`
+                            : (pro.location || '—')}
                         </span>
                       </div>
 
@@ -333,7 +334,7 @@ export default function InviteProfessionalsList({
                   </div>
 
                   {/* Description */}
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed line-clamp-4 mt-auto">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed line-clamp-4">
                     {generateProfessionalSummary(pro)}
                   </p>
                 </div>

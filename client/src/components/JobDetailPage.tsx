@@ -93,7 +93,7 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, createDispute } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
@@ -129,6 +129,26 @@ export default function JobDetailPage() {
   const [cancelRequestMilestone, setCancelRequestMilestone] = useState<Milestone | null>(null);
   const [cancelRequestReason, setCancelRequestReason] = useState("");
 
+  // Release milestone confirmation modal
+  const [milestoneToRelease, setMilestoneToRelease] = useState<{ jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
+  const [releasing, setReleasing] = useState(false);
+
+  // Pro: accept/reject milestone cancel request confirmation
+  const [cancelResponseConfirm, setCancelResponseConfirm] = useState<{ action: "accept" | "reject"; jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
+  const [respondingCancel, setRespondingCancel] = useState(false);
+
+  // Pro: request release confirmation
+  const [releaseRequestConfirm, setReleaseRequestConfirm] = useState<{ jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
+  const [requestingRelease, setRequestingRelease] = useState(false);
+
+  // Client: accept/reject release request confirmation
+  const [releaseResponseConfirm, setReleaseResponseConfirm] = useState<{ action: "accept" | "reject"; jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
+  const [respondingRelease, setRespondingRelease] = useState(false);
+
+  // Client: accept/reject cancel request confirmation
+  const [clientCancelResponseConfirm, setClientCancelResponseConfirm] = useState<{ action: "accept" | "reject"; jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
+  const [respondingCancelClient, setRespondingCancelClient] = useState(false);
+
   // New milestone state
   const [showNewMilestoneDialog, setShowNewMilestoneDialog] = useState(false);
   const [newMilestoneForm, setNewMilestoneForm] = useState({
@@ -156,6 +176,11 @@ export default function JobDetailPage() {
     rating: number; reviewCount: number; completedJobs: number; location: string; skills?: string[];
   }>>([]);
   const [recommendedProfessionalsLoading, setRecommendedProfessionalsLoading] = useState(false);
+
+  // Report job modal (message to admin)
+  const [showReportJobModal, setShowReportJobModal] = useState(false);
+  const [reportJobMessage, setReportJobMessage] = useState("");
+  const [reportJobSubmitting, setReportJobSubmitting] = useState(false);
 
   // Redirect to login only after auth state is resolved (avoid redirect on refresh before session check)
   useEffect(() => {
@@ -245,16 +270,22 @@ export default function JobDetailPage() {
   const hasSubmittedQuote = job.quotes.some(
     (quote) => quote.professionalId === userInfo?.id
   );
-  // Find professional's awarded quote
+  // Find professional's awarded quote (status "awarded" or "accepted" = they accepted the award, job in progress)
   const myAwardedQuote = userRole === "professional" ? job.quotes.find(
-    (quote) => quote.professionalId === userInfo?.id && quote.status === "awarded"
+    (quote) => quote.professionalId === userInfo?.id && (quote.status === "awarded" || quote.status === "accepted")
   ) : null;
   // For professional: only their own quotes in Quotes tab
   const myQuotes = userRole === "professional" ? job.quotes.filter((q) => q.professionalId === userInfo?.id) : job.quotes;
-  // Awarded quotes (for client: show at top; for pro: single myAwardedQuote)
-  const awardedQuotes = job.quotes.filter((q) => q.status === "awarded");
-  // List quotes: client sees non-awarded only (awarded at top); pro sees myQuotes or none when awarded
-  const listQuotes = isJobOwner ? job.quotes.filter((q) => q.status !== "awarded") : (userRole === "professional" && myAwardedQuote ? [] : myQuotes);
+  // Awarded quotes (for client: show at top) — include both "awarded" and "accepted" (pro accepted = in progress)
+  const awardedQuotes = job.quotes.filter(
+    (q) => q.status === "awarded" || (q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
+  );
+  // List quotes: client sees non-awarded only (awarded at top); pro sees myQuotes or none when they have awarded/accepted quote
+  const listQuotes = isJobOwner
+    ? job.quotes.filter(
+        (q) => q.status !== "awarded" && !(q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
+      )
+    : (userRole === "professional" && myAwardedQuote ? [] : myQuotes);
 
   const toggleQuoteMessageExpanded = (quoteId: string) => {
     setExpandedQuoteMessages((prev) => {
@@ -418,6 +449,62 @@ export default function JobDetailPage() {
     handleRejectAward();
   };
 
+  const handleConfirmCancelResponse = async () => {
+    if (!cancelResponseConfirm) return;
+    setRespondingCancel(true);
+    try {
+      await respondToCancelRequest(cancelResponseConfirm.jobId, cancelResponseConfirm.milestoneId, cancelResponseConfirm.action === "accept");
+      toast.success(cancelResponseConfirm.action === "accept" ? "Cancel request accepted" : "Cancel request rejected");
+      setCancelResponseConfirm(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    } finally {
+      setRespondingCancel(false);
+    }
+  };
+
+  const handleConfirmReleaseRequest = async () => {
+    if (!releaseRequestConfirm) return;
+    setRequestingRelease(true);
+    try {
+      await requestMilestoneRelease(releaseRequestConfirm.jobId, releaseRequestConfirm.milestoneId);
+      toast.success("Release request sent");
+      setReleaseRequestConfirm(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    } finally {
+      setRequestingRelease(false);
+    }
+  };
+
+  const handleConfirmReleaseResponse = async () => {
+    if (!releaseResponseConfirm) return;
+    setRespondingRelease(true);
+    try {
+      await respondToReleaseRequest(releaseResponseConfirm.jobId, releaseResponseConfirm.milestoneId, releaseResponseConfirm.action === "accept");
+      toast.success(releaseResponseConfirm.action === "accept" ? "Release request accepted" : "Release request rejected");
+      setReleaseResponseConfirm(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    } finally {
+      setRespondingRelease(false);
+    }
+  };
+
+  const handleConfirmClientCancelResponse = async () => {
+    if (!clientCancelResponseConfirm) return;
+    setRespondingCancelClient(true);
+    try {
+      await respondToCancelRequest(clientCancelResponseConfirm.jobId, clientCancelResponseConfirm.milestoneId, clientCancelResponseConfirm.action === "accept");
+      toast.success(clientCancelResponseConfirm.action === "accept" ? "Cancel request accepted" : "Cancel request rejected");
+      setClientCancelResponseConfirm(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed");
+    } finally {
+      setRespondingCancelClient(false);
+    }
+  };
+
   const handleRejectQuote = async (quoteId: string) => {
     try {
       await updateQuoteStatus(job.id, quoteId, "rejected");
@@ -462,7 +549,7 @@ export default function JobDetailPage() {
       requirements: "",
       notCompleted: "",
       evidenceFiles: [],
-      selectedMilestones: [],
+      selectedMilestones: milestone?.id ? [milestone.id] : [],
     });
   };
 
@@ -476,6 +563,9 @@ export default function JobDetailPage() {
     }
   };
 
+  const inProgressMilestones = (job?.milestones || []).filter((m) => m.status === "in-progress");
+  const allSelected = inProgressMilestones.length > 0 && disputeForm.selectedMilestones.length >= inProgressMilestones.length;
+
   const handleMilestoneSelection = (milestoneId: string, checked: boolean) => {
     setDisputeForm((prev) => ({
       ...prev,
@@ -483,6 +573,22 @@ export default function JobDetailPage() {
         ? [...prev.selectedMilestones, milestoneId]
         : prev.selectedMilestones.filter((id) => id !== milestoneId),
     }));
+    const nextIds = checked
+      ? [...disputeForm.selectedMilestones, milestoneId]
+      : disputeForm.selectedMilestones.filter((id) => id !== milestoneId);
+    const first = job?.milestones?.find((x) => x.id === nextIds[0]);
+    setDisputeMilestone(first || null);
+  };
+
+  const handleSelectAllMilestones = () => {
+    if (allSelected) {
+      setDisputeForm((prev) => ({ ...prev, selectedMilestones: [] }));
+      setDisputeMilestone(null);
+    } else {
+      const ids = inProgressMilestones.map((m) => m.id);
+      setDisputeForm((prev) => ({ ...prev, selectedMilestones: ids }));
+      setDisputeMilestone(inProgressMilestones[0] || null);
+    }
   };
 
   const handleSubmitDispute = async () => {
@@ -491,26 +597,38 @@ export default function JobDetailPage() {
       toast.error("Please describe the reason for the dispute");
       return;
     }
-    const milestoneToUse = disputeMilestone || (job.milestones && disputeForm.selectedMilestones[0]
-      ? job.milestones.find((m) => m.id === disputeForm.selectedMilestones[0])
-      : null);
-    if (!milestoneToUse) {
-      toast.error("Please select a milestone to dispute");
+    const toDispute = disputeForm.selectedMilestones.length > 0
+      ? disputeForm.selectedMilestones
+      : (disputeMilestone ? [disputeMilestone.id] : []);
+    if (toDispute.length === 0) {
+      toast.error("Please select at least one milestone to dispute");
       return;
     }
 
+    const evidence = disputeForm.evidenceFiles.length > 0
+      ? `${disputeForm.evidenceFiles.length} file(s) attached`
+      : undefined;
+
     try {
-      const evidence = disputeForm.evidenceFiles.length > 0
-        ? `${disputeForm.evidenceFiles.length} file(s) attached`
-        : undefined;
-      const disputeId = await createDispute(job.id, milestoneToUse.id, reason.trim(), evidence);
-      toast.success("Dispute submitted successfully");
+      let firstDisputeId: string | null = null;
+      for (const milestoneId of toDispute) {
+        const disputeId = await createDispute(job.id, milestoneId, reason.trim(), evidence);
+        if (disputeId && !firstDisputeId) firstDisputeId = disputeId;
+      }
+      toast.success(toDispute.length === 1 ? "Dispute submitted successfully" : `${toDispute.length} disputes submitted successfully`);
       setShowDisputeModal(false);
       setDisputeMilestone(null);
-      if (disputeId) navigate(`/disputes/${disputeId}`);
+      setDisputeForm((prev) => ({ ...prev, selectedMilestones: [] }));
+      if (firstDisputeId) navigate(`/disputes/${firstDisputeId}`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to create dispute");
     }
+  };
+
+  const handleViewInvoice = (milestoneId: string) => {
+    if (!job?.id) return;
+    const url = resolveApiUrl(`/api/jobs/${job.id}/milestones/${milestoneId}/invoice`);
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleStartChat = (quote: JobQuote) => {
@@ -522,6 +640,11 @@ export default function JobDetailPage() {
       jobId: job?.id,
       jobTitle: job?.title,
     });
+  };
+
+  /** Pro: open chat with the job client (when job is in progress). */
+  const handleStartChatWithClient = () => {
+    if (job?.clientId) startConversation(job.clientId);
   };
 
   const handleWithdrawConfirm = async () => {
@@ -793,8 +916,8 @@ export default function JobDetailPage() {
                   <div className="text-right">
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
                       {job.budgetMin != null && job.budgetMax != null
-                        ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}`
-                        : `£${formatNumber(job.budgetAmount, 1)} - £${formatNumber(job.budgetAmount * 1.2, 1)}`}
+                        ? `£${formatNumber(job.budgetMin)} - £${formatNumber(job.budgetMax)}`
+                        : `£${formatNumber(job.budgetAmount)} - £${formatNumber(job.budgetAmount * 1.2)}`}
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       Posted: {formatDate(job.postedAt)}
@@ -851,7 +974,16 @@ export default function JobDetailPage() {
                       Awarded Professionals
                     </h2>
                     {userRole === "professional" && myAwardedQuote ? (
-                    <div className="flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg">
+                    <div className="relative flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg overflow-hidden">
+                      {/* Accepted ribbon badge: bottom-left, 3D, orange bg, white text — only when job in progress */}
+                      {job?.status === "in-progress" && (
+                        <div
+                          className="absolute bottom-0 left-0 font-['Poppins',sans-serif] font-bold text-white text-[13px] sm:text-[14px] tracking-wide uppercase px-4 py-2 bg-[#FE8A0F] shadow-[2px_2px_6px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.3)] rounded-tr-lg"
+                          style={{ textShadow: "0 1px 1px rgba(0,0,0,0.2)" }}
+                        >
+                          Accepted
+                        </div>
+                      )}
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4 flex-1 min-w-0">
                           <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -871,9 +1003,9 @@ export default function JobDetailPage() {
                               </h3>
                             </a>
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="flex items-center gap-1 bg-[#FE8A0F] px-2 py-1 rounded">
-                                <Star className="w-3 h-3 sm:w-4 sm:h-4 text-white fill-white" />
-                                <span className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-white">
+                              <div className="flex items-center gap-1 px-2 py-1 rounded">
+                                <Star className="w-5 h-5 sm:w-7 sm:h-7 text-white fill-[#FE8A0F]" />
+                                <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px]">
                                   {formatNumber(Number(myAwardedQuote.professionalRating), 1)}
                                 </span>
                               </div>
@@ -884,7 +1016,7 @@ export default function JobDetailPage() {
                           </div>
                         </div>
                         <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">
-                          £{formatCurrency(myAwardedQuote.price)} in {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
+                          £{formatNumber(myAwardedQuote.price)} in {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
                         </p>
                       </div>
                       <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
@@ -905,25 +1037,31 @@ export default function JobDetailPage() {
                           );
                         })()}
                       </div>
-                      <div className="flex justify-end gap-2 flex-wrap pt-2 border-t border-gray-200">
-                        <Button
-                          onClick={() => handleStartChat(myAwardedQuote)}
-                          className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
-                        >
-                          Chat
-                        </Button>
-                        <Button
-                          onClick={handleAcceptAward}
-                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          onClick={() => setShowRejectAwardConfirm(true)}
-                          className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
-                        >
-                          Reject
-                        </Button>
+                      <div className="flex justify-end gap-2 flex-wrap pt-2">
+                        {job?.status === "in-progress" && (
+                          <Button
+                            onClick={handleStartChatWithClient}
+                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                          >
+                            Chat
+                          </Button>
+                        )}
+                        {job?.status === "awaiting-accept" && (
+                          <>
+                            <Button
+                              onClick={handleAcceptAward}
+                              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              onClick={() => setShowRejectAwardConfirm(true)}
+                              className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                     ) : null}
@@ -932,8 +1070,17 @@ export default function JobDetailPage() {
                       const isLong = msg.length > 400;
                       const expanded = expandedQuoteMessages.has(quote.id);
                       const displayMsg = expanded ? msg : (isLong ? msg.slice(0, 400) + "..." : msg);
+                      const showAcceptedBadge = job?.status === "in-progress" && quote.status === "accepted";
                       return (
-                        <div key={quote.id} className="flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg mt-4 first:mt-0">
+                        <div key={quote.id} className="relative flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg mt-4 first:mt-0 overflow-hidden">
+                          {showAcceptedBadge && (
+                            <div
+                              className="absolute bottom-0 left-0 font-['Poppins',sans-serif] font-bold text-white text-[13px] sm:text-[14px] tracking-wide uppercase px-4 py-2 bg-[#FE8A0F] shadow-[2px_2px_6px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.3)] rounded-tr-lg"
+                              style={{ textShadow: "0 1px 1px rgba(0,0,0,0.2)" }}
+                            >
+                              Accepted
+                            </div>
+                          )}
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-4 flex-1 min-w-0">
                               <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -949,15 +1096,17 @@ export default function JobDetailPage() {
                                   <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1">{quote.professionalName}</h3>
                                 </a>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <div className="flex items-center gap-1 bg-[#FE8A0F] px-2 py-1 rounded">
-                                    <Star className="w-3 h-3 sm:w-4 sm:h-4 text-white fill-white" />
-                                    <span className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-white">{formatNumber(Number(quote.professionalRating), 1)}</span>
+                                <div className="flex items-center gap-1 px-2 py-1 rounded">
+                                  <Star className="w-5 h-5 sm:w-7 sm:h-7 text-white fill-[#FE8A0F]" />
+                                  <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px]">
+                                      {formatNumber(Number(quote.professionalRating), 1)}
+                                    </span>
                                   </div>
                                   <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
                                 </div>
                               </div>
                             </div>
-                            <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">£{formatCurrency(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}</p>
+                            <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">£{formatNumber(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}</p>
                           </div>
                           <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
                             {expanded ? (
@@ -975,7 +1124,7 @@ export default function JobDetailPage() {
                               </button>
                             )}
                           </div>
-                          <div className="flex justify-end gap-2 pt-2 border-t border-orange-200">
+                          <div className="flex justify-end gap-2 pt-2">
                             <Button onClick={() => handleStartChat(quote)} className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2">
                               Chat
                             </Button>
@@ -1058,7 +1207,7 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right flex-shrink-0 whitespace-nowrap">
-                            <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£{formatCurrency(Number(quote.price))}</span>
+                            <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£{formatNumber(Number(quote.price))}</span>
                             <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                           </div>
                         </div>
@@ -1162,7 +1311,7 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right ml-4 flex-shrink-0 whitespace-nowrap">
-                            <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatCurrency(Number(quote.price))}</span>
+                            <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatNumber(Number(quote.price))}</span>
                             <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                           </div>
                         </div>
@@ -1228,7 +1377,7 @@ export default function JobDetailPage() {
                               className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
                             >
                               <MessageCircle className="w-4 h-4 mr-2" />
-                              Chat with Professional
+                              Chat
                             </Button>
                           )}
                         </div>
@@ -1360,154 +1509,247 @@ export default function JobDetailPage() {
                               </td>
                               <td className="py-3 px-4 text-right text-[#2c353f]">£{formatNumber(Number(milestone.amount), 1)}</td>
                               <td className="py-3 px-4 text-right">
-                                {/* Client: awaiting-accept (pro not accepted yet) → Close to cancel and refund */}
+                                {/* Client: awaiting-accept (pro not accepted yet) → Close + View invoice */}
                                 {isJobOwner && milestone.status === "awaiting-accept" && (
+                                  <DropdownMenu>
+                                    <div className="inline-flex items-stretch rounded-md overflow-hidden border border-orange-300 bg-orange-50 shadow-sm">
+                                      <button
+                                        type="button"
+                                        className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-orange-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-orange-100 transition-colors cursor-pointer"
+                                        onClick={async () => {
+                                          try {
+                                            await deleteMilestone(job.id, milestone.id);
+                                            toast.success("Milestone closed and refunded to your balance");
+                                          } catch (e: any) {
+                                            toast.error(e?.message || "Failed to close milestone");
+                                          }
+                                        }}
+                                      >
+                                        Close
+                                      </button>
+                                      <DropdownMenuTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-orange-400/50 bg-transparent text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                        >
+                                          <ChevronDown className="w-4 h-4" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                    </div>
+                                    <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                      <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
+                                        <FileText className="w-4 h-4 mr-2" />
+                                        View invoice
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                                {/* Client: in-progress → dropdown with Release as default; or Accept/Reject when cancel requested by pro; or Accept/Reject when release requested by pro */}
+                                {isJobOwner && milestone.status === "in-progress" && (
+                                  <div className="flex items-center justify-end">
+                                    {milestone.releaseRequestStatus === "pending" && milestone.releaseRequestedBy !== userInfo?.id ? (
+                                      <DropdownMenu>
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-green-300 bg-green-50 shadow-sm">
+                                          <button
+                                            type="button"
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-green-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-green-100 transition-colors cursor-pointer"
+                                            onClick={() => setReleaseResponseConfirm({ action: "accept", jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Accept
+                                          </button>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-green-400/50 bg-transparent text-green-600 hover:bg-green-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                            >
+                                              <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                        </div>
+                                        <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          <DropdownMenuItem
+                                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                                            onClick={() => setReleaseResponseConfirm({ action: "reject", jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Reject
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
+                                            <FileText className="w-4 h-4 mr-2" />
+                                            View invoice
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    ) : milestone.cancelRequestStatus === "pending" && milestone.cancelRequestedBy !== userInfo?.id ? (
+                                      <DropdownMenu>
+                                        <div className="flex items-center rounded-md border border-green-300 overflow-hidden">
+                                          <Button
+                                            size="sm"
+                                            className="h-8 px-3 rounded-r-none bg-green-50 text-green-600 border-green-300 hover:bg-green-100"
+                                            variant="outline"
+                                            onClick={() => setClientCancelResponseConfirm({ action: "accept", jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Accept
+                                          </Button>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button size="sm" variant="outline" className="h-8 px-1.5 rounded-l-none border-l border-green-300 bg-green-50 text-green-600 hover:bg-green-100">
+                                              <ChevronDown className="w-4 h-4" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                        </div>
+                                        <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          <DropdownMenuItem
+                                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                                            onClick={() => setClientCancelResponseConfirm({ action: "reject", jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Reject
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
+                                            <FileText className="w-4 h-4 mr-2" />
+                                            View invoice
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    ) : (
+                                      <DropdownMenu>
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-green-600 bg-green-600 shadow-sm">
+                                          <button
+                                            type="button"
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-white font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-green-700/90 transition-colors cursor-pointer"
+                                            onClick={() => setMilestoneToRelease({ jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Release
+                                          </button>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-green-700/40 bg-transparent text-white hover:bg-green-700/90 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                            >
+                                              <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                        </div>
+                                        <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          <DropdownMenuItem
+                                            disabled={milestone.cancelRequestStatus === "pending"}
+                                            onClick={() => {
+                                              setCancelRequestMilestone(milestone);
+                                              setCancelRequestReason("");
+                                              setShowCancelRequestModal(true);
+                                            }}
+                                            className="cursor-pointer text-orange-600 focus:text-orange-600"
+                                          >
+                                            Cancel request
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-red-600 focus:text-red-600">
+                                            <Flag className="w-4 h-4 mr-2" />
+                                            Dispute
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
+                                            <FileText className="w-4 h-4 mr-2" />
+                                            View invoice
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
+                                  </div>
+                                )}
+                                {/* Client: released → View invoice only */}
+                                {isJobOwner && milestone.status === "released" && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={async () => {
-                                      try {
-                                        await deleteMilestone(job.id, milestone.id);
-                                        toast.success("Milestone closed and refunded to your balance");
-                                      } catch (e: any) {
-                                        toast.error(e?.message || "Failed to close milestone");
-                                      }
-                                    }}
-                                    className="h-8 px-3 text-[13px] border-orange-300 text-orange-600 hover:bg-orange-50"
+                                    onClick={() => handleViewInvoice(milestone.id)}
+                                    className="h-8 px-3 text-[13px] border-gray-300 text-[#2c353f] hover:bg-gray-50"
                                   >
-                                    Close
+                                    <FileText className="w-4 h-4 mr-1.5" />
+                                    View invoice
                                   </Button>
                                 )}
-                                {/* Client: in-progress → Cancel request + Dispute (or Accept/Reject if cancel requested by pro) */}
-                                {isJobOwner && milestone.status === "in-progress" && (
-                                  <div className="flex items-center justify-end gap-1 flex-wrap">
+                                {/* Pro: awaiting-accept → no per-row action (use banner Accept/Reject) */}
+                                {/* Pro: in-progress → dropdown with Cancel as default; or Accept/Reject when cancel requested by client */}
+                                {!isJobOwner && milestone.status === "in-progress" && (
+                                  <div className="flex items-center justify-end">
                                     {milestone.cancelRequestStatus === "pending" && milestone.cancelRequestedBy !== userInfo?.id ? (
-                                      <>
-                                        <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 border-green-300 hover:bg-green-50"
-                                          onClick={async () => {
-                                            try {
-                                              await respondToCancelRequest(job.id, milestone.id, true);
-                                              toast.success("Cancel request accepted");
-                                            } catch (e: any) {
-                                              toast.error(e?.message || "Failed");
-                                            }
-                                          }}
-                                        >
-                                          Accept
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="h-8 px-2 text-red-600 border-red-300 hover:bg-red-50"
-                                          onClick={async () => {
-                                            try {
-                                              await respondToCancelRequest(job.id, milestone.id, false);
-                                              toast.success("Cancel request rejected");
-                                            } catch (e: any) {
-                                              toast.error(e?.message || "Failed");
-                                            }
-                                          }}
-                                        >
-                                          Reject
-                                        </Button>
-                                      </>
+                                      <DropdownMenu>
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-green-300 bg-green-50 shadow-sm">
+                                          <button
+                                            type="button"
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-green-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-green-100 transition-colors cursor-pointer"
+                                            onClick={() => setCancelResponseConfirm({ action: "accept", jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Accept
+                                          </button>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-green-400/50 bg-transparent text-green-600 hover:bg-green-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                            >
+                                              <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                        </div>
+                                        <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          <DropdownMenuItem
+                                            className="text-red-600 focus:text-red-600 cursor-pointer"
+                                            onClick={() => setCancelResponseConfirm({ action: "reject", jobId: job.id, milestoneId: milestone.id, milestone })}
+                                          >
+                                            Reject
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     ) : (
-                                      <>
-                                        <Button
-                                          size="sm"
-                                          className="h-8 px-2 bg-green-600 hover:bg-green-700 text-white"
-                                          onClick={async () => {
-                                            try {
-                                              await updateMilestoneStatus(job.id, milestone.id, "released");
-                                              toast.success("Payment released");
-                                            } catch (e: any) {
-                                              toast.error(e?.message || "Failed");
-                                            }
-                                          }}
-                                        >
-                                          Release
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={milestone.cancelRequestStatus === "pending"}
-                                          onClick={() => {
-                                            setCancelRequestMilestone(milestone);
-                                            setCancelRequestReason("");
-                                            setShowCancelRequestModal(true);
-                                          }}
-                                          className="h-8 px-2 text-[13px] border-orange-300 text-orange-600 hover:bg-orange-50"
-                                        >
-                                          Cancel request
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleOpenDisputeModal(milestone)}
-                                          className="h-8 px-2 text-[13px] border-red-300 text-red-600 hover:bg-red-50"
-                                        >
-                                          <Flag className="w-4 h-4 mr-1" />
-                                          Dispute
-                                        </Button>
-                                      </>
+                                      <DropdownMenu>
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-red-300 bg-red-50 shadow-sm">
+                                          <button
+                                            type="button"
+                                            disabled={milestone.cancelRequestStatus === "pending"}
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-red-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                            onClick={() => {
+                                              setCancelRequestMilestone(milestone);
+                                              setCancelRequestReason("");
+                                              setShowCancelRequestModal(true);
+                                            }}
+                                          >
+                                            Cancel
+                                          </button>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-red-300/60 bg-transparent text-red-600 hover:bg-red-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0 disabled:opacity-50"
+                                              disabled={milestone.cancelRequestStatus === "pending"}
+                                            >
+                                              <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                        </div>
+                                        <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          <DropdownMenuItem
+                                            disabled={milestone.releaseRequestStatus === "pending"}
+                                            onClick={() => setReleaseRequestConfirm({ jobId: job.id, milestoneId: milestone.id, milestone })}
+                                            className="cursor-pointer text-green-600 focus:text-green-600 disabled:opacity-50"
+                                          >
+                                            Request release
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
+                                            <Flag className="w-4 h-4 mr-2" />
+                                            Open dispute
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     )}
                                   </div>
                                 )}
-                                {/* Pro: awaiting-accept → no per-row action (use banner Accept/Reject) */}
-                                {/* Pro: in-progress → Cancel + Open dispute (or Accept/Reject cancel if pending by client) */}
-                                {!isJobOwner && milestone.status === "in-progress" && (
-                                  <div className="flex items-center justify-end gap-1">
-                                    {milestone.cancelRequestStatus === "pending" && milestone.cancelRequestedBy !== userInfo?.id ? (
-                                      <>
-                                        <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 border-green-300 hover:bg-green-50"
-                                          onClick={async () => {
-                                            try {
-                                              await respondToCancelRequest(job.id, milestone.id, true);
-                                              toast.success("Cancel request accepted");
-                                            } catch (e: any) {
-                                              toast.error(e?.message || "Failed");
-                                            }
-                                          }}
-                                        >
-                                          Accept
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="h-8 px-2 text-red-600 border-red-300 hover:bg-red-50"
-                                          onClick={async () => {
-                                            try {
-                                              await respondToCancelRequest(job.id, milestone.id, false);
-                                              toast.success("Cancel request rejected");
-                                            } catch (e: any) {
-                                              toast.error(e?.message || "Failed");
-                                            }
-                                          }}
-                                        >
-                                          Reject
-                                        </Button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          disabled={milestone.cancelRequestStatus === "pending"}
-                                          onClick={() => {
-                                            setCancelRequestMilestone(milestone);
-                                            setCancelRequestReason("");
-                                            setShowCancelRequestModal(true);
-                                          }}
-                                          className="h-8 px-2 text-[13px] border-red-300 text-red-600 hover:bg-red-50"
-                                        >
-                                          Cancel
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleOpenDisputeModal(milestone)}
-                                          className="h-8 px-2 text-[13px] border-orange-300 text-orange-600 hover:bg-orange-50"
-                                        >
-                                          <Flag className="w-4 h-4 mr-1" />
-                                          Open dispute
-                                        </Button>
-                                      </>
-                                    )}
-                                  </div>
+                                {/* Pro: released → View invoice only (after client has released) */}
+                                {!isJobOwner && milestone.status === "released" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleViewInvoice(milestone.id)}
+                                    className="h-8 px-3 text-[13px] border-gray-300 text-[#2c353f] hover:bg-gray-50"
+                                  >
+                                    <FileText className="w-4 h-4 mr-1.5" />
+                                    View invoice
+                                  </Button>
                                 )}
                               </td>
                             </tr>
@@ -1578,16 +1820,16 @@ export default function JobDetailPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    {resolveAvatarUrl(userInfo?.avatar) && (
-                      <AvatarImage src={resolveAvatarUrl(userInfo?.avatar)} />
+                    {resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar) && (
+                      <AvatarImage src={resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar)!} />
                     )}
                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                      {getTwoLetterInitials(userInfo?.name, "C")}
+                      {getTwoLetterInitials(isJobOwner ? (userInfo?.name ?? "C") : (job.clientName ?? "C"), "C")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      {userInfo?.name || "Client"}
+                      {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
                     </p>
                   </div>
                 </div>
@@ -1605,7 +1847,9 @@ export default function JobDetailPage() {
 
                 <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
                   <Clock className="w-4 h-4" />
-                  Member Since {new Date(job.postedAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                  Member Since {job.clientMemberSince
+                    ? new Date(job.clientMemberSince).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+                    : new Date(job.postedAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
                 </div>
 
                 <Separator />
@@ -1633,7 +1877,14 @@ export default function JobDetailPage() {
 
                 <Separator />
 
-                <button className="text-[#1976D2] hover:text-[#1565C0] font-['Poppins',sans-serif] text-[14px] flex items-center gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportJobMessage("");
+                    setShowReportJobModal(true);
+                  }}
+                  className="text-[#1976D2] hover:text-[#1565C0] font-['Poppins',sans-serif] text-[14px] flex items-center gap-2 w-full"
+                >
                   <Flag className="w-4 h-4" />
                   Report this job
                 </button>
@@ -1644,6 +1895,78 @@ export default function JobDetailPage() {
       </div>
 
       <Footer />
+
+      {/* Report job modal (message to admin) */}
+      <Dialog open={showReportJobModal} onOpenChange={(open) => { if (!open) setShowReportJobModal(false); }}>
+        <DialogContent className="font-['Poppins',sans-serif] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#2c353f]">Report this job</DialogTitle>
+            <DialogDescription className="text-[#6b6b6b]">
+              Your message will be sent to our team for review. Please describe the issue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <label htmlFor="report-job-message" className="block text-[13px] font-medium text-[#2c353f] mb-1.5">
+                Message
+              </label>
+              <Textarea
+                id="report-job-message"
+                placeholder="Describe why you are reporting this job..."
+                value={reportJobMessage}
+                onChange={(e) => setReportJobMessage(e.target.value)}
+                className="min-h-[120px] resize-y text-[14px] border-gray-200"
+                disabled={reportJobSubmitting}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowReportJobModal(false)}
+                disabled={reportJobSubmitting}
+                className="font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  const msg = reportJobMessage.trim();
+                  if (!msg) {
+                    toast.error("Please enter a message");
+                    return;
+                  }
+                  if (!job) return;
+                  setReportJobSubmitting(true);
+                  try {
+                    const res = await fetch(resolveApiUrl(`/api/jobs/${job.slug || job.id}/report`), {
+                      method: "POST",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ message: msg }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      toast.error(data?.error || "Failed to submit report");
+                      return;
+                    }
+                    toast.success(data?.message || "Report submitted");
+                    setShowReportJobModal(false);
+                    setReportJobMessage("");
+                  } finally {
+                    setReportJobSubmitting(false);
+                  }
+                }}
+                disabled={reportJobSubmitting}
+                className="font-['Poppins',sans-serif] bg-[#1976D2] hover:bg-[#1565C0]"
+              >
+                {reportJobSubmitting ? "Sending…" : "Send report"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Withdraw quote confirmation */}
       <AlertDialog open={!!quoteToWithdraw} onOpenChange={(open) => !open && setQuoteToWithdraw(null)}>
@@ -1667,6 +1990,45 @@ export default function JobDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Release milestone confirmation */}
+      <AlertDialog open={!!milestoneToRelease} onOpenChange={(open) => !open && !releasing && setMilestoneToRelease(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-['Poppins',sans-serif]">Release payment?</AlertDialogTitle>
+            <AlertDialogDescription className="font-['Poppins',sans-serif]">
+              {milestoneToRelease && (
+                <>
+                  Release £{formatNumber(milestoneToRelease.milestone.amount)} &nbsp; for &quot;{milestoneToRelease.milestone.name || milestoneToRelease.milestone.description || "Milestone"} &quot;? The professional will receive this payment.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+            <Button
+              onClick={async () => {
+                if (!milestoneToRelease) return;
+                setReleasing(true);
+                try {
+                  await updateMilestoneStatus(milestoneToRelease.jobId, milestoneToRelease.milestoneId, "released");
+                  toast.success("Payment released");
+                  setMilestoneToRelease(null);
+                  if (jobSlug) await fetchJobById(jobSlug);
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to release");
+                } finally {
+                  setReleasing(false);
+                }
+              }}
+              disabled={releasing}
+              className="font-['Poppins',sans-serif] bg-green-600 hover:bg-green-700"
+            >
+              {releasing ? "Releasing…" : "Release"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Reject job award confirmation (professional) */}
       <AlertDialog open={showRejectAwardConfirm} onOpenChange={(open) => !open && setShowRejectAwardConfirm(false)}>
         <AlertDialogContent>
@@ -1684,6 +2046,102 @@ export default function JobDetailPage() {
               className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
             >
               {rejectingAward ? "Rejecting…" : "Reject award"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pro: Accept/Reject milestone cancel request confirmation */}
+      <AlertDialog open={!!cancelResponseConfirm} onOpenChange={(open) => !open && setCancelResponseConfirm(null)}>
+        <AlertDialogContent className="font-['Poppins',sans-serif]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {cancelResponseConfirm?.action === "accept" ? "Accept cancel request?" : "Reject cancel request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelResponseConfirm?.action === "accept"
+                ? "The milestone will be cancelled and the client will be refunded. This action cannot be undone."
+                : "The milestone will continue as planned. The client's cancel request will be declined."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={respondingCancel}>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleConfirmCancelResponse}
+              disabled={respondingCancel}
+              className={cancelResponseConfirm?.action === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {respondingCancel ? "..." : cancelResponseConfirm?.action === "accept" ? "Accept" : "Reject"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pro: Request release confirmation */}
+      <AlertDialog open={!!releaseRequestConfirm} onOpenChange={(open) => !open && setReleaseRequestConfirm(null)}>
+        <AlertDialogContent className="font-['Poppins',sans-serif]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Request release?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The client will receive a release request for this milestone and can accept or reject. You cannot undo this request.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={requestingRelease}>Cancel</AlertDialogCancel>
+            <Button onClick={handleConfirmReleaseRequest} disabled={requestingRelease} className="bg-green-600 hover:bg-green-700">
+              {requestingRelease ? "..." : "Request release"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Client: Accept/Reject release request confirmation */}
+      <AlertDialog open={!!releaseResponseConfirm} onOpenChange={(open) => !open && setReleaseResponseConfirm(null)}>
+        <AlertDialogContent className="font-['Poppins',sans-serif]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {releaseResponseConfirm?.action === "accept" ? "Accept release request?" : "Reject release request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {releaseResponseConfirm?.action === "accept"
+                ? "The milestone will be released and funds will be transferred to the professional. This action cannot be undone."
+                : "The release request will be declined. The milestone will remain in progress."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={respondingRelease}>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleConfirmReleaseResponse}
+              disabled={respondingRelease}
+              className={releaseResponseConfirm?.action === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {respondingRelease ? "..." : releaseResponseConfirm?.action === "accept" ? "Accept" : "Reject"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Client: Accept/Reject cancel request confirmation */}
+      <AlertDialog open={!!clientCancelResponseConfirm} onOpenChange={(open) => !open && setClientCancelResponseConfirm(null)}>
+        <AlertDialogContent className="font-['Poppins',sans-serif]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {clientCancelResponseConfirm?.action === "accept" ? "Accept cancel request?" : "Reject cancel request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {clientCancelResponseConfirm?.action === "accept"
+                ? "The milestone will be cancelled and you will be refunded. This action cannot be undone."
+                : "The milestone will continue as planned. The professional's cancel request will be declined."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={respondingCancelClient}>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleConfirmClientCancelResponse}
+              disabled={respondingCancelClient}
+              className={clientCancelResponseConfirm?.action === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {respondingCancelClient ? "..." : clientCancelResponseConfirm?.action === "accept" ? "Accept" : "Reject"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1722,8 +2180,8 @@ export default function JobDetailPage() {
                 <div className="pt-3 border-t border-gray-100 space-y-2">
                   <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                     {job.budgetMin != null && job.budgetMax != null
-                      ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}`
-                      : `£${formatNumber(job.budgetAmount, 1)} - £${formatNumber(job.budgetAmount * 1.2, 1)}`}
+                      ? `£${formatNumber(job.budgetMin)} - £${formatNumber(job.budgetMax)}`
+                      : `£${formatNumber(job.budgetAmount)} - £${formatNumber(job.budgetAmount * 1.2)}`}
                   </div>
                   {job.location && (
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
@@ -1766,7 +2224,7 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: £{formatNumber(job.budgetMin ?? job.budgetAmount, 1)} - £{formatNumber(job.budgetMax ?? job.budgetAmount * 1.2, 1)} (price must be within this range)
+                    💡 Client's budget: £{formatNumber(job.budgetMin ?? job.budgetAmount)} - £{formatNumber(job.budgetMax ?? job.budgetAmount * 1.2)} (price must be within this range)
                   </p>
                 </div>
 
@@ -2307,9 +2765,11 @@ export default function JobDetailPage() {
               Open Dispute
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              {disputeMilestone
-                ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - £${formatNumber(Number(disputeMilestone.amount), 1)}`
-                : "If there's an issue with the milestone, you can raise a dispute. Our support team will review and help resolve the issue."}
+              {disputeForm.selectedMilestones.length > 1
+                ? `Disputing ${disputeForm.selectedMilestones.length} milestones. Our support team will review and help resolve the issue.`
+                : disputeMilestone
+                  ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - £${formatNumber(Number(disputeMilestone.amount), 1)}`
+                  : "If there's an issue with the milestone(s), you can raise a dispute. Our support team will review and help resolve the issue."}
             </DialogDescription>
           </DialogHeader>
 
@@ -2368,31 +2828,43 @@ export default function JobDetailPage() {
               )}
             </div>
 
-            {/* Milestone Selection - only when opened without a specific milestone (e.g. from more menu) */}
-            {!disputeMilestone && job.milestones && job.milestones.length > 0 && (
+            {/* Milestone Selection - in-progress milestones only (disputable), multi-select + Select all */}
+            {inProgressMilestones.length > 0 && (
             <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 block">
-                Select the milestone you want to dispute
-              </Label>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] block">
+                  Select the milestone(s) you want to dispute
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="font-['Poppins',sans-serif] text-[13px] text-[#1976D2] hover:text-[#1565C0] h-8 px-2"
+                  onClick={handleSelectAllMilestones}
+                >
+                  {allSelected ? "Deselect all" : "Select all"}
+                </Button>
+              </div>
               <div className="space-y-2">
-                {job.milestones
-                  .filter((m) => m.status !== "released" && m.status !== "disputed" && m.status !== "awaiting-accept")
-                  .map((milestone) => (
-                    <div key={milestone.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                      <Checkbox
-                        id={`dispute-${milestone.id}`}
-                        checked={disputeForm.selectedMilestones.includes(milestone.id)}
-                        onCheckedChange={(checked) => handleMilestoneSelection(milestone.id, checked as boolean)}
-                      />
-                      <label
-                        htmlFor={`dispute-${milestone.id}`}
-                        className="flex-1 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
-                        onClick={() => { setDisputeMilestone(milestone); setDisputeForm((p) => ({ ...p, selectedMilestones: [milestone.id] })); }}
-                      >
-                        {milestone.name || milestone.description} - £{formatNumber(Number(milestone.amount), 1)}
-                      </label>
-                    </div>
-                  ))}
+                {inProgressMilestones.map((milestone) => (
+                  <div key={milestone.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <Checkbox
+                      id={`dispute-${milestone.id}`}
+                      checked={disputeForm.selectedMilestones.includes(milestone.id)}
+                      onCheckedChange={(checked) => handleMilestoneSelection(milestone.id, checked as boolean)}
+                    />
+                    <label
+                      htmlFor={`dispute-${milestone.id}`}
+                      className="flex-1 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
+                      onClick={() => {
+                        const isSelected = disputeForm.selectedMilestones.includes(milestone.id);
+                        handleMilestoneSelection(milestone.id, !isSelected);
+                      }}
+                    >
+                      {milestone.name || milestone.description} - £{formatNumber(Number(milestone.amount), 1)}
+                    </label>
+                  </div>
+                ))}
               </div>
             </div>
             )}
