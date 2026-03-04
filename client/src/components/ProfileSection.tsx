@@ -374,7 +374,7 @@ export default function ProfileSection() {
     return null;
   };
   
-  const displayTitle = getFirstCategory() || userInfo?.sector || "Professional Service Provider";
+  const displayTitle = getFirstCategory() || selectedSectorObj?.name || "Professional Service Provider";
   // Extract city and county from address field
   // Address format: "address line, city, county, postcode"
   const getCityAndCounty = () => {

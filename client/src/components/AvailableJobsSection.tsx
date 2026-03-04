@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
+import { useSectors } from "../hooks/useSectorsAndCategories";
 import { getMainCategoriesBySector } from "./categoriesHierarchy";
 import {
   FileText,
@@ -53,6 +54,7 @@ export default function AvailableJobsSection() {
   const navigate = useNavigate();
   const { getAvailableJobs, addQuoteToJob } = useJobs();
   const { userInfo } = useAccount();
+  const { sectors: sectorsList } = useSectors();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -75,14 +77,15 @@ export default function AvailableJobsSection() {
     (job) => !(job.quotes || []).some((q) => q.professionalId === userInfo?.id)
   );
 
-  // Get user's selected sectors (professional only)
-  const userSectors = userInfo?.sectors || (userInfo?.sector ? [userInfo.sector] : []);
-  
-  // Get all categories from user's selected sectors
+  // User's sector IDs (user.sector is now stored as ID)
+  const userSectorIds = userInfo?.sectors || (userInfo?.sector ? [userInfo.sector] : []);
+  const userSectorNames = userSectorIds
+    .map((id) => sectorsList.find((s) => String(s._id) === String(id))?.name)
+    .filter(Boolean) as string[];
   const userCategories: string[] = [];
-  userSectors.forEach(sector => {
-    const sectorCategories = getMainCategoriesBySector(sector);
-    sectorCategories.forEach(cat => {
+  userSectorNames.forEach((sectorName) => {
+    const sectorCategories = getMainCategoriesBySector(sectorName);
+    sectorCategories.forEach((cat) => {
       if (!userCategories.includes(cat.name)) {
         userCategories.push(cat.name);
       }
@@ -186,7 +189,7 @@ export default function AvailableJobsSection() {
         body: JSON.stringify({
           jobTitle: currentJob.title,
           jobDescription: currentJob.description,
-          sectorName: currentJob.sector,
+          sectorName: currentJob.sectorName ?? currentJob.sector,
           keyPoints: quoteMessage.trim() || undefined,
           tradingName: userInfo?.businessName || userInfo?.tradingName || userInfo?.name || undefined,
         }),

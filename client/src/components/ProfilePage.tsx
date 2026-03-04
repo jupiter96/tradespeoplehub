@@ -147,9 +147,12 @@ export default function ProfilePage() {
   const { serviceCategories } = useServiceCategories(undefined, undefined, true);
   const { sectors } = useSectors();
   const sectorId = useMemo(() => {
-    const name = (profile?.sector || "").trim();
-    if (!name) return undefined;
-    return sectors.find((s) => s.name === name)?._id;
+    const raw = (profile?.sector || "").trim();
+    if (!raw) return undefined;
+    const byId = sectors.find((s) => String(s._id) === raw);
+    if (byId) return byId._id;
+    const byName = sectors.find((s) => s.name === raw);
+    return byName?._id;
   }, [sectors, profile?.sector]);
   const { categories } = useCategories(sectorId, undefined, true);
 

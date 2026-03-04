@@ -1600,10 +1600,12 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
   });
   
   // Service Details Tab
-  // Get user's sector from registration and set as default (cannot be changed)
+  // Get user's sector from registration (stored as sector ID; legacy name supported) and set as default (cannot be changed)
   const userSector = userInfo?.sector;
-  const userSectorObj = sectors.find((s: Sector) => s.name === userSector);
-  const defaultSectorId = userSectorObj?._id || "";
+  const userSectorObj = sectors.find(
+    (s: Sector) => String(s._id) === String(userSector) || s.name === userSector
+  );
+  const defaultSectorId = userSectorObj?._id ?? "";
   
   const [selectedSectorId, setSelectedSectorId] = useState<string>(defaultSectorId);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(""); // ServiceCategory ID
@@ -5148,7 +5150,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
                             userSector ? 'bg-gray-100 cursor-not-allowed opacity-75' : ''
                           }`}
                         >
-                          <SelectValue placeholder={userSector ? userSector : "Select Sector"} />
+                          <SelectValue placeholder={userSector ? (userSectorObj?.name || "Your sector") : "Select Sector"} />
                         </SelectTrigger>
                         <SelectContent className="max-h-[400px]">
                           {sectors

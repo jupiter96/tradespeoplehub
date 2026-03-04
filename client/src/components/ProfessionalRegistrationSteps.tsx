@@ -676,12 +676,12 @@ export default function ProfessionalRegistrationSteps() {
                       <span className="sr-only">Loading sectors</span>
                     </div>
                   ) : userInfo?.sector ? (
-                    // If sector already exists, show it as read-only
+                    // If sector already exists, show it as read-only (userInfo.sector is ID; sector state holds name)
                     <div className="space-y-2">
                       <div className="border-2 border-gray-200 rounded-xl p-4 max-h-96 overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {SECTORS.map((sec) => {
-                            const isSelected = sec === userInfo.sector;
+                            const isSelected = sec === sector;
                             return (
                               <label
                                 key={sec}

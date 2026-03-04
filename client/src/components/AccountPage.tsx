@@ -2434,14 +2434,14 @@ function DetailsSection() {
                     (Cannot be changed after registration)
                   </span>
                 </Label>
-                {formData.sector ? (
+                {(formData.sector || selectedSectorObj?.name) ? (
                   <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
                     <div className="flex items-center gap-3">
                       <div className="w-4 h-4 rounded-full bg-[#FE8A0F] flex items-center justify-center">
                         <div className="w-2 h-2 rounded-full bg-white"></div>
                       </div>
                       <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif] font-medium">
-                        {formData.sector}
+                        {selectedSectorObj?.name || formData.sector}
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-gray-500 font-['Poppins',sans-serif]">

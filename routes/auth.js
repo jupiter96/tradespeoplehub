@@ -4216,6 +4216,12 @@ router.get('/profile/:identifier', async (req, res) => {
         ? 0
         : reviews.reduce((sum, r) => sum + (typeof r.rating === 'number' ? r.rating : 0), 0) / ratingCount;
 
+    let sectorName = null;
+    if (user.sector) {
+      const sectorDoc = await Sector.findById(user.sector).select('name').lean();
+      if (sectorDoc) sectorName = sectorDoc.name;
+    }
+
     const profileData = {
       id: userId,
       firstName: user.firstName,
@@ -4224,6 +4230,7 @@ router.get('/profile/:identifier', async (req, res) => {
       tradingName: user.tradingName,
       avatar: user.avatar,
       sector: user.sector,
+      sectorName: sectorName ?? (typeof user.sector === 'string' && !mongoose.Types.ObjectId.isValid(user.sector) ? user.sector : null),
       services: user.services || [],
       aboutService: user.aboutService,
       hasTradeQualification: user.hasTradeQualification,
