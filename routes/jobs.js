@@ -1486,7 +1486,7 @@ router.post('/:id/disputes/:disputeId/messages', authenticateToken, async (req, 
 router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
-      .populate('clientId', 'firstName lastName')
+      .populate('clientId', 'firstName lastName address postcode townCity county')
       .populate('awardedProfessionalId', 'firstName lastName');
     if (!job) return res.status(404).json({ error: 'Job not found' });
     const isClient = job.clientId && job.clientId._id.toString() === req.user.id;
@@ -1501,6 +1501,10 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     const clientName = job.clientId
       ? [job.clientId.firstName, job.clientId.lastName].filter(Boolean).join(' ') || 'Client'
       : 'Client';
+    const clientAddressParts = job.clientId
+      ? [job.clientId.address, job.clientId.townCity, job.clientId.county, job.clientId.postcode].filter(Boolean)
+      : [];
+    const clientAddress = clientAddressParts.length > 0 ? clientAddressParts.join(', ') : '';
     const proName = job.awardedProfessionalId
       ? [job.awardedProfessionalId.firstName, job.awardedProfessionalId.lastName].filter(Boolean).join(' ') || 'Professional'
       : 'Professional';
@@ -1520,7 +1524,7 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
 
     // Logo area – top left (placeholder: site name / logo)
     doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a2e');
-    doc.text('Trades Platform', 50, 50);
+    doc.text('Sortars.com', 50, 50);
     doc.moveDown(0.5);
 
     // Right side: Invoice title and number
@@ -1537,7 +1541,7 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     doc.text('Bill To', 50, y);
     doc.font('Helvetica').fillColor('#333');
     doc.text(clientName, 50, y + 14);
-    doc.text(jobTitle, 50, y + 28);
+    if (clientAddress) doc.text(clientAddress, 50, y + 28, { width: 260 });
 
     doc.font('Helvetica-Bold').fillColor('#2c353f');
     doc.text('Service Provider', 320, y);
@@ -1557,9 +1561,9 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     doc.strokeColor('#e0e0e0').lineWidth(0.3).moveTo(50, y).lineTo(545, y).stroke();
     y += 12;
 
-    // Milestone line
+    // Milestone line – description: Job title (Milestone name)
     doc.font('Helvetica').fillColor('#333');
-    doc.text(milestoneName, 50, y, { width: 390 });
+    doc.text(`${jobTitle} (${milestoneName})`, 50, y, { width: 390 });
     doc.text(`£${amount.toFixed(2)}`, 450, y, { width: 95, align: 'right' });
     y += 24;
 
