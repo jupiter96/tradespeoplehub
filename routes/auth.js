@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Sector from '../models/Sector.js';
 import Service from '../models/Service.js';
 import Review from '../models/Review.js';
 import Order from '../models/Order.js';
@@ -3114,35 +3115,38 @@ router.put('/profile', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Travel distance is required for professionals' });
       }
       
-      // Sector can only be set once during registration, cannot be changed afterwards
+      // Sector: store only sector ID (resolve name to ID if needed); set once during registration
+      const resolveToSectorId = async (val) => {
+        const str = (val != null && typeof val !== 'string' ? String(val) : (val || '')).trim();
+        if (!str) return null;
+        if (mongoose.Types.ObjectId.isValid(str) && str.length === 24) return str;
+        const byName = await Sector.findOne({ name: { $regex: new RegExp(`^${str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).select('_id').lean();
+        return byName ? byName._id.toString() : null;
+      };
+      const currentSectorId = user.sector ? (await resolveToSectorId(user.sector)) || user.sector : null;
       if (sector !== undefined && sector !== null) {
-        if (user.sector && user.sector !== sector.trim()) {
-          return res.status(400).json({ 
-            error: 'Sector cannot be changed after registration. You can only select one sector during registration.' 
-          });
-        }
-        // Only set sector if it doesn't exist yet
-        if (!user.sector) {
-          user.sector = sector.trim() || undefined;
+        const newId = await resolveToSectorId(sector);
+        if (newId != null) {
+          if (currentSectorId && currentSectorId !== newId) {
+            return res.status(400).json({
+              error: 'Sector cannot be changed after registration. You can only select one sector during registration.'
+            });
+          }
+          if (!currentSectorId) user.sector = newId;
         }
       }
       if (Array.isArray(services)) {
         user.services = services.map((service) => service?.toString().trim()).filter(Boolean);
       }
-      
-      // Sector cannot be changed after registration
-      // If sectors array is provided, ignore it - sector is read-only after registration
-      // Only allow setting sector if it doesn't exist yet (during registration)
       if (req.body.sectors !== undefined && Array.isArray(req.body.sectors) && req.body.sectors.length > 0) {
-        // If user already has a sector, prevent changing it
-        if (user.sector && user.sector !== req.body.sectors[0]?.toString().trim()) {
-          return res.status(400).json({ 
-            error: 'Sector cannot be changed after registration. You can only select one sector during registration.' 
-          });
-        }
-        // Only set sector if it doesn't exist yet
-        if (!user.sector) {
-          user.sector = req.body.sectors[0]?.toString().trim() || undefined;
+        const newId = await resolveToSectorId(req.body.sectors[0]);
+        if (newId != null) {
+          if (currentSectorId && currentSectorId !== newId) {
+            return res.status(400).json({
+              error: 'Sector cannot be changed after registration. You can only select one sector during registration.'
+            });
+          }
+          if (!currentSectorId) user.sector = newId;
         }
       }
       

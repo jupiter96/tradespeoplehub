@@ -74,11 +74,52 @@ export default function AdminUserModal({
     role: role,
   });
 
+  // Load all sectors when modal opens (for professional sector dropdown)
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch(resolveApiUrl("/api/sectors?activeOnly=false&limit=500"), { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Sectors ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.sectors) ? data.sectors : Array.isArray(data) ? data : [];
+        setSectors(
+          list.map((s: { _id: string; name?: string }) => ({
+            _id: String(s._id),
+            name: s?.name != null ? String(s.name) : "",
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setSectors([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // Resolve stored sector (may be legacy name or already ID) to sector ID for the select
+  const resolveSectorToId = (
+    raw: string | undefined | null,
+    sectorList: { _id: string; name: string }[]
+  ): string => {
+    if (raw == null || String(raw).trim() === "") return "";
+    const str = String(raw).trim();
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(str);
+    if (isObjectId && sectorList.some((s) => String(s._id) === str)) return str;
+    const byName = sectorList.find((s) => s.name && s.name.trim() === str);
+    return byName ? String(byName._id) : (isObjectId ? str : "");
+  };
+
   useEffect(() => {
     if (user) {
-      const sectorValue = user.sector != null
-        ? (typeof user.sector === "string" ? user.sector : (user.sector as { _id?: string })?._id ?? "")
-        : "";
+      const sectorValue = resolveSectorToId(
+        typeof user.sector === "string" ? user.sector : (user.sector as { _id?: string })?._id ?? "",
+        sectors
+      );
       setFormData({
         firstName: user.firstName || "",
         lastName: user.lastName || "",
@@ -96,7 +137,6 @@ export default function AdminUserModal({
         stripeCustomerId: user.stripeCustomerId || "",
         role: user.role || role,
       });
-      // Mark user as viewed by admin when modal opens
       if (user.id && open) {
         markUserAsViewed(user.id);
       }
@@ -119,7 +159,7 @@ export default function AdminUserModal({
         role: role,
       });
     }
-  }, [user, open, role]);
+  }, [user, open, role, sectors]);
 
   const markUserAsViewed = async (userId: string) => {
     try {
@@ -466,24 +506,28 @@ export default function AdminUserModal({
                     Sector
                   </Label>
                   <Select
-                    value={formData.sector || ""}
-                    onValueChange={(value) => setFormData({ ...formData, sector: value })}
+                    value={formData.sector || "__none__"}
+                    onValueChange={(value) => setFormData({ ...formData, sector: value === "__none__" ? "" : value })}
                   >
                     <SelectTrigger className="bg-white border-0 shadow-md shadow-gray-200 text-black focus:shadow-lg focus:shadow-[#FE8A0F]/30 transition-shadow">
                       <SelectValue placeholder="Select sector" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-0 shadow-xl shadow-gray-300">
-                      <SelectItem value="" className="text-black hover:bg-[#FE8A0F]/10">
+                    <SelectContent
+                      className="bg-white border-0 shadow-xl shadow-gray-300"
+                      position="popper"
+                      style={{ zIndex: 100002 }}
+                    >
+                      <SelectItem value="__none__" className="text-black hover:bg-[#FE8A0F]/10">
                         (None)
                       </SelectItem>
                       {sectors.map((s) => (
-                        <SelectItem key={s._id} value={s._id} className="text-black hover:bg-[#FE8A0F]/10">
+                        <SelectItem key={s._id} value={String(s._id)} className="text-black hover:bg-[#FE8A0F]/10">
                           {s.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="mt-1 text-[11px] text-gray-500">Stored as sector ID for job matching</p>
+                  <p className="mt-1 text-[11px] text-gray-500">Stored as sector ID (not name) for job matching</p>
                 </div>
               </>
             )}
