@@ -362,11 +362,11 @@ export default function AdminTransactionHistoryPage() {
                             }`}
                           >
                             {transaction.type === "deposit" || transaction.type === "refund" ? "+" : "-"}
-                            £{transaction.amount.toFixed(2)}
+                            £{transaction.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-nowrap">
-                          £{transaction.balance?.toFixed(2) || "0.00"}
+                          £{(transaction.balance ?? 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0.00"}
                         </td>
                         <td className="py-3 px-4">
                           <span

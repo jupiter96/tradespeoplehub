@@ -419,13 +419,13 @@ export default function AdminBankTransferRequestPage() {
                           {request.user?.name || "-"}
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          £{request.amount.toFixed(2)}
+                          £{request.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          {request.commission.toFixed(2)}
+                          {request.commission.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          {request.userAmount.toFixed(2)}
+                          {request.userAmount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                           {request.city || "-"}

@@ -10,6 +10,7 @@ import {
 import { Button } from "./ui/button";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
+import { formatCurrency } from "../utils/formatNumber";
 import { Badge } from "./ui/badge";
 import { CreditCard, Gift, Wallet, Loader2 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
@@ -194,15 +195,15 @@ export default function CustomOfferPaymentModal({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Offer Price:</span>
-                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{offerPrice.toFixed(2)}</span>
+                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{formatCurrency(offerPrice)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Service Fee:</span>
-                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{calculatedServiceFee.toFixed(2)}</span>
+                <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{formatCurrency(calculatedServiceFee)}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-gray-200">
                 <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f]">Total:</span>
-                <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#FE8A0F]">£{calculatedTotal.toFixed(2)}</span>
+                <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#FE8A0F]">£{formatCurrency(calculatedTotal)}</span>
               </div>
             </div>
           </div>
@@ -240,7 +241,7 @@ export default function CustomOfferPaymentModal({
                                   )}
                                 </div>
                                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
-                                  Available: £{walletBalance.toFixed(2)}
+                                  Available: £{formatCurrency(walletBalance)}
                                   {walletBalance < total && (
                                     <span className="text-red-600 ml-2">(Insufficient)</span>
                                   )}

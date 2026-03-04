@@ -67,7 +67,7 @@ export default function ThankYouPage() {
         const transformedOrders = matchedOrders.map((order: any) => ({
           id: order.orderNumber || order._id,
           service: order.items?.[0]?.title || 'Service',
-          amount: `£${order.total?.toFixed(2) || '0.00'}`,
+          amount: `£${order.total != null ? Number(order.total).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}`,
           booking: order.items?.[0]?.booking,
           scheduledDate: order.items?.[0]?.booking?.date,
           address: order.address,

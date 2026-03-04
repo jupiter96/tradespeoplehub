@@ -30,6 +30,7 @@ import {
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { resolveApiUrl } from "../../config/api";
+import { formatCurrency, formatNumber } from "../../utils/formatNumber";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 import { useAdminPermissions } from "../../hooks/useAdminPermissions";
 import { toast } from "sonner";
@@ -650,7 +651,7 @@ export default function AdminServicesPage({
                                     if (minPrice === maxPrice) {
                                       return (
                                         <>
-                                          <p className="font-medium">£{minPrice.toFixed(2)}</p>
+                                          <p className="font-medium">£{formatCurrency(minPrice)}</p>
                                           {service.priceUnit && service.priceUnit !== "fixed" && (
                                             <p className="text-xs text-gray-500 ">/{service.priceUnit.replace("per ", "")}</p>
                                           )}
@@ -660,7 +661,7 @@ export default function AdminServicesPage({
                                     
                                     return (
                                       <>
-                                        <p className="font-medium">£{minPrice.toFixed(2)} to £{maxPrice.toFixed(2)}</p>
+                                        <p className="font-medium">£{formatCurrency(minPrice)} to £{formatCurrency(maxPrice)}</p>
                                         {service.priceUnit && service.priceUnit !== "fixed" && (
                                           <p className="text-xs text-gray-500 ">/{service.priceUnit.replace("per ", "")}</p>
                                         )}
@@ -674,9 +675,9 @@ export default function AdminServicesPage({
                                     
                                     return (
                                       <>
-                                        <p className="font-medium">£{Number(service.price).toFixed(2)}</p>
+                                        <p className="font-medium">£{formatCurrency(Number(service.price))}</p>
                                 {service.originalPrice && (
-                                          <p className="text-sm text-gray-500  line-through">£{Number(service.originalPrice).toFixed(2)}</p>
+                                          <p className="text-sm text-gray-500  line-through">£{formatCurrency(Number(service.originalPrice))}</p>
                                 )}
                                 {service.priceUnit && service.priceUnit !== "fixed" && (
                                   <p className="text-xs text-gray-500 ">/{service.priceUnit.replace("per ", "")}</p>
@@ -689,7 +690,7 @@ export default function AdminServicesPage({
                             </TableCell>
                             <TableCell className="text-black">
                               <div className="flex items-center gap-1">
-                                <span className="text-sm">{service.rating?.toFixed(1) || "0.0"}</span>
+                                <span className="text-sm">{service.rating != null ? formatNumber(service.rating, 1) : "0.0"}</span>
                                 <span className="text-[#FE8A0F]">★</span>
                                 <span className="text-xs text-gray-500 ">({service.reviewCount || 0})</span>
                               </div>

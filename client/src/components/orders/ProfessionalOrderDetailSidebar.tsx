@@ -4,7 +4,7 @@ import { Separator } from "../ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { VideoThumbnail } from "./VideoThumbnail";
 import { Order, ServiceThumbnail } from "./types";
-import { formatDate, resolveFileUrl, resolveAvatarUrl, isVideoFile, getTwoLetterInitials } from "./utils";
+import { formatDate, formatMoney, resolveFileUrl, resolveAvatarUrl, isVideoFile, getTwoLetterInitials } from "./utils";
 import serviceVector from "../../assets/service_vector.jpg";
 import { toast } from "sonner";
 import {
@@ -316,7 +316,7 @@ export default function ProfessionalOrderDetailSidebar({
             Total Amount
           </p>
           <p className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F]">
-            {order.amount}
+            {formatMoney(typeof order.amount === "number" || typeof order.amount === "string" ? order.amount : undefined)}
           </p>
         </div>
 

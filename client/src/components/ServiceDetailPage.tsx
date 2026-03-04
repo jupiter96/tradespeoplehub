@@ -14,6 +14,7 @@ import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 
 // Helper function to resolve media URLs (images/videos)
 const resolveMediaUrl = (url: string | undefined): string => {
@@ -398,13 +399,13 @@ export default function ServiceDetailPage() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            price: `£${formatCurrency(s.price)}`,
             // Only treat originalPrice as active discount if it is within the valid date range
             originalPrice: (s.originalPrice && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? `£${s.originalPrice.toFixed(2)}`
+              ? `£${formatCurrency(s.originalPrice)}`
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -1480,7 +1481,7 @@ export default function ServiceDetailPage() {
     : generateHighlights();
 
   // Generate detailed description for service
-  const displayRating = (fetchedReviewStats?.averageRating || service.rating || 0).toFixed(1);
+  const displayRating = formatNumber(fetchedReviewStats?.averageRating || service.rating || 0, 1);
   const aboutService = `Discover exceptional ${service.category.toLowerCase()} with ${service.providerName}. With a proven track record of ${service.completedTasks} completed tasks and a ${displayRating} star rating, you can trust in the quality and professionalism of this service. ${service.description} Our commitment to excellence ensures that every client receives personalized attention and outstanding results.`;
 
   // Use service highlights for What's Included, fallback to generated highlights if not available
@@ -1803,7 +1804,7 @@ export default function ServiceDetailPage() {
                     <div className="flex items-center gap-2">
                       {renderStars(fetchedReviewStats?.averageRating || service.rating || 0)}
                       <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
-                        {(fetchedReviewStats?.averageRating || service.rating || 0).toFixed(1)}
+                        {formatNumber(fetchedReviewStats?.averageRating || service.rating || 0, 1)}
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         ({fetchedReviewStats?.totalCount || service.reviewCount} {(fetchedReviewStats?.totalCount || service.reviewCount) === 1 ? 'review' : 'reviews'})
@@ -2003,7 +2004,7 @@ export default function ServiceDetailPage() {
                             </span>
                             {userDistance !== null && (
                               <span className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F] font-medium">
-                                • {userDistance.toFixed(1)} mi away
+                                • {formatNumber(userDistance, 1)} mi away
                               </span>
                             )}
                           </div>
@@ -2250,7 +2251,7 @@ export default function ServiceDetailPage() {
                                   {/* Price */}
                                   <div className="p-4 border-b border-gray-200">
                                     <div className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] font-semibold text-center">
-                                      £{pkgPrice.toFixed(2)}
+                                      £{formatCurrency(pkgPrice)}
                                     </div>
                                   </div>
                                   
@@ -2605,7 +2606,7 @@ export default function ServiceDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="text-center">
                             <div className="text-[48px] font-['Poppins',sans-serif] text-[#2c353f] mb-2">
-                              {(fetchedReviewStats?.averageRating || service.rating || 0).toFixed(1)}
+                              {formatNumber(fetchedReviewStats?.averageRating || service.rating || 0, 1)}
                             </div>
                             <div className="flex justify-center mb-2">
                               {renderStars(fetchedReviewStats?.averageRating || service.rating || 0)}
@@ -3050,11 +3051,11 @@ export default function ServiceDetailPage() {
                               <div className="flex items-baseline gap-2">
                                 {pkgDiscountedPrice && (
                                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] line-through">
-                                    £{pkgRegularPrice.toFixed(2)}
+                                    £{formatCurrency(pkgRegularPrice)}
                                   </span>
                                 )}
                                 <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                                  £{pkgPrice.toFixed(2)}
+                                  £{formatCurrency(pkgPrice)}
                                 </span>
                               </div>
                               {pkgDiscountedPrice && (() => {
@@ -3351,7 +3352,7 @@ export default function ServiceDetailPage() {
                                     <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
                                       isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                     }`}>
-                                      +£{typeof addon.price === 'number' ? addon.price.toFixed(2) : addon.price}
+                                      +£{typeof addon.price === 'number' ? formatCurrency(addon.price) : addon.price}
                                     </span>
                                     {addon.deliveryTime && (
                                       <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
@@ -3440,10 +3441,10 @@ export default function ServiceDetailPage() {
                       {/* Base price */}
                       <div className="flex items-center justify-between">
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          {selectedPackage ? `${selectedPackage.name} Package` : 'Service'} {quantity > 1 ? `(${quantity} × £${basePrice.toFixed(2)})` : ''}
+                          {selectedPackage ? `${selectedPackage.name} Package` : 'Service'} {quantity > 1 ? `(${formatNumber(quantity)} × £${formatCurrency(basePrice)})` : ''}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          £{(basePrice * quantity).toFixed(2)}
+                          £{formatCurrency(basePrice * quantity)}
                         </span>
                       </div>
                       
@@ -3454,7 +3455,7 @@ export default function ServiceDetailPage() {
                             Extras {quantity > 1 ? `(${quantity}x)` : ''}
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            £{(addonsTotal * quantity).toFixed(2)}
+                            £{formatCurrency(addonsTotal * quantity)}
                           </span>
                         </div>
                       )}
@@ -3466,7 +3467,7 @@ export default function ServiceDetailPage() {
                           Total
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                          £{totalPrice.toFixed(2)}
+                          £{formatCurrency(totalPrice)}
                         </span>
                       </div>
                     </div>
@@ -3811,7 +3812,7 @@ export default function ServiceDetailPage() {
                                       <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
                                         isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                       }`}>
-                                        +£{typeof addon.price === 'number' ? addon.price.toFixed(2) : addon.price}
+                                        +£{typeof addon.price === 'number' ? formatCurrency(addon.price) : addon.price}
                                       </span>
                                       {addon.deliveryTime && (
                                         <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
@@ -3898,7 +3899,7 @@ export default function ServiceDetailPage() {
                                 Base price {quantity > 1 ? `(${quantity}x)` : ''}
                               </span>
                               <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                                £{(basePrice * quantity).toFixed(2)}
+                                £{formatCurrency(basePrice * quantity)}
                               </span>
                             </div>
                             
@@ -3908,7 +3909,7 @@ export default function ServiceDetailPage() {
                                   Extras {quantity > 1 ? `(${quantity}x)` : ''}
                                 </span>
                                 <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                                  £{(addonsTotal * quantity).toFixed(2)}
+                                  £{formatCurrency(addonsTotal * quantity)}
                                 </span>
                               </div>
                             )}
@@ -3920,7 +3921,7 @@ export default function ServiceDetailPage() {
                                 Total
                               </span>
                               <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                                £{totalPrice.toFixed(2)}
+                                £{formatCurrency(totalPrice)}
                               </span>
                             </div>
                           </div>

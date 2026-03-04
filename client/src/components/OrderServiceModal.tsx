@@ -10,6 +10,7 @@ import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner@2.0.3";
+import { formatCurrency } from "../utils/formatNumber";
 
 interface OrderServiceModalProps {
   isOpen: boolean;
@@ -63,7 +64,7 @@ export default function OrderServiceModal({
       id: orderId,
       service: serviceName,
       professional: professionalName,
-      amount: `£${totalPrice.toFixed(2)}`,
+      amount: `£${totalPrice.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       status: "Pending",
       scheduledDate: `${selectedDate} ${selectedTime}`,
       deliveryStatus: "active",
@@ -90,7 +91,7 @@ export default function OrderServiceModal({
       orderId: orderId,
       orderDetails: {
         service: serviceName,
-        amount: `£${totalPrice.toFixed(2)}`,
+        amount: `£${totalPrice.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         date: `${selectedDate} ${selectedTime}`,
         status: "pending",
       },
@@ -182,7 +183,7 @@ export default function OrderServiceModal({
                   Total: 
                 </span>
                 <span className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] ml-2">
-                  £{totalPrice.toFixed(2)}
+                  £{formatCurrency(totalPrice)}
                 </span>
               </div>
             </div>
@@ -281,7 +282,7 @@ export default function OrderServiceModal({
               onClick={handleSubmit}
               className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
             >
-              Place Order - £{totalPrice.toFixed(2)}
+              Place Order - £{formatCurrency(totalPrice)}
             </Button>
           </div>
         </div>

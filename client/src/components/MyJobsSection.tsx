@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 import {
   Dialog,
   DialogContent,
@@ -155,6 +156,12 @@ export default function MyJobsSection() {
     });
   };
 
+  const formatDeliveryDisplay = (v: string) => {
+    const n = parseInt(String(v).trim(), 10);
+    if (Number.isNaN(n)) return v;
+    return n === 1 ? "1 day" : `${n} days`;
+  };
+
   return (
     <div>
       <div className="flex flex-col gap-3 mb-4 md:mb-6">
@@ -256,8 +263,8 @@ export default function MyJobsSection() {
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
                           {job.budgetMin != null && job.budgetMax != null
-                          ? `£${job.budgetMin} - £${job.budgetMax}`
-                          : `£${job.budgetAmount}`} ({job.budgetType})
+                          ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}`
+                          : `£${formatNumber(job.budgetAmount, 1)}`} ({job.budgetType})
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4" />
@@ -359,8 +366,8 @@ export default function MyJobsSection() {
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.budgetMin != null && currentJob.budgetMax != null
-                        ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
-                        : `£${currentJob.budgetAmount}`} ({currentJob.budgetType})
+                        ? `£${formatNumber(currentJob.budgetMin, 1)} - £${formatNumber(currentJob.budgetMax, 1)}`
+                        : `£${formatNumber(currentJob.budgetAmount, 1)}`} ({currentJob.budgetType})
                       </p>
                     </div>
                   </div>
@@ -401,33 +408,33 @@ export default function MyJobsSection() {
                         >
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-start gap-3">
-                              <Avatar className="w-12 h-12">
-                                {resolveAvatarUrl(quote.professionalAvatar) && (
-                                  <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
-                                )}
-                                <AvatarFallback className="bg-[#1976D2] text-white font-['Poppins',sans-serif]">
-                                  {getTwoLetterInitials(quote.professionalName, "P")}
-                                </AvatarFallback>
-                              </Avatar>
+                              <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <Avatar className="w-12 h-12 cursor-pointer hover:opacity-90 transition-opacity">
+                                  {resolveAvatarUrl(quote.professionalAvatar) && (
+                                    <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                                  )}
+                                  <AvatarFallback className="bg-[#1976D2] text-white font-['Poppins',sans-serif]">
+                                    {getTwoLetterInitials(quote.professionalName, "P")}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </a>
                               <div>
-                                <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
-                                  {quote.professionalName}
-                                </h4>
+                                <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline" onClick={(e) => e.stopPropagation()}>
+                                  <h4 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] mb-1">
+                                    {quote.professionalName}
+                                  </h4>
+                                </a>
                                 <div className="flex items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                                   <div className="flex items-center gap-1">
                                     <Star className="w-4 h-4 text-[#FE8A0F] fill-[#FE8A0F]" />
-                                    {quote.professionalRating} ({quote.professionalReviews})
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4" />
-                                    {quote.deliveryTime}
+                                    {formatNumber(Number(quote.professionalRating), 1)} ({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})
                                   </div>
                                 </div>
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right whitespace-nowrap">
                               <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-1">
-                                £{quote.price}
+                                £{formatCurrency(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
                               </p>
                               {quote.status === "accepted" && (
                                 <Badge className="bg-green-100 text-green-700 border-green-300">

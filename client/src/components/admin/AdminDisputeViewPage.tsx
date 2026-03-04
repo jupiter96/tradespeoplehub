@@ -655,7 +655,7 @@ export default function AdminDisputeViewPage() {
               Total disputed order
             </p>
             <p className="font-['Poppins',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
-              £{(dispute.amount ?? 0).toFixed(0)}
+              £{(dispute.amount ?? 0).toLocaleString("en-GB", { maximumFractionDigits: 0 })}
             </p>
 
             <div className="border-t border-gray-200 pt-4 mt-4">
@@ -671,7 +671,7 @@ export default function AdminDisputeViewPage() {
                   </p>
                   {hasClientOffer ? (
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
-                      £{clientOffer!.toFixed(2)}
+                      £{clientOffer!.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   ) : (
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">No offer yet</p>
@@ -685,7 +685,7 @@ export default function AdminDisputeViewPage() {
                   </p>
                   {hasProfessionalOffer ? (
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
-                      £{professionalOffer!.toFixed(2)}
+                      £{professionalOffer!.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   ) : (
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">No offer yet</p>

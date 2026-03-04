@@ -52,9 +52,9 @@ export const formatDateTime = (isoString?: string): string => {
 
 export const formatMoney = (amount: number | string | undefined): string => {
   if (amount === undefined || amount === null) return "0.00";
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+  const numAmount = typeof amount === "string" ? parseFloat(String(amount).replace(/,/g, "")) : amount;
   if (isNaN(numAmount)) return "0.00";
-  return numAmount.toFixed(2);
+  return numAmount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 export const getStatusBadge = (status?: string): string => {

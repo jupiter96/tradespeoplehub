@@ -54,6 +54,7 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import { resolveApiUrl } from "../config/api";
 import paypalLogo from "../assets/paypal-logo.png";
 import PaymentMethodModal from "./PaymentMethodModal";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -958,7 +959,7 @@ export default function CartPage() {
         setDiscount(data.promoCode.discount);
         setPromoCodeError(null);
         toast.success("Promo code applied!", {
-          description: `You saved £${data.promoCode.discount.toFixed(2)} on your order`
+          description: `You saved £${formatCurrency(data.promoCode.discount)} on your order`
         });
       } else {
         setPromoCodeError("Invalid promo code");
@@ -1833,7 +1834,7 @@ export default function CartPage() {
       navigate(`/thank-you?orderIds=${orderIds}`, { replace: true });
       
       toast.success(`${result.orders?.length || 1} order(s) placed successfully!`, {
-        description: `£${orderTotal.toFixed(2)} total. Check your account for order details.`
+        description: `£${formatCurrency(orderTotal)} total. Check your account for order details.`
       });
     } catch (error: any) {
       console.error('[Order] Error:', error);
@@ -2563,7 +2564,7 @@ export default function CartPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-semibold truncate">
-                                    {item.title} ({item.quantity} × £{typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(String(item.price || 0)).toFixed(2)})
+                                    {item.title} ({formatNumber(item.quantity)} × £{formatCurrency(typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0)))})
                                   </h4>
                                 </div>
                                 {currentSlot.date && currentSlot.time && (
@@ -2863,7 +2864,7 @@ export default function CartPage() {
                                   <Minus className="w-3 h-3" />
                                 </button>
                                 <span className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#2c353f] min-w-[16px] md:min-w-[20px] text-center font-medium">
-                                  {item.quantity}
+                                  {formatNumber(item.quantity)}
                                 </span>
                                 <button
                                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
@@ -2881,7 +2882,7 @@ export default function CartPage() {
                                       const addonPrice = typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0));
                                       return sum + addonPrice;
                                     }, 0) || 0;
-                                    return ((itemPrice + addonsTotal) * item.quantity).toFixed(2);
+                                    return formatCurrency((itemPrice + addonsTotal) * item.quantity);
                                   })()}
                                 </p>
                                 <button
@@ -2940,7 +2941,7 @@ export default function CartPage() {
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-green-600" />
                         <span className="font-['Poppins',sans-serif] text-[13px] text-green-700">
-                          {appliedPromo.code} Applied - £{appliedPromo.discount.toFixed(2)} off
+                          {appliedPromo.code} Applied - £{formatCurrency(appliedPromo.discount)} off
                         </span>
                       </div>
                       <button
@@ -2970,7 +2971,7 @@ export default function CartPage() {
                         <div key={item.id + index} className={index > 0 ? 'pt-3 border-t border-gray-300' : ''}>
                           <div className="flex justify-between items-center mb-2">
                             <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold">
-                              Service {index + 1} ({item.quantity} × £{typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(String(item.price || 0)).toFixed(2)})
+                              Service {index + 1} ({formatNumber(item.quantity)} × £{formatCurrency(typeof item.price === 'number' ? item.price : parseFloat(String(item.price || 0)))})
                             </p>
                             <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
                               £{(() => {
@@ -2979,7 +2980,7 @@ export default function CartPage() {
                                   const addonPrice = typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0));
                                   return sum + addonPrice;
                                 }, 0) || 0;
-                                return ((itemPrice + addonsTotal) * item.quantity).toFixed(2);
+                                return formatCurrency((itemPrice + addonsTotal) * item.quantity);
                               })()}
                             </span>
                           </div>
@@ -2990,7 +2991,7 @@ export default function CartPage() {
                                   Addons
                                 </span>
                                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                                  £{item.addons.reduce((sum, addon) => sum + (typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0))), 0).toFixed(2)}
+                                  £{formatCurrency(item.addons.reduce((sum, addon) => sum + (typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0))), 0))}
                                 </span>
                               </div>
                             )}
@@ -3032,7 +3033,7 @@ export default function CartPage() {
                             Discount ({appliedPromo.code})
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[15px] text-green-600 font-semibold">
-                            -£{discount.toFixed(2)}
+                            -£{formatCurrency(discount)}
                           </span>
                         </div>
                       )}
@@ -3044,7 +3045,7 @@ export default function CartPage() {
                             Service Fee
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold">
-                            £{actualServiceFee.toFixed(2)}
+                            £{formatCurrency(actualServiceFee)}
                           </span>
                         </div>
                       )}
@@ -3053,7 +3054,7 @@ export default function CartPage() {
                       {serviceFeeThreshold > 0 && cartTotal < serviceFeeThreshold && actualServiceFee > 0 && (
                         <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-4 mt-3 mb-3">
                           <p className="font-['Poppins',sans-serif] text-[14px] md:text-[15px] text-[#FE8A0F] font-semibold text-center">
-                            Add £{(serviceFeeThreshold - cartTotal).toFixed(2)} more for FREE service fee!
+                            Add £{formatCurrency(serviceFeeThreshold - cartTotal)} more for FREE service fee!
                           </p>
                         </div>
                       )}
@@ -3064,7 +3065,7 @@ export default function CartPage() {
                           Total
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-bold">
-                          £{total.toFixed(2)}
+                          £{formatCurrency(total)}
                         </span>
                       </div>
 
@@ -3076,7 +3077,7 @@ export default function CartPage() {
                             Wallet Balance Used
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[15px] text-[#10B981] font-semibold">
-                            -£{walletAmount.toFixed(2)}
+                            -£{formatCurrency(walletAmount)}
                           </span>
                         </div>
                       )}
@@ -3088,7 +3089,7 @@ export default function CartPage() {
                             Remaining to Pay
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[18px] text-[#3B82F6] font-bold">
-                            £{remainderAmount.toFixed(2)}
+                            £{formatCurrency(remainderAmount)}
                           </span>
                         </div>
                       )}
@@ -3100,7 +3101,7 @@ export default function CartPage() {
                             Paid by Wallet
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[18px] text-[#10B981] font-bold">
-                            £{walletAmount.toFixed(2)}
+                            £{formatCurrency(walletAmount)}
                           </span>
                         </div>
                       )}

@@ -7,6 +7,7 @@ import { Textarea } from "../../ui/textarea";
 import { Checkbox } from "../../ui/checkbox";
 import { AlertTriangle, Paperclip, PoundSterling, X } from "lucide-react";
 import { Order } from "../types";
+import { formatCurrency } from "../../../utils/formatNumber";
 
 interface MilestoneItem {
   name?: string;
@@ -274,7 +275,7 @@ export default function DisputeDialog({
                         onCheckedChange={() => toggleMilestone(idx)}
                       />
                       <span>
-                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{formatCurrency(total)}
                         {m?.description && (
                           <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
                         )}
@@ -287,7 +288,7 @@ export default function DisputeDialog({
               </div>
               {selectedMilestoneIndices.length > 0 && (
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
-                  Total dispute amount: £{maxDisputeAmount.toFixed(2)}
+                  Total dispute amount: £{formatCurrency(maxDisputeAmount)}
                 </p>
               )}
             </div>
@@ -322,8 +323,8 @@ export default function DisputeDialog({
               }`}
             >
               {isMilestoneOrder && onSelectedMilestoneIndicesChange
-                ? `You can edit the amount. Maximum: £${maxDisputeAmount.toFixed(2)} (sum of selected milestones).`
-                : `Must be between £0.00 and £${currentOrder?.amountValue?.toFixed(2) || "0.00"} (order amount)`}
+                ? `You can edit the amount. Maximum: £${formatCurrency(maxDisputeAmount)} (sum of selected milestones).`
+                : `Must be between £0.00 and £${formatCurrency(currentOrder?.amountValue) || "0.00"} (order amount)`}
             </p>
           </div>
 

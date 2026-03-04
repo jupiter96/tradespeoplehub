@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { CartItem } from "./CartContext";
 import { useAccount } from "./AccountContext";
 import { resolveApiUrl } from "../config/api";
+import { formatCurrency } from "../utils/formatNumber";
 
 export interface OrderItem {
   id: string;
@@ -404,7 +405,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       service: mainService,
       date: new Date().toISOString().split('T')[0],
       status: "Pending",
-      amount: `£${total.toFixed(2)}`,
+      amount: `£${formatCurrency(total)}`,
       amountValue: total,
       professional: professional,
       professionalAvatar: orderData.items[0]?.image || undefined,
@@ -1715,7 +1716,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
           : undefined;
       const rejectionMessageText =
         typeof rejectedAmount === 'number'
-          ? `Rejected the £${rejectedAmount.toFixed(2)} offer.${message?.trim() ? ` ${message.trim()}` : ''}`
+          ? `Rejected the £${formatCurrency(rejectedAmount)} offer.${message?.trim() ? ` ${message.trim()}` : ''}`
           : `Rejected the offer.${message?.trim() ? ` ${message.trim()}` : ''}`;
 
       // Optimistically update local state so timeline updates immediately without manual refresh.

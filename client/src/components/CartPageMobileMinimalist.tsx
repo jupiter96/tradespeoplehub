@@ -14,6 +14,7 @@ import { Input } from "./ui/input";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
 import { resolveApiUrl } from "../config/api";
+import { formatCurrency } from "../utils/formatNumber";
 
 // Helper function to resolve media URLs (images/videos)
 const resolveMediaUrl = (url: string | undefined): string => {
@@ -289,7 +290,7 @@ export default function CartPageMobileMinimalist({
                   {item.seller}
                 </p>
                 <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-medium">
-                  £{((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity).toFixed(2)}
+                  £{formatCurrency((item.price + (item.addons?.reduce((sum, addon) => sum + addon.price, 0) || 0)) * item.quantity)}
                 </p>
               </div>
             </div>
@@ -554,7 +555,7 @@ export default function CartPageMobileMinimalist({
             Subtotal price
           </span>
           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-            £{subtotal.toFixed(2)}
+            £{formatCurrency(subtotal)}
           </span>
         </div>
 
@@ -565,7 +566,7 @@ export default function CartPageMobileMinimalist({
               Coupon Discount %
             </span>
             <span className="font-['Poppins',sans-serif] text-[14px]">
-              -£{discount.toFixed(2)}
+              -£{formatCurrency(discount)}
             </span>
           </div>
         )}
@@ -577,7 +578,7 @@ export default function CartPageMobileMinimalist({
               Service Fee
             </span>
             <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-              £{serviceFee.toFixed(2)}
+              £{formatCurrency(serviceFee)}
             </span>
           </div>
         )}
@@ -586,7 +587,7 @@ export default function CartPageMobileMinimalist({
         {serviceFeeThreshold > 0 && subtotal < serviceFeeThreshold && serviceFee > 0 && (
           <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-3 my-3">
             <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F] font-semibold text-center">
-              Add £{(serviceFeeThreshold - subtotal).toFixed(2)} more for FREE service fee!
+              Add £{formatCurrency(serviceFeeThreshold - subtotal)} more for FREE service fee!
             </p>
           </div>
         )}
@@ -597,7 +598,7 @@ export default function CartPageMobileMinimalist({
             Grand Total
           </span>
           <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-semibold">
-            £{total.toFixed(2)}
+            £{formatCurrency(total)}
           </span>
         </div>
 
@@ -609,7 +610,7 @@ export default function CartPageMobileMinimalist({
               Wallet Balance Used
             </span>
             <span className="font-['Poppins',sans-serif] text-[14px] text-[#10B981] font-semibold">
-              -£{walletAmount.toFixed(2)}
+              -£{formatCurrency(walletAmount)}
             </span>
           </div>
         )}
@@ -621,7 +622,7 @@ export default function CartPageMobileMinimalist({
               Remaining to Pay
             </span>
             <span className="font-['Poppins',sans-serif] text-[18px] text-[#3B82F6] font-bold">
-              £{remainderAmount.toFixed(2)}
+              £{formatCurrency(remainderAmount)}
             </span>
           </div>
         )}
@@ -633,7 +634,7 @@ export default function CartPageMobileMinimalist({
               Paid by Wallet
             </span>
             <span className="font-['Poppins',sans-serif] text-[18px] text-[#10B981] font-bold">
-              £{walletAmount.toFixed(2)}
+              £{formatCurrency(walletAmount)}
             </span>
           </div>
         )}

@@ -193,7 +193,7 @@ export default function InviteProfessionalsList({
                         />
                       ))}
                       <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-semibold ml-0.5">
-                        {pro.rating}
+                        {Number(pro.rating).toFixed(1)}
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                         ({pro.reviewCount})
@@ -305,7 +305,7 @@ export default function InviteProfessionalsList({
                           />
                         ))}
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold ml-1">
-                          {pro.rating}
+                          {Number(pro.rating).toFixed(1)}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                           ({pro.reviewCount})

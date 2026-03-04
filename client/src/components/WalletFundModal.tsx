@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Loader2, CreditCard, Building2, Plus, Trash2, Check, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
+import { formatCurrency } from "../utils/formatNumber";
 import PaymentMethodModal from "./PaymentMethodModal";
 import { useAccount } from "./AccountContext";
 
@@ -303,7 +304,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       }
 
       if (data.status === 'succeeded') {
-        toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
+        toast.success(`Wallet funded successfully! New balance: £${formatCurrency(data.balance)}`);
         onSuccess();
         onClose();
       } else if (data.requiresAction) {
@@ -343,7 +344,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
         const data = await response.json();
         if (response.ok && data.transaction?.status === 'completed') {
           clearInterval(poll);
-          toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
+          toast.success(`Wallet funded successfully! New balance: £${formatCurrency(data.balance)}`);
           onSuccess();
           onClose();
         } else if (attempts >= maxAttempts) {
@@ -828,7 +829,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     Total due:
                   </span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    £{fees.total.toFixed(2)}
+                    £{formatCurrency(fees.total)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -852,7 +853,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     </Tooltip>
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    £{fees.fee.toFixed(2)}
+                    £{formatCurrency(fees.fee)}
                   </span>
                 </div>
                 <div className="border-t border-gray-300 pt-3">
@@ -861,7 +862,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                       Payment due:
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                      £{fees.paymentDue.toFixed(2)}
+                      £{formatCurrency(fees.paymentDue)}
                     </span>
                   </div>
                 </div>
@@ -879,7 +880,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     Processing...
                   </>
                 ) : (
-                  `Confirm and pay £${fees.paymentDue.toFixed(2)} GBP`
+                  `Confirm and pay £${formatCurrency(fees.paymentDue)} GBP`
                 )}
               </Button>
 

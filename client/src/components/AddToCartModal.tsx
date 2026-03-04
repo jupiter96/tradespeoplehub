@@ -8,6 +8,7 @@ import { Calendar } from "./ui/calendar";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 
 interface Addon {
   id: number;
@@ -208,7 +209,7 @@ export default function AddToCartModal({
                 by {sellerName}
               </p>
               <p className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F] font-medium mt-1">
-                £{(basePrice || 0).toFixed(2)}
+                £{formatCurrency(basePrice || 0)}
               </p>
             </div>
           </div>
@@ -259,7 +260,7 @@ export default function AddToCartModal({
                                   </p>
                                 </div>
                                 <p className="font-['Poppins',sans-serif] text-[18px] text-[#FE8A0F] font-medium">
-                                  £{pkg.price.toFixed(2)}
+                                  £{formatCurrency(pkg.price)}
                                 </p>
                               </div>
                               <ul className="space-y-1">
@@ -292,7 +293,7 @@ export default function AddToCartModal({
                     <Minus className="w-5 h-5 text-[#2c353f]" />
                   </button>
                   <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-medium min-w-[40px] text-center">
-                    {quantity}
+                    {formatNumber(quantity)}
                   </span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
@@ -333,7 +334,7 @@ export default function AddToCartModal({
                           </span>
                         </div>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F] font-medium">
-                          +£{addon.price.toFixed(2)}
+                          +£{formatCurrency(addon.price)}
                         </span>
                       </label>
                     ))}
@@ -514,10 +515,10 @@ export default function AddToCartModal({
                       }
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      £{((hasPackages && selectedPackage 
+                      £{formatCurrency((hasPackages && selectedPackage 
                         ? packages.find(p => p.type === selectedPackage)?.price || basePrice
                         : basePrice
-                      ) || 0).toFixed(2)}
+                      ) || 0)}
                     </span>
                   </div>
 
@@ -531,7 +532,7 @@ export default function AddToCartModal({
                           + {addon.title}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                          £{addon.price.toFixed(2)}
+                          £{formatCurrency(addon.price)}
                         </span>
                       </div>
                     );
@@ -543,7 +544,7 @@ export default function AddToCartModal({
                       Quantity
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      x{quantity}
+                      x{formatNumber(quantity)}
                     </span>
                   </div>
 
@@ -555,7 +556,7 @@ export default function AddToCartModal({
                       Total
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                      £{calculateTotal().toFixed(2)}
+                      £{formatCurrency(calculateTotal())}
                     </span>
                   </div>
                 </div>
@@ -607,7 +608,7 @@ export default function AddToCartModal({
                 Total Amount
               </p>
               <p className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                £{calculateTotal().toFixed(2)}
+                £{formatCurrency(calculateTotal())}
               </p>
             </div>
             {serviceType === "in-person" && !canProceed && (

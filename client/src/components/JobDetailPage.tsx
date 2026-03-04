@@ -4,6 +4,7 @@ import { useJobs, JobQuote, Milestone } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import {
@@ -107,6 +108,9 @@ export default function JobDetailPage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [editingQuoteMeta, setEditingQuoteMeta] = useState<{ jobId: string; quoteId: string } | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [showRejectAwardConfirm, setShowRejectAwardConfirm] = useState(false);
+  const [rejectingAward, setRejectingAward] = useState(false);
+  const [expandedQuoteMessages, setExpandedQuoteMessages] = useState<Set<string>>(new Set());
 
   // Milestone state for sending quote
   const [milestones, setMilestones] = useState<Array<{ description: string; amount: string }>>([
@@ -160,15 +164,24 @@ export default function JobDetailPage() {
     }
   }, [authReady, isLoggedIn, navigate]);
 
-  // Fetch job by id if not in context (e.g. direct URL or refresh)
+  // Always fetch latest job when viewing this page so professional sees award/milestones without refresh
   const [jobLoading, setJobLoading] = useState(false);
   useEffect(() => {
     if (!jobSlug || !authReady || !isLoggedIn) return;
     const inList = getJobById(jobSlug);
-    if (inList) return;
-    setJobLoading(true);
+    if (!inList) setJobLoading(true);
     fetchJobById(jobSlug).finally(() => setJobLoading(false));
   }, [jobSlug, authReady, isLoggedIn, getJobById, fetchJobById]);
+
+  // Refetch job when tab becomes visible (e.g. client awarded while pro had page open)
+  useEffect(() => {
+    if (!jobSlug || !authReady || !isLoggedIn) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchJobById(jobSlug);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [jobSlug, authReady, isLoggedIn, fetchJobById]);
 
   const job = getJobById(jobSlug || "");
 
@@ -238,6 +251,19 @@ export default function JobDetailPage() {
   ) : null;
   // For professional: only their own quotes in Quotes tab
   const myQuotes = userRole === "professional" ? job.quotes.filter((q) => q.professionalId === userInfo?.id) : job.quotes;
+  // Awarded quotes (for client: show at top; for pro: single myAwardedQuote)
+  const awardedQuotes = job.quotes.filter((q) => q.status === "awarded");
+  // List quotes: client sees non-awarded only (awarded at top); pro sees myQuotes or none when awarded
+  const listQuotes = isJobOwner ? job.quotes.filter((q) => q.status !== "awarded") : (userRole === "professional" && myAwardedQuote ? [] : myQuotes);
+
+  const toggleQuoteMessageExpanded = (quoteId: string) => {
+    setExpandedQuoteMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(quoteId)) next.delete(quoteId);
+      else next.add(quoteId);
+      return next;
+    });
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -246,6 +272,12 @@ export default function JobDetailPage() {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  const formatDeliveryDisplay = (v: string) => {
+    const n = parseInt(String(v).trim(), 10);
+    if (Number.isNaN(n)) return v;
+    return n === 1 ? "1 day" : `${n} days`;
   };
 
   const handleInviteProfessional = async (pro: typeof recommendedProfessionals[0]) => {
@@ -373,9 +405,17 @@ export default function JobDetailPage() {
     try {
       await rejectAward(job.id);
       toast.success("Job award rejected.");
+      setShowRejectAwardConfirm(false);
     } catch (e: any) {
       toast.error(e?.message || "Failed to reject");
+    } finally {
+      setRejectingAward(false);
     }
+  };
+
+  const handleRejectAwardConfirm = () => {
+    setRejectingAward(true);
+    handleRejectAward();
   };
 
   const handleRejectQuote = async (quoteId: string) => {
@@ -522,7 +562,7 @@ export default function JobDetailPage() {
     const minPrice = job.budgetMin ?? job.budgetAmount;
     const maxPrice = job.budgetMax ?? job.budgetAmount * 1.2;
     if (price < minPrice || price > maxPrice) {
-      toast.error(`Price must be between £${minPrice.toFixed(0)} and £${maxPrice.toFixed(0)} (job budget range)`);
+      toast.error(`Price must be between £${formatNumber(minPrice, 0)} and £${formatNumber(maxPrice, 0)} (job budget range)`);
       return;
     }
     if (editingQuoteMeta) {
@@ -753,8 +793,8 @@ export default function JobDetailPage() {
                   <div className="text-right">
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
                       {job.budgetMin != null && job.budgetMax != null
-                        ? `£${job.budgetMin.toFixed(0)} - £${job.budgetMax.toFixed(0)}`
-                        : `£${job.budgetAmount.toFixed(0)} - £${(job.budgetAmount * 1.2).toFixed(0)}`}
+                        ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}`
+                        : `£${formatNumber(job.budgetAmount, 1)} - £${formatNumber(job.budgetAmount * 1.2, 1)}`}
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       Posted: {formatDate(job.postedAt)}
@@ -804,80 +844,150 @@ export default function JobDetailPage() {
             {/* Quotes Tab */}
             {activeTab === "quotes" && (
               <div className="space-y-4">
-                {/* Professional: Awarded Section */}
-                {userRole === "professional" && myAwardedQuote && (
+                {/* Awarded Professionals: top section for client (awarded quotes) and for professional (their awarded quote) */}
+                {(userRole === "professional" && myAwardedQuote) || (isJobOwner && awardedQuotes.length > 0) ? (
                   <div className="bg-white rounded-xl shadow-sm p-6">
                     <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
                       Awarded Professionals
                     </h2>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#f8f9fa] p-4 sm:p-5 rounded-lg">
-                      <div className="flex items-start gap-4 flex-1">
-                        <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 flex-shrink-0">
-                          {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
-                            <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
-                          )}
-                          <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
-                            {getTwoLetterInitials(myAwardedQuote.professionalName, "P")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1">
-                            {myAwardedQuote.professionalName}
-                          </h3>
-                          <button className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#3B82F6] hover:underline mb-2">
-                            View profile
-                          </button>
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="flex items-center gap-1 bg-[#FE8A0F] px-2 py-1 rounded">
-                              <Star className="w-3 h-3 sm:w-4 sm:h-4 text-white fill-white" />
-                              <span className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-white">
-                                {myAwardedQuote.professionalRating}
+                    {userRole === "professional" && myAwardedQuote ? (
+                    <div className="flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                              {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
+                                <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
+                              )}
+                              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
+                                {getTwoLetterInitials(myAwardedQuote.professionalName, "P")}
+                              </AvatarFallback>
+                            </Avatar>
+                          </a>
+                          <div className="flex-1 min-w-0">
+                            <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline" onClick={(e) => e.stopPropagation()}>
+                              <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1">
+                                {myAwardedQuote.professionalName}
+                              </h3>
+                            </a>
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-1 bg-[#FE8A0F] px-2 py-1 rounded">
+                                <Star className="w-3 h-3 sm:w-4 sm:h-4 text-white fill-white" />
+                                <span className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-white">
+                                  {formatNumber(Number(myAwardedQuote.professionalRating), 1)}
+                                </span>
+                              </div>
+                              <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                                ({myAwardedQuote.professionalReviews} {myAwardedQuote.professionalReviews === 1 ? 'review' : 'reviews'})
                               </span>
                             </div>
-                            <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
-                              ({myAwardedQuote.professionalReviews} reviews)
-                            </span>
                           </div>
-                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                            {myAwardedQuote.message || "will do"}
-                          </p>
                         </div>
+                        <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">
+                          £{formatCurrency(myAwardedQuote.price)} in {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
+                        </p>
                       </div>
-                      <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-4 w-full sm:w-auto">
-                        <div className="text-left sm:text-right flex-1 sm:flex-none">
-                          <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
-                            £{myAwardedQuote.price.toFixed(2)} GBP
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
-                            in {myAwardedQuote.deliveryTime}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                          <Button
-                            onClick={() => handleStartChat(myAwardedQuote)}
-                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
-                          >
-                            Chat
-                          </Button>
-                          <Button
-                            onClick={handleAcceptAward}
-                            className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            onClick={handleRejectAward}
-                            className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
-                          >
-                            Reject
-                          </Button>
-                        </div>
+                      <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                        {(() => {
+                          const m = myAwardedQuote.message || "will do";
+                          const long = m.length > 400;
+                          const open = expandedQuoteMessages.has(myAwardedQuote.id);
+                          const text = open ? m : (long ? m.slice(0, 400) + "..." : m);
+                          return (
+                            <>
+                              {open ? <p className="whitespace-pre-wrap">{text}</p> : <span>{text}</span>}
+                              {long && (
+                                <button type="button" onClick={() => toggleQuoteMessageExpanded(myAwardedQuote.id)} className="text-[#3B82F6] hover:underline ml-1 font-medium">
+                                  {open ? "Read less" : "Read more"}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                      <div className="flex justify-end gap-2 flex-wrap pt-2 border-t border-gray-200">
+                        <Button
+                          onClick={() => handleStartChat(myAwardedQuote)}
+                          className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                        >
+                          Chat
+                        </Button>
+                        <Button
+                          onClick={handleAcceptAward}
+                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          onClick={() => setShowRejectAwardConfirm(true)}
+                          className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                        >
+                          Reject
+                        </Button>
                       </div>
                     </div>
+                    ) : null}
+                    {isJobOwner && awardedQuotes.length > 0 && awardedQuotes.map((quote) => {
+                      const msg = quote.message || "";
+                      const isLong = msg.length > 400;
+                      const expanded = expandedQuoteMessages.has(quote.id);
+                      const displayMsg = expanded ? msg : (isLong ? msg.slice(0, 400) + "..." : msg);
+                      return (
+                        <div key={quote.id} className="flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg mt-4 first:mt-0">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4 flex-1 min-w-0">
+                              <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                  {resolveAvatarUrl(quote.professionalAvatar) && <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />}
+                                  <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
+                                    {getTwoLetterInitials(quote.professionalName, "P")}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </a>
+                              <div className="flex-1 min-w-0">
+                                <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline" onClick={(e) => e.stopPropagation()}>
+                                  <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1">{quote.professionalName}</h3>
+                                </a>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="flex items-center gap-1 bg-[#FE8A0F] px-2 py-1 rounded">
+                                    <Star className="w-3 h-3 sm:w-4 sm:h-4 text-white fill-white" />
+                                    <span className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-white">{formatNumber(Number(quote.professionalRating), 1)}</span>
+                                  </div>
+                                  <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">£{formatCurrency(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}</p>
+                          </div>
+                          <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                            {expanded ? (
+                              <p className="whitespace-pre-wrap">{displayMsg}</p>
+                            ) : (
+                              <span>{displayMsg}</span>
+                            )}
+                            {isLong && (
+                              <button
+                                type="button"
+                                onClick={() => toggleQuoteMessageExpanded(quote.id)}
+                                className="text-[#3B82F6] hover:underline ml-1 font-medium"
+                              >
+                                {expanded ? "Read less" : "Read more"}
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex justify-end gap-2 pt-2 border-t border-orange-200">
+                            <Button onClick={() => handleStartChat(quote)} className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2">
+                              Chat
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                ) : null}
 
-                {myQuotes.length === 0 ? (
+                {/* Quote list: hidden for professional when their awarded quote is shown above */}
+                {!(userRole === "professional" && myAwardedQuote) && (listQuotes.length === 0 ? (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 md:p-24 text-center">
                     <div className="mx-auto mb-6 flex justify-center">
                       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-gray-400">
@@ -891,42 +1001,50 @@ export default function JobDetailPage() {
                     </p>
                   </div>
                 ) : (
-                  myQuotes.map((quote) => (
+                  listQuotes.map((quote) => {
+                    const msg = quote.message || "";
+                    const isLongMsg = msg.length > 400;
+                    const msgExpanded = expandedQuoteMessages.has(quote.id);
+                    const showMsg = msgExpanded ? msg : (isLongMsg ? msg.slice(0, 400) + "..." : msg);
+                    const isAwarded = quote.status === "awarded";
+                    return (
                     <div
                       key={quote.id}
-                      className={`bg-white rounded-lg border transition-all duration-200 overflow-hidden ${
+                      className={`rounded-lg border transition-all duration-200 overflow-hidden ${
                         quote.status === "accepted"
-                          ? "border-green-500 shadow-sm"
-                          : quote.status === "awarded"
-                          ? "border-orange-500 shadow-sm"
+                          ? "bg-white border-green-500 shadow-sm"
+                          : isAwarded
+                          ? "bg-orange-50 border-orange-300 shadow-lg"
                           : quote.status === "rejected"
-                          ? "border-gray-200 opacity-60"
-                          : "border-gray-200 hover:border-[#FE8A0F] hover:shadow-md"
+                          ? "bg-white border-gray-200 opacity-60"
+                          : "bg-white border-gray-200 hover:border-[#FE8A0F] hover:shadow-md"
                       }`}
                     >
                       {/* Mobile Layout */}
                       <div className="block sm:hidden p-4">
                         <div className="flex items-start gap-3 mb-3">
-                          <Avatar className="w-12 h-12 flex-shrink-0">
-                            {resolveAvatarUrl(quote.professionalAvatar) && (
-                              <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
-                            )}
-                            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                              {getTwoLetterInitials(quote.professionalName, "P")}
-                            </AvatarFallback>
-                          </Avatar>
+                          <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                              {resolveAvatarUrl(quote.professionalAvatar) && (
+                                <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                              )}
+                              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                                {getTwoLetterInitials(quote.professionalName, "P")}
+                              </AvatarFallback>
+                            </Avatar>
+                          </a>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium truncate mb-1">
-                              {quote.professionalName}
-                            </h3>
+                            <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline" onClick={(e) => e.stopPropagation()}>
+                              <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium truncate mb-1">
+                                {quote.professionalName}
+                              </h3>
+                            </a>
                             <div className="flex items-center gap-2 text-[12px] text-[#6b6b6b] mb-1">
                               <div className="flex items-center gap-1">
                                 <Star className="w-3 h-3 text-[#FE8A0F] fill-[#FE8A0F]" />
-                                <span>{quote.professionalRating}</span>
+                                <span>{formatNumber(Number(quote.professionalRating), 1)}</span>
+                                <span className="text-[#8d8d8d]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
                               </div>
-                              <span>•</span>
-                              <Clock className="w-3 h-3" />
-                              <span>{quote.deliveryTime}</span>
                             </div>
                             {quote.status !== "pending" && (
                               <Badge className={`text-[10px] px-2 py-0.5 ${
@@ -939,16 +1057,20 @@ export default function JobDetailPage() {
                               </Badge>
                             )}
                           </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                              £{quote.price}
-                            </p>
+                          <div className="text-right flex-shrink-0 whitespace-nowrap">
+                            <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£{formatCurrency(Number(quote.price))}</span>
+                            <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                           </div>
                         </div>
-                        
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3 line-clamp-2">
-                          {quote.message}
-                        </p>
+
+                        <div className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                          {msgExpanded ? <p className="whitespace-pre-wrap">{showMsg}</p> : <span>{showMsg}</span>}
+                          {isLongMsg && (
+                            <button type="button" onClick={() => toggleQuoteMessageExpanded(quote.id)} className="text-[#3B82F6] hover:underline ml-1 font-medium text-[12px]">
+                              {msgExpanded ? "Read less" : "Read more"}
+                            </button>
+                          )}
+                        </div>
 
                         {quote.status === "pending" && (
                           <div className="flex gap-2 justify-end">
@@ -1003,33 +1125,33 @@ export default function JobDetailPage() {
                       {/* Desktop Layout */}
                       <div className="hidden sm:block p-5">
                         <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-4 flex-1">
-                            <Avatar className="w-14 h-14 flex-shrink-0">
-                              {resolveAvatarUrl(quote.professionalAvatar) && (
-                              <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
-                            )}
-                              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                                {getTwoLetterInitials(quote.professionalName, "P")}
-                              </AvatarFallback>
-                            </Avatar>
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <Avatar className="w-14 h-14 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                                {resolveAvatarUrl(quote.professionalAvatar) && (
+                                <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
+                              )}
+                                <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                                  {getTwoLetterInitials(quote.professionalName, "P")}
+                                </AvatarFallback>
+                              </Avatar>
+                            </a>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium mb-1">
-                                {quote.professionalName}
-                              </h3>
+                              <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline" onClick={(e) => e.stopPropagation()}>
+                                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium mb-1">
+                                  {quote.professionalName}
+                                </h3>
+                              </a>
                               <div className="flex items-center gap-4 text-[13px] text-[#6b6b6b]">
                                 <div className="flex items-center gap-1">
                                   <Star className="w-4 h-4 text-[#FE8A0F] fill-[#FE8A0F]" />
-                                  <span>{quote.professionalRating}</span>
-                                  <span className="text-[#8d8d8d]">({quote.professionalReviews})</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-4 h-4" />
-                                  <span>{quote.deliveryTime}</span>
+                                  <span>{formatNumber(Number(quote.professionalRating), 1)}</span>
+                                  <span className="text-[#8d8d8d]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
                                 </div>
                               </div>
                             </div>
                             {quote.status !== "pending" && (
-                              <Badge className={`text-[12px] px-3 py-1 ${
+                              <Badge className={`text-[12px] px-3 py-1 flex-shrink-0 ${
                                 quote.status === "accepted" ? "bg-green-50 text-green-700 border-green-200" :
                                 quote.status === "awarded" ? "bg-orange-50 text-orange-700 border-orange-200" :
                                 "bg-gray-50 text-gray-700 border-gray-200"
@@ -1039,16 +1161,20 @@ export default function JobDetailPage() {
                               </Badge>
                             )}
                           </div>
-                          <div className="text-right ml-4 flex-shrink-0">
-                            <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                              £{quote.price}
-                            </p>
+                          <div className="text-right ml-4 flex-shrink-0 whitespace-nowrap">
+                            <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatCurrency(Number(quote.price))}</span>
+                            <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                           </div>
                         </div>
 
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 pl-[72px]">
-                          {quote.message}
-                        </p>
+                        <div className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 pl-[72px]">
+                          {msgExpanded ? <p className="whitespace-pre-wrap">{showMsg}</p> : <span>{showMsg}</span>}
+                          {isLongMsg && (
+                            <button type="button" onClick={() => toggleQuoteMessageExpanded(quote.id)} className="text-[#3B82F6] hover:underline ml-1 font-medium text-[13px]">
+                              {msgExpanded ? "Read less" : "Read more"}
+                            </button>
+                          )}
+                        </div>
 
                         <div className="pl-[72px]">
                           {quote.status === "pending" && (
@@ -1108,8 +1234,8 @@ export default function JobDetailPage() {
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
+                  ); })
+                ) )}
 
                 {/* Invite Professionals List - dynamic by job sector, sorted by rating/reviews */}
                 {isJobOwner && (
@@ -1165,7 +1291,7 @@ export default function JobDetailPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={handleRejectAward}
+                        onClick={() => setShowRejectAwardConfirm(true)}
                         className="border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
                       >
                         Reject
@@ -1232,7 +1358,7 @@ export default function JobDetailPage() {
                                   <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] px-2 py-0">Cancelled</Badge>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-right text-[#2c353f]">£{milestone.amount}</td>
+                              <td className="py-3 px-4 text-right text-[#2c353f]">£{formatNumber(Number(milestone.amount), 1)}</td>
                               <td className="py-3 px-4 text-right">
                                 {/* Client: awaiting-accept (pro not accepted yet) → Close to cancel and refund */}
                                 {isJobOwner && milestone.status === "awaiting-accept" && (
@@ -1394,13 +1520,13 @@ export default function JobDetailPage() {
                       <div className="flex items-center justify-between">
                         <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">Total Milestones:</p>
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                          £{job.milestones.reduce((sum, m) => sum + m.amount, 0)}
+                          £{formatNumber(job.milestones.reduce((sum, m) => sum + m.amount, 0), 1)}
                         </p>
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Released:</p>
                         <p className="font-['Poppins',sans-serif] text-[16px] text-green-600">
-                          £{job.milestones.filter((m) => m.status === "released").reduce((sum, m) => sum + m.amount, 0)}
+                          £{formatNumber(job.milestones.filter((m) => m.status === "released").reduce((sum, m) => sum + m.amount, 0), 1)}
                         </p>
                       </div>
                     </div>
@@ -1541,6 +1667,28 @@ export default function JobDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Reject job award confirmation (professional) */}
+      <AlertDialog open={showRejectAwardConfirm} onOpenChange={(open) => !open && setShowRejectAwardConfirm(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-['Poppins',sans-serif]">Reject job award?</AlertDialogTitle>
+            <AlertDialogDescription className="font-['Poppins',sans-serif]">
+              You will decline this job. The client will be able to award another professional. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]" disabled={rejectingAward}>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleRejectAwardConfirm}
+              disabled={rejectingAward}
+              className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
+            >
+              {rejectingAward ? "Rejecting…" : "Reject award"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Quote Submission / Edit Dialog for Professionals */}
       <Dialog
         open={showQuoteDialog}
@@ -1574,8 +1722,8 @@ export default function JobDetailPage() {
                 <div className="pt-3 border-t border-gray-100 space-y-2">
                   <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                     {job.budgetMin != null && job.budgetMax != null
-                      ? `£${job.budgetMin.toFixed(0)} - £${job.budgetMax.toFixed(0)}`
-                      : `£${job.budgetAmount.toFixed(0)} - £${(job.budgetAmount * 1.2).toFixed(0)}`}
+                      ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}`
+                      : `£${formatNumber(job.budgetAmount, 1)} - £${formatNumber(job.budgetAmount * 1.2, 1)}`}
                   </div>
                   {job.location && (
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
@@ -1618,7 +1766,7 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: £{(job.budgetMin ?? job.budgetAmount).toFixed(0)} - £{(job.budgetMax ?? job.budgetAmount * 1.2).toFixed(0)} (price must be within this range)
+                    💡 Client's budget: £{formatNumber(job.budgetMin ?? job.budgetAmount, 1)} - £{formatNumber(job.budgetMax ?? job.budgetAmount * 1.2, 1)} (price must be within this range)
                   </p>
                 </div>
 
@@ -1939,7 +2087,7 @@ export default function JobDetailPage() {
               <div className="border-t border-gray-200 pt-3 sm:pt-4">
                 <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
                   Total: <strong>£{awardWithMilestone
-                    ? awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0).toFixed(2)
+                    ? formatCurrency(awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0))
                     : selectedQuoteForAward.price} GBP</strong>
                 </p>
               </div>
@@ -2111,7 +2259,7 @@ export default function JobDetailPage() {
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               {cancelRequestMilestone && (
-                <>Request cancellation for &quot;{cancelRequestMilestone.name || cancelRequestMilestone.description}&quot; (£{cancelRequestMilestone.amount}). The other party can accept or reject.</>
+                <>Request cancellation for &quot;{cancelRequestMilestone.name || cancelRequestMilestone.description}&quot; (£{formatNumber(Number(cancelRequestMilestone.amount), 1)}). The other party can accept or reject.</>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -2160,7 +2308,7 @@ export default function JobDetailPage() {
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               {disputeMilestone
-                ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - £${disputeMilestone.amount}`
+                ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - £${formatNumber(Number(disputeMilestone.amount), 1)}`
                 : "If there's an issue with the milestone, you can raise a dispute. Our support team will review and help resolve the issue."}
             </DialogDescription>
           </DialogHeader>
@@ -2241,7 +2389,7 @@ export default function JobDetailPage() {
                         className="flex-1 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] cursor-pointer"
                         onClick={() => { setDisputeMilestone(milestone); setDisputeForm((p) => ({ ...p, selectedMilestones: [milestone.id] })); }}
                       >
-                        {milestone.name || milestone.description} - £{milestone.amount}
+                        {milestone.name || milestone.description} - £{formatNumber(Number(milestone.amount), 1)}
                       </label>
                     </div>
                   ))}

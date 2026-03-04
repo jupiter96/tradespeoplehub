@@ -28,7 +28,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { toast } from "sonner";
 import { Order } from "./types";
-import { formatDate, getStatusBadge, getStatusIcon, getStatusLabelForTable, resolveAvatarUrl } from "./utils";
+import { formatDate, formatMoney, getStatusBadge, getStatusIcon, getStatusLabelForTable, resolveAvatarUrl } from "./utils";
+import { formatNumber } from "../../utils/formatNumber";
 
 interface ProfessionalOrderListProps {
   orders: Order[];
@@ -140,7 +141,7 @@ export default function ProfessionalOrderList({
                   {formatDate(order.date)}
                 </TableCell>
                 <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                  {order.amount}
+                  {formatMoney(typeof order.amount === "number" || typeof order.amount === "string" ? order.amount : undefined)}
                 </TableCell>
                 <TableCell>
                   <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -228,13 +229,13 @@ export default function ProfessionalOrderList({
                   {formatDate(order.date)}
                 </TableCell>
                 <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                  {order.amount}
+                  {formatMoney(typeof order.amount === "number" || typeof order.amount === "string" ? order.amount : undefined)}
                 </TableCell>
                 <TableCell>
                   {order.rating && (
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
-                      <span className="font-['Poppins',sans-serif] text-[13px]">{order.rating}</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px]">{formatNumber(Number(order.rating), 1)}</span>
                     </div>
                   )}
                 </TableCell>

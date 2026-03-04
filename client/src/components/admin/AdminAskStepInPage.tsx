@@ -295,7 +295,7 @@ export default function AdminAskStepInPage() {
                         <TableCell className="text-black font-medium">£{dispute.amount}</TableCell>
                         <TableCell className="text-black">
                           <span className="text-sm text-purple-600 font-medium">
-                            £{(dispute.arbitrationFeeAmount * 2).toFixed(2)}
+                            £{(dispute.arbitrationFeeAmount * 2).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <p className="text-xs text-gray-500">Both paid</p>
                         </TableCell>

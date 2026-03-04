@@ -482,7 +482,7 @@ export default function PromoCodeSection() {
                     )}
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    {promo.discountType === "percentage" ? `${promo.discount}%` : `£${promo.discount.toFixed(2)}`}
+                    {promo.discountType === "percentage" ? `${promo.discount}%` : `£${Number(promo.discount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] capitalize">
                     {promo.discountType}
@@ -491,7 +491,7 @@ export default function PromoCodeSection() {
                     {promo.usedCount || 0} / {promo.usageLimit || "∞"}
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    £{promo.minOrderAmount?.toFixed(2) || "0.00"}
+                    £{(promo.minOrderAmount ?? 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
                     {promo.validFrom ? new Date(promo.validFrom).toLocaleDateString('en-GB', { 

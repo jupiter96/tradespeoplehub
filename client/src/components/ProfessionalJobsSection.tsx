@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { formatNumber } from "../utils/formatNumber";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
@@ -274,7 +275,7 @@ function ActiveJobsSection() {
                   <div className="flex flex-col items-start md:items-end gap-3">
                     <div className="text-right">
                       <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                        {acceptedQuote?.price != null ? `£${acceptedQuote.price}` : (job.budgetMin != null && job.budgetMax != null ? `£${job.budgetMin} - £${job.budgetMax}` : `£${job.budgetAmount}`)}
+                        {acceptedQuote?.price != null ? `£${formatNumber(Number(acceptedQuote.price), 1)}` : (job.budgetMin != null && job.budgetMax != null ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}` : `£${formatNumber(job.budgetAmount, 1)}`)}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                         Your Quote

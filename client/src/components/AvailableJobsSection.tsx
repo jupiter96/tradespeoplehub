@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
+import { formatNumber } from "../utils/formatNumber";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -115,7 +116,7 @@ export default function AvailableJobsSection() {
     // Use job ID to generate consistent distance for each job
     const hash = jobId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const distance = (hash % 245) / 10 + 0.5; // Range: 0.5 to 25 miles
-    return distance.toFixed(1);
+    return formatNumber(distance, 1);
   };
 
   const handleSubmitQuote = async () => {
@@ -135,7 +136,7 @@ export default function AvailableJobsSection() {
     const minPrice = currentJob.budgetMin ?? currentJob.budgetAmount;
     const maxPrice = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
     if (price < minPrice || price > maxPrice) {
-      toast.error(`Price must be between £${minPrice.toFixed(0)} and £${maxPrice.toFixed(0)} (job budget range)`);
+      toast.error(`Price must be between £${formatNumber(minPrice, 0)} and £${formatNumber(maxPrice, 0)} (job budget range)`);
       return;
     }
     try {
@@ -289,8 +290,8 @@ export default function AvailableJobsSection() {
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
                           {job.budgetMin != null && job.budgetMax != null
-                          ? `£${job.budgetMin} - £${job.budgetMax} budget`
-                          : `£${job.budgetAmount} budget`}
+                          ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)} budget`
+                          : `£${formatNumber(job.budgetAmount, 1)} budget`}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4" />
@@ -374,8 +375,8 @@ export default function AvailableJobsSection() {
                   <div className="pt-3 border-t border-gray-100 space-y-2">
                     <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                       {currentJob.budgetMin != null && currentJob.budgetMax != null
-                      ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
-                      : `£${currentJob.budgetAmount}`}
+                      ? `£${formatNumber(currentJob.budgetMin, 1)} - £${formatNumber(currentJob.budgetMax, 1)}`
+                      : `£${formatNumber(currentJob.budgetAmount, 1)}`}
                     </div>
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
@@ -417,8 +418,8 @@ export default function AvailableJobsSection() {
                     />
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
                       💡 Client's budget: {currentJob.budgetMin != null && currentJob.budgetMax != null
-                      ? `£${currentJob.budgetMin} - £${currentJob.budgetMax}`
-                      : `£${currentJob.budgetAmount}`}
+                      ? `£${formatNumber(currentJob.budgetMin, 1)} - £${formatNumber(currentJob.budgetMax, 1)}`
+                      : `£${formatNumber(currentJob.budgetAmount, 1)}`}
                     </p>
                   </div>
 

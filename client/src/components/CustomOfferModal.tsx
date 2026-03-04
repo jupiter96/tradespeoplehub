@@ -26,6 +26,7 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
+import { formatCurrency } from "../utils/formatNumber";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { toast } from "sonner@2.0.3";
@@ -613,7 +614,7 @@ export default function CustomOfferModal({
                                     {milestone.deliveryInDays} {milestone.deliveryInDays <= 1 ? "day" : "days"}
                                   </span>
                                   <span className="font-['Poppins',sans-serif] text-[15px] text-[#FE8A0F] font-semibold shrink-0">
-                                    £{milestoneTotal.toFixed(2)}
+                                    £{formatCurrency(milestoneTotal)}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
@@ -757,7 +758,7 @@ export default function CustomOfferModal({
                             Total Price (sum of price × noOf per milestone):
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
-                            £{totalMilestonesPrice.toFixed(2)}
+                            £{formatCurrency(totalMilestonesPrice)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between mt-1">
@@ -1077,7 +1078,7 @@ export default function CustomOfferModal({
                                       {milestone.deliveryInDays} {milestone.deliveryInDays <= 1 ? "day" : "days"}
                                     </span>
                                     <span className="font-['Poppins',sans-serif] text-[12px] text-[#FE8A0F] font-semibold">
-                                      £{milestoneTotal.toFixed(2)}
+                                      £{formatCurrency(milestoneTotal)}
                                     </span>
                                   </div>
                                 </div>
@@ -1223,7 +1224,7 @@ export default function CustomOfferModal({
                           Total Price (sum of price × noOf per milestone):
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] font-semibold">
-                          £{totalMilestonesPrice.toFixed(2)}
+                          £{formatCurrency(totalMilestonesPrice)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-1">

@@ -74,7 +74,7 @@ export default function RecommendedProfessionals({
                     <div className="flex items-center gap-1">
                       <Star className="w-4 h-4 text-[#FE8A0F] fill-[#FE8A0F]" />
                       <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                        {pro.rating}
+                        {Number(pro.rating).toFixed(1)}
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                         ({pro.reviewCount})

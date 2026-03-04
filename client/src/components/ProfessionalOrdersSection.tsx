@@ -7,6 +7,7 @@ import DeliveryCountdown from "./DeliveryCountdown";
 import { useCountdown } from "../hooks/useCountdown";
 import { useElapsedTime } from "../hooks/useElapsedTime";
 import { resolveApiUrl } from "../config/api";
+import { formatCurrency } from "../utils/formatNumber";
 import {
   ShoppingBag,
   Package,
@@ -1015,7 +1016,7 @@ function ProfessionalOrdersSection() {
       return;
     }
     if (offerAmount > maxAmount + 0.01) {
-      toast.error(`Offer amount cannot exceed £${maxAmount.toFixed(2)}`);
+      toast.error(`Offer amount cannot exceed £${formatCurrency(maxAmount)}`);
       return;
     }
     if (selectedOrder) {
@@ -1786,7 +1787,7 @@ function ProfessionalOrdersSection() {
                   {/* Amount Card */}
                   <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {(typeof dispute.amount === "number" ? dispute.amount : 0).toFixed(2)}</span>
+                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {formatCurrency(typeof dispute.amount === "number" ? dispute.amount : 0)}</span>
                     </p>
                     <Separator className="my-4" />
                     <button className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:underline mb-4">
@@ -1800,7 +1801,7 @@ function ProfessionalOrdersSection() {
                           Professional (you)<br />want to receive:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-                          £{dispute.respondentOffer?.amount.toFixed(2) || "0.00"}
+                          £{formatCurrency(dispute.respondentOffer?.amount) || "0.00"}
                         </p>
                       </div>
                       <div className="text-center">
@@ -1808,7 +1809,7 @@ function ProfessionalOrdersSection() {
                           Client ({dispute.claimantName})<br />wants to pay:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-                          £{dispute.claimantOffer?.amount.toFixed(2) || "0.00"}
+                          £{formatCurrency(dispute.claimantOffer?.amount) || "0.00"}
                         </p>
                       </div>
                     </div>
@@ -1956,7 +1957,7 @@ function ProfessionalOrdersSection() {
                       ))}
                     </div>
                     <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold ml-2">
-                      {currentOrder.professionalReview?.rating || buyerRating || 0}/5
+                      {formatNumber(currentOrder.professionalReview?.rating ?? buyerRating ?? 0, 1)}/5
                     </span>
                   </div>
                 </div>

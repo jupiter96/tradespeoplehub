@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import type { Order, ServiceThumbnail } from "./types";
-import { formatDate, getStatusBadge, getDeliveryStatusBadge, getDeliveryStatusLabel, resolveAvatarUrl } from "./utils";
+import { formatDate, formatMoney, getStatusBadge, getDeliveryStatusBadge, getDeliveryStatusLabel, resolveAvatarUrl } from "./utils";
 import serviceVector from "../../assets/service_vector.jpg";
 
 interface OrderCardProps {
@@ -102,7 +102,7 @@ export default function OrderCard({
         {/* Amount */}
         <div className="flex items-center justify-between mb-3">
           <span className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#FE8A0F] font-semibold">
-            {order.amount}
+            {formatMoney(typeof order.amount === "number" || typeof order.amount === "string" ? order.amount : undefined)}
           </span>
         </div>
 

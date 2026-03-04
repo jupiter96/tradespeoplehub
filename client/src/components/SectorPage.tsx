@@ -20,6 +20,7 @@ import { SEOHead } from "./SEOHead";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Skeleton } from "./ui/skeleton";
 import { Star, Heart, MapPin, Medal, Play, Clock } from "lucide-react";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -1051,13 +1052,13 @@ export default function SectorPage() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            price: `£${formatCurrency(s.price)}`,
             // Only use originalPrice if discount is still valid (within date range)
             originalPrice: (s.originalPrice && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? `£${s.originalPrice.toFixed(2)}`
+              ? `£${formatCurrency(s.originalPrice)}`
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -1091,8 +1092,8 @@ export default function SectorPage() {
             packages: s.packages?.map((p: any) => ({
               id: p.id || p._id,
               name: p.name,
-              price: `£${p.price?.toFixed(2) || '0.00'}`,
-              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              price: `£${formatCurrency(p.price)}`,
+              originalPrice: p.originalPrice ? `£${formatCurrency(p.originalPrice)}` : undefined,
               originalPriceValidFrom: p.originalPriceValidFrom || null,
               originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",
@@ -2092,10 +2093,10 @@ export default function SectorPage() {
                     />
                     <div className="flex items-center justify-between">
                       <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        £{priceRange[0].toLocaleString()}
+                        £{formatCurrency(priceRange[0])}
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        £{priceRange[1].toLocaleString()}
+                        £{formatCurrency(priceRange[1])}
                       </span>
                     </div>
                   </div>
@@ -2593,7 +2594,7 @@ export default function SectorPage() {
                               return (
                                 <div className="flex items-center gap-1 mb-2 md:mb-2.5">
                                   <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
-                                    {score.toFixed(1)}
+                                    {formatNumber(score, 1)}
                                   </span>
                                   <div className="flex items-center gap-0.5">
                                     {[1, 2, 3, 4, 5].map((star) => (
@@ -2655,7 +2656,7 @@ export default function SectorPage() {
                                     return {
                                       min: minPackagePrice,
                                       max: maxPackagePrice,
-                                      formatted: `£${minPackagePrice.toFixed(2)}`
+                                      formatted: `£${formatCurrency(minPackagePrice)}`
                                     };
                                   }
                                   
@@ -2663,7 +2664,7 @@ export default function SectorPage() {
                                   return {
                                     min: minPackagePrice,
                                     max: maxPackagePrice,
-                                    formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`
+                                    formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`
                                   };
                                 };
                                 
@@ -2966,7 +2967,7 @@ export default function SectorPage() {
                                       <div className="flex items-center gap-0.5">
                                         <Star className="w-2.5 h-2.5 fill-[#FE8A0F] text-[#FE8A0F]" />
                                         <span className="font-['Poppins',sans-serif] text-[8px] text-[#2c353f]">
-                                          {service.providerRating.toFixed(1)}
+                                          {formatNumber(service.providerRating, 1)}
                                 </span>
                                       </div>
                                       {service.providerReviewCount && service.providerReviewCount > 0 && (
@@ -3023,7 +3024,7 @@ export default function SectorPage() {
                                         ))}
                                       </div>
                                       <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
-                                        {score.toFixed(1)}
+                                        {formatNumber(score, 1)}
                                       </span>
                                       <span className="font-['Poppins',sans-serif] text-[8px] text-[#8d8d8d]">
                                         ({reviewsCount})
@@ -3076,7 +3077,7 @@ export default function SectorPage() {
                                   return {
                                       min: minPackagePrice,
                                       max: maxPackagePrice,
-                                      formatted: `£${minPackagePrice.toFixed(2)}`
+                                      formatted: `£${formatCurrency(minPackagePrice)}`
                                     };
                                   }
                                   
@@ -3084,7 +3085,7 @@ export default function SectorPage() {
                                   return {
                                     min: minPackagePrice,
                                     max: maxPackagePrice,
-                                    formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`
+                                    formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`
                                   };
                                 };
                                 

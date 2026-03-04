@@ -466,7 +466,7 @@ export default function CustomOrderModal({
                               Total Milestones:
                             </span>
                             <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">
-                              £{milestones.reduce((sum, m) => sum + parseFloat(m.amount || "0"), 0).toFixed(2)}
+                              £{milestones.reduce((sum, m) => sum + parseFloat(m.amount || "0"), 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           </div>
                           <div className="flex items-center justify-between mt-1">

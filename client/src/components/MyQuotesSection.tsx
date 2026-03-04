@@ -27,6 +27,7 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 import {
   Select,
   SelectContent,
@@ -115,6 +116,12 @@ export default function MyQuotesSection() {
     });
   };
 
+  const formatDeliveryDisplay = (v: string) => {
+    const n = parseInt(String(v).trim(), 10);
+    if (Number.isNaN(n)) return v;
+    return n === 1 ? "1 day" : `${n} days`;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
@@ -197,7 +204,7 @@ export default function MyQuotesSection() {
     const minPrice = editingQuote.job.budgetMin ?? editingQuote.job.budgetAmount;
     const maxPrice = editingQuote.job.budgetMax ?? editingQuote.job.budgetAmount * 1.2;
     if (price < minPrice || price > maxPrice) {
-      toast.error(`Price must be between £${minPrice.toFixed(0)} and £${maxPrice.toFixed(0)}`);
+      toast.error(`Price must be between £${formatNumber(minPrice, 0)} and £${formatNumber(maxPrice, 0)}`);
       return;
     }
     setEditSubmitting(true);
@@ -391,18 +398,22 @@ export default function MyQuotesSection() {
             >
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 {/* Left Side - Job & Quote Info */}
-                <div className="flex-1">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="flex-1">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
                       <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
                         {job.title}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <div className="flex flex-wrap items-center gap-3 mb-1">
                         {getStatusBadge(quote.status)}
                         <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                           Submitted: {formatDate(quote.submittedAt)}
                         </span>
                       </div>
+                    </div>
+                    <div className="text-left sm:text-right flex-shrink-0 whitespace-nowrap">
+                      <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatCurrency(Number(quote.price))}</span>
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                     </div>
                   </div>
 
@@ -424,22 +435,8 @@ export default function MyQuotesSection() {
                   </p>
                 </div>
 
-                {/* Right Side - Quote Details & Actions */}
+                {/* Right Side - Actions (price & delivery shown on same row as job title above) */}
                 <div className="flex flex-col items-start md:items-end gap-3">
-                  <div className="text-right">
-                    <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                      £{quote.price}
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                      Your Quote
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
-                    <Clock className="w-4 h-4" />
-                    {quote.deliveryTime}
-                  </div>
-
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();

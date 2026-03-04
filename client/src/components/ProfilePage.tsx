@@ -771,8 +771,8 @@ export default function ProfilePage() {
   const seoTitle = `Hire ${tradingName || displayName} - Verified ${topCategory || 'Professional'} | Sortars`;
   const bioForSeo = (profile.publicProfile as { bio?: string })?.bio || (profile as { bio?: string }).bio || "";
   const seoDescription = bioForSeo
-    ? `${bioForSeo.substring(0, 120)}... ${rating > 0 ? `★ ${rating}/5` : ""} ${completedJobs ? `| ${completedJobs}+ jobs completed` : ""} ${displayLocation ? `| ${displayLocation}` : ""}`
-    : `Book ${tradingName || displayName}, a trusted ${topCategory || "professional"}${displayLocation ? ` in ${displayLocation}` : ""} on Sortars. ${rating > 0 ? `Rated ${rating}/5 stars.` : ""} ${completedJobs ? `${completedJobs}+ successful projects.` : ""} View services, read reviews, and hire online.`;
+    ? `${bioForSeo.substring(0, 120)}... ${rating > 0 ? `★ ${Number(rating).toFixed(1)}/5` : ""} ${completedJobs ? `| ${completedJobs}+ jobs completed` : ""} ${displayLocation ? `| ${displayLocation}` : ""}`
+    : `Book ${tradingName || displayName}, a trusted ${topCategory || "professional"}${displayLocation ? ` in ${displayLocation}` : ""} on Sortars. ${rating > 0 ? `Rated ${Number(rating).toFixed(1)}/5 stars.` : ""} ${completedJobs ? `${completedJobs}+ successful projects.` : ""} View services, read reviews, and hire online.`;
 
   return (
     <div className="prolancer-profile min-h-screen">
@@ -841,7 +841,7 @@ export default function ProfilePage() {
                     className="stat-star is-active"
                     aria-hidden="true"
                   />
-                  <span className="stat-rating">{rating.toFixed(1)}</span>
+                  <span className="stat-rating">{Number(rating).toFixed(1)}</span>
                   <span className="stat-reviews">({ratingCount} reviews)</span>
                   <span className="stat-dot" aria-hidden="true">
                     ·

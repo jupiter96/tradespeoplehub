@@ -6,6 +6,7 @@ import { Textarea } from "../../ui/textarea";
 import { toast } from "sonner";
 import { Paperclip, X } from "lucide-react";
 import { Order } from "../types";
+import { formatCurrency } from "../../../utils/formatNumber";
 
 interface CancellationRequestDialogProps {
   open: boolean;
@@ -229,7 +230,7 @@ export default function CancellationRequestDialog({
                         }}
                       />
                       <span>
-                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{total.toFixed(2)}
+                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{formatCurrency(total)}
                         {m?.description && (
                           <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
                         )}

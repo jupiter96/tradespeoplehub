@@ -15,6 +15,7 @@ import {
 } from "./ui/carousel";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import ServiceCard from "./ServiceCard";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -208,7 +209,7 @@ const getPriceRange = (service: any) => {
   return {
       min: minPackagePrice,
       max: maxPackagePrice,
-      formatted: `£${minPackagePrice.toFixed(2)}`
+      formatted: `£${formatCurrency(minPackagePrice)}`
     };
   }
   
@@ -218,7 +219,7 @@ const getPriceRange = (service: any) => {
   return {
     min: minPackagePrice,
     max: maxPackagePrice,
-    formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`
+    formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`
   };
 };
 
@@ -522,7 +523,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                     return (
                       <div className="flex items-center gap-1 mb-2">
                         <span className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] text-[#2c353f]">
-                          {score.toFixed(1)}
+                          {formatNumber(score, 1)}
                         </span>
                         <div className="flex items-center gap-0.5">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -917,7 +918,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                         return (
                           <div className="flex items-center gap-1 mb-2 md:mb-2.5">
                             <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
-                              {score.toFixed(1)}
+                              {formatNumber(score, 1)}
                             </span>
                             <div className="flex items-center gap-0.5">
                               {[1, 2, 3, 4, 5].map((star) => (
@@ -1276,13 +1277,13 @@ export default function FeaturedServices() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: `£${s.price?.toFixed(2) || '0.00'}`,
+            price: `£${formatCurrency(s.price)}`,
             // Only treat originalPrice as active discount if it is set and still within its valid date range
             originalPrice: (s.originalPrice && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? `£${s.originalPrice.toFixed(2)}`
+              ? `£${formatCurrency(s.originalPrice)}`
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -1306,8 +1307,8 @@ export default function FeaturedServices() {
             packages: s.packages?.map((p: any) => ({
               id: p.id || p._id,
               name: p.name,
-              price: `£${p.price?.toFixed(2) || '0.00'}`,
-              originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+              price: `£${formatCurrency(p.price)}`,
+              originalPrice: p.originalPrice ? `£${formatCurrency(p.originalPrice)}` : undefined,
               originalPriceValidFrom: p.originalPriceValidFrom || null,
               originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",

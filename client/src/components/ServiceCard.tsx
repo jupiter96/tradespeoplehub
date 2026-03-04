@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Star, Heart, MapPin, Medal, Play, Clock } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { formatCurrency, formatNumber } from "../utils/formatNumber";
 
 // Video Thumbnail Component with Play Button (same as FeaturedServices)
 function VideoThumbnail({
@@ -141,12 +142,12 @@ const getPriceRange = (service: any): { min: number; max: number; formatted: str
   });
   if (minPackagePrice === Infinity || maxPackagePrice === 0) return null;
   if (minPackagePrice === maxPackagePrice) {
-    return { min: minPackagePrice, max: maxPackagePrice, formatted: `£${minPackagePrice.toFixed(2)}` };
+    return { min: minPackagePrice, max: maxPackagePrice, formatted: `£${formatCurrency(minPackagePrice)}` };
   }
   return {
     min: minPackagePrice,
     max: maxPackagePrice,
-    formatted: `£${minPackagePrice.toFixed(2)} to £${maxPackagePrice.toFixed(2)}`,
+    formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`,
   };
 };
 
@@ -232,7 +233,7 @@ export default function ServiceCard({
           return (
             <div className="flex items-center gap-1 mb-2 md:mb-2.5">
               <span className="font-['Poppins',sans-serif] text-[13px] md:text-[15px] text-[#2c353f] font-semibold">
-                {scoreVal.toFixed(1)}
+                {formatNumber(scoreVal, 1)}
               </span>
               <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (

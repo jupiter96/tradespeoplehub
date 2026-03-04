@@ -18,6 +18,7 @@ import { toast } from "sonner@2.0.3";
 import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
+import { formatCurrency } from "../utils/formatNumber";
 import paypalLogo from "../assets/paypal-logo.png";
 import adminAvatar from "figma:asset/e0cd63eca847c922f306abffb67a5c6de3fd7001.png";
 
@@ -249,7 +250,7 @@ export default function DisputeDiscussionPage() {
       return;
     }
     if (amount > maxOfferAmount) {
-      toast.error(`Offer cannot exceed ${isOrderDispute ? "order" : "milestone"} amount of £${maxOfferAmount.toFixed(2)}`);
+      toast.error(`Offer cannot exceed ${isOrderDispute ? "order" : "milestone"} amount of £${formatCurrency(maxOfferAmount)}`);
       return;
     }
     try {
@@ -306,7 +307,7 @@ export default function DisputeDiscussionPage() {
         const rejectedAmount = isCurrentUserClient ? dispute?.professionalOffer : dispute?.clientOffer;
         const rejectionMessageText =
           typeof rejectedAmount === "number"
-            ? `Rejected the £${rejectedAmount.toFixed(2)} offer.`
+            ? `Rejected the £${formatCurrency(rejectedAmount)} offer.`
             : "Rejected the offer.";
 
         // Immediate local update so dispute UI/timeline warning reflects without waiting for refresh.
@@ -552,7 +553,7 @@ export default function DisputeDiscussionPage() {
       latestBalance = await fetchWalletBalance();
     }
     if (selectedMethod?.type === "account_balance" && latestBalance < feeAmount) {
-      toast.error(`Insufficient wallet balance. Fee is £${feeAmount.toFixed(2)}.`);
+      toast.error(`Insufficient wallet balance. Fee is £${formatCurrency(feeAmount)}.`);
       return;
     }
     setIsPayingArbitration(true);
@@ -929,10 +930,10 @@ export default function DisputeDiscussionPage() {
   const resolvedReasonText = dispute?.adminDecision
     ? `${adminDecisionSummary}\n${adminDecisionComment}`
     : dispute?.acceptedAt
-      ? `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`
+      ? `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${formatCurrency(settlementAmount)} ` : ""}offer from ${offererName}.`
       : dispute?.autoClosed
         ? "Resolved automatically because the required response/payment deadline passed."
-        : `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${settlementAmount.toFixed(2)} ` : ""}offer from ${offererName}.`;
+        : `Dispute resolved as ${acceptedByName} accepted the ${typeof settlementAmount === "number" ? `£${formatCurrency(settlementAmount)} ` : ""}offer from ${offererName}.`;
   const resolvedAtLabel = dispute?.closedAt
     ? new Date(dispute.closedAt).toLocaleString("en-GB", {
         day: "2-digit",
@@ -1230,7 +1231,7 @@ export default function DisputeDiscussionPage() {
                           <div className="flex-1">
                             <p className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold mb-2">Arbitrate team</p>
                             <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 leading-[1.45]">
-                              {`${entry.payerName} has paid £${entry.amount.toFixed(2)} to escalate the dispute to arbitration.`}
+                              {`${entry.payerName} has paid £${formatCurrency(entry.amount)} to escalate the dispute to arbitration.`}
                             </p>
                             {idx === 0 && !bothPaidArbitrationFee && (
                               <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-[1.45]">
@@ -1396,7 +1397,7 @@ export default function DisputeDiscussionPage() {
                 )}
                 {showAdminStepInLabel && !isWaitingOtherPartyArbitrationFee && !isNegotiationDeadlinePassed && timeLeft !== "Deadline passed" && (
                   <p className="mt-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] text-center">
-                    {`If no agreement is reached, either party can ask the dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}. Both parties must pay ${typeof dispute?.arbitrationFeeAmount === "number" ? `£${dispute.arbitrationFeeAmount.toFixed(2)}` : "the required fee"}.`}
+                    {`If no agreement is reached, either party can ask the dispute team to step in after ${formatDeadlineDateTime(dispute?.negotiationDeadline) || "the deadline"}. Both parties must pay ${typeof dispute?.arbitrationFeeAmount === "number" ? `£${formatCurrency(dispute.arbitrationFeeAmount)}` : "the required fee"}.`}
                   </p>
                 )}
               </div>
@@ -1408,7 +1409,7 @@ export default function DisputeDiscussionPage() {
                 Total disputed {isOrderDispute ? "order" : "milestone"}
               </p>
               <p className="font-['Poppins',sans-serif] text-[42px] text-[#2c353f] font-bold mb-4">
-                £ {(typeof dispute.amount === "number" ? dispute.amount : 0).toFixed(2)}
+                £ {formatCurrency(typeof dispute.amount === "number" ? dispute.amount : 0)}
               </p>
 
               {/* Show milestone button – always for milestone-type order disputes, above Current Offer Status */}
@@ -1448,7 +1449,7 @@ export default function DisputeDiscussionPage() {
                                 return (
                                   <li key={idx} className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] flex justify-between items-baseline gap-2">
                                     <span>{name}</span>
-                                    <span className="text-[#6b6b6b] shrink-0 font-medium">£{totalPrice.toFixed(2)}</span>
+                                    <span className="text-[#6b6b6b] shrink-0 font-medium">£{formatCurrency(totalPrice)}</span>
                                   </li>
                                 );
                               })}
@@ -1473,7 +1474,7 @@ export default function DisputeDiscussionPage() {
                     {milestone.description}
                   </p>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mt-2">
-                    £{milestone.amount.toFixed(2)}
+                    £{formatCurrency(milestone.amount)}
                   </p>
                 </div>
               )}
@@ -1491,7 +1492,7 @@ export default function DisputeDiscussionPage() {
                     </p>
                     {hasUserMadeOffer && userOffer !== undefined ? (
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
-                        £{userOffer.toFixed(2)}
+                        £{formatCurrency(userOffer)}
                       </p>
                     ) : (
                       <Button
@@ -1510,7 +1511,7 @@ export default function DisputeDiscussionPage() {
                     {hasOtherMadeOffer && otherOffer !== undefined ? (
                       <>
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] font-bold">
-                          £{otherOffer.toFixed(2)}
+                          £{formatCurrency(otherOffer)}
                         </p>
                         {canRespondToOffer && (
                           <div className="mt-3 space-y-2">
@@ -1682,18 +1683,18 @@ export default function DisputeDiscussionPage() {
                     isOfferOutOfRange ? "text-red-600 font-medium" : "text-[#6b6b6b]"
                   }`}
                 >
-                  {`Must be between £${offerMin.toFixed(2)} and £${offerMax.toFixed(2)}`}
+                  {`Must be between £${formatCurrency(offerMin)} and £${formatCurrency(offerMax)}`}
                 </p>
                 
                 {hasUserMadeOffer && (
                   <p className="font-['Poppins',sans-serif] text-[11px] text-green-600 mt-2 text-center">
-                    Your current offer: £{userOffer?.toFixed(2)}
+                    Your current offer: £{userOffer != null ? formatCurrency(userOffer) : "—"}
                   </p>
                 )}
                 
                 {!hasUserMadeOffer && (
                   <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2 text-center">
-                    Enter an amount between £{offerMin.toFixed(2)} and £{offerMax.toFixed(2)} GBP
+                    Enter an amount between £{formatCurrency(offerMin)} and £{formatCurrency(offerMax)} GBP
                   </p>
                 )}
 
@@ -1823,12 +1824,12 @@ export default function DisputeDiscussionPage() {
                 <div className="flex justify-between">
                   <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Arbitration Fee:</span>
                   <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    £{typeof dispute?.arbitrationFeeAmount === "number" ? dispute.arbitrationFeeAmount.toFixed(2) : "0.00"}
+                    £{typeof dispute?.arbitrationFeeAmount === "number" ? formatCurrency(dispute.arbitrationFeeAmount) : "0.00"}
                   </span>
                 </div>
                 <div className="flex justify-between mt-2">
                   <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">Wallet balance:</span>
-                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{walletBalance.toFixed(2)}</span>
+                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">£{formatCurrency(walletBalance)}</span>
                 </div>
               </div>
 
@@ -1851,7 +1852,7 @@ export default function DisputeDiscussionPage() {
                               <Wallet className="w-5 h-5 text-[#3D78CB] shrink-0" />
                               <div>
                                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">Wallet Balance</span>
-                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-0.5">£{walletBalance.toFixed(2)} available</p>
+                                <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-0.5">£{formatCurrency(walletBalance)} available</p>
                               </div>
                             </div>
                           )}

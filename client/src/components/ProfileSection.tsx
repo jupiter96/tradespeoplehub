@@ -1875,7 +1875,7 @@ export default function ProfileSection() {
                   <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-auto">
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 md:w-4 md:h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
-                      <span className="font-semibold text-[11px] md:text-[13px]">{rating.toFixed(1)}</span>
+                      <span className="font-semibold text-[11px] md:text-[13px]">{Number(rating).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
                       <span className="text-gray-500 text-[9px] md:text-[11px]">{reviewText}</span>
                     </div>
                     <div className="text-[9px] md:text-[11px] text-gray-600">

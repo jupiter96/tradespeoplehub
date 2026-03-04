@@ -15,6 +15,7 @@ import {
   Handshake,
 } from "lucide-react";
 import { TimelineEvent, Order } from "./types";
+import { formatCurrency } from "../../utils/formatNumber";
 
 export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
   const events: TimelineEvent[] = [];
@@ -707,7 +708,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       ? formatAcceptedAt(disp.negotiationDeadline).split(" ").slice(1, 4).join(" ")
       : "the deadline";
     const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
-      ? ` The arbitration fee is £${disp.arbitrationFeeAmount.toFixed(2)} per party.`
+      ? ` The arbitration fee is £${formatCurrency(disp.arbitrationFeeAmount)} per party.`
       : "";
     // Professional submitted the first response when they are the respondent (other party opened the dispute).
     const isProfessionalRespondent = Boolean(respondentId && professionalId && respondentId === professionalId);
@@ -868,8 +869,8 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           {
             at: offer.offeredAt,
             label: "You made an offer.",
-            description: `You proposed £${offer.amount.toFixed(2)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
-            message: `You proposed £${offer.amount.toFixed(2)} as a settlement. ${clientDisplayName} has been notified and can accept or counter with their own offer.`,
+            description: `You proposed £${formatCurrency(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+            message: `You proposed £${formatCurrency(offer.amount)} as a settlement. ${clientDisplayName} has been notified and can accept or counter with their own offer.`,
             colorClass: "bg-amber-500",
             icon: <Handshake className="w-5 h-5 text-amber-600" />,
           },
@@ -880,8 +881,8 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
           {
             at: offer.offeredAt,
             label: "You received an offer.",
-            description: `${clientDisplayName} proposed £${offer.amount.toFixed(2)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
-            message: `${clientDisplayName} has proposed £${offer.amount.toFixed(2)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
+            description: `${clientDisplayName} proposed £${formatCurrency(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+            message: `${clientDisplayName} has proposed £${formatCurrency(offer.amount)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
             colorClass: "bg-amber-500",
             icon: <Handshake className="w-5 h-5 text-amber-600" />,
           },
@@ -914,7 +915,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       Boolean(professionalIdForRejection && rejectorId) &&
       String(professionalIdForRejection) === String(rejectorId);
 
-    const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
+    const amountText = typeof rejectedAmount === "number" ? `£${formatCurrency(rejectedAmount)}` : "the latest settlement";
 
     if (rejectedByProfessional) {
       push(
@@ -950,7 +951,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       typeof (disp as any)?.lastRejectedOfferAmount === "number"
         ? (disp as any).lastRejectedOfferAmount
         : undefined;
-    const amountText = typeof rejectedAmount === "number" ? `£${rejectedAmount.toFixed(2)}` : "the latest settlement";
+    const amountText = typeof rejectedAmount === "number" ? `£${formatCurrency(rejectedAmount)}` : "the latest settlement";
     const rejectedByProfessional = (disp as any)?.lastOfferRejectedByRole === "professional";
 
     push(
