@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { resolveApiUrl } from "../config/api";
 import { useAccount } from "./AccountContext";
+import { getSocket, connectSocket } from "../services/socket";
 
 export interface JobQuote {
   id: string;
@@ -253,7 +254,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const getJobById = (idOrSlug: string): Job | undefined =>
     jobs.find((j) => j.id === idOrSlug || j.slug === idOrSlug);
 
-  const fetchJobById = async (idOrSlug: string): Promise<Job | null> => {
+  const fetchJobById = useCallback(async (idOrSlug: string): Promise<Job | null> => {
     try {
       const res = await fetch(resolveApiUrl(`/api/jobs/${idOrSlug}`), { credentials: 'include' });
       if (!res.ok) return null;
@@ -271,7 +272,20 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     } catch {
       return null;
     }
-  };
+  }, []);
+
+  // Real-time job updates via Socket.io: refetch job when server pushes job:updated (no polling)
+  useEffect(() => {
+    if (!userInfo?.id) return;
+    const socket = getSocket() || connectSocket(userInfo.id);
+    const onJobUpdated = (data: { jobId: string }) => {
+      if (data?.jobId) fetchJobById(data.jobId);
+    };
+    socket.on("job:updated", onJobUpdated);
+    return () => {
+      socket.off("job:updated", onJobUpdated);
+    };
+  }, [userInfo?.id, fetchJobById]);
 
   const getUserJobs = (userId: string): Job[] =>
     jobs.filter((j) => j.clientId === userId);

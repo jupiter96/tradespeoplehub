@@ -13,8 +13,23 @@ import JobDispute from '../models/JobDispute.js';
 import Wallet from '../models/Wallet.js';
 import Notification from '../models/Notification.js';
 import JobReport from '../models/JobReport.js';
+import { getIO } from '../services/socket.js';
 
 const router = express.Router();
+
+/** Emit job:updated to client and quoted professionals so they get real-time updates without polling */
+function emitJobUpdated(job) {
+  try {
+    const io = getIO();
+    const jobId = job._id.toString();
+    const clientId = job.clientId?.toString?.();
+    if (clientId) io.to(`user:${clientId}`).emit('job:updated', { jobId });
+    (job.quotes || []).forEach((q) => {
+      const proId = q.professionalId?.toString?.();
+      if (proId) io.to(`user:${proId}`).emit('job:updated', { jobId });
+    });
+  } catch (_) {}
+}
 
 // Haversine distance in miles between two WGS84 coordinates
 function haversineMiles(lat1, lon1, lat2, lon2) {
@@ -363,6 +378,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     const job = new Job(jobPayload);
 
     await job.save();
+    emitJobUpdated(job);
     res.status(201).json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Create error:', err);
@@ -678,6 +694,7 @@ router.patch('/:id', authenticateToken, requireRole(['client']), async (req, res
       }
     }
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Update error:', err);
@@ -778,6 +795,7 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
     });
     job.markModified('quotes');
     await job.save();
+    emitJobUpdated(job);
     res.status(201).json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Submit quote error:', err);
@@ -801,6 +819,7 @@ router.delete('/:id/quotes/:quoteId', authenticateToken, requireRole(['professio
     job.quotes = (job.quotes || []).filter((q) => q._id.toString() !== req.params.quoteId);
     job.markModified('quotes');
     await job.save();
+    emitJobUpdated(job);
     return res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Withdraw quote error:', err);
@@ -833,6 +852,7 @@ router.put('/:id/quotes/:quoteId', authenticateToken, requireRole(['professional
     }
     job.markModified('quotes');
     await job.save();
+    emitJobUpdated(job);
     return res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Update quote by professional error:', err);
@@ -944,6 +964,7 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
 
     job.markModified('quotes');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Update quote error:', err);
@@ -1042,6 +1063,7 @@ router.post(
       job.markModified('milestones');
       job.markModified('quotes');
       await job.save();
+      emitJobUpdated(job);
       return res.json(toJobResponse(job));
     } catch (err) {
       console.error('[Jobs] Accept suggested milestone error:', err);
@@ -1084,6 +1106,7 @@ router.post(
       suggested.status = 'rejected';
       job.markModified('quotes');
       await job.save();
+      emitJobUpdated(job);
       return res.json(toJobResponse(job));
     } catch (err) {
       console.error('[Jobs] Reject suggested milestone error:', err);
@@ -1116,6 +1139,7 @@ router.post('/:id/accept-award', authenticateToken, requireRole(['professional']
     job.markModified('quotes');
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Accept award error:', err);
@@ -1163,6 +1187,7 @@ router.post('/:id/reject-award', authenticateToken, requireRole(['professional']
     job.markModified('quotes');
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Reject award error:', err);
@@ -1225,6 +1250,7 @@ router.post('/:id/milestones', authenticateToken, requireRole(['client']), async
     });
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.status(201).json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Add milestone error:', err);
@@ -1286,6 +1312,7 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
       job.status = 'completed';
     }
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Release milestone error:', err);
@@ -1327,6 +1354,7 @@ router.delete('/:id/milestones/:milestoneId', authenticateToken, requireRole(['c
     job.milestones = (job.milestones || []).filter((m) => m._id.toString() !== req.params.milestoneId);
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Delete milestone error:', err);
@@ -1359,6 +1387,7 @@ router.post('/:id/milestones/:milestoneId/request-cancel', authenticateToken, as
     milestone.cancelRequestStatus = 'pending';
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Request cancel error:', err);
@@ -1397,6 +1426,7 @@ router.patch('/:id/milestones/:milestoneId/respond-cancel', authenticateToken, a
     }
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Respond cancel error:', err);
@@ -1425,6 +1455,7 @@ router.post('/:id/milestones/:milestoneId/request-release', authenticateToken, r
     milestone.releaseRequestStatus = 'pending';
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Request release error:', err);
@@ -1492,6 +1523,7 @@ router.patch('/:id/milestones/:milestoneId/respond-release', authenticateToken, 
       job.status = 'completed';
     }
     await job.save();
+    emitJobUpdated(job);
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Respond release error:', err);
@@ -1541,6 +1573,7 @@ router.post('/:id/disputes', authenticateToken, async (req, res) => {
     milestone.disputeId = dispute._id;
     job.markModified('milestones');
     await job.save();
+    emitJobUpdated(job);
 
     const jobRes = toJobResponse(job);
     const disputeRes = {

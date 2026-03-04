@@ -190,23 +190,13 @@ export default function JobDetailPage() {
     }
   }, [authReady, isLoggedIn, navigate]);
 
-  // Always fetch latest job when viewing this page so professional sees award/milestones without refresh
+  // Fetch job once when opening the page; real-time updates come via Socket.io (job:updated)
   const [jobLoading, setJobLoading] = useState(false);
   useEffect(() => {
     if (!jobSlug || !authReady || !isLoggedIn) return;
     const inList = getJobById(jobSlug);
     if (!inList) setJobLoading(true);
     fetchJobById(jobSlug).finally(() => setJobLoading(false));
-  }, [jobSlug, authReady, isLoggedIn, getJobById, fetchJobById]);
-
-  // Refetch job when tab becomes visible (e.g. client awarded while pro had page open)
-  useEffect(() => {
-    if (!jobSlug || !authReady || !isLoggedIn) return;
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") fetchJobById(jobSlug);
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [jobSlug, authReady, isLoggedIn, fetchJobById]);
 
   const job = getJobById(jobSlug || "");
