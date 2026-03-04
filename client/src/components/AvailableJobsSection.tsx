@@ -278,7 +278,7 @@ export default function AvailableJobsSection() {
                           {job.sector}
                         </Badge>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
                         {job.description}
                       </p>
                       <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
@@ -368,7 +368,7 @@ export default function AvailableJobsSection() {
                   Job Summary
                 </h3>
                 <div className="bg-white rounded-lg p-4 border border-blue-100">
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed whitespace-pre-wrap">
                     {currentJob.description}
                   </p>
                   <div className="pt-3 border-t border-gray-100 space-y-2">
@@ -447,7 +447,7 @@ export default function AvailableJobsSection() {
                       Message to Client <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
-                      placeholder="Enter key points or a few words, then use Generate by AI to write a full message..."
+                      placeholder="Enter key points or a few words, then use Generate text by AI to write a full message..."
                       value={quoteMessage}
                       onChange={(e) => setQuoteMessage(e.target.value)}
                       className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
@@ -465,7 +465,7 @@ export default function AvailableJobsSection() {
                         )}
                       >
                         <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiQuoteMessageGenerating && "animate-pulse")} />
-                        {aiQuoteMessageGenerating ? "Generating…" : "Generate by AI"}
+                        {aiQuoteMessageGenerating ? "Generating…" : "Generate text by AI"}
                       </button>
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">

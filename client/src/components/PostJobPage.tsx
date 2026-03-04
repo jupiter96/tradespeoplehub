@@ -28,7 +28,8 @@ import {
   Clock,
   Calendar as CalendarIcon,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  Laptop
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -276,11 +277,12 @@ export default function PostJobPage() {
   const [jobDescription, setJobDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
   
-  // Step 3: Headline (pre-filled when using Generate by AI)
+  // Step 3: Headline (pre-filled when using Generate text by AI)
   const [jobTitle, setJobTitle] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
   
-  // Step 4: Postcode & Timing
+  // Step 4: Location type (In-Person / Online) & Postcode & Timing
+  const [jobLocationType, setJobLocationType] = useState<"in-person" | "online">("in-person");
   const [postcode, setPostcode] = useState("SW1A 1AA");
   const [address, setAddress] = useState("");
   const [townCity, setTownCity] = useState("");
@@ -378,8 +380,8 @@ export default function PostJobPage() {
         // Require job title
         return jobTitle.trim() !== "";
       case 4:
-        // Require postcode and urgency
-        return postcode.trim() !== "" && urgency !== "";
+        // Require urgency; if in-person also require postcode
+        return urgency !== "" && (jobLocationType === "online" || postcode.trim() !== "");
       case 5:
         // Require budget; if custom, require valid min/max and min <= max
         if (selectedBudget === "") return false;
@@ -455,9 +457,9 @@ export default function PostJobPage() {
       sectorSlug: selectedSector,
       categories: categoryLabels,
       categorySlugs: selectedCategories,
-      postcode: postcode,
-      address: address,
-      location: address || postcode,
+      postcode: jobLocationType === "online" ? "Online" : postcode,
+      address: jobLocationType === "online" ? "" : address,
+      location: jobLocationType === "online" ? "Online" : (address || postcode),
       timing: timingMap[urgency] || "flexible",
       specificDate: urgency === "specific-date" ? preferredStartDate : undefined,
       budgetType: "fixed" as const,
@@ -746,7 +748,7 @@ export default function PostJobPage() {
               </div>
             )}
 
-            {/* Step 2: Description (key points + Generate by AI → full description; next step gets title pre-filled) */}
+            {/* Step 2: Description (key points + Generate text by AI → full description; next step gets title pre-filled) */}
             {currentStep === 2 && (
               <div className="space-y-6">
                 <div>
@@ -754,7 +756,7 @@ export default function PostJobPage() {
                     Describe your job
                   </h2>
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Enter key points or a few words about what you need. Then use &quot;Generate by AI&quot; to create a full, structured description (and we&apos;ll suggest a title for the next step).
+                    Enter key points or a few words about what you need. Then use &quot;Generate text by AI&quot; to create a full, structured description (and we&apos;ll suggest a title for the next step).
                   </p>
                 </div>
 
@@ -779,7 +781,7 @@ export default function PostJobPage() {
                       )}
                     >
                       <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
-                      {aiGenerating ? "Generating…" : "Generate by AI"}
+                      {aiGenerating ? "Generating…" : "Generate text by AI"}
                     </button>
                     {!selectedSector && (
                       <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
@@ -824,7 +826,7 @@ export default function PostJobPage() {
               </div>
             )}
 
-            {/* Step 3: Headline (pre-filled from AI when Generate by AI was used) */}
+            {/* Step 3: Headline (pre-filled from AI when Generate text by AI was used) */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
@@ -832,7 +834,7 @@ export default function PostJobPage() {
                     Give your job a headline
                   </h2>
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Write a short title that summarizes what you need done. This may be pre-filled if you used Generate by AI.
+                    Write a short title that summarizes what you need done. This may be pre-filled if you used Generate text by AI.
                   </p>
                 </div>
 
@@ -850,7 +852,46 @@ export default function PostJobPage() {
             {/* Step 4: Location & Timing */}
             {currentStep === 4 && (
               <div className="space-y-6">
-                {/* Postcode Section */}
+                {/* In-Person vs Online */}
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    How will this be done?
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                    Choose In-Person if the work is at a physical location, or Online for remote services.
+                  </p>
+                  <div className="flex gap-3">
+                    <div
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        jobLocationType === "in-person"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                      )}
+                      onClick={() => setJobLocationType("in-person")}
+                    >
+                      <MapPin className={cn("w-5 h-5", jobLocationType === "in-person" ? "text-[#FE8A0F]" : "text-gray-400")} />
+                      <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">In-Person</span>
+                      {jobLocationType === "in-person" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
+                    </div>
+                    <div
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        jobLocationType === "online"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                      )}
+                      onClick={() => setJobLocationType("online")}
+                    >
+                      <Laptop className={cn("w-5 h-5", jobLocationType === "online" ? "text-[#FE8A0F]" : "text-gray-400")} />
+                      <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">Online</span>
+                      {jobLocationType === "online" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Postcode Section - only when In-Person */}
+                {jobLocationType === "in-person" && (
                 <div>
                   <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
                     Where do you need this done?
@@ -882,6 +923,7 @@ export default function PostJobPage() {
                     className="font-['Poppins',sans-serif]"
                   />
                 </div>
+                )}
 
                 {/* Timing Section */}
                 <div className="border-t pt-6">

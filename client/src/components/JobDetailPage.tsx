@@ -31,6 +31,8 @@ import {
   Info,
   Inbox,
   Sparkles,
+  Pencil,
+  Undo2,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
@@ -57,6 +59,15 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -81,7 +92,7 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, createDispute } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, createDispute } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
@@ -92,7 +103,11 @@ export default function JobDetailPage() {
     message: "",
   });
   const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
-  
+  const [quoteToWithdraw, setQuoteToWithdraw] = useState<{ jobId: string; quoteId: string } | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [editingQuoteMeta, setEditingQuoteMeta] = useState<{ jobId: string; quoteId: string } | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
   // Milestone state for sending quote
   const [milestones, setMilestones] = useState<Array<{ description: string; amount: string }>>([
     { description: "", amount: "" }
@@ -221,6 +236,8 @@ export default function JobDetailPage() {
   const myAwardedQuote = userRole === "professional" ? job.quotes.find(
     (quote) => quote.professionalId === userInfo?.id && quote.status === "awarded"
   ) : null;
+  // For professional: only their own quotes in Quotes tab
+  const myQuotes = userRole === "professional" ? job.quotes.filter((q) => q.professionalId === userInfo?.id) : job.quotes;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -467,6 +484,31 @@ export default function JobDetailPage() {
     });
   };
 
+  const handleWithdrawConfirm = async () => {
+    if (!quoteToWithdraw) return;
+    setWithdrawing(true);
+    try {
+      await withdrawQuote(quoteToWithdraw.jobId, quoteToWithdraw.quoteId);
+      toast.success("Quote withdrawn.");
+      setQuoteToWithdraw(null);
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message || "Failed to withdraw quote");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const openEditQuoteModal = (quote: JobQuote) => {
+    if (!job) return;
+    setEditingQuoteMeta({ jobId: job.id, quoteId: quote.id });
+    setQuoteForm({
+      price: String(quote.price),
+      deliveryTime: quote.deliveryTime || "",
+      message: quote.message || "",
+    });
+    setShowQuoteDialog(true);
+  };
+
   const handleSubmitQuote = async () => {
     if (!quoteForm.price || !quoteForm.deliveryTime || !quoteForm.message) {
       toast.error("Please fill in all fields");
@@ -481,6 +523,25 @@ export default function JobDetailPage() {
     const maxPrice = job.budgetMax ?? job.budgetAmount * 1.2;
     if (price < minPrice || price > maxPrice) {
       toast.error(`Price must be between £${minPrice.toFixed(0)} and £${maxPrice.toFixed(0)} (job budget range)`);
+      return;
+    }
+    if (editingQuoteMeta) {
+      setEditSubmitting(true);
+      try {
+        await updateQuoteByProfessional(editingQuoteMeta.jobId, editingQuoteMeta.quoteId, {
+          price,
+          deliveryTime: quoteForm.deliveryTime.trim(),
+          message: quoteForm.message.trim(),
+        });
+        toast.success("Quote updated.");
+        setShowQuoteDialog(false);
+        setEditingQuoteMeta(null);
+        setQuoteForm({ price: "", deliveryTime: "", message: "" });
+      } catch (e: unknown) {
+        toast.error((e as Error)?.message || "Failed to update quote");
+      } finally {
+        setEditSubmitting(false);
+      }
       return;
     }
     try {
@@ -620,7 +681,11 @@ export default function JobDetailPage() {
               {/* Professional: Submit Quote button */}
               {!isJobOwner && job.status === "active" && !hasSubmittedQuote && (
                 <Button
-                  onClick={() => setShowQuoteDialog(true)}
+                  onClick={() => {
+                    setEditingQuoteMeta(null);
+                    setQuoteForm({ price: "", deliveryTime: "", message: "" });
+                    setShowQuoteDialog(true);
+                  }}
                   className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] h-9 sm:h-10 px-4 sm:px-6"
                 >
                   Submit Quote
@@ -652,15 +717,12 @@ export default function JobDetailPage() {
                 >
                   Details
                 </TabsTrigger>
-                {/* Only show Quotes tab to Client (job owner) */}
-                {isJobOwner && (
-                  <TabsTrigger
-                    value="quotes"
-                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
-                  >
-                    Quotes ({job.quotes.length})
-                  </TabsTrigger>
-                )}
+                <TabsTrigger
+                  value="quotes"
+                  className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                >
+                  Quotes ({isJobOwner ? job.quotes.length : myQuotes.length})
+                </TabsTrigger>
                 {/* Show Payment tab if job is awarded (awaiting-accept or in-progress) */}
                 {(job.status === "awaiting-accept" || job.status === "in-progress") && (
                   <TabsTrigger
@@ -670,12 +732,6 @@ export default function JobDetailPage() {
                     Payment
                   </TabsTrigger>
                 )}
-                <TabsTrigger
-                  value="activity"
-                  className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
-                >
-                  Activity
-                </TabsTrigger>
               </TabsList>
             </div>
           </Tabs>
@@ -708,7 +764,7 @@ export default function JobDetailPage() {
                 
                 <div className="space-y-4">
                   <div className="py-3">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-4 whitespace-pre-wrap">
                       {job.description}
                     </p>
                   </div>
@@ -821,7 +877,7 @@ export default function JobDetailPage() {
                   </div>
                 )}
 
-                {job.quotes.length === 0 ? (
+                {myQuotes.length === 0 ? (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 md:p-24 text-center">
                     <div className="mx-auto mb-6 flex justify-center">
                       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-gray-400">
@@ -829,11 +885,13 @@ export default function JobDetailPage() {
                       </div>
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b7280] leading-relaxed max-w-xl mx-auto">
-                      Thank you for posting your job, our vetted professionals will quote soon.
+                      {isJobOwner
+                        ? "Thank you for posting your job, our vetted professionals will quote soon."
+                        : "You haven't submitted a quote yet. Submit a quote to appear here."}
                     </p>
                   </div>
                 ) : (
-                  job.quotes.map((quote) => (
+                  myQuotes.map((quote) => (
                     <div
                       key={quote.id}
                       className={`bg-white rounded-lg border transition-all duration-200 overflow-hidden ${
@@ -893,20 +951,43 @@ export default function JobDetailPage() {
                         </p>
 
                         {quote.status === "pending" && (
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => handleOpenAwardModal(quote)}
-                              className="flex-1 bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[13px] h-9"
-                            >
-                              Award
-                            </Button>
-                            <Button
-                              onClick={() => handleStartChat(quote)}
-                              variant="outline"
-                              className="flex-1 font-['Poppins',sans-serif] text-[13px] h-9"
-                            >
-                              Message
-                            </Button>
+                          <div className="flex gap-2 justify-end">
+                            {isJobOwner && (
+                              <Button
+                                onClick={() => handleOpenAwardModal(quote)}
+                                className="flex-none bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[13px] h-9"
+                              >
+                                Award
+                              </Button>
+                            )}
+                            {userRole === "professional" ? (
+                              <>
+                                <Button
+                                  onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
+                                  variant="outline"
+                                  className="flex-none font-['Poppins',sans-serif] text-[13px] h-9 border-red-200 text-red-600 hover:bg-red-50"
+                                >
+                                  <Undo2 className="w-3 h-3 mr-1" />
+                                  Withdraw
+                                </Button>
+                                <Button
+                                  onClick={() => openEditQuoteModal(quote)}
+                                  variant="outline"
+                                  className="flex-none font-['Poppins',sans-serif] text-[13px] h-9 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                                >
+                                  <Pencil className="w-3 h-3 mr-1" />
+                                  Edit
+                                </Button>
+                              </>
+                            ) : isJobOwner && (
+                              <Button
+                                onClick={() => handleStartChat(quote)}
+                                variant="outline"
+                                className="flex-none font-['Poppins',sans-serif] text-[13px] h-9"
+                              >
+                                Message
+                              </Button>
+                            )}
                           </div>
                         )}
                         {quote.status === "accepted" && (
@@ -971,20 +1052,43 @@ export default function JobDetailPage() {
 
                         <div className="pl-[72px]">
                           {quote.status === "pending" && (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                onClick={() => handleOpenAwardModal(quote)}
-                                className="bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
-                              >
-                                Award
-                              </Button>
-                              <Button
-                                onClick={() => handleStartChat(quote)}
-                                variant="outline"
-                                className="font-['Poppins',sans-serif] text-[14px] h-10 px-6"
-                              >
-                                Message
-                              </Button>
+                            <div className="flex items-center gap-2 justify-end">
+                              {isJobOwner && (
+                                <Button
+                                  onClick={() => handleOpenAwardModal(quote)}
+                                  className="flex-none bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                >
+                                  Award
+                                </Button>
+                              )}
+                              {userRole === "professional" ? (
+                                <>
+                                  <Button
+                                    onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
+                                    variant="outline"
+                                    className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-red-200 text-red-600 hover:bg-red-50"
+                                  >
+                                    <Undo2 className="w-4 h-4 mr-2" />
+                                    Withdraw
+                                  </Button>
+                                  <Button
+                                    onClick={() => openEditQuoteModal(quote)}
+                                    variant="outline"
+                                    className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                                  >
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                </>
+                              ) : isJobOwner && (
+                                <Button
+                                  onClick={() => handleStartChat(quote)}
+                                  variant="outline"
+                                  className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                >
+                                  Message
+                                </Button>
+                              )}
                             </div>
                           )}
                           {quote.status === "awarded" && (
@@ -1305,41 +1409,6 @@ export default function JobDetailPage() {
               </div>
             )}
 
-            {/* Activity Tab */}
-            {activeTab === "activity" && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
-                  Activity
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex gap-4 pb-4 border-b border-gray-100">
-                    <div className="w-2 h-2 bg-[#1976D2] rounded-full mt-2"></div>
-                    <div className="flex-1">
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
-                        Job posted
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                        {formatDate(job.postedAt)}
-                      </p>
-                    </div>
-                  </div>
-                  {job.quotes.map((quote, idx) => (
-                    <div key={idx} className="flex gap-4 pb-4 border-b border-gray-100">
-                      <div className="w-2 h-2 bg-[#FE8A0F] rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1">
-                          Quote received from {quote.professionalName}
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">
-                          {formatDate(quote.submittedAt)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* More Tab */}
             {activeTab === "more" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
@@ -1450,15 +1519,44 @@ export default function JobDetailPage() {
 
       <Footer />
 
-      {/* Quote Submission Dialog for Professionals - same format as Account My Jobs Send Quote */}
-      <Dialog open={showQuoteDialog} onOpenChange={setShowQuoteDialog}>
+      {/* Withdraw quote confirmation */}
+      <AlertDialog open={!!quoteToWithdraw} onOpenChange={(open) => !open && setQuoteToWithdraw(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-['Poppins',sans-serif]">Withdraw quote?</AlertDialogTitle>
+            <AlertDialogDescription className="font-['Poppins',sans-serif]">
+              This will remove your quote from this job. You can submit a new quote later if the job is still open.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleWithdrawConfirm}
+              disabled={withdrawing}
+              className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
+            >
+              {withdrawing ? "Withdrawing…" : "Withdraw"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quote Submission / Edit Dialog for Professionals */}
+      <Dialog
+        open={showQuoteDialog}
+        onOpenChange={(open) => {
+          setShowQuoteDialog(open);
+          if (!open) setEditingQuoteMeta(null);
+        }}
+      >
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b border-gray-200 pb-4 mb-6">
             <DialogTitle className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-              Send Quote
+              {editingQuoteMeta ? "Edit Quote" : "Send Quote"}
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[15px] text-[#6b6b6b] mt-2">
-              Submit your quote for: <span className="text-[#FE8A0F]">{job.title}</span>
+              {editingQuoteMeta ? "Update your quote for: " : "Submit your quote for: "}
+              <span className="text-[#FE8A0F]">{job.title}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -1470,7 +1568,7 @@ export default function JobDetailPage() {
                 Job Summary
               </h3>
                 <div className="bg-white rounded-lg p-4 border border-blue-100">
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed">
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 leading-relaxed whitespace-pre-wrap">
                   {job.description}
                 </p>
                 <div className="pt-3 border-t border-gray-100 space-y-2">
@@ -1549,7 +1647,7 @@ export default function JobDetailPage() {
                     Message to Client <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
-                    placeholder="Enter key points or a few words, then use Generate by AI to write a full message..."
+                    placeholder="Enter key points or a few words, then use Generate text by AI to write a full message..."
                     value={quoteForm.message}
                     onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })}
                     className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
@@ -1567,7 +1665,7 @@ export default function JobDetailPage() {
                       )}
                     >
                       <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiQuoteMessageGenerating && "animate-pulse")} />
-                      {aiQuoteMessageGenerating ? "Generating…" : "Generate by AI"}
+                      {aiQuoteMessageGenerating ? "Generating…" : "Generate text by AI"}
                     </button>
                   </div>
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
@@ -1688,10 +1786,11 @@ export default function JobDetailPage() {
               </Button>
               <Button
                 onClick={handleSubmitQuote}
+                disabled={editSubmitting}
                 className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] h-12 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4 mr-2" />
-                Send Quote
+                {editingQuoteMeta ? (editSubmitting ? "Updating…" : "Update Quote") : "Send Quote"}
               </Button>
             </div>
           </div>

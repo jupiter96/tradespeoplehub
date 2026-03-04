@@ -85,13 +85,18 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
     const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({ apiKey });
 
-    const systemPrompt = `You are a helpful assistant that writes clear, professional job postings for a trades and services platform (UK). Given a sector and optional key points or keywords from the client, you must respond in valid JSON only with exactly two keys: "title" and "description".
+    const systemPrompt = `You are a helpful assistant that writes clear, professional job postings for a trades and services platform (UK). The posting is written by a single client (homeowner or business owner). Given a sector and optional key points or keywords from the client, you must respond in valid JSON only with exactly two keys: "title" and "description".
 1. title: A short job headline (one concise line, e.g. "Install new bathroom suite" or "Fix leaking kitchen tap").
-2. description: A full job description - well structured with clear sections (e.g. Overview, What we need, Scope of work, Timing/Preferences if relevant). Use plain text, no markdown headers. Write in a professional but friendly tone. Keep description between 150 and 400 words.`;
+2. description: A full job description - well structured and easy to read. IMPORTANT: Use actual line breaks (newlines) for formatting:
+   - Put each section on its own line or block (e.g. "Overview:", "What I need:", "Scope of work:", "Timing/Preferences:").
+   - After each section label, start the content on the next line or after a colon and space.
+   - Use bullet points as a dash or bullet at the start of a line, with one item per line (e.g. "- Item one\\n- Item two").
+   - Separate paragraphs with a blank line (double newline) for clarity.
+   Use plain text only, no markdown (no ## or **). Write in first person singular only: "I", "my", "me". Never use "we" or "our". Keep tone professional but friendly. Keep description between 150 and 400 words.`;
 
     const userPrompt = points
-      ? `Sector: ${sectorLabel}. Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description. Return valid JSON with "title" and "description".`
-      : `Sector: ${sectorLabel}. Generate a job title and a full, structured job description for a typical job in this sector. Return valid JSON with "title" and "description".`;
+      ? `Sector: ${sectorLabel}. Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`
+      : `Sector: ${sectorLabel}. Generate a job title and a full, structured job description for a typical job in this sector. Use newlines in the description between sections and for bullet points. Return valid JSON with "title" and "description".`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -153,11 +158,11 @@ router.post('/generate-quote-message', authenticateToken, requireRole(['professi
 
     const systemPrompt = `You are a helpful assistant for UK trades professionals. You write a quote message that a professional sends to a client when submitting a quote. The message must be in valid JSON only with a single key "message".
 
-Structure the "message" exactly as follows (do not invent random content):
-1. Greeting: A short, professional greeting to the client.
-2. Introduction: One sentence introducing the professional by their trading/business name (use the name provided).
-3. Body: Content that is clearly tied to THIS specific job. Reference the job title and what the client needs. Briefly describe relevant experience and track record that shows confidence and fit for this job. Keep it concise (2-4 sentences). If the client provided key points, weave them in naturally.
-Do not generate generic or random text. Every sentence should relate to the job or the professional's relevant experience. Use short paragraphs. Total length under 200 words. Output valid JSON with key "message".`;
+Structure the "message" exactly as follows (do not invent random content). IMPORTANT: Use actual line breaks (newlines) so the message is easy to read:
+1. Greeting: A short, professional greeting to the client (first line).
+2. Blank line, then Introduction: One sentence introducing the professional by their trading/business name (use the name provided).
+3. Blank line, then Body: Content clearly tied to THIS specific job. Reference the job title and what the client needs. Briefly describe relevant experience. Use short paragraphs separated by a blank line (double newline) between paragraphs.
+Do not generate generic or random text. Every sentence should relate to the job or the professional's relevant experience. Total length under 200 words. Output valid JSON with key "message". The "message" string must contain real newline characters (\\n) between paragraphs so it displays with proper line breaks.`;
 
     const context = [
       sector ? `Sector: ${sector}.` : '',
@@ -165,7 +170,7 @@ Do not generate generic or random text. Every sentence should relate to the job 
       points ? `Professional's key points to include: ${points}.` : '',
       proName ? `Professional's trading/business name to introduce: ${proName}.` : '',
     ].filter(Boolean).join(' ');
-    const userPrompt = `Job title: "${title}". ${context} Write the quote message in valid JSON with one key "message". Start with a greeting, then introduce the trading name, then a short paragraph tied to this job and the professional's relevant experience.`;
+    const userPrompt = `Job title: "${title}". ${context} Write the quote message in valid JSON with one key "message". Use newlines: greeting on first line, then a blank line, then introduction, then a blank line, then body paragraphs with a blank line between each paragraph. Start with a greeting, then introduce the trading name, then a short paragraph tied to this job and the professional's relevant experience.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -650,6 +655,61 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
   } catch (err) {
     console.error('[Jobs] Submit quote error:', err);
     res.status(500).json({ error: err.message || 'Failed to submit quote' });
+  }
+});
+
+// Withdraw quote (professional only: remove own quote when pending)
+router.delete('/:id/quotes/:quoteId', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const quote = (job.quotes || []).find((q) => q._id.toString() === req.params.quoteId);
+    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    if (quote.professionalId && quote.professionalId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'You can only withdraw your own quote' });
+    }
+    if (quote.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending quotes can be withdrawn' });
+    }
+    job.quotes = (job.quotes || []).filter((q) => q._id.toString() !== req.params.quoteId);
+    job.markModified('quotes');
+    await job.save();
+    return res.json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Withdraw quote error:', err);
+    res.status(500).json({ error: err.message || 'Failed to withdraw quote' });
+  }
+});
+
+// Update quote body by professional (price, deliveryTime, message; only when pending)
+router.put('/:id/quotes/:quoteId', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const quote = (job.quotes || []).find((q) => q._id.toString() === req.params.quoteId);
+    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    if (quote.professionalId && quote.professionalId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'You can only update your own quote' });
+    }
+    if (quote.status !== 'pending') {
+      return res.status(400).json({ error: 'Only pending quotes can be updated' });
+    }
+    const { price, deliveryTime, message } = req.body;
+    if (price != null && !isNaN(Number(price)) && Number(price) >= 0) {
+      quote.price = Number(price);
+    }
+    if (deliveryTime != null && String(deliveryTime).trim()) {
+      quote.deliveryTime = String(deliveryTime).trim();
+    }
+    if (message !== undefined) {
+      quote.message = message ? String(message).trim() : '';
+    }
+    job.markModified('quotes');
+    await job.save();
+    return res.json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Update quote by professional error:', err);
+    res.status(500).json({ error: err.message || 'Failed to update quote' });
   }
 });
 

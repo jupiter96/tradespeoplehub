@@ -106,6 +106,8 @@ interface JobsContextType {
   getUserJobs: (userId: string) => Job[];
   addQuoteToJob: (jobId: string, quote: Omit<JobQuote, "id" | "submittedAt" | "status">) => Promise<void>;
   updateQuoteStatus: (jobId: string, quoteId: string, status: "accepted" | "rejected" | "awarded") => Promise<void>;
+  withdrawQuote: (jobId: string, quoteId: string) => Promise<void>;
+  updateQuoteByProfessional: (jobId: string, quoteId: string, data: { price: number; deliveryTime: string; message: string }) => Promise<void>;
   getAvailableJobs: () => Job[];
   getProfessionalQuotes: (professionalId: string) => { job: Job; quote: JobQuote }[];
   getProfessionalActiveJobs: (professionalId: string) => Job[];
@@ -285,6 +287,42 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to update quote');
+    }
+    const job = await res.json();
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
+  };
+
+  const withdrawQuote = async (jobId: string, quoteId: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/quotes/${quoteId}`), {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to withdraw quote');
+    }
+    const job = await res.json();
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? job : j)));
+  };
+
+  const updateQuoteByProfessional = async (
+    jobId: string,
+    quoteId: string,
+    data: { price: number; deliveryTime: string; message: string }
+  ): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/quotes/${quoteId}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        price: data.price,
+        deliveryTime: data.deliveryTime,
+        message: data.message || '',
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -607,6 +645,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         getUserJobs,
         addQuoteToJob,
         updateQuoteStatus,
+        withdrawQuote,
+        updateQuoteByProfessional,
         getAvailableJobs,
         getProfessionalQuotes,
         getProfessionalActiveJobs,

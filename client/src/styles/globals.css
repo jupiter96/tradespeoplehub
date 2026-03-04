@@ -382,7 +382,7 @@ input[type="checkbox"]:checked {
   border-color: #FE8A0F;
 }
 
-/* Rainbow gradient button (Generate by AI) */
+/* Rainbow gradient button (Generate text by AI) */
 @keyframes rainbow-shift {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }

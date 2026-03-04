@@ -254,7 +254,7 @@ function ActiveJobsSection() {
                     </div>
 
                     {/* Job Details */}
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
                       {job.description}
                     </p>
 

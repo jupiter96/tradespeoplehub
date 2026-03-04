@@ -245,7 +245,7 @@ export default function MyJobsSection() {
                           {job.status === "awaiting-accept" ? "Awaiting Accept" : job.status === "in-progress" ? "In Progress" : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                         </Badge>
                       </div>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2">
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
                         {job.description}
                       </p>
                       <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
@@ -368,7 +368,7 @@ export default function MyJobsSection() {
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">
                       Description
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
                       {currentJob.description}
                     </p>
                   </div>
