@@ -226,7 +226,6 @@ export default function PostJobPage() {
     label: s.name,
     id: s._id,
   }));
-  const selectedSectorEntry = sectors.find((s) => s.value === selectedSector);
   
   // Load categories for each sector
   useEffect(() => {
@@ -269,10 +268,11 @@ export default function PostJobPage() {
     return effectiveCategoriesBySector[sectorSlug] || [];
   };
   
-  // Step 1: Category Selection (Sector + Multiple Categories)
+  // Step 1/3: Sector & Category selection state
   const [selectedSector, setSelectedSector] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const selectedSectorEntry = sectors.find((s) => s.value === selectedSector);
   
   // Step 2: Description & Images
   const [jobDescription, setJobDescription] = useState("");
