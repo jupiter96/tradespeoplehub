@@ -138,14 +138,14 @@ function toJobResponse(doc) {
   };
 }
 
-// Generate job title and description using OpenAI (client only; sector + key points)
+// Generate job title and description using OpenAI (client only; key points required; sector optional)
 router.post('/generate-description', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const { sectorName, sectorSlug, keyPoints } = req.body;
-    const sectorLabel = sectorName || sectorSlug || '';
+    const sectorLabel = (sectorName || sectorSlug || '').trim();
     const points = typeof keyPoints === 'string' ? keyPoints.trim() : '';
-    if (!sectorLabel) {
-      return res.status(400).json({ error: 'Sector is required' });
+    if (!points) {
+      return res.status(400).json({ error: 'Please enter some key points or keywords about your job' });
     }
 
     const apiKey = process.env.OPENAI_KEY;
@@ -165,9 +165,10 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
    - Separate paragraphs with a blank line (double newline) for clarity.
    Use plain text only, no markdown (no ## or **). Write in first person singular only: "I", "my", "me". Never use "we" or "our". Keep tone professional but friendly. Keep description between 150 and 400 words.`;
 
-    const userPrompt = points
-      ? `Sector: ${sectorLabel}. Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`
-      : `Sector: ${sectorLabel}. Generate a job title and a full, structured job description for a typical job in this sector. Use newlines in the description between sections and for bullet points. Return valid JSON with "title" and "description".`;
+    const sectorPart = sectorLabel ? `Sector: ${sectorLabel}. ` : '';
+    const userPrompt = sectorLabel
+      ? `${sectorPart}Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`
+      : `Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description for a trades and services job. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

@@ -50,21 +50,21 @@ interface Step {
   description: string;
 }
 
-// Grouped steps for the new 3-stage stepper design
+// Grouped steps: first = AI description, then title+description, then category, location, budget
 const stepGroups = [
   {
     id: 1,
     title: "Job Details",
-    description: "Tell us about your job",
+    description: "Describe your job & get AI draft",
     icon: "file",
-    steps: [1, 2, 3] // Category Selection, Description, Headline
+    steps: [1, 2, 3] // Description (AI), Title & Description, Category
   },
   {
     id: 2,
     title: "Location & Budget",
     description: "Where and how much",
     icon: "location",
-    steps: [4, 5] // Postcode, Budget
+    steps: [4, 5] // Location & Timing, Budget
   },
   {
     id: 3,
@@ -76,9 +76,9 @@ const stepGroups = [
 ];
 
 const steps: Step[] = [
-  { id: 1, title: "Category", description: "Choose categories" },
-  { id: 2, title: "Description", description: "Add details" },
-  { id: 3, title: "Headline", description: "Job title" },
+  { id: 1, title: "Description", description: "Generate from keywords" },
+  { id: 2, title: "Title & Description", description: "Review and edit" },
+  { id: 3, title: "Category", description: "Choose categories" },
   { id: 4, title: "Location & Timing", description: "Where & when" },
   { id: 5, title: "Budget", description: "Set budget" },
 ];
@@ -335,22 +335,23 @@ export default function PostJobPage() {
   };
 
   const handleGenerateByAI = async () => {
-    const sectorEntry = sectors.find((s) => s.value === selectedSector);
-    const sectorLabel = sectorEntry?.label || selectedSector;
-    if (!sectorLabel) {
-      toast.error("Select a sector first");
+    const keyPoints = jobDescription.trim();
+    if (!keyPoints) {
+      toast.error("Enter some key points or keywords first");
       return;
     }
     setAiGenerating(true);
     try {
+      const sectorEntry = sectors.find((s) => s.value === selectedSector);
+      const sectorLabel = sectorEntry?.label || selectedSector || "";
       const res = await fetch(resolveApiUrl("/api/jobs/generate-description"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          sectorName: sectorLabel,
-          sectorSlug: selectedSector,
-          keyPoints: jobDescription.trim() || undefined,
+          sectorName: sectorLabel || undefined,
+          sectorSlug: selectedSector || undefined,
+          keyPoints: keyPoints,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -360,7 +361,7 @@ export default function PostJobPage() {
       }
       if (data.title) setJobTitle(data.title);
       if (data.description) setJobDescription(data.description);
-      toast.success("Description and title generated. You can edit them before continuing.");
+      toast.success("Title and description generated. Click Next to review and edit.");
     } catch (e) {
       toast.error("Failed to generate. Please try again.");
     } finally {
@@ -371,14 +372,14 @@ export default function PostJobPage() {
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        // Require sector and at least 3 categories
-        return selectedSector !== "" && selectedCategories.length >= 3;
-      case 2:
-        // Require description
+        // Step 1: Description (keywords) – require some content to proceed (user can generate or type)
         return jobDescription.trim() !== "";
+      case 2:
+        // Step 2: Title & Description – both required
+        return jobTitle.trim() !== "" && jobDescription.trim() !== "";
       case 3:
-        // Require job title
-        return jobTitle.trim() !== "";
+        // Step 3: Category – sector and at least 3 categories
+        return selectedSector !== "" && selectedCategories.length >= 3;
       case 4:
         // Require urgency; if in-person also require postcode
         return urgency !== "" && (jobLocationType === "online" || postcode.trim() !== "");
@@ -587,8 +588,123 @@ export default function PostJobPage() {
         {/* Form Content */}
         <div className="max-w-4xl mx-auto px-4 pb-8 -mt-4">
           <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8">
-            {/* Step 1: Category Selection */}
+            {/* Step 1: Description – key points + Generate text by AI (no sector required) */}
             {currentStep === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Describe your job
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Enter key points or keywords about what you need. Then click &quot;Generate text by AI&quot; to create a full job title and description. Click Next to review and edit them.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    Key points or keywords
+                  </Label>
+                  <Textarea
+                    placeholder="e.g., leaking tap, kitchen, need fix by weekend"
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    rows={6}
+                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGenerateByAI}
+                      disabled={!jobDescription.trim() || aiGenerating}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
+                        !jobDescription.trim() || aiGenerating
+                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
+                      )}
+                    >
+                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
+                      {aiGenerating ? "Generating…" : "Generate text by AI"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Title & Description – review and edit (pre-filled after AI generate) */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Job title and description
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Review and edit the job title and description below. You can change them before continuing.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    Job title
+                  </Label>
+                  <Input
+                    placeholder="e.g., Install new bathroom suite"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] w-full"
+                  />
+                </div>
+
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    Description
+                  </Label>
+                  <Textarea
+                    placeholder="Describe what you need..."
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    rows={10}
+                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none whitespace-pre-wrap"
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    Add photos (Optional)
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {images.map((image, index) => (
+                      <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200">
+                        <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeImage(index)}
+                          className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {images.length < 5 && (
+                      <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] flex flex-col items-center justify-center cursor-pointer transition-all bg-gray-50 hover:bg-[#FFF5EB]">
+                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-gray-500">Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Category (Sector + Multiple Categories) */}
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
                   <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
@@ -599,9 +715,7 @@ export default function PostJobPage() {
                   </p>
                 </div>
 
-                {/* Step 1: Sector Selection (Single) + Categories (Multiple) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Level 1: Sector (single selection) */}
                   <div className="flex flex-col">
                     <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Sector
@@ -626,7 +740,6 @@ export default function PostJobPage() {
                     </Select>
                   </div>
 
-                  {/* Level 2: Category Multi-Select with Tags */}
                   <div className="flex flex-col">
                     <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                       Category
@@ -717,8 +830,7 @@ export default function PostJobPage() {
                     </Popover>
                   </div>
                 </div>
-                
-                {/* Category Selection Status */}
+
                 {selectedSector && (
                   <div className="mt-4">
                     <div className={cn(
@@ -745,107 +857,6 @@ export default function PostJobPage() {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Step 2: Description (key points + Generate text by AI → full description; next step gets title pre-filled) */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Describe your job
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Enter key points or a few words about what you need. Then use &quot;Generate text by AI&quot; to create a full, structured description (and we&apos;ll suggest a title for the next step).
-                  </p>
-                </div>
-
-                <div>
-                  <Textarea
-                    placeholder="e.g., leaking tap, kitchen, need fix by weekend"
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    rows={6}
-                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
-                  />
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleGenerateByAI}
-                      disabled={!selectedSector || aiGenerating}
-                      className={cn(
-                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
-                        !selectedSector || aiGenerating
-                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
-                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
-                      )}
-                    >
-                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
-                      {aiGenerating ? "Generating…" : "Generate text by AI"}
-                    </button>
-                    {!selectedSector && (
-                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        Select a sector in step 1 first.
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Image Upload */}
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                    Add photos (Optional)
-                  </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {images.map((image, index) => (
-                      <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200">
-                        <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    {images.length < 5 && (
-                      <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] flex flex-col items-center justify-center cursor-pointer transition-all bg-gray-50 hover:bg-[#FFF5EB]">
-                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                        <span className="font-['Poppins',sans-serif] text-[12px] text-gray-500">Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Headline (pre-filled from AI when Generate text by AI was used) */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Give your job a headline
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Write a short title that summarizes what you need done. This may be pre-filled if you used Generate text by AI.
-                  </p>
-                </div>
-
-                <div>
-                  <Input
-                    placeholder="e.g., Install new bathroom suite"
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                  />
-                </div>
               </div>
             )}
 
