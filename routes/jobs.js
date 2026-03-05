@@ -338,12 +338,18 @@ Rules:
     }
 
     if (!chosen) {
-      console.warn('[Jobs] infer-sector: AI returned sector not in list', {
+      console.warn('[Jobs] infer-sector: AI returned sector not directly in list; falling back to AI mapping', {
         sectorIdStr,
         sectorSlugStr,
         sectorNameStr,
       });
-      return res.status(404).json({ error: 'Could not infer sector from description' });
+
+      // Fall back to AI-provided values so the frontend can still attempt to match
+      return res.json({
+        sectorId: sectorIdStr || undefined,
+        sectorSlug: sectorSlugStr || undefined,
+        sectorName: sectorNameStr || undefined,
+      });
     }
 
     console.log('[Jobs] infer-sector success', {

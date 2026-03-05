@@ -402,15 +402,20 @@ export default function PostJobPage() {
           return;
         }
         if (cancelled) return;
-        const sectorId = data.sectorId as string | undefined;
-        const sectorSlug = data.sectorSlug as string | undefined;
-        const sectorName = data.sectorName as string | undefined;
-        const match = sectors.find(
-          (s) =>
-            (sectorSlug && s.value === sectorSlug) ||
-            (sectorId && s.id === sectorId) ||
-            (sectorName && s.label === sectorName)
-        );
+        const sectorId = data.sectorId != null ? String(data.sectorId).trim() : "";
+        const sectorSlug = data.sectorSlug != null ? String(data.sectorSlug).trim() : "";
+        const sectorName = data.sectorName != null ? String(data.sectorName).trim() : "";
+        const match = sectors.find((s) => {
+          const sId = s.id != null ? String(s.id) : "";
+          const sVal = (s.value ?? "").trim().toLowerCase();
+          const sLabel = (s.label ?? "").trim().toLowerCase();
+          if (sectorId && sId === sectorId) return true;
+          if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
+          if (sectorName && sLabel === sectorName.toLowerCase()) return true;
+          if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
+          if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
+          return false;
+        });
         if (match) {
           setSelectedSector(match.value);
           setSelectedCategories([]);
@@ -775,12 +780,17 @@ export default function PostJobPage() {
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                     Based on your description, we&apos;ll detect the right job sector and then you can choose the specific skills (categories) required.
                   </p>
-                  {selectedSectorEntry && (
+                  {inferringSector && (
+                    <p className="mt-1 font-['Poppins',sans-serif] text-[13px] text-[#4b5563]">
+                      Detecting your job sector…
+                    </p>
+                  )}
+                  {!inferringSector && selectedSectorEntry && (
                     <p className="mt-1 font-['Poppins',sans-serif] text-[13px] text-[#4b5563]">
                       We&apos;ve detected your job sector automatically. Now choose the skills below.
                     </p>
                   )}
-                  {!selectedSectorEntry && (
+                  {!inferringSector && !selectedSectorEntry && (
                     <p className="mt-1 font-['Poppins',sans-serif] text-[12px] text-[#ef4444]">
                       We couldn&apos;t detect your job sector. Please select the correct sector below.
                     </p>
