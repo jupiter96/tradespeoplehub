@@ -297,12 +297,45 @@ Rules:
     const sectorSlugStr = (parsed.sectorSlug || parsed.slug || '').toString().trim();
     const sectorNameStr = (parsed.sectorName || parsed.name || '').toString().trim();
 
-    const chosen = sectors.find((s) => {
+    console.log('[Jobs] infer-sector AI raw mapping', {
+      sectorIdStr,
+      sectorSlugStr,
+      sectorNameStr,
+    });
+
+    const normalize = (val) =>
+      (val || '')
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '');
+
+    const normId = normalize(sectorIdStr);
+    const normSlug = normalize(sectorSlugStr);
+    const normName = normalize(sectorNameStr);
+
+    // First pass: strict id / slug / exact name match
+    let chosen = sectors.find((s) => {
       if (sectorIdStr && s._id.toString() === sectorIdStr) return true;
       if (sectorSlugStr && s.slug && s.slug === sectorSlugStr) return true;
       if (sectorNameStr && s.name && s.name.toLowerCase() === sectorNameStr.toLowerCase()) return true;
       return false;
     });
+
+    // Second pass: more tolerant matching on normalized name/slug
+    if (!chosen && (normSlug || normName)) {
+      chosen = sectors.find((s) => {
+        const sNormSlug = normalize(s.slug);
+        const sNormName = normalize(s.name);
+        if (normSlug && (sNormSlug === normSlug || sNormSlug.includes(normSlug) || normSlug.includes(sNormSlug))) {
+          return true;
+        }
+        if (normName && (sNormName === normName || sNormName.includes(normName) || normName.includes(sNormName))) {
+          return true;
+        }
+        return false;
+      });
+    }
 
     if (!chosen) {
       console.warn('[Jobs] infer-sector: AI returned sector not in list', {
