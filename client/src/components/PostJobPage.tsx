@@ -362,6 +362,10 @@ export default function PostJobPage() {
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
+      // Step 1 → Step 2 without Generate: ensure empty title and description = key points (already in jobDescription)
+      if (currentStep === 1) {
+        setJobTitle("");
+      }
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -532,6 +536,59 @@ export default function PostJobPage() {
     return () => {
       cancelled = true;
     };
+  }, [currentStep, selectedSector, jobDescription, sectors, inferringSector]);
+
+  // When on Step 2 with key points (no Generate): infer sector so Step 3 has sector pre-selected and sector field hidden
+  useEffect(() => {
+    const shouldInfer =
+      currentStep === 2 &&
+      !selectedSector &&
+      jobDescription.trim().length > 0 &&
+      sectors.length > 0 &&
+      !inferringSector;
+    if (!shouldInfer) return;
+
+    let cancelled = false;
+    const run = async () => {
+      setInferringSector(true);
+      console.log("[PostJob] infer-sector (Step2): request", { descriptionPreview: jobDescription.trim().slice(0, 100) });
+      try {
+        const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ description: jobDescription }),
+        });
+        const data = await res.json().catch(() => ({}));
+        console.log("[PostJob] infer-sector (Step2): response", { ok: res.ok, sectorId: data.sectorId, sectorSlug: data.sectorSlug, sectorName: data.sectorName });
+        if (!res.ok || cancelled) return;
+        const sectorId = data.sectorId != null ? String(data.sectorId).trim() : "";
+        const sectorSlug = data.sectorSlug != null ? String(data.sectorSlug).trim() : "";
+        const sectorName = data.sectorName != null ? String(data.sectorName).trim() : "";
+        const match = sectors.find((s) => {
+          const sId = s.id != null ? String(s.id) : "";
+          const sVal = (s.value ?? "").trim().toLowerCase();
+          const sLabel = (s.label ?? "").trim().toLowerCase();
+          if (sectorId && sId === sectorId) return true;
+          if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
+          if (sectorName && sLabel === sectorName.toLowerCase()) return true;
+          if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
+          if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
+          return false;
+        });
+        console.log("[PostJob] infer-sector (Step2): match", { match: match ? { value: match.value, label: match.label } : null });
+        if (!cancelled && match) {
+          setSelectedSector(match.value);
+          setSelectedCategories([]);
+        }
+      } catch (e) {
+        if (!cancelled) console.warn("[PostJob] infer-sector (Step2): error", e);
+      } finally {
+        if (!cancelled) setInferringSector(false);
+      }
+    };
+    run();
+    return () => { cancelled = true; };
   }, [currentStep, selectedSector, jobDescription, sectors, inferringSector]);
 
   const isStepValid = () => {
