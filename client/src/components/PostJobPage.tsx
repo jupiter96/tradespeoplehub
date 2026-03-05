@@ -363,7 +363,10 @@ export default function PostJobPage() {
       }
       if (data.title) setJobTitle(data.title);
       if (data.description) setJobDescription(data.description);
-      toast.success("Title and description generated. Click Next to review and edit.");
+      toast.success("Title and description generated.");
+      // Immediately show the title & description step so the client can see/edit them
+      setCurrentStep((prev) => (prev < 2 ? 2 : prev));
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       toast.error("Failed to generate. Please try again.");
     } finally {
@@ -784,9 +787,102 @@ export default function PostJobPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Sector: completely hidden when auto-detected; only show selector when inference failed */}
-                  {!selectedSectorEntry && (
+                {selectedSectorEntry ? (
+                  // Auto-detected sector: hide sector field, show skills (categories) full-width
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Skills (categories)
+                      </Label>
+                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            disabled={!selectedSector}
+                            className={cn(
+                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                              !selectedSector 
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
+                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
+                            )}
+                          >
+                            <div className="flex flex-wrap gap-2 items-center">
+                              {selectedCategories.length > 0 ? (
+                                <>
+                                  {selectedCategories.map((categoryValue) => {
+                                    const category = effectiveCategoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
+                                    return (
+                                      <div
+                                        key={categoryValue}
+                                        className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCategories(selectedCategories.filter(c => c !== categoryValue));
+                                        }}
+                                      >
+                                        <span className="text-[13px]">{category?.label}</span>
+                                        <X className="w-3 h-3 hover:text-red-200 transition-colors" />
+                                      </div>
+                                    );
+                                  })}
+                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                                </>
+                              ) : (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-[#6b6b6b]">
+                                    Select skills (categories)...
+                                  </span>
+                                  {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </PopoverTrigger>
+                        {selectedSector && (
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput 
+                                placeholder="Search categories..." 
+                                className="font-['Poppins',sans-serif]"
+                              />
+                              <CommandList>
+                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                  No category found.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {effectiveCategoriesBySector[selectedSector]?.map((category) => {
+                                    const isSelected = selectedCategories.includes(category.value);
+                                    return (
+                                      <CommandItem
+                                        key={category.value}
+                                        onSelect={() => {
+                                          if (isSelected) {
+                                            setSelectedCategories(selectedCategories.filter(c => c !== category.value));
+                                          } else {
+                                            setSelectedCategories([...selectedCategories, category.value]);
+                                          }
+                                        }}
+                                        className="font-['Poppins',sans-serif] cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <span>{category.label}</span>
+                                          {isSelected && (
+                                            <Check className="w-4 h-4 text-[#FE8A0F]" />
+                                          )}
+                                        </div>
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        )}
+                      </Popover>
+                    </div>
+                  </div>
+                ) : (
+                  // Fallback: show sector + categories when we couldn't infer sector
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col">
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                         Sector
@@ -810,98 +906,98 @@ export default function PostJobPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
 
-                  <div className="flex flex-col">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                      Category
-                    </Label>
-                    <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          disabled={!selectedSector}
-                          className={cn(
-                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                            !selectedSector 
-                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
-                              : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
-                          )}
-                        >
-                          <div className="flex flex-wrap gap-2 items-center">
-                            {selectedCategories.length > 0 ? (
-                              <>
-                                {selectedCategories.map((categoryValue) => {
-                                  const category = effectiveCategoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
-                                  return (
-                                    <div
-                                      key={categoryValue}
-                                      className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedCategories(selectedCategories.filter(c => c !== categoryValue));
-                                      }}
-                                    >
-                                      <span className="text-[13px]">{category?.label}</span>
-                                      <X className="w-3 h-3 hover:text-red-200 transition-colors" />
-                                    </div>
-                                  );
-                                })}
-                                <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
-                              </>
-                            ) : (
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-[#6b6b6b]">
-                                  {selectedSector ? "Select categories..." : "Select sector first"}
-                                </span>
-                                {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
-                              </div>
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Category
+                      </Label>
+                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            disabled={!selectedSector}
+                            className={cn(
+                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                              !selectedSector 
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
+                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
                             )}
-                          </div>
-                        </button>
-                      </PopoverTrigger>
-                      {selectedSector && (
-                        <PopoverContent className="w-[400px] p-0" align="start">
-                          <Command>
-                            <CommandInput 
-                              placeholder="Search categories..." 
-                              className="font-['Poppins',sans-serif]"
-                            />
-                            <CommandList>
-                              <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                No category found.
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {effectiveCategoriesBySector[selectedSector]?.map((category) => {
-                                  const isSelected = selectedCategories.includes(category.value);
-                                  return (
-                                    <CommandItem
-                                      key={category.value}
-                                      onSelect={() => {
-                                        if (isSelected) {
-                                          setSelectedCategories(selectedCategories.filter(c => c !== category.value));
-                                        } else {
-                                          setSelectedCategories([...selectedCategories, category.value]);
-                                        }
-                                      }}
-                                      className="font-['Poppins',sans-serif] cursor-pointer"
-                                    >
-                                      <div className="flex items-center justify-between w-full">
-                                        <span>{category.label}</span>
-                                        {isSelected && (
-                                          <Check className="w-4 h-4 text-[#FE8A0F]" />
-                                        )}
+                          >
+                            <div className="flex flex-wrap gap-2 items-center">
+                              {selectedCategories.length > 0 ? (
+                                <>
+                                  {selectedCategories.map((categoryValue) => {
+                                    const category = effectiveCategoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
+                                    return (
+                                      <div
+                                        key={categoryValue}
+                                        className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCategories(selectedCategories.filter(c => c !== categoryValue));
+                                        }}
+                                      >
+                                        <span className="text-[13px]">{category?.label}</span>
+                                        <X className="w-3 h-3 hover:text-red-200 transition-colors" />
                                       </div>
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      )}
-                    </Popover>
+                                    );
+                                  })}
+                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                                </>
+                              ) : (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-[#6b6b6b]">
+                                    {selectedSector ? "Select categories..." : "Select sector first"}
+                                  </span>
+                                  {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </PopoverTrigger>
+                        {selectedSector && (
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput 
+                                placeholder="Search categories..." 
+                                className="font-['Poppins',sans-serif]"
+                              />
+                              <CommandList>
+                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                  No category found.
+                                </CommandEmpty>
+                                <CommandGroup>
+                                  {effectiveCategoriesBySector[selectedSector]?.map((category) => {
+                                    const isSelected = selectedCategories.includes(category.value);
+                                    return (
+                                      <CommandItem
+                                        key={category.value}
+                                        onSelect={() => {
+                                          if (isSelected) {
+                                            setSelectedCategories(selectedCategories.filter(c => c !== category.value));
+                                          } else {
+                                            setSelectedCategories([...selectedCategories, category.value]);
+                                          }
+                                        }}
+                                        className="font-['Poppins',sans-serif] cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <span>{category.label}</span>
+                                          {isSelected && (
+                                            <Check className="w-4 h-4 text-[#FE8A0F]" />
+                                          )}
+                                        </div>
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        )}
+                      </Popover>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {selectedSector && (
                   <div className="mt-4">
