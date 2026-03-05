@@ -139,7 +139,8 @@ function toJobResponse(doc) {
 }
 
 // Generate job title and description using OpenAI (client only; key points required; sector optional)
-router.post('/generate-description', authenticateToken, requireRole(['client']), async (req, res) => {
+// No auth required: used when posting a job without login (user may register at step 6)
+router.post('/generate-description', async (req, res) => {
   try {
     const { sectorName, sectorSlug, keyPoints } = req.body;
     const sectorLabel = (sectorName || sectorSlug || '').trim();
@@ -153,6 +154,7 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
       hasKeyPoints: !!points,
       keyPointsPreview: points ? points.slice(0, 120) : '',
     });
+    console.log('[Jobs] generate-description: trigger (keyPoints required, sector optional)');
 
     if (!points) {
       return res.status(400).json({ error: 'Please enter some key points or keywords about your job' });
@@ -213,6 +215,7 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
       titlePreview: title.slice(0, 80),
       descriptionPreview: description.slice(0, 120),
     });
+    console.log('[Jobs] generate-description: response sent { title, description }');
 
     return res.json({ title, description });
   } catch (err) {
@@ -225,7 +228,8 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
 });
 
 // Infer best-matching sector from a free-text description (client only; used by Post Job stepper)
-router.post('/infer-sector', authenticateToken, requireRole(['client']), async (req, res) => {
+// No auth required: used when posting a job without login (skills step)
+router.post('/infer-sector', async (req, res) => {
   try {
     const { description } = req.body;
     const text = typeof description === 'string' ? description.trim() : '';
@@ -243,6 +247,7 @@ router.post('/infer-sector', authenticateToken, requireRole(['client']), async (
       descriptionPreview: text.slice(0, 200),
       sectorCount: sectors.length,
     });
+    console.log('[Jobs] infer-sector: trigger (description required)');
 
     const apiKey = process.env.OPENAI_KEY;
     if (!apiKey) {
@@ -343,6 +348,7 @@ Rules:
         sectorSlugStr,
         sectorNameStr,
       });
+      console.log('[Jobs] infer-sector: response sent (fallback) { sectorId, sectorSlug, sectorName }');
 
       // Fall back to AI-provided values so the frontend can still attempt to match
       return res.json({
@@ -358,6 +364,7 @@ Rules:
       sectorSlug: chosen.slug,
       sectorName: chosen.name,
     });
+    console.log('[Jobs] infer-sector: response sent { sectorId, sectorSlug, sectorName }');
 
     return res.json({
       sectorId: chosen._id.toString(),

@@ -29,7 +29,8 @@ import {
   Calendar as CalendarIcon,
   ChevronDown,
   Sparkles,
-  Laptop
+  Laptop,
+  ArrowLeft
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -37,12 +38,15 @@ import { useJobs } from "./JobsContext";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
 import { Checkbox } from "./ui/checkbox";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import FloatingToolsBackground from "./FloatingToolsBackground";
 import { toast } from "sonner@2.0.3";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import AddressAutocomplete from "./AddressAutocomplete";
+import PhoneInput from "./PhoneInput";
+import { validatePassword } from "../utils/passwordValidation";
+import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 
 interface Step {
   id: number;
@@ -212,7 +216,7 @@ const budgetRanges = [
 ];
 
 export default function PostJobPage() {
-  const { isLoggedIn, userInfo } = useAccount();
+  const { isLoggedIn, userInfo, register: initiateRegistration, verifyRegistrationEmail, completeRegistration } = useAccount();
   const { addJob } = useJobs();
   const navigate = useNavigate();
   const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
@@ -296,17 +300,63 @@ export default function PostJobPage() {
   const [customBudgetMin, setCustomBudgetMin] = useState("");
   const [customBudgetMax, setCustomBudgetMax] = useState("");
   
-  // Account Creation (if not logged in)
-  const [firstName, setFirstName] = useState("John");
-  const [lastName, setLastName] = useState("Doe");
-  const [phone, setPhone] = useState("+44 7123 456789");
-  const [email, setEmail] = useState("john.doe@gmail.com");
-  const [password, setPassword] = useState("123456");
-  const [confirmPassword, setConfirmPassword] = useState("123456");
+  // Account Creation (if not logged in) – same fields as LoginPage client registration
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(true);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [registerPostcode, setRegisterPostcode] = useState("");
+  const [registerAddress, setRegisterAddress] = useState("");
+  const [registerTownCity, setRegisterTownCity] = useState("");
+  const [registerCounty, setRegisterCounty] = useState("");
   const [inferringSector, setInferringSector] = useState(false);
+  // Registration verification (same flow as LoginPage)
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(1);
+  const [emailVerificationCode, setEmailVerificationCode] = useState("");
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationPhone, setVerificationPhone] = useState("");
+  const [emailResendTimer, setEmailResendTimer] = useState(0);
+  const [phoneResendTimer, setPhoneResendTimer] = useState(0);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isSendingRegistration, setIsSendingRegistration] = useState(false);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [isResendingPhone, setIsResendingPhone] = useState(false);
+
+  const formatTimer = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Resend timers for verification modals
+  useEffect(() => {
+    if (emailResendTimer > 0) {
+      const t = setInterval(() => setEmailResendTimer((prev) => (prev <= 1 ? 0 : prev - 1)), 1000);
+      return () => clearInterval(t);
+    }
+  }, [emailResendTimer]);
+  useEffect(() => {
+    if (phoneResendTimer > 0) {
+      const t = setInterval(() => setPhoneResendTimer((prev) => (prev <= 1 ? 0 : prev - 1)), 1000);
+      return () => clearInterval(t);
+    }
+  }, [phoneResendTimer]);
+  useEffect(() => {
+    if (showEmailVerification && verificationStep === 1 && emailResendTimer === 0) setEmailResendTimer(120);
+  }, [showEmailVerification, verificationStep, emailResendTimer]);
+  useEffect(() => {
+    if (showEmailVerification && verificationStep === 2 && phoneResendTimer === 0) setPhoneResendTimer(120);
+  }, [showEmailVerification, verificationStep, phoneResendTimer]);
 
   const totalSteps = isLoggedIn ? steps.length : steps.length + 1;
 
@@ -343,6 +393,7 @@ export default function PostJobPage() {
       return;
     }
     setAiGenerating(true);
+    console.log("[PostJob] generate-description: start", { keyPointsPreview: keyPoints.slice(0, 80) });
     try {
       const sectorEntry = sectors.find((s) => s.value === selectedSector);
       const sectorLabel = sectorEntry?.label || selectedSector || "";
@@ -357,35 +408,84 @@ export default function PostJobPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
+      console.log("[PostJob] generate-description: response", { ok: res.ok, status: res.status, hasTitle: !!data.title, hasDescription: !!data.description, error: data.error });
       if (!res.ok) {
         toast.error(data.error || "Failed to generate");
         return;
       }
       if (data.title) setJobTitle(data.title);
-      if (data.description) setJobDescription(data.description);
+      const newDescription = data.description ?? "";
+      if (newDescription) setJobDescription(newDescription);
       toast.success("Title and description generated.");
-      // Immediately show the title & description step so the client can see/edit them
+      // Infer sector from the generated description so step 3 has sector pre-selected and hides sector field
+      if (newDescription && sectors.length > 0) {
+        console.log("[PostJob] infer-sector (after generate): start", { descriptionPreview: newDescription.slice(0, 100), sectorsCount: sectors.length });
+        try {
+          const inferRes = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ description: newDescription }),
+          });
+          const inferData = await inferRes.json().catch(() => ({}));
+          console.log("[PostJob] infer-sector (after generate): response", { ok: inferRes.ok, status: inferRes.status, sectorId: inferData.sectorId, sectorSlug: inferData.sectorSlug, sectorName: inferData.sectorName, error: inferData.error });
+          if (inferRes.ok && (inferData.sectorId ?? inferData.sectorSlug ?? inferData.sectorName)) {
+            const sectorId = inferData.sectorId != null ? String(inferData.sectorId).trim() : "";
+            const sectorSlug = inferData.sectorSlug != null ? String(inferData.sectorSlug).trim() : "";
+            const sectorName = inferData.sectorName != null ? String(inferData.sectorName).trim() : "";
+            const match = sectors.find((s) => {
+              const sId = s.id != null ? String(s.id) : "";
+              const sVal = (s.value ?? "").trim().toLowerCase();
+              const sLabel = (s.label ?? "").trim().toLowerCase();
+              if (sectorId && sId === sectorId) return true;
+              if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
+              if (sectorName && sLabel === sectorName.toLowerCase()) return true;
+              if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
+              if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
+              return false;
+            });
+            console.log("[PostJob] infer-sector (after generate): match", { match: match ? { value: match.value, label: match.label } : null, sectorId, sectorSlug, sectorName });
+            if (match) {
+              setSelectedSector(match.value);
+              setSelectedCategories([]);
+              console.log("[PostJob] infer-sector (after generate): setSelectedSector", match.value);
+            }
+          }
+        } catch (inferErr) {
+          console.warn("[PostJob] infer-sector (after generate): error", inferErr);
+        }
+      }
       setCurrentStep((prev) => (prev < 2 ? 2 : prev));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
+      console.warn("[PostJob] generate-description: error", e);
       toast.error("Failed to generate. Please try again.");
     } finally {
       setAiGenerating(false);
     }
   };
 
-  // When entering Step 3, try to infer sector automatically from the (final) description if none is selected yet
+  // When entering Step 3, infer sector only if not already set (e.g. user typed description manually without generate)
   useEffect(() => {
     const shouldInfer =
       currentStep === 3 &&
       !selectedSector &&
       jobDescription.trim().length > 0 &&
       !inferringSector;
+    console.log("[PostJob] Step3 infer effect", {
+      currentStep,
+      selectedSector,
+      jobDescriptionLength: jobDescription.trim().length,
+      inferringSector,
+      sectorsCount: sectors.length,
+      shouldInfer,
+    });
     if (!shouldInfer) return;
 
     let cancelled = false;
     const run = async () => {
       setInferringSector(true);
+      console.log("[PostJob] infer-sector (Step3): request", { descriptionPreview: jobDescription.trim().slice(0, 100) });
       try {
         const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
           method: "POST",
@@ -394,11 +494,9 @@ export default function PostJobPage() {
           body: JSON.stringify({ description: jobDescription }),
         });
         const data = await res.json().catch(() => ({}));
+        console.log("[PostJob] infer-sector (Step3): response", { ok: res.ok, status: res.status, sectorId: data.sectorId, sectorSlug: data.sectorSlug, sectorName: data.sectorName, error: data.error });
         if (!res.ok) {
-          if (!cancelled) {
-            // Quietly fail; user can choose sector manually
-            console.warn("infer-sector failed", data?.error || res.status);
-          }
+          if (!cancelled) console.warn("[PostJob] infer-sector (Step3): failed", data?.error || res.status);
           return;
         }
         if (cancelled) return;
@@ -416,15 +514,15 @@ export default function PostJobPage() {
           if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
           return false;
         });
+        console.log("[PostJob] infer-sector (Step3): match", { match: match ? { value: match.value, label: match.label } : null, sectorId, sectorSlug, sectorName, sectorsSample: sectors.slice(0, 2).map((s) => ({ id: s.id, value: s.value, label: s.label })) });
         if (match) {
           setSelectedSector(match.value);
           setSelectedCategories([]);
-          toast.success(`Sector "${match.label}" selected based on your description.`);
+          console.log("[PostJob] infer-sector (Step3): setSelectedSector", match.value);
+          if (!cancelled) toast.success(`Sector "${match.label}" selected based on your description.`);
         }
       } catch (e) {
-        if (!cancelled) {
-          console.warn("infer-sector error", e);
-        }
+        if (!cancelled) console.warn("[PostJob] infer-sector (Step3): error", e);
       } finally {
         if (!cancelled) setInferringSector(false);
       }
@@ -459,32 +557,40 @@ export default function PostJobPage() {
           return !isNaN(min) && !isNaN(max) && min >= 0 && max >= 0 && min <= max;
         }
         return true;
-      case 6: // Account creation (if not logged in)
-        return firstName.trim() !== "" && 
-               lastName.trim() !== "" && 
-               phone.trim() !== "" && 
-               email.trim() !== "" && 
-               password.trim() !== "" && 
-               password === confirmPassword &&
-               agreeTerms;
+      case 6: // Account creation (if not logged in) – same validation as LoginPage client
+        if (
+          firstName.trim() === "" ||
+          lastName.trim() === "" ||
+          registerAddress.trim() === "" ||
+          registerTownCity.trim() === "" ||
+          registerPostcode.trim() === "" ||
+          email.trim() === "" ||
+          !agreeTerms
+        )
+          return false;
+        const phoneParts = phone.includes("|") ? phone.split("|") : ["+44", phone.replace(/\D/g, "")];
+        const pn = phoneParts[1] || "";
+        if (!pn.trim()) return false;
+        const pv = validatePhoneNumber(pn);
+        if (!pv.isValid) return false;
+        if (!password) return false;
+        const pwdVal = validatePassword(password);
+        if (!pwdVal.isValid) return false;
+        if (password !== confirmPassword) return false;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+        return true;
       default:
         return true;
     }
   };
 
   const handleSubmit = async () => {
-    if (!isLoggedIn) {
-      // Handle account creation first
-      // console.log("Creating account and posting job...");
-    }
+    if (!isLoggedIn) return; // Step 6 uses handleStartRegistration instead
 
-    // Resolve budget range from preset or custom
-    let budgetMin: number;
-    let budgetMax: number;
     if (selectedBudget === "custom-budget") {
-      budgetMin = parseFloat(customBudgetMin);
-      budgetMax = parseFloat(customBudgetMax);
-      if (isNaN(budgetMin) || isNaN(budgetMax) || budgetMin < 0 || budgetMax < 0 || budgetMin > budgetMax) {
+      const min = parseFloat(customBudgetMin);
+      const max = parseFloat(customBudgetMax);
+      if (isNaN(min) || isNaN(max) || min < 0 || max < 0 || min > max) {
         toast.error("Please enter a valid custom budget range (min ≤ max)");
         return;
       }
@@ -494,33 +600,44 @@ export default function PostJobPage() {
         toast.error("Please select a budget range");
         return;
       }
-      budgetMin = preset.min;
-      budgetMax = preset.max;
+    }
+
+    const newJob = buildJobPayload(userInfo?.id || "");
+    try {
+      const createdJob = await addJob(newJob);
+      toast.success("Job posted successfully! Professionals will start sending quotes soon.");
+      navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to post job");
+    }
+  };
+
+  // Build job payload (for submit when logged in, or after registration when not)
+  const buildJobPayload = (clientId: string) => {
+    let budgetMin: number, budgetMax: number;
+    if (selectedBudget === "custom-budget") {
+      budgetMin = parseFloat(customBudgetMin);
+      budgetMax = parseFloat(customBudgetMax);
+    } else {
+      const preset = budgetRanges.find((r) => r.value === selectedBudget);
+      budgetMin = preset?.min ?? 0;
+      budgetMax = preset?.max ?? 0;
     }
     const budgetAmount = Math.round((budgetMin + budgetMax) / 2);
-
-    // Convert urgency to timing
     const timingMap: { [key: string]: "urgent" | "flexible" | "specific" } = {
-      "urgent": "urgent",
-      "flexible": "flexible",
+      urgent: "urgent",
+      flexible: "flexible",
       "specific-date": "specific",
     };
-
-    // Get sector info from sectors array
-    const sectorEntry = sectors.find(s => s.value === selectedSector);
-    const sectorLabel = sectorEntry?.label || selectedSector;
-
-    // Get category labels
-    const categoryLabels = selectedCategories
-      .map(catValue => {
-        const categories = effectiveCategoriesBySector[selectedSector] || [];
-        return categories.find(c => c.value === catValue)?.label || catValue;
-      });
-
-    const newJob = {
+    const sectorEntry = sectors.find((s) => s.value === selectedSector);
+    const categoryLabels = selectedCategories.map((catValue) => {
+      const categories = effectiveCategoriesBySector[selectedSector] || [];
+      return categories.find((c) => c.value === catValue)?.label || catValue;
+    });
+    return {
       title: jobTitle,
       description: jobDescription,
-      sector: sectorLabel,
+      sector: sectorEntry?.label || selectedSector,
       sectorId: sectorEntry?.id,
       sectorSlug: selectedSector,
       categories: categoryLabels,
@@ -535,15 +652,171 @@ export default function PostJobPage() {
       budgetMin,
       budgetMax,
       status: "open" as const,
-      clientId: userInfo?.id || "",
+      clientId,
     };
+  };
 
+  const handleStartRegistration = async () => {
+    setRegisterError(null);
+    setFieldErrors({});
+    const errors: Record<string, string> = {};
+    if (!firstName.trim()) errors.firstName = "First name is required";
+    if (!lastName.trim()) errors.lastName = "Last name is required";
+    if (!registerAddress.trim()) errors.address = "Address is required";
+    if (!registerTownCity.trim()) errors.townCity = "Town/City is required";
+    if (!registerPostcode.trim()) errors.postcode = "Postcode is required";
+    const phoneParts = phone.includes("|") ? phone.split("|") : ["+44", phone.replace(/\D/g, "")];
+    const countryCode = phoneParts[0] || "+44";
+    const phoneNumber = phoneParts[1] || "";
+    if (!phoneNumber.trim()) errors.phone = "Phone number is required";
+    else {
+      const pv = validatePhoneNumber(phoneNumber);
+      if (!pv.isValid) errors.phone = pv.error || "Invalid phone number format";
+    }
+    if (!email.trim()) errors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Please enter a valid email address";
+    if (!password) errors.password = "Password is required";
+    else {
+      const pwdVal = validatePassword(password);
+      if (!pwdVal.isValid) errors.password = pwdVal.errors[0] || "Password does not meet requirements";
+    }
+    if (!confirmPassword) errors.confirmPassword = "Please confirm your password";
+    else if (password !== confirmPassword) errors.confirmPassword = "Passwords don't match";
+    if (!agreeTerms) errors.agreeTerms = "Please accept the terms and conditions";
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    const registerData = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      phone: normalizePhoneForBackend(phoneNumber, countryCode),
+      postcode: registerPostcode.trim(),
+      password,
+      userType: "client" as const,
+      address: registerAddress.trim(),
+      townCity: registerTownCity.trim(),
+      county: registerCounty.trim(),
+    };
+    setIsSendingRegistration(true);
+    setVerificationEmail(email.trim());
+    setVerificationPhone(phone);
+    setRegisterError(null);
     try {
-    const createdJob = await addJob(newJob);
-    toast.success("Job posted successfully! Professionals will start sending quotes soon.");
-    navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
-    } catch (err: any) {
-    toast.error(err?.message || "Failed to post job");
+      await initiateRegistration(registerData);
+      setVerificationStep(1);
+      setEmailVerificationCode("");
+      setPhoneVerificationCode("");
+      setShowEmailVerification(true);
+    } catch (err) {
+      setRegisterError(err instanceof Error ? err.message : "Unable to start registration");
+    } finally {
+      setIsSendingRegistration(false);
+    }
+  };
+
+  const handleVerifyEmailCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (emailVerificationCode.length !== 4) {
+      toast.error("Please enter a 4-digit code");
+      return;
+    }
+    setRegisterError(null);
+    setIsVerifyingEmail(true);
+    try {
+      await verifyRegistrationEmail(emailVerificationCode, verificationEmail);
+      setVerificationStep(2);
+      setEmailVerificationCode("");
+    } catch {
+      setRegisterError("Email verification failed");
+    } finally {
+      setIsVerifyingEmail(false);
+    }
+  };
+
+  const handleVerifyPhoneCodeAndPostJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phoneVerificationCode.length !== 4) {
+      toast.error("Please enter a 4-digit code");
+      return;
+    }
+    setRegisterError(null);
+    setIsRegistering(true);
+    try {
+      const user = await completeRegistration(phoneVerificationCode, verificationEmail);
+      setShowEmailVerification(false);
+      setVerificationStep(1);
+      setEmailVerificationCode("");
+      setPhoneVerificationCode("");
+      const newJob = buildJobPayload(user?.id ?? "");
+      const createdJob = await addJob(newJob);
+      toast.success("Account created and job posted successfully!");
+      navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
+    } catch (err) {
+      setRegisterError(err instanceof Error ? err.message : "Registration failed");
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleBackFromVerification = () => {
+    if (verificationStep > 1) {
+      setVerificationStep(verificationStep - 1);
+    } else {
+      setShowEmailVerification(false);
+      setVerificationStep(1);
+      setEmailVerificationCode("");
+      setPhoneVerificationCode("");
+      setRegisterError(null);
+    }
+  };
+
+  const handleResendEmailCode = async () => {
+    if (isResendingEmail || emailResendTimer > 0) return;
+    setIsResendingEmail(true);
+    setRegisterError(null);
+    try {
+      const res = await fetch(resolveApiUrl("/api/auth/register/resend-email"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: verificationEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to resend verification code");
+      setEmailResendTimer(120);
+      toast.success("Verification code resent to your email");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to resend code";
+      toast.error(msg);
+      setRegisterError(msg);
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
+  const handleResendPhoneCode = async () => {
+    if (isResendingPhone || phoneResendTimer > 0) return;
+    setIsResendingPhone(true);
+    setRegisterError(null);
+    try {
+      const res = await fetch(resolveApiUrl("/api/auth/register/resend-phone"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: verificationEmail }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to resend verification code");
+      setPhoneResendTimer(120);
+      toast.success("Verification code resent to your phone");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to resend code";
+      toast.error(msg);
+      setRegisterError(msg);
+    } finally {
+      setIsResendingPhone(false);
     }
   };
 
@@ -1316,8 +1589,8 @@ export default function PostJobPage() {
               </div>
             )}
 
-            {/* Step 6: Account Creation (if not logged in) */}
-            {!isLoggedIn && currentStep === 6 && (
+            {/* Step 6: Account Creation (if not logged in) – same workflow as LoginPage registration */}
+            {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
               <div className="space-y-6">
                 <div>
                   <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
@@ -1329,7 +1602,6 @@ export default function PostJobPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* First Name & Last Name */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
@@ -1339,12 +1611,13 @@ export default function PostJobPage() {
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
                         <Input
                           type="text"
+                          placeholder="Jane"
                           value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          required
+                          onChange={(e) => { setFirstName(e.target.value); if (fieldErrors.firstName) setFieldErrors((p) => ({ ...p, firstName: "" })); }}
+                          className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.firstName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
                         />
                       </div>
+                      {fieldErrors.firstName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.firstName}</p>}
                     </div>
                     <div>
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
@@ -1354,118 +1627,140 @@ export default function PostJobPage() {
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
                         <Input
                           type="text"
+                          placeholder="Smith"
                           value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          required
+                          onChange={(e) => { setLastName(e.target.value); if (fieldErrors.lastName) setFieldErrors((p) => ({ ...p, lastName: "" })); }}
+                          className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.lastName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
                         />
                       </div>
+                      {fieldErrors.lastName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.lastName}</p>}
                     </div>
                   </div>
 
-                  {/* Phone & Email */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Phone number <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          required
-                        />
-                      </div>
+                  <AddressAutocomplete
+                    postcode={registerPostcode}
+                    onPostcodeChange={(v) => { setRegisterPostcode(v); if (fieldErrors.postcode) setFieldErrors((p) => ({ ...p, postcode: "" })); }}
+                    address={registerAddress}
+                    onAddressChange={(v) => { setRegisterAddress(v); if (fieldErrors.address || fieldErrors.townCity) setFieldErrors((p) => ({ ...p, address: "", townCity: "" })); }}
+                    townCity={registerTownCity}
+                    onTownCityChange={(v) => { setRegisterTownCity(v); if (fieldErrors.townCity) setFieldErrors((p) => ({ ...p, townCity: "" })); }}
+                    county={registerCounty}
+                    onCountyChange={setRegisterCounty}
+                    onAddressSelect={(addr) => {
+                      setRegisterPostcode(addr.postcode || "");
+                      setRegisterAddress(addr.address || "");
+                      setRegisterTownCity(addr.townCity || "");
+                      setRegisterCounty(addr.county || "");
+                      setFieldErrors((p) => ({ ...p, postcode: "", address: "", townCity: "" }));
+                    }}
+                    label="Postcode"
+                    required
+                    showAddressField
+                    showTownCityField
+                    showCountyField
+                    addressLabel="Address"
+                    className="font-['Poppins',sans-serif]"
+                  />
+                  {fieldErrors.postcode && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.postcode}</p>}
+                  {fieldErrors.address && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.address}</p>}
+                  {fieldErrors.townCity && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.townCity}</p>}
+
+                  <PhoneInput
+                    id="postjob-reg-phone"
+                    label="Phone number"
+                    value={phone}
+                    onChange={(v) => {
+                      setPhone(v);
+                      const parts = v.includes("|") ? v.split("|") : ["+44", v.replace(/\D/g, "")];
+                      const pn = parts[1] || "";
+                      if (pn && validatePhoneNumber(pn).isValid && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                      else if (!pn && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                    }}
+                    placeholder="7123 456789"
+                    error={fieldErrors.phone}
+                    required
+                  />
+
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type="email"
+                        placeholder="jane@gmail.com"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: "" })); }}
+                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.email ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
                     </div>
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Email <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          required
-                        />
-                      </div>
-                    </div>
+                    {fieldErrors.email && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.email}</p>}
                   </div>
 
-                  {/* Password & Confirm Password */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Password <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="pl-10 pr-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a strong password"
+                        value={password}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPassword(v);
+                          if (v) {
+                            const pv = validatePassword(v);
+                            if (!pv.isValid) setFieldErrors((p) => ({ ...p, password: pv.errors[0] || "" }));
+                            else setFieldErrors((p) => ({ ...p, password: "" }));
+                          } else setFieldErrors((p) => ({ ...p, password: "" }));
+                          if (fieldErrors.confirmPassword && v === confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
+                        }}
+                        className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.password ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Confirm password <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          type={showConfirmPassword ? "text" : "password"}
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="pl-10 pr-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]"
-                        >
-                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
+                    {fieldErrors.password && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.password}</p>}
                   </div>
 
-                  {/* Terms & Conditions */}
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Confirm password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Re-enter your password"
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }}
+                        className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.confirmPassword ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {fieldErrors.confirmPassword && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.confirmPassword}</p>}
+                  </div>
+
                   <div className="flex items-start space-x-2 pt-2">
                     <Checkbox
-                      id="terms"
+                      id="postjob-terms"
                       checked={agreeTerms}
-                      onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                      onCheckedChange={(c) => { setAgreeTerms(c as boolean); if (fieldErrors.agreeTerms) setFieldErrors((p) => ({ ...p, agreeTerms: "" })); }}
+                      className="mt-0.5"
                     />
-                    <Label
-                      htmlFor="terms"
-                      className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed"
-                    >
-                      I agree to the{" "}
-                      <a href="#" className="text-[#3B82F6] hover:underline">
-                        Terms & Conditions
-                      </a>{" "}
-                      and{" "}
-                      <a href="#" className="text-[#3B82F6] hover:underline">
-                        Privacy and Cookie Policy
-                      </a>
+                    <Label htmlFor="postjob-terms" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed">
+                      I agree to the <Link to="/terms" className="text-[#3B82F6] hover:underline">Terms & Conditions</Link> and <Link to="/privacy" className="text-[#3B82F6] hover:underline">Privacy Policy</Link>
                     </Label>
                   </div>
+                  {fieldErrors.agreeTerms && <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.agreeTerms}</p>}
+
+                  {registerError && <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">{registerError}</p>}
                 </div>
               </div>
             )}
@@ -1504,33 +1799,131 @@ export default function PostJobPage() {
               </Button>
             ) : (
               <Button
-                onClick={handleSubmit}
-                disabled={!isStepValid()}
+                onClick={!isLoggedIn ? handleStartRegistration : handleSubmit}
+                disabled={!isStepValid() || (!isLoggedIn && isSendingRegistration)}
                 className={cn(
                   "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
-                  isStepValid()
+                  isStepValid() && !(!isLoggedIn && isSendingRegistration)
                     ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 )}
               >
-                {isLoggedIn ? "Post Job" : "Save and Continue"}
+                {!isLoggedIn ? (isSendingRegistration ? "Creating account…" : "Create account & Post Job") : "Post Job"}
                 <Check className="w-4 h-4 ml-2" />
               </Button>
             )}
           </div>
 
           {/* Already have an account (only show on account step if not logged in) */}
-          {!isLoggedIn && currentStep === 6 && (
+          {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
             <div className="text-center mt-6">
               <p className="font-['Poppins',sans-serif] text-[13px] text-gray-500">
                 Already have an account?{" "}
-                <a href="/login" className="text-[#FE8A0F] hover:underline">
+                <Link to="/login" className="text-[#FE8A0F] hover:underline">
                   Log in here
-                </a>
+                </Link>
               </p>
             </div>
           )}
         </div>
+
+        {/* Email & Phone Verification Modal (same as LoginPage) */}
+        {showEmailVerification && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-6 md:p-8 max-w-[480px] w-full relative">
+              <button
+                type="button"
+                onClick={handleBackFromVerification}
+                className="flex items-center gap-2 mb-4 font-['Poppins',sans-serif] text-[13px] text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </button>
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <div className={cn("h-1.5 flex-1 rounded-full transition-all", verificationStep >= 1 ? "bg-[#FE8A0F]" : "bg-gray-200")} />
+                <div className={cn("h-1.5 flex-1 rounded-full transition-all", verificationStep >= 2 ? "bg-[#FE8A0F]" : "bg-gray-200")} />
+              </div>
+
+              {verificationStep === 1 && (
+                <>
+                  <div className="text-center mb-5">
+                    <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Mail className="w-7 h-7 text-[#FE8A0F]" />
+                    </div>
+                    <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">Verify Your Email</h2>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Code sent to</p>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">{verificationEmail}</p>
+                  </div>
+                  <form onSubmit={handleVerifyEmailCode} className="space-y-4">
+                    <div>
+                      <Label htmlFor="postjob-email-code" className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">Enter 4-Digit Code</Label>
+                      <Input
+                        id="postjob-email-code"
+                        type="text"
+                        placeholder="0000"
+                        value={emailVerificationCode}
+                        onChange={(e) => setEmailVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
+                        maxLength={4}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isVerifyingEmail} className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60">
+                      {isVerifyingEmail ? "Verifying…" : "Verify & Continue"}
+                    </Button>
+                    {registerError && <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">{registerError}</p>}
+                    <div className="text-center">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        Didn&apos;t receive the code?{" "}
+                        <button type="button" onClick={handleResendEmailCode} disabled={isResendingEmail || emailResendTimer > 0} className="text-[#3B82F6] hover:text-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed">
+                          {isResendingEmail ? "Resending…" : emailResendTimer > 0 ? `Resend (${formatTimer(emailResendTimer)})` : "Resend"}
+                        </button>
+                      </p>
+                    </div>
+                  </form>
+                </>
+              )}
+
+              {verificationStep === 2 && (
+                <>
+                  <div className="text-center mb-5">
+                    <div className="w-14 h-14 bg-[#FFF5EB] rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Phone className="w-7 h-7 text-[#FE8A0F]" />
+                    </div>
+                    <h2 className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f] mb-1.5">Verify Your Phone</h2>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Code sent to</p>
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">{verificationPhone}</p>
+                  </div>
+                  <form onSubmit={handleVerifyPhoneCodeAndPostJob} className="space-y-4">
+                    <div>
+                      <Label htmlFor="postjob-phone-code" className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] mb-2 block text-center">Enter 4-Digit Code</Label>
+                      <Input
+                        id="postjob-phone-code"
+                        type="text"
+                        placeholder="0000"
+                        value={phoneVerificationCode}
+                        onChange={(e) => setPhoneVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[20px] text-center tracking-[0.5em] px-4"
+                        maxLength={4}
+                      />
+                    </div>
+                    <Button type="submit" disabled={isRegistering} className="w-full h-10 bg-[#FE8A0F] hover:bg-[#FFB347] text-white rounded-xl font-['Poppins',sans-serif] text-[14px] disabled:opacity-60">
+                      {isRegistering ? "Creating account & posting job…" : "Complete Verification & Post Job"}
+                    </Button>
+                    {registerError && <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 text-center">{registerError}</p>}
+                    <div className="text-center">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        Didn&apos;t receive the code?{" "}
+                        <button type="button" onClick={handleResendPhoneCode} disabled={isResendingPhone || phoneResendTimer > 0} className="text-[#3B82F6] hover:text-[#2563EB] disabled:opacity-50 disabled:cursor-not-allowed">
+                          {isResendingPhone ? "Resending…" : phoneResendTimer > 0 ? `Resend (${formatTimer(phoneResendTimer)})` : "Resend"}
+                        </button>
+                      </p>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Benefits Section - Moved to bottom */}
         <div className="max-w-4xl mx-auto px-4 pb-8">
