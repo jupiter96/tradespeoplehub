@@ -144,6 +144,16 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
     const { sectorName, sectorSlug, keyPoints } = req.body;
     const sectorLabel = (sectorName || sectorSlug || '').trim();
     const points = typeof keyPoints === 'string' ? keyPoints.trim() : '';
+
+    console.log('[Jobs] generate-description request', {
+      userId: req.user?.id,
+      sectorName,
+      sectorSlug,
+      sectorLabel,
+      hasKeyPoints: !!points,
+      keyPointsPreview: points ? points.slice(0, 120) : '',
+    });
+
     if (!points) {
       return res.status(400).json({ error: 'Please enter some key points or keywords about your job' });
     }
@@ -196,6 +206,13 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
     if (!title || !description) {
       return res.status(502).json({ error: 'AI did not return title and description' });
     }
+
+    console.log('[Jobs] generate-description success', {
+      userId: req.user?.id,
+      sectorLabel,
+      titlePreview: title.slice(0, 80),
+      descriptionPreview: description.slice(0, 120),
+    });
 
     return res.json({ title, description });
   } catch (err) {
