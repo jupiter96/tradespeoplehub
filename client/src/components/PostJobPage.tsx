@@ -221,7 +221,11 @@ export default function PostJobPage() {
   const navigate = useNavigate();
   const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
-  const [categoriesBySectorData, setCategoriesBySectorData] = useState<{ [key: string]: { value: string; label: string }[] }>({});
+  type CategoryItem = { value: string; label: string; itemKey: string };
+  type CategoryGroup = { category: CategoryItem; subcategories: CategoryItem[] };
+
+  const [categoriesBySectorData, setCategoriesBySectorData] = useState<{ [key: string]: CategoryItem[] }>({});
+  const [categoriesGroupedBySector, setCategoriesGroupedBySector] = useState<{ [key: string]: CategoryGroup[] }>({});
   const [currentStep, setCurrentStep] = useState(1);
   
   // Transform sectors data for dropdown
@@ -231,30 +235,47 @@ export default function PostJobPage() {
     id: s._id,
   }));
   
-  // Load categories for each sector
+  // Load categories and subcategories: flat list (for lookup) + grouped (for dropdown UI: category then indented subcategories)
   useEffect(() => {
     const loadCategories = async () => {
-      const categoriesMap: { [key: string]: { value: string; label: string }[] } = {};
+      const flatMap: { [key: string]: CategoryItem[] } = {};
+      const groupedMap: { [key: string]: CategoryGroup[] } = {};
       
       for (const sector of sectorsData) {
         try {
           const response = await fetch(
-            `${resolveApiUrl('/api/categories')}?sectorSlug=${sector.slug}&activeOnly=true`,
+            `${resolveApiUrl('/api/categories')}?sectorSlug=${encodeURIComponent(sector.slug)}&activeOnly=true&includeSubCategories=true&limit=500`,
             { credentials: 'include' }
           );
           if (response.ok) {
             const data = await response.json();
-            categoriesMap[sector.slug] = (data.categories || []).map((cat: any) => ({
-              value: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
-              label: cat.name,
-            }));
+            const flat: CategoryItem[] = [];
+            const grouped: CategoryGroup[] = [];
+            (data.categories || []).forEach((cat: any) => {
+              const catSlug = cat.slug || (cat.name || '').toLowerCase().replace(/\s+/g, '-');
+              const catName = cat.name || catSlug;
+              const catId = cat._id?.toString?.() || `cat-${catSlug}`;
+              const categoryItem: CategoryItem = { value: catSlug, label: catName, itemKey: catId };
+              flat.push(categoryItem);
+              const subItems: CategoryItem[] = [];
+              (cat.subCategories || []).forEach((sub: any) => {
+                const subSlug = sub.slug || (sub.name || '').toLowerCase().replace(/\s+/g, '-');
+                const subId = sub._id?.toString?.() || `sub-${catId}-${subSlug}`;
+                subItems.push({ value: subSlug, label: sub.name || subSlug, itemKey: subId });
+                flat.push({ value: subSlug, label: `${catName} › ${sub.name || subSlug}`, itemKey: subId });
+              });
+              grouped.push({ category: categoryItem, subcategories: subItems });
+            });
+            flatMap[sector.slug] = flat;
+            groupedMap[sector.slug] = grouped;
           }
         } catch (error) {
           // console.error(`Error loading categories for sector ${sector.slug}:`, error);
         }
       }
       
-      setCategoriesBySectorData(categoriesMap);
+      setCategoriesBySectorData(flatMap);
+      setCategoriesGroupedBySector(groupedMap);
     };
     
     if (sectorsData.length > 0) {
@@ -262,10 +283,11 @@ export default function PostJobPage() {
     }
   }, [sectorsData]);
   
-  // Use API data if available, fallback to hardcoded
+  // Flat list for lookup (selected chips, job payload); grouped for dropdown when available
   const effectiveCategoriesBySector = Object.keys(categoriesBySectorData).length > 0 
     ? categoriesBySectorData 
-    : categoriesBySector;
+    : categoriesBySector as { [key: string]: CategoryItem[] };
+  const effectiveGroupedBySector = categoriesGroupedBySector;
   
   // Get categories for selected sector
   const getCategoriesForSector = (sectorSlug: string) => {
@@ -1132,7 +1154,7 @@ export default function PostJobPage() {
                   <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col">
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Skills (categories)
+                        Skills (categories & subcategories)
                       </Label>
                       <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -1169,7 +1191,7 @@ export default function PostJobPage() {
                               ) : (
                                 <div className="flex items-center justify-between w-full">
                                   <span className="text-[#6b6b6b]">
-                                    Select skills (categories)...
+                                    Search and select categories & skills...
                                   </span>
                                   {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
                                 </div>
@@ -1178,41 +1200,94 @@ export default function PostJobPage() {
                           </button>
                         </PopoverTrigger>
                         {selectedSector && (
-                          <PopoverContent className="w-[400px] p-0" align="start">
-                            <Command>
-                              <CommandInput 
-                                placeholder="Search categories..." 
-                                className="font-['Poppins',sans-serif]"
-                              />
-                              <CommandList>
+                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
+                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
+                              <div className="p-2 border-b bg-muted/30">
+                                <CommandInput 
+                                  placeholder="Search categories and subcategories..." 
+                                  className="font-['Poppins',sans-serif] h-10"
+                                />
+                              </div>
+                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
                                 <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No category found.
+                                  No category or skill found.
                                 </CommandEmpty>
-                                <CommandGroup>
-                                  {effectiveCategoriesBySector[selectedSector]?.map((category) => {
-                                    const isSelected = selectedCategories.includes(category.value);
-                                    return (
+                                {effectiveGroupedBySector[selectedSector]?.length ? (
+                                  effectiveGroupedBySector[selectedSector].map((group) => (
+                                    <CommandGroup key={group.category.itemKey} heading={group.category.label} className="p-1">
                                       <CommandItem
-                                        key={category.value}
+                                        key={group.category.itemKey}
+                                        value={group.category.label}
                                         onSelect={() => {
+                                          const isSelected = selectedCategories.includes(group.category.value);
                                           if (isSelected) {
-                                            setSelectedCategories(selectedCategories.filter(c => c !== category.value));
+                                            setSelectedCategories(selectedCategories.filter(c => c !== group.category.value));
                                           } else {
-                                            setSelectedCategories([...selectedCategories, category.value]);
+                                            setSelectedCategories([...selectedCategories, group.category.value]);
                                           }
                                         }}
                                         className="font-['Poppins',sans-serif] cursor-pointer"
                                       >
                                         <div className="flex items-center justify-between w-full">
-                                          <span>{category.label}</span>
-                                          {isSelected && (
+                                          <span>{group.category.label}</span>
+                                          {selectedCategories.includes(group.category.value) && (
                                             <Check className="w-4 h-4 text-[#FE8A0F]" />
                                           )}
                                         </div>
                                       </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
+                                      {group.subcategories.map((sub) => {
+                                        const isSelected = selectedCategories.includes(sub.value);
+                                        return (
+                                          <CommandItem
+                                            key={sub.itemKey}
+                                            value={`${sub.label} ${group.category.label}`}
+                                            onSelect={() => {
+                                              if (isSelected) {
+                                                setSelectedCategories(selectedCategories.filter(c => c !== sub.value));
+                                              } else {
+                                                setSelectedCategories([...selectedCategories, sub.value]);
+                                              }
+                                            }}
+                                            className="font-['Poppins',sans-serif] cursor-pointer pl-6"
+                                          >
+                                            <div className="flex items-center justify-between w-full">
+                                              <span className="text-[13px]">{sub.label}</span>
+                                              {isSelected && (
+                                                <Check className="w-4 h-4 text-[#FE8A0F]" />
+                                              )}
+                                            </div>
+                                          </CommandItem>
+                                        );
+                                      })}
+                                    </CommandGroup>
+                                  ))
+                                ) : (
+                                  <CommandGroup className="p-1">
+                                    {(effectiveCategoriesBySector[selectedSector] || []).map((category) => {
+                                      const isSelected = selectedCategories.includes(category.value);
+                                      const itemKey = 'itemKey' in category ? category.itemKey : category.value;
+                                      return (
+                                        <CommandItem
+                                          key={itemKey}
+                                          value={category.label}
+                                          onSelect={() => {
+                                            if (isSelected) {
+                                              setSelectedCategories(selectedCategories.filter(c => c !== category.value));
+                                            } else {
+                                              setSelectedCategories([...selectedCategories, category.value]);
+                                            }
+                                          }}
+                                          className="font-['Poppins',sans-serif] cursor-pointer"
+                                        >
+                                          <div className="flex items-center justify-between w-full">
+                                            <span>{category.label}</span>
+                                            {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                          </div>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                )}
                               </CommandList>
                             </Command>
                           </PopoverContent>
@@ -1249,7 +1324,7 @@ export default function PostJobPage() {
 
                     <div className="flex flex-col">
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Category
+                        Categories & skills
                       </Label>
                       <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -1286,7 +1361,7 @@ export default function PostJobPage() {
                               ) : (
                                 <div className="flex items-center justify-between w-full">
                                   <span className="text-[#6b6b6b]">
-                                    {selectedSector ? "Select categories..." : "Select sector first"}
+                                    {selectedSector ? "Search and select categories & skills..." : "Select sector first"}
                                   </span>
                                   {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
                                 </div>
@@ -1295,41 +1370,94 @@ export default function PostJobPage() {
                           </button>
                         </PopoverTrigger>
                         {selectedSector && (
-                          <PopoverContent className="w-[400px] p-0" align="start">
-                            <Command>
-                              <CommandInput 
-                                placeholder="Search categories..." 
-                                className="font-['Poppins',sans-serif]"
-                              />
-                              <CommandList>
+                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
+                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
+                              <div className="p-2 border-b bg-muted/30">
+                                <CommandInput 
+                                  placeholder="Search categories and subcategories..." 
+                                  className="font-['Poppins',sans-serif] h-10"
+                                />
+                              </div>
+                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
                                 <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No category found.
+                                  No category or skill found.
                                 </CommandEmpty>
-                                <CommandGroup>
-                                  {effectiveCategoriesBySector[selectedSector]?.map((category) => {
-                                    const isSelected = selectedCategories.includes(category.value);
-                                    return (
+                                {effectiveGroupedBySector[selectedSector]?.length ? (
+                                  effectiveGroupedBySector[selectedSector].map((group) => (
+                                    <CommandGroup key={group.category.itemKey} heading={group.category.label} className="p-1">
                                       <CommandItem
-                                        key={category.value}
+                                        key={group.category.itemKey}
+                                        value={group.category.label}
                                         onSelect={() => {
+                                          const isSelected = selectedCategories.includes(group.category.value);
                                           if (isSelected) {
-                                            setSelectedCategories(selectedCategories.filter(c => c !== category.value));
+                                            setSelectedCategories(selectedCategories.filter(c => c !== group.category.value));
                                           } else {
-                                            setSelectedCategories([...selectedCategories, category.value]);
+                                            setSelectedCategories([...selectedCategories, group.category.value]);
                                           }
                                         }}
                                         className="font-['Poppins',sans-serif] cursor-pointer"
                                       >
                                         <div className="flex items-center justify-between w-full">
-                                          <span>{category.label}</span>
-                                          {isSelected && (
+                                          <span>{group.category.label}</span>
+                                          {selectedCategories.includes(group.category.value) && (
                                             <Check className="w-4 h-4 text-[#FE8A0F]" />
                                           )}
                                         </div>
                                       </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
+                                      {group.subcategories.map((sub) => {
+                                        const isSelected = selectedCategories.includes(sub.value);
+                                        return (
+                                          <CommandItem
+                                            key={sub.itemKey}
+                                            value={`${sub.label} ${group.category.label}`}
+                                            onSelect={() => {
+                                              if (isSelected) {
+                                                setSelectedCategories(selectedCategories.filter(c => c !== sub.value));
+                                              } else {
+                                                setSelectedCategories([...selectedCategories, sub.value]);
+                                              }
+                                            }}
+                                            className="font-['Poppins',sans-serif] cursor-pointer pl-6"
+                                          >
+                                            <div className="flex items-center justify-between w-full">
+                                              <span className="text-[13px]">{sub.label}</span>
+                                              {isSelected && (
+                                                <Check className="w-4 h-4 text-[#FE8A0F]" />
+                                              )}
+                                            </div>
+                                          </CommandItem>
+                                        );
+                                      })}
+                                    </CommandGroup>
+                                  ))
+                                ) : (
+                                  <CommandGroup className="p-1">
+                                    {(effectiveCategoriesBySector[selectedSector] || []).map((category) => {
+                                      const isSelected = selectedCategories.includes(category.value);
+                                      const itemKey = 'itemKey' in category ? category.itemKey : category.value;
+                                      return (
+                                        <CommandItem
+                                          key={itemKey}
+                                          value={category.label}
+                                          onSelect={() => {
+                                            if (isSelected) {
+                                              setSelectedCategories(selectedCategories.filter(c => c !== category.value));
+                                            } else {
+                                              setSelectedCategories([...selectedCategories, category.value]);
+                                            }
+                                          }}
+                                          className="font-['Poppins',sans-serif] cursor-pointer"
+                                        >
+                                          <div className="flex items-center justify-between w-full">
+                                            <span>{category.label}</span>
+                                            {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                          </div>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                )}
                               </CommandList>
                             </Command>
                           </PopoverContent>
