@@ -224,6 +224,116 @@ router.post('/generate-description', authenticateToken, requireRole(['client']),
   }
 });
 
+// Infer best-matching sector from a free-text description (client only; used by Post Job stepper)
+router.post('/infer-sector', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const { description } = req.body;
+    const text = typeof description === 'string' ? description.trim() : '';
+    if (!text) {
+      return res.status(400).json({ error: 'Description is required to infer sector' });
+    }
+
+    const sectors = await Sector.find({ isActive: true }).select('_id name slug').lean();
+    if (!sectors.length) {
+      return res.status(500).json({ error: 'No sectors configured' });
+    }
+
+    console.log('[Jobs] infer-sector request', {
+      userId: req.user?.id,
+      descriptionPreview: text.slice(0, 200),
+      sectorCount: sectors.length,
+    });
+
+    const apiKey = process.env.OPENAI_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: 'AI generation is not configured' });
+    }
+
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey });
+
+    const sectorOptions = sectors
+      .map((s) => `- id: ${s._id.toString()}, slug: ${s.slug || ''}, name: ${s.name}`)
+      .join('\n');
+
+    const systemPrompt = `You are a classifier for a trades and services platform (UK).
+Given a client's free-text job description, you must choose exactly ONE sector from the list below that best fits the job.
+Always respond with strict JSON using these keys only: "sectorId", "sectorSlug", "sectorName".
+
+Sectors:
+${sectorOptions}
+
+Rules:
+1. sectorId must be one of the ids from the list above.
+2. sectorSlug must be the slug for that sector (or empty string if not available).
+3. sectorName must be exactly the name of that sector from the list.
+4. Never invent new sectors or names.`;
+
+    const userPrompt = `Client job description:\n\n${text}\n\nPick the single best matching sector from the list and respond with JSON only.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const raw = completion.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      return res.status(502).json({ error: 'Empty response from AI when inferring sector' });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      console.error('[Jobs] infer-sector parse error raw=', raw);
+      return res.status(502).json({ error: 'Invalid AI response format when inferring sector' });
+    }
+
+    const sectorIdStr = (parsed.sectorId || parsed.id || '').toString().trim();
+    const sectorSlugStr = (parsed.sectorSlug || parsed.slug || '').toString().trim();
+    const sectorNameStr = (parsed.sectorName || parsed.name || '').toString().trim();
+
+    const chosen = sectors.find((s) => {
+      if (sectorIdStr && s._id.toString() === sectorIdStr) return true;
+      if (sectorSlugStr && s.slug && s.slug === sectorSlugStr) return true;
+      if (sectorNameStr && s.name && s.name.toLowerCase() === sectorNameStr.toLowerCase()) return true;
+      return false;
+    });
+
+    if (!chosen) {
+      console.warn('[Jobs] infer-sector: AI returned sector not in list', {
+        sectorIdStr,
+        sectorSlugStr,
+        sectorNameStr,
+      });
+      return res.status(404).json({ error: 'Could not infer sector from description' });
+    }
+
+    console.log('[Jobs] infer-sector success', {
+      userId: req.user?.id,
+      sectorId: chosen._id.toString(),
+      sectorSlug: chosen.slug,
+      sectorName: chosen.name,
+    });
+
+    return res.json({
+      sectorId: chosen._id.toString(),
+      sectorSlug: chosen.slug,
+      sectorName: chosen.name,
+    });
+  } catch (err) {
+    console.error('[Jobs] infer-sector error:', err);
+    if (err.status === 401) {
+      return res.status(503).json({ error: 'AI service configuration error' });
+    }
+    return res.status(500).json({ error: err.message || 'Failed to infer sector' });
+  }
+});
+
 // Generate quote message to client using OpenAI (professional only)
 router.post('/generate-quote-message', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {

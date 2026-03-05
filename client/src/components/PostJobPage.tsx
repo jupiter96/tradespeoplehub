@@ -226,6 +226,7 @@ export default function PostJobPage() {
     label: s.name,
     id: s._id,
   }));
+  const selectedSectorEntry = sectors.find((s) => s.value === selectedSector);
   
   // Load categories for each sector
   useEffect(() => {
@@ -305,6 +306,7 @@ export default function PostJobPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
+  const [inferringSector, setInferringSector] = useState(false);
 
   const totalSteps = isLoggedIn ? steps.length : steps.length + 1;
 
@@ -368,6 +370,63 @@ export default function PostJobPage() {
       setAiGenerating(false);
     }
   };
+
+  // When entering Step 3, try to infer sector automatically from the (final) description if none is selected yet
+  useEffect(() => {
+    const shouldInfer =
+      currentStep === 3 &&
+      !selectedSector &&
+      jobDescription.trim().length > 0 &&
+      !inferringSector;
+    if (!shouldInfer) return;
+
+    let cancelled = false;
+    const run = async () => {
+      setInferringSector(true);
+      try {
+        const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ description: jobDescription }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (!cancelled) {
+            // Quietly fail; user can choose sector manually
+            console.warn("infer-sector failed", data?.error || res.status);
+          }
+          return;
+        }
+        if (cancelled) return;
+        const sectorId = data.sectorId as string | undefined;
+        const sectorSlug = data.sectorSlug as string | undefined;
+        const sectorName = data.sectorName as string | undefined;
+        const match = sectors.find(
+          (s) =>
+            (sectorSlug && s.value === sectorSlug) ||
+            (sectorId && s.id === sectorId) ||
+            (sectorName && s.label === sectorName)
+        );
+        if (match) {
+          setSelectedSector(match.value);
+          setSelectedCategories([]);
+          toast.success(`Sector "${match.label}" selected based on your description.`);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.warn("infer-sector error", e);
+        }
+      } finally {
+        if (!cancelled) setInferringSector(false);
+      }
+    };
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStep, selectedSector, jobDescription, sectors, inferringSector]);
 
   const isStepValid = () => {
     switch (currentStep) {
@@ -703,42 +762,55 @@ export default function PostJobPage() {
               </div>
             )}
 
-            {/* Step 3: Category (Sector + Multiple Categories) */}
+            {/* Step 3: Select skills required (Sector inferred from description; can be adjusted if needed) */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
                   <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    What service are you looking for?
+                    Select the skills required
                   </h2>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    First select a sector, then choose minimum 3 specific categories
+                    Based on your description, we&apos;ll detect the right job sector and then you can choose the specific skills (categories) required.
                   </p>
+                  {selectedSectorEntry && (
+                    <p className="mt-1 font-['Poppins',sans-serif] text-[13px] text-[#4b5563]">
+                      We&apos;ve detected your job sector automatically. Now choose the skills below.
+                    </p>
+                  )}
+                  {!selectedSectorEntry && (
+                    <p className="mt-1 font-['Poppins',sans-serif] text-[12px] text-[#ef4444]">
+                      We couldn&apos;t detect your job sector. Please select the correct sector below.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                      Sector
-                    </Label>
-                    <Select 
-                      value={selectedSector} 
-                      onValueChange={(value) => {
-                        setSelectedSector(value);
-                        setSelectedCategories([]);
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
-                        <SelectValue placeholder="Select sector..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sectors.map((sector) => (
-                          <SelectItem key={sector.value} value={sector.value}>
-                            {sector.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Sector: completely hidden when auto-detected; only show selector when inference failed */}
+                  {!selectedSectorEntry && (
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Sector
+                      </Label>
+                      <Select 
+                        value={selectedSector} 
+                        onValueChange={(value) => {
+                          setSelectedSector(value);
+                          setSelectedCategories([]);
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
+                          <SelectValue placeholder="Select sector..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sectors.map((sector) => (
+                            <SelectItem key={sector.value} value={sector.value}>
+                              {sector.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="flex flex-col">
                     <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
