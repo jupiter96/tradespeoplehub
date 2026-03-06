@@ -314,7 +314,7 @@ export default function PostJobPage() {
   
   // Step 2: Description & Images
   const [jobDescription, setJobDescription] = useState("");
-  const [descriptionBeforeAI, setDescriptionBeforeAI] = useState<string>("");
+  const [descriptionPreviousState, setDescriptionPreviousState] = useState<string>("");
   const [showRestoreDescriptionModal, setShowRestoreDescriptionModal] = useState(false);
   const [showClearDescriptionModal, setShowClearDescriptionModal] = useState(false);
   const [images, setImages] = useState<string[]>([]);
@@ -521,7 +521,7 @@ export default function PostJobPage() {
       if (data.title) setJobTitle(data.title);
       const newDescription = data.description ?? "";
       if (newDescription) {
-        setDescriptionBeforeAI(jobDescription.trim());
+        setDescriptionPreviousState(jobDescription.trim());
         setJobDescription(newDescription);
       }
       toast.success("Title and description generated.");
@@ -1162,11 +1162,11 @@ export default function PostJobPage() {
                       Description
                     </Label>
                     <div className="flex items-center gap-1">
-                      {descriptionBeforeAI.trim() !== "" && (
+                      {descriptionPreviousState.trim() !== "" && (
                         <button
                           type="button"
                           onClick={() => setShowRestoreDescriptionModal(true)}
-                          title="Restore to original keywords"
+                          title="Restore to previous content"
                           className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
                         >
                           <History className="w-4 h-4" />
@@ -1196,10 +1196,10 @@ export default function PostJobPage() {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle className="font-['Poppins',sans-serif]">
-                        Restore to original keywords?
+                        Restore to previous content?
                       </AlertDialogTitle>
                       <AlertDialogDescription className="font-['Poppins',sans-serif]">
-                        The description will be replaced with the text you entered before generating with AI.
+                        The description will be replaced with the previous content (before the last change).
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -1207,9 +1207,9 @@ export default function PostJobPage() {
                       <AlertDialogAction
                         className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
                         onClick={() => {
-                          setJobDescription(descriptionBeforeAI);
+                          setJobDescription(descriptionPreviousState);
                           setShowRestoreDescriptionModal(false);
-                          toast.success("Restored to your original keywords.");
+                          toast.success("Restored to previous content.");
                         }}
                       >
                         Restore
@@ -1234,6 +1234,7 @@ export default function PostJobPage() {
                       <AlertDialogAction
                         className="font-['Poppins',sans-serif] bg-red-500 hover:bg-red-600"
                         onClick={() => {
+                          setDescriptionPreviousState(jobDescription);
                           setJobDescription("");
                           setShowClearDescriptionModal(false);
                           toast.success("Description cleared.");
