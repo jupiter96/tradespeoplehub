@@ -32,7 +32,9 @@ import {
   Laptop,
   ArrowLeft,
   History,
-  Trash2
+  Trash2,
+  Undo2,
+  Video
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -317,7 +319,8 @@ export default function PostJobPage() {
   const [descriptionPreviousState, setDescriptionPreviousState] = useState<string>("");
   const [showRestoreDescriptionModal, setShowRestoreDescriptionModal] = useState(false);
   const [showClearDescriptionModal, setShowClearDescriptionModal] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
+  type AttachedFileItem = { file: File; previewUrl?: string };
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   
   // Step 3: Headline (pre-filled when using Generate text by AI)
   const [jobTitle, setJobTitle] = useState("");
@@ -455,24 +458,29 @@ export default function PostJobPage() {
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addFilesToImages = (files: FileList | null) => {
+  const addAttachedFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const newUrls = Array.from(files)
-      .filter((f) => f.type.startsWith("image/"))
-      .slice(0, 5 - images.length)
-      .map((f) => URL.createObjectURL(f));
-    setImages((prev) => [...prev, ...newUrls].slice(0, 5));
+    const max = 10;
+    const items: AttachedFileItem[] = Array.from(files)
+      .slice(0, max - attachedFiles.length)
+      .map((f) => {
+        const isImage = f.type.startsWith("image/");
+        const isVideo = f.type.startsWith("video/");
+        const previewUrl = isImage || isVideo ? URL.createObjectURL(f) : undefined;
+        return { file: f, previewUrl };
+      });
+    setAttachedFiles((prev) => [...prev, ...items].slice(0, max));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    addFilesToImages(e.target.files);
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    addAttachedFiles(e.target.files);
     e.target.value = "";
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingFiles(false);
-    addFilesToImages(e.dataTransfer.files);
+    addAttachedFiles(e.dataTransfer.files);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -487,8 +495,13 @@ export default function PostJobPage() {
     setIsDraggingFiles(false);
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const removeAttachedFile = (index: number) => {
+    setAttachedFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      const item = prev[index];
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return next;
+    });
   };
 
   const handleGenerateByAI = async () => {
@@ -1166,10 +1179,14 @@ export default function PostJobPage() {
                         <button
                           type="button"
                           onClick={() => setShowRestoreDescriptionModal(true)}
-                          title="Restore to previous content"
+                          title={jobDescription.trim() === "" ? "Revert: restore deleted content" : "Restore to previous content"}
                           className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
                         >
-                          <History className="w-4 h-4" />
+                          {jobDescription.trim() === "" ? (
+                            <Undo2 className="w-4 h-4" />
+                          ) : (
+                            <History className="w-4 h-4" />
+                          )}
                         </button>
                       )}
                       <button
@@ -1251,9 +1268,8 @@ export default function PostJobPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
                     multiple
-                    onChange={handleImageUpload}
+                    onChange={handleFileUpload}
                     className="hidden"
                   />
                   <div
@@ -1269,23 +1285,39 @@ export default function PostJobPage() {
                     )}
                   >
                     <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      {isDraggingFiles ? "Drop files here" : "Attach files (drag and drop or click to select files)"}
+                      {isDraggingFiles ? "Drop files here" : "Attach files (images, videos, documents — drag and drop or click)"}
                     </span>
                   </div>
-                  {images.length > 0 && (
-                    <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3">
-                      {images.map((image, index) => (
-                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
-                          <img src={image} alt={`Attachment ${index + 1}`} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); removeImage(index); }}
-                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                  {attachedFiles.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {attachedFiles.map((item, index) => {
+                        const isImage = item.file.type.startsWith("image/");
+                        const isVideo = item.file.type.startsWith("video/");
+                        return (
+                          <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 min-h-[80px]">
+                            {isImage && item.previewUrl ? (
+                              <img src={item.previewUrl} alt={item.file.name} className="w-full aspect-square object-cover" />
+                            ) : isVideo && item.previewUrl ? (
+                              <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
+                                <Video className="w-8 h-8 text-gray-400" />
+                                <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
+                              </div>
+                            ) : (
+                              <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
+                                <FileText className="w-8 h-8 text-gray-400" />
+                                <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); removeAttachedFile(index); }}
+                              className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
