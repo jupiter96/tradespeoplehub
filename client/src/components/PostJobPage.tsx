@@ -312,8 +312,7 @@ export default function PostJobPage() {
   const [selectedSector, setSelectedSector] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
-  const selectedSectorEntry = sectors.find((s) => s.value === selectedSector);
-  
+
   // Step 2: Description & Images
   const [jobDescription, setJobDescription] = useState("");
   const [descriptionPreviousState, setDescriptionPreviousState] = useState<string>("");
@@ -354,7 +353,6 @@ export default function PostJobPage() {
   const [registerAddress, setRegisterAddress] = useState("");
   const [registerTownCity, setRegisterTownCity] = useState("");
   const [registerCounty, setRegisterCounty] = useState("");
-  const [inferringSector, setInferringSector] = useState(false);
   // Registration verification (same flow as LoginPage)
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationStep, setVerificationStep] = useState(1);
@@ -402,47 +400,7 @@ export default function PostJobPage() {
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
-      // Step 1 → Step 2 without Generate: ensure empty title, description = key points, and infer sector from keywords so step 3 has sector pre-selected (sector select hidden)
-      if (currentStep === 1) {
-        setJobTitle("");
-        const keywords = jobDescription.trim();
-        if (keywords.length > 0 && sectors.length > 0 && !inferringSector) {
-          setInferringSector(true);
-          (async () => {
-            try {
-              const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ description: keywords }),
-              });
-              const data = await res.json().catch(() => ({}));
-              if (!res.ok) return;
-              const sectorId = data.sectorId != null ? String(data.sectorId).trim() : "";
-              const sectorSlug = data.sectorSlug != null ? String(data.sectorSlug).trim() : "";
-              const sectorName = data.sectorName != null ? String(data.sectorName).trim() : "";
-              const match = sectors.find((s) => {
-                const sId = s.id != null ? String(s.id) : "";
-                const sVal = (s.value ?? "").trim().toLowerCase();
-                const sLabel = (s.label ?? "").trim().toLowerCase();
-                if (sectorId && sId === sectorId) return true;
-                if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
-                if (sectorName && sLabel === sectorName.toLowerCase()) return true;
-                if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
-                if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
-                return false;
-              });
-              if (match) {
-                setSelectedSector(match.value);
-                setSelectedCategories([]);
-                toast.success(`Sector "${match.label}" selected based on your keywords.`);
-              }
-            } finally {
-              setInferringSector(false);
-            }
-          })();
-        }
-      }
+      if (currentStep === 1) setJobTitle("");
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -538,44 +496,6 @@ export default function PostJobPage() {
         setJobDescription(newDescription);
       }
       toast.success("Title and description generated.");
-      // Infer sector from the generated description so step 3 has sector pre-selected and hides sector field
-      if (newDescription && sectors.length > 0) {
-        console.log("[PostJob] infer-sector (after generate): start", { descriptionPreview: newDescription.slice(0, 100), sectorsCount: sectors.length });
-        try {
-          const inferRes = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ description: newDescription }),
-          });
-          const inferData = await inferRes.json().catch(() => ({}));
-          console.log("[PostJob] infer-sector (after generate): response", { ok: inferRes.ok, status: inferRes.status, sectorId: inferData.sectorId, sectorSlug: inferData.sectorSlug, sectorName: inferData.sectorName, error: inferData.error });
-          if (inferRes.ok && (inferData.sectorId ?? inferData.sectorSlug ?? inferData.sectorName)) {
-            const sectorId = inferData.sectorId != null ? String(inferData.sectorId).trim() : "";
-            const sectorSlug = inferData.sectorSlug != null ? String(inferData.sectorSlug).trim() : "";
-            const sectorName = inferData.sectorName != null ? String(inferData.sectorName).trim() : "";
-            const match = sectors.find((s) => {
-              const sId = s.id != null ? String(s.id) : "";
-              const sVal = (s.value ?? "").trim().toLowerCase();
-              const sLabel = (s.label ?? "").trim().toLowerCase();
-              if (sectorId && sId === sectorId) return true;
-              if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
-              if (sectorName && sLabel === sectorName.toLowerCase()) return true;
-              if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
-              if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
-              return false;
-            });
-            console.log("[PostJob] infer-sector (after generate): match", { match: match ? { value: match.value, label: match.label } : null, sectorId, sectorSlug, sectorName });
-            if (match) {
-              setSelectedSector(match.value);
-              setSelectedCategories([]);
-              console.log("[PostJob] infer-sector (after generate): setSelectedSector", match.value);
-            }
-          }
-        } catch (inferErr) {
-          console.warn("[PostJob] infer-sector (after generate): error", inferErr);
-        }
-      }
       setCurrentStep((prev) => (prev < 2 ? 2 : prev));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
@@ -585,128 +505,6 @@ export default function PostJobPage() {
       setAiGenerating(false);
     }
   };
-
-  // When entering Step 3, infer sector only if not already set (e.g. user typed description manually without generate)
-  useEffect(() => {
-    const shouldInfer =
-      currentStep === 3 &&
-      !selectedSector &&
-      jobDescription.trim().length > 0 &&
-      !inferringSector;
-    console.log("[PostJob] Step3 infer effect", {
-      currentStep,
-      selectedSector,
-      jobDescriptionLength: jobDescription.trim().length,
-      inferringSector,
-      sectorsCount: sectors.length,
-      shouldInfer,
-    });
-    if (!shouldInfer) return;
-
-    let cancelled = false;
-    const run = async () => {
-      setInferringSector(true);
-      console.log("[PostJob] infer-sector (Step3): request", { descriptionPreview: jobDescription.trim().slice(0, 100) });
-      try {
-        const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ description: jobDescription }),
-        });
-        const data = await res.json().catch(() => ({}));
-        console.log("[PostJob] infer-sector (Step3): response", { ok: res.ok, status: res.status, sectorId: data.sectorId, sectorSlug: data.sectorSlug, sectorName: data.sectorName, error: data.error });
-        if (!res.ok) {
-          if (!cancelled) console.warn("[PostJob] infer-sector (Step3): failed", data?.error || res.status);
-          return;
-        }
-        if (cancelled) return;
-        const sectorId = data.sectorId != null ? String(data.sectorId).trim() : "";
-        const sectorSlug = data.sectorSlug != null ? String(data.sectorSlug).trim() : "";
-        const sectorName = data.sectorName != null ? String(data.sectorName).trim() : "";
-        const match = sectors.find((s) => {
-          const sId = s.id != null ? String(s.id) : "";
-          const sVal = (s.value ?? "").trim().toLowerCase();
-          const sLabel = (s.label ?? "").trim().toLowerCase();
-          if (sectorId && sId === sectorId) return true;
-          if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
-          if (sectorName && sLabel === sectorName.toLowerCase()) return true;
-          if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
-          if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
-          return false;
-        });
-        console.log("[PostJob] infer-sector (Step3): match", { match: match ? { value: match.value, label: match.label } : null, sectorId, sectorSlug, sectorName, sectorsSample: sectors.slice(0, 2).map((s) => ({ id: s.id, value: s.value, label: s.label })) });
-        if (match) {
-          setSelectedSector(match.value);
-          setSelectedCategories([]);
-          console.log("[PostJob] infer-sector (Step3): setSelectedSector", match.value);
-          if (!cancelled) toast.success(`Sector "${match.label}" selected based on your description.`);
-        }
-      } catch (e) {
-        if (!cancelled) console.warn("[PostJob] infer-sector (Step3): error", e);
-      } finally {
-        if (!cancelled) setInferringSector(false);
-      }
-    };
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentStep, selectedSector, jobDescription, sectors, inferringSector]);
-
-  // When on Step 2 with key points (no Generate): infer sector so Step 3 has sector pre-selected and sector field hidden
-  useEffect(() => {
-    const shouldInfer =
-      currentStep === 2 &&
-      !selectedSector &&
-      jobDescription.trim().length > 0 &&
-      sectors.length > 0 &&
-      !inferringSector;
-    if (!shouldInfer) return;
-
-    let cancelled = false;
-    const run = async () => {
-      setInferringSector(true);
-      console.log("[PostJob] infer-sector (Step2): request", { descriptionPreview: jobDescription.trim().slice(0, 100) });
-      try {
-        const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ description: jobDescription }),
-        });
-        const data = await res.json().catch(() => ({}));
-        console.log("[PostJob] infer-sector (Step2): response", { ok: res.ok, sectorId: data.sectorId, sectorSlug: data.sectorSlug, sectorName: data.sectorName });
-        if (!res.ok || cancelled) return;
-        const sectorId = data.sectorId != null ? String(data.sectorId).trim() : "";
-        const sectorSlug = data.sectorSlug != null ? String(data.sectorSlug).trim() : "";
-        const sectorName = data.sectorName != null ? String(data.sectorName).trim() : "";
-        const match = sectors.find((s) => {
-          const sId = s.id != null ? String(s.id) : "";
-          const sVal = (s.value ?? "").trim().toLowerCase();
-          const sLabel = (s.label ?? "").trim().toLowerCase();
-          if (sectorId && sId === sectorId) return true;
-          if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
-          if (sectorName && sLabel === sectorName.toLowerCase()) return true;
-          if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
-          if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
-          return false;
-        });
-        console.log("[PostJob] infer-sector (Step2): match", { match: match ? { value: match.value, label: match.label } : null });
-        if (!cancelled && match) {
-          setSelectedSector(match.value);
-          setSelectedCategories([]);
-        }
-      } catch (e) {
-        if (!cancelled) console.warn("[PostJob] infer-sector (Step2): error", e);
-      } finally {
-        if (!cancelled) setInferringSector(false);
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [currentStep, selectedSector, jobDescription, sectors, inferringSector]);
 
   const isStepValid = () => {
     switch (currentStep) {
@@ -1327,7 +1125,7 @@ export default function PostJobPage() {
               </div>
             )}
 
-            {/* Step 3: Select skills required (Sector inferred from description; can be adjusted if needed) */}
+            {/* Step 3: Select skills required – sector chosen manually, then skills by sector */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
@@ -1335,174 +1133,11 @@ export default function PostJobPage() {
                     Select the skills required
                   </h2>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    Based on your description, we&apos;ll detect the right job sector and then you can choose the specific skills (categories) required.
+                    Select your job sector first, then choose the skills (categories) required for your job.
                   </p>
-                  {inferringSector && (
-                    <p className="mt-1 font-['Poppins',sans-serif] text-[13px] text-[#4b5563]">
-                      Detecting your job sector…
-                    </p>
-                  )}
-                  {!inferringSector && selectedSectorEntry && (
-                    <p className="mt-1 font-['Poppins',sans-serif] text-[13px] text-[#4b5563]">
-                      We&apos;ve detected your job sector automatically. Now choose the skills below.
-                    </p>
-                  )}
-                  {!inferringSector && !selectedSectorEntry && (
-                    <p className="mt-1 font-['Poppins',sans-serif] text-[12px] text-[#ef4444]">
-                      We couldn&apos;t detect your job sector. Please select the correct sector below.
-                    </p>
-                  )}
                 </div>
 
-                {selectedSectorEntry ? (
-                  // Auto-detected sector: hide sector field, show skills (categories) full-width
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="flex flex-col">
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Skills (categories & subcategories)
-                      </Label>
-                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <button
-                            disabled={!selectedSector}
-                            className={cn(
-                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                              !selectedSector 
-                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
-                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
-                            )}
-                          >
-                            <div className="flex flex-wrap gap-2 items-center">
-                              {selectedCategories.length > 0 ? (
-                                <>
-                                  {selectedCategories.map((categoryValue) => {
-                                    const category = effectiveCategoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
-                                    return (
-                                      <div
-                                        key={categoryValue}
-                                        className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedCategories(selectedCategories.filter(c => c !== categoryValue));
-                                        }}
-                                      >
-                                        <span className="text-[13px]">{category?.label}</span>
-                                        <X className="w-3 h-3 hover:text-red-200 transition-colors" />
-                                      </div>
-                                    );
-                                  })}
-                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
-                                </>
-                              ) : (
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[#6b6b6b]">
-                                    Search and select categories & skills...
-                                  </span>
-                                  {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        </PopoverTrigger>
-                        {selectedSector && (
-                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
-                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
-                              <div className="p-2 border-b bg-muted/30">
-                                <CommandInput 
-                                  placeholder="Search categories and subcategories..." 
-                                  className="font-['Poppins',sans-serif] h-10"
-                                />
-                              </div>
-                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
-                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No category or skill found.
-                                </CommandEmpty>
-                                {effectiveGroupedBySector[selectedSector]?.length ? (
-                                  effectiveGroupedBySector[selectedSector].map((group) => (
-                                    <CommandGroup key={group.category.itemKey} heading={group.category.label} className="p-1">
-                                      <CommandItem
-                                        key={group.category.itemKey}
-                                        value={group.category.label}
-                                        onSelect={() => {
-                                          const isSelected = selectedCategories.includes(group.category.value);
-                                          if (isSelected) {
-                                            setSelectedCategories(selectedCategories.filter(c => c !== group.category.value));
-                                          } else {
-                                            setSelectedCategories([...selectedCategories, group.category.value]);
-                                          }
-                                        }}
-                                        className="font-['Poppins',sans-serif] cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between w-full">
-                                          <span>{group.category.label}</span>
-                                          {selectedCategories.includes(group.category.value) && (
-                                            <Check className="w-4 h-4 text-[#FE8A0F]" />
-                                          )}
-                                        </div>
-                                      </CommandItem>
-                                      {group.subcategories.map((sub) => {
-                                        const isSelected = selectedCategories.includes(sub.value);
-                                        return (
-                                          <CommandItem
-                                            key={sub.itemKey}
-                                            value={`${sub.label} ${group.category.label}`}
-                                            onSelect={() => {
-                                              if (isSelected) {
-                                                setSelectedCategories(selectedCategories.filter(c => c !== sub.value));
-                                              } else {
-                                                setSelectedCategories([...selectedCategories, sub.value]);
-                                              }
-                                            }}
-                                            className="font-['Poppins',sans-serif] cursor-pointer pl-6"
-                                          >
-                                            <div className="flex items-center justify-between w-full">
-                                              <span className="text-[13px]">{sub.label}</span>
-                                              {isSelected && (
-                                                <Check className="w-4 h-4 text-[#FE8A0F]" />
-                                              )}
-                                            </div>
-                                          </CommandItem>
-                                        );
-                                      })}
-                                    </CommandGroup>
-                                  ))
-                                ) : (
-                                  <CommandGroup className="p-1">
-                                    {(effectiveCategoriesBySector[selectedSector] || []).map((category) => {
-                                      const isSelected = selectedCategories.includes(category.value);
-                                      const itemKey = 'itemKey' in category ? category.itemKey : category.value;
-                                      return (
-                                        <CommandItem
-                                          key={itemKey}
-                                          value={category.label}
-                                          onSelect={() => {
-                                            if (isSelected) {
-                                              setSelectedCategories(selectedCategories.filter(c => c !== category.value));
-                                            } else {
-                                              setSelectedCategories([...selectedCategories, category.value]);
-                                            }
-                                          }}
-                                          className="font-['Poppins',sans-serif] cursor-pointer"
-                                        >
-                                          <div className="flex items-center justify-between w-full">
-                                            <span>{category.label}</span>
-                                            {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
-                                          </div>
-                                        </CommandItem>
-                                      );
-                                    })}
-                                  </CommandGroup>
-                                )}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        )}
-                      </Popover>
-                    </div>
-                  </div>
-                ) : (
-                  // Fallback: show sector + categories when we couldn't infer sector
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex flex-col">
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                         Sector
@@ -1669,8 +1304,7 @@ export default function PostJobPage() {
                         )}
                       </Popover>
                     </div>
-                  </div>
-                )}
+                </div>
 
                 {selectedSector && (
                   <div className="mt-4">
