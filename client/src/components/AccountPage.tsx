@@ -69,7 +69,8 @@ import {
   Reply,
   ExternalLink,
   Landmark,
-  Bell
+  Bell,
+  Target
 } from "lucide-react";
 import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
@@ -96,6 +97,7 @@ import AddServiceSection from "./AddServiceSection";
 import CreatePackageModal from "./CreatePackageModal";
 import PromoCodeSection from "./PromoCodeSection";
 import ProPromoCodeSection from "./ProPromoCodeSection";
+import BidsAndMembershipSection from "./BidsAndMembershipSection";
 import FavouriteSection from "./FavouriteSection";
 import ProfileSection from "./ProfileSection";
 import VerificationProgressModal from "./VerificationProgressModal";
@@ -391,6 +393,7 @@ export default function AccountPage() {
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "my-jobs", label: "My Jobs", icon: FileText },
     { id: "promo-code", label: "Promo Code", icon: Ticket },
+    { id: "bids-membership", label: "Bids & Membership", icon: Target },
     { 
       id: "notifications", 
       label: "Notifications", 
@@ -589,6 +592,7 @@ export default function AccountPage() {
               {activeSection === "my-jobs" && userRole === "professional" && <ProfessionalJobsSection />}
               {/* Promo Code (Professional only) */}
               {activeSection === "promo-code" && userRole === "professional" && <ProPromoCodeSection />}
+              {activeSection === "bids-membership" && userRole === "professional" && <BidsAndMembershipSection />}
               {activeSection === "verification" && (
                 <AccountVerificationSection 
                   onVerificationStatusChange={() => {

@@ -22,6 +22,8 @@ import ServiceCategory from '../models/ServiceCategory.js';
 import ServiceSubCategory from '../models/ServiceSubCategory.js';
 import Service from '../models/Service.js';
 import PaymentSettings from '../models/PaymentSettings.js';
+import ProBidSettings from '../models/ProBidSettings.js';
+import BidPlan from '../models/BidPlan.js';
 import Wallet from '../models/Wallet.js';
 import Order from '../models/Order.js';
 import Dispute from '../models/Dispute.js';
@@ -3328,6 +3330,135 @@ router.put('/payment-settings', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error updating payment settings:', error);
     res.status(500).json({ error: 'Failed to update payment settings' });
+  }
+});
+
+// --- Pro Bids & Membership (admin) ---
+
+// GET pro bid settings (free bids per month)
+router.get('/pro-bid-settings', requireAdmin, async (req, res) => {
+  try {
+    const settings = await ProBidSettings.getSettings();
+    return res.json({
+      freeBidsPerMonth: settings.freeBidsPerMonth ?? 0,
+    });
+  } catch (err) {
+    console.error('[Admin] Pro bid settings get:', err);
+    return res.status(500).json({ error: err.message || 'Failed to get pro bid settings' });
+  }
+});
+
+// PUT pro bid settings
+router.put('/pro-bid-settings', requireAdmin, async (req, res) => {
+  try {
+    const { freeBidsPerMonth } = req.body;
+    if (freeBidsPerMonth != null && (typeof freeBidsPerMonth !== 'number' || freeBidsPerMonth < 0)) {
+      return res.status(400).json({ error: 'freeBidsPerMonth must be a non-negative number' });
+    }
+    const settings = await ProBidSettings.getSettings();
+    if (freeBidsPerMonth != null) settings.freeBidsPerMonth = freeBidsPerMonth;
+    await settings.save();
+    return res.json({ freeBidsPerMonth: settings.freeBidsPerMonth });
+  } catch (err) {
+    console.error('[Admin] Pro bid settings put:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update pro bid settings' });
+  }
+});
+
+// GET bid plans (list)
+router.get('/bid-plans', requireAdmin, async (req, res) => {
+  try {
+    const plans = await BidPlan.find({}).sort({ order: 1, createdAt: 1 }).lean();
+    return res.json(plans.map((p) => ({
+      id: p._id,
+      name: p.name,
+      bids: p.bids,
+      amountPence: p.amountPence,
+      order: p.order,
+      active: p.active,
+      validityMonths: p.validityMonths ?? 1,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    })));
+  } catch (err) {
+    console.error('[Admin] Bid plans list:', err);
+    return res.status(500).json({ error: err.message || 'Failed to list bid plans' });
+  }
+});
+
+// POST bid plan (create)
+router.post('/bid-plans', requireAdmin, async (req, res) => {
+  try {
+    const { name, bids, amountPence, order, active, validityMonths } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'name is required' });
+    }
+    if (bids == null || typeof bids !== 'number' || bids < 1) {
+      return res.status(400).json({ error: 'bids must be a positive number' });
+    }
+    if (amountPence == null || typeof amountPence !== 'number' || amountPence < 0) {
+      return res.status(400).json({ error: 'amountPence must be a non-negative number' });
+    }
+    const plan = await BidPlan.create({
+      name: name.trim(),
+      bids,
+      amountPence,
+      order: order != null ? Number(order) : 0,
+      active: active !== false,
+      validityMonths: validityMonths != null ? Math.max(1, Number(validityMonths)) : 1,
+    });
+    return res.status(201).json({
+      id: plan._id,
+      name: plan.name,
+      bids: plan.bids,
+      amountPence: plan.amountPence,
+      order: plan.order,
+      active: plan.active,
+      validityMonths: plan.validityMonths,
+    });
+  } catch (err) {
+    console.error('[Admin] Bid plan create:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create bid plan' });
+  }
+});
+
+// PUT bid plan (update)
+router.put('/bid-plans/:id', requireAdmin, async (req, res) => {
+  try {
+    const plan = await BidPlan.findById(req.params.id);
+    if (!plan) return res.status(404).json({ error: 'Bid plan not found' });
+    const { name, bids, amountPence, order, active, validityMonths } = req.body;
+    if (name != null && typeof name === 'string') plan.name = name.trim();
+    if (bids != null && typeof bids === 'number' && bids >= 1) plan.bids = bids;
+    if (amountPence != null && typeof amountPence === 'number' && amountPence >= 0) plan.amountPence = amountPence;
+    if (order != null) plan.order = Number(order);
+    if (active !== undefined) plan.active = !!active;
+    if (validityMonths != null) plan.validityMonths = Math.max(1, Number(validityMonths));
+    await plan.save();
+    return res.json({
+      id: plan._id,
+      name: plan.name,
+      bids: plan.bids,
+      amountPence: plan.amountPence,
+      order: plan.order,
+      active: plan.active,
+      validityMonths: plan.validityMonths,
+    });
+  } catch (err) {
+    console.error('[Admin] Bid plan update:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update bid plan' });
+  }
+});
+
+// DELETE bid plan
+router.delete('/bid-plans/:id', requireAdmin, async (req, res) => {
+  try {
+    const plan = await BidPlan.findByIdAndDelete(req.params.id);
+    if (!plan) return res.status(404).json({ error: 'Bid plan not found' });
+    return res.json({ message: 'Bid plan deleted' });
+  } catch (err) {
+    console.error('[Admin] Bid plan delete:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete bid plan' });
   }
 });
 

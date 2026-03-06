@@ -291,7 +291,20 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    
+    // Pro bids & membership (used on Bids & Membership page)
+    freeBidsPerMonth: {
+      type: Number,
+      default: 3,
+      min: 0,
+    },
+    basicPlanPrice: { type: Number, default: 5, min: 0 },
+    basicPlanBids: { type: Number, default: 2, min: 0 },
+    standardPlanPrice: { type: Number, default: 10, min: 0 },
+    standardPlanBids: { type: Number, default: 5, min: 0 },
+    premiumPlanPrice: { type: Number, default: 15, min: 0 },
+    premiumPlanBids: { type: Number, default: 15, min: 0 },
+    // Price per bid when pro buys custom quantity (in £)
+    pricePerBid: { type: Number, default: 2.5, min: 0 },
     // Updated by
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

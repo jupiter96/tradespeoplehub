@@ -14,6 +14,7 @@ import Wallet from '../models/Wallet.js';
 import Notification from '../models/Notification.js';
 import JobReport from '../models/JobReport.js';
 import { getIO } from '../services/socket.js';
+import { deductBid } from './bids.js';
 
 const router = express.Router();
 
@@ -914,6 +915,13 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
       (q) => q.professionalId && q.professionalId.toString() === req.user.id
     );
     if (existing) return res.status(400).json({ error: 'You have already submitted a quote for this job' });
+
+    const deducted = await deductBid(req.user.id);
+    if (!deducted) {
+      return res.status(403).json({
+        error: 'Insufficient bids. Use your free monthly bids or buy a bid plan from Account → Bids & Membership.',
+      });
+    }
 
     const { price, deliveryTime, message } = req.body;
     if (price == null || isNaN(Number(price)) || Number(price) < 0) {

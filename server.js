@@ -25,8 +25,10 @@ import jobsRoutes from './routes/jobs.js';
 import cartRoutes from './routes/cart.js';
 import customOffersRoutes from './routes/custom-offers.js';
 import promoCodesRoutes from './routes/promo-codes.js';
+import bidsRoutes from './routes/bids.js';
 import { ensureTestUser } from './utils/ensureTestUser.js';
 import { ensureAdminUser } from './utils/ensureAdminUser.js';
+import { ensureDefaultBidPlans } from './utils/ensureDefaultBidPlans.js';
 import { startVerificationReminderScheduler } from './services/verificationReminderScheduler.js';
 import { startOrderStatusScheduler } from './services/orderStatusScheduler.js';
 import { startCancellationScheduler } from './services/cancellationScheduler.js';
@@ -152,6 +154,7 @@ const initializeDatabase = async () => {
   await connectMongoDB();
   await ensureTestUser();
   await ensureAdminUser();
+  await ensureDefaultBidPlans();
   // Start verification reminder scheduler
   startVerificationReminderScheduler();
   startOrderStatusScheduler();
@@ -190,6 +193,7 @@ app.use('/api/jobs', jobsRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/custom-offers', customOffersRoutes);
 app.use('/api/promo-codes', promoCodesRoutes);
+app.use('/api/bids', bidsRoutes);
 
 // Log chat routes after mounting (non-blocking)
 setImmediate(() => {

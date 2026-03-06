@@ -1201,7 +1201,7 @@ export default function PostJobPage() {
                   </div>
                   <Textarea
                     placeholder="Describe what you need..."
-                    value={jobDescription}
+                    value={jobDescription}vui 
                     onChange={(e) => setJobDescription(e.target.value)}
                     rows={10}
                     className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none whitespace-pre-wrap"
