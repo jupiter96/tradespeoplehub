@@ -33,8 +33,7 @@ import {
   ArrowLeft,
   History,
   Trash2,
-  Undo2,
-  Video
+  Undo2
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -51,6 +50,7 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import PhoneInput from "./PhoneInput";
 import { validatePassword } from "../utils/passwordValidation";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
+import { VideoThumbnail } from "./orders/VideoThumbnail";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1298,9 +1298,12 @@ export default function PostJobPage() {
                             {isImage && item.previewUrl ? (
                               <img src={item.previewUrl} alt={item.file.name} className="w-full aspect-square object-cover" />
                             ) : isVideo && item.previewUrl ? (
-                              <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
-                                <Video className="w-8 h-8 text-gray-400" />
-                                <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
+                              <div className="relative w-full aspect-square overflow-hidden bg-black/5">
+                                <VideoThumbnail
+                                  videoUrl={item.previewUrl}
+                                  className="w-full h-full"
+                                  style={{ minWidth: "100%", minHeight: "100%", position: "absolute", inset: 0 }}
+                                />
                               </div>
                             ) : (
                               <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
