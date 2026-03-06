@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import BenefitsAutoScroll from "./BenefitsAutoScroll";
@@ -30,7 +30,9 @@ import {
   ChevronDown,
   Sparkles,
   Laptop,
-  ArrowLeft
+  ArrowLeft,
+  History,
+  Trash2
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -47,6 +49,16 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import PhoneInput from "./PhoneInput";
 import { validatePassword } from "../utils/passwordValidation";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 
 interface Step {
   id: number;
@@ -302,6 +314,9 @@ export default function PostJobPage() {
   
   // Step 2: Description & Images
   const [jobDescription, setJobDescription] = useState("");
+  const [descriptionBeforeAI, setDescriptionBeforeAI] = useState<string>("");
+  const [showRestoreDescriptionModal, setShowRestoreDescriptionModal] = useState(false);
+  const [showClearDescriptionModal, setShowClearDescriptionModal] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   
   // Step 3: Headline (pre-filled when using Generate text by AI)
@@ -384,9 +399,46 @@ export default function PostJobPage() {
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
-      // Step 1 → Step 2 without Generate: ensure empty title and description = key points (already in jobDescription)
+      // Step 1 → Step 2 without Generate: ensure empty title, description = key points, and infer sector from keywords so step 3 has sector pre-selected (sector select hidden)
       if (currentStep === 1) {
         setJobTitle("");
+        const keywords = jobDescription.trim();
+        if (keywords.length > 0 && sectors.length > 0 && !inferringSector) {
+          setInferringSector(true);
+          (async () => {
+            try {
+              const res = await fetch(resolveApiUrl("/api/jobs/infer-sector"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ description: keywords }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) return;
+              const sectorId = data.sectorId != null ? String(data.sectorId).trim() : "";
+              const sectorSlug = data.sectorSlug != null ? String(data.sectorSlug).trim() : "";
+              const sectorName = data.sectorName != null ? String(data.sectorName).trim() : "";
+              const match = sectors.find((s) => {
+                const sId = s.id != null ? String(s.id) : "";
+                const sVal = (s.value ?? "").trim().toLowerCase();
+                const sLabel = (s.label ?? "").trim().toLowerCase();
+                if (sectorId && sId === sectorId) return true;
+                if (sectorSlug && sVal === sectorSlug.toLowerCase()) return true;
+                if (sectorName && sLabel === sectorName.toLowerCase()) return true;
+                if (sectorSlug && sVal && sVal.includes(sectorSlug.toLowerCase())) return true;
+                if (sectorName && sLabel && sLabel.includes(sectorName.toLowerCase())) return true;
+                return false;
+              });
+              if (match) {
+                setSelectedSector(match.value);
+                setSelectedCategories([]);
+                toast.success(`Sector "${match.label}" selected based on your keywords.`);
+              }
+            } finally {
+              setInferringSector(false);
+            }
+          })();
+        }
       }
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -400,16 +452,43 @@ export default function PostJobPage() {
     }
   };
 
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addFilesToImages = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newUrls = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, 5 - images.length)
+      .map((f) => URL.createObjectURL(f));
+    setImages((prev) => [...prev, ...newUrls].slice(0, 5));
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-      setImages([...images, ...newImages].slice(0, 5));
-    }
+    addFilesToImages(e.target.files);
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFiles(false);
+    addFilesToImages(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(false);
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleGenerateByAI = async () => {
@@ -441,7 +520,10 @@ export default function PostJobPage() {
       }
       if (data.title) setJobTitle(data.title);
       const newDescription = data.description ?? "";
-      if (newDescription) setJobDescription(newDescription);
+      if (newDescription) {
+        setDescriptionBeforeAI(jobDescription.trim());
+        setJobDescription(newDescription);
+      }
       toast.success("Title and description generated.");
       // Infer sector from the generated description so step 3 has sector pre-selected and hides sector field
       if (newDescription && sectors.length > 0) {
@@ -1075,9 +1157,31 @@ export default function PostJobPage() {
                 </div>
 
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                    Description
-                  </Label>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Description
+                    </Label>
+                    <div className="flex items-center gap-1">
+                      {descriptionBeforeAI.trim() !== "" && (
+                        <button
+                          type="button"
+                          onClick={() => setShowRestoreDescriptionModal(true)}
+                          title="Restore to original keywords"
+                          className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
+                        >
+                          <History className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowClearDescriptionModal(true)}
+                        title="Clear description"
+                        className="p-2 rounded-lg text-[#6b6b6b] hover:bg-gray-100 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                   <Textarea
                     placeholder="Describe what you need..."
                     value={jobDescription}
@@ -1087,37 +1191,102 @@ export default function PostJobPage() {
                   />
                 </div>
 
-                {/* Image Upload */}
+                {/* Restore description confirmation */}
+                <AlertDialog open={showRestoreDescriptionModal} onOpenChange={setShowRestoreDescriptionModal}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-['Poppins',sans-serif]">
+                        Restore to original keywords?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-['Poppins',sans-serif]">
+                        The description will be replaced with the text you entered before generating with AI.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
+                        onClick={() => {
+                          setJobDescription(descriptionBeforeAI);
+                          setShowRestoreDescriptionModal(false);
+                          toast.success("Restored to your original keywords.");
+                        }}
+                      >
+                        Restore
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Clear description confirmation */}
+                <AlertDialog open={showClearDescriptionModal} onOpenChange={setShowClearDescriptionModal}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-['Poppins',sans-serif]">
+                        Clear description?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-['Poppins',sans-serif]">
+                        All text in the description field will be removed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="font-['Poppins',sans-serif] bg-red-500 hover:bg-red-600"
+                        onClick={() => {
+                          setJobDescription("");
+                          setShowClearDescriptionModal(false);
+                          toast.success("Description cleared.");
+                        }}
+                      >
+                        Clear
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Attach files */}
                 <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                    Add photos (Optional)
-                  </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {images.map((image, index) => (
-                      <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200">
-                        <img src={image} alt={`Upload ${index + 1}`} className="w-full h-full object-cover" />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    {images.length < 5 && (
-                      <label className="aspect-square rounded-xl border-2 border-dashed border-gray-300 hover:border-[#FE8A0F] flex flex-col items-center justify-center cursor-pointer transition-all bg-gray-50 hover:bg-[#FFF5EB]">
-                        <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                        <span className="font-['Poppins',sans-serif] text-[12px] text-gray-500">Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className={cn(
+                      "rounded-xl border-2 border-dashed transition-all cursor-pointer flex items-center justify-center min-h-[50px] py-4 px-4",
+                      isDraggingFiles
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50"
                     )}
+                  >
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      {isDraggingFiles ? "Drop files here" : "Attach files (drag and drop or click to select files)"}
+                    </span>
                   </div>
+                  {images.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {images.map((image, index) => (
+                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
+                          <img src={image} alt={`Attachment ${index + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeImage(index); }}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
