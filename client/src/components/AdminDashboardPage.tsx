@@ -65,6 +65,9 @@ import AdminAskStepInPage from "./admin/AdminAskStepInPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
 import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
 import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
+import AdminJobPostsPage from "./admin/AdminJobPostsPage";
+import AdminBidsOnPostsPage from "./admin/AdminBidsOnPostsPage";
+import AdminJobAmountPage from "./admin/AdminJobAmountPage";
 import PromoCodeSection from "./PromoCodeSection";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
@@ -207,11 +210,8 @@ export default function AdminDashboardPage() {
       "transaction-history": "Transaction History",
       "user-plans": "User Plans",
       "job-manage": "Job Manage",
-      "post-a-job": "Post a Job",
       "job-posts": "Job Posts",
       "bids-on-posts": "Bids on Posts",
-      "send-emails": "Send Emails",
-      "generate-html": "Generate HTML",
       "job-amount": "Job Amount",
       "ratings-manage": "Ratings Manage",
       "payment-finance": "Payment & Finance",
@@ -349,6 +349,12 @@ export default function AdminDashboardPage() {
         return <AdminTransactionHistoryPage key={activeSection} />;
       case "bank-transfer-request":
         return <AdminBankTransferRequestPage key={activeSection} />;
+      case "job-posts":
+        return <AdminJobPostsPage key={activeSection} />;
+      case "bids-on-posts":
+        return <AdminBidsOnPostsPage key={activeSection} />;
+      case "job-amount":
+        return <AdminJobAmountPage key={activeSection} />;
       case "coupon-manage":
         return <PromoCodeSection key={activeSection} />;
       case "completed-order":

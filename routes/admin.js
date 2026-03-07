@@ -30,6 +30,8 @@ import Dispute from '../models/Dispute.js';
 import Message from '../models/Message.js';
 import CustomOffer from '../models/CustomOffer.js';
 import Review from '../models/Review.js';
+import Job from '../models/Job.js';
+import JobBudgetRange from '../models/JobBudgetRange.js';
 
 // Load environment variables
 dotenv.config();
@@ -3459,6 +3461,371 @@ router.delete('/bid-plans/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[Admin] Bid plan delete:', err);
     return res.status(500).json({ error: err.message || 'Failed to delete bid plan' });
+  }
+});
+
+// --- Admin Job Posts (list, get, update, delete) ---
+
+// GET /api/admin/jobs – list all jobs with search, filter, sort, pagination
+router.get('/jobs', requireAdmin, async (req, res) => {
+  try {
+    const { search, status, sortBy = 'postedAt', sortOrder = 'desc', page = 1, limit = 20 } = req.query;
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = {};
+    if (status && String(status).trim() !== '') {
+      query.status = String(status).trim();
+    }
+    if (search && String(search).trim() !== '') {
+      const term = String(search).trim();
+      query.$or = [
+        { title: { $regex: term, $options: 'i' } },
+        { description: { $regex: term, $options: 'i' } },
+        { postcode: { $regex: term, $options: 'i' } },
+        { slug: { $regex: term, $options: 'i' } },
+      ];
+    }
+
+    let sortField = String(sortBy || 'postedAt');
+    if (sortField === 'id') sortField = '_id';
+    const order = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    const sortOpt = { [sortField]: order };
+
+    const [jobs, totalCount] = await Promise.all([
+      Job.find(query)
+        .populate('clientId', 'firstName lastName email tradingName')
+        .sort(sortOpt)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Job.countDocuments(query),
+    ]);
+
+    const clientName = (user) => {
+      if (!user) return '—';
+      if (user.tradingName) return user.tradingName;
+      const first = user.firstName || '';
+      const last = user.lastName || '';
+      return [first, last].filter(Boolean).join(' ') || user.email || '—';
+    };
+
+    const list = jobs.map((j) => {
+      const client = j.clientId;
+      return {
+        id: j._id.toString(),
+        slug: j.slug,
+        title: j.title,
+        description: j.description,
+        clientName: clientName(client),
+        clientId: j.clientId?._id?.toString(),
+        postcode: j.postcode,
+        address: j.address,
+        location: j.location,
+        status: j.status,
+        budgetAmount: j.budgetAmount,
+        budgetMin: j.budgetMin,
+        budgetMax: j.budgetMax,
+        categoryLabels: j.categoryLabels || [],
+        categorySlugs: j.categorySlugs || [],
+        sectorName: j.sectorName,
+        sectorSlug: j.sectorSlug,
+        postedAt: j.postedAt ? new Date(j.postedAt).toISOString() : null,
+        createdAt: j.createdAt ? new Date(j.createdAt).toISOString() : null,
+      };
+    });
+
+    const totalPages = Math.max(1, Math.ceil(totalCount / limitNum));
+    return res.json({ jobs: list, totalCount, totalPages });
+  } catch (err) {
+    console.error('[Admin] Jobs list:', err);
+    return res.status(500).json({ error: err.message || 'Failed to list jobs' });
+  }
+});
+
+// GET /api/admin/jobs/:id – get one job for edit
+router.get('/jobs/:id', requireAdmin, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id).populate('clientId', 'firstName lastName email tradingName').lean();
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const client = job.clientId;
+    const clientName = client?.tradingName || [client?.firstName, client?.lastName].filter(Boolean).join(' ') || client?.email || '—';
+    return res.json({
+      id: job._id.toString(),
+      slug: job.slug,
+      title: job.title,
+      description: job.description,
+      clientName,
+      clientId: job.clientId?._id?.toString(),
+      postcode: job.postcode,
+      address: job.address,
+      location: job.location,
+      status: job.status,
+      budgetAmount: job.budgetAmount,
+      budgetMin: job.budgetMin,
+      budgetMax: job.budgetMax,
+      categoryLabels: job.categoryLabels || [],
+      categorySlugs: job.categorySlugs || [],
+      sector: job.sector?.toString?.(),
+      sectorName: job.sectorName,
+      sectorSlug: job.sectorSlug,
+      postedAt: job.postedAt ? new Date(job.postedAt).toISOString() : null,
+      createdAt: job.createdAt ? new Date(job.createdAt).toISOString() : null,
+    });
+  } catch (err) {
+    console.error('[Admin] Job get:', err);
+    return res.status(500).json({ error: err.message || 'Failed to get job' });
+  }
+});
+
+// PUT /api/admin/jobs/:id – update job
+router.put('/jobs/:id', requireAdmin, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const { title, description, postcode, address, location, status, budgetAmount, budgetMin, budgetMax } = req.body;
+    if (title != null && typeof title === 'string') job.title = title.trim();
+    if (description != null && typeof description === 'string') job.description = description.trim();
+    if (postcode != null && typeof postcode === 'string') job.postcode = postcode.trim();
+    if (address != null && typeof address === 'string') job.address = address.trim();
+    if (location != null && typeof location === 'string') job.location = location.trim();
+    if (status != null && ['open', 'awaiting-accept', 'in-progress', 'completed', 'cancelled'].includes(String(status))) {
+      job.status = String(status);
+    }
+    if (budgetAmount != null && !isNaN(Number(budgetAmount))) job.budgetAmount = Number(budgetAmount);
+    if (budgetMin != null && !isNaN(Number(budgetMin))) job.budgetMin = Number(budgetMin);
+    if (budgetMax != null && !isNaN(Number(budgetMax))) job.budgetMax = Number(budgetMax);
+    await job.save();
+    return res.json({ message: 'Job updated', job: { id: job._id.toString(), status: job.status, title: job.title } });
+  } catch (err) {
+    console.error('[Admin] Job update:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update job' });
+  }
+});
+
+// DELETE /api/admin/jobs/:id
+router.delete('/jobs/:id', requireAdmin, async (req, res) => {
+  try {
+    const job = await Job.findByIdAndDelete(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    return res.json({ message: 'Job deleted' });
+  } catch (err) {
+    console.error('[Admin] Job delete:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete job' });
+  }
+});
+
+// --- Job Budget Ranges (price blocks shown on post-job budget step) ---
+
+// GET /api/admin/job-budget-ranges
+router.get('/job-budget-ranges', requireAdmin, async (req, res) => {
+  try {
+    const list = await JobBudgetRange.find().sort({ order: 1, min: 1 }).lean();
+    return res.json({
+      ranges: list.map((r) => ({
+        id: r._id.toString(),
+        min: r.min,
+        max: r.max,
+        order: r.order ?? 0,
+        createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+      })),
+    });
+  } catch (err) {
+    console.error('[Admin] Job budget ranges list:', err);
+    return res.status(500).json({ error: err.message || 'Failed to list job budget ranges' });
+  }
+});
+
+// POST /api/admin/job-budget-ranges
+router.post('/job-budget-ranges', requireAdmin, async (req, res) => {
+  try {
+    const { min, max } = req.body;
+    const minNum = min != null && !isNaN(Number(min)) ? Number(min) : null;
+    const maxNum = max != null && !isNaN(Number(max)) ? Number(max) : null;
+    if (minNum == null || maxNum == null) {
+      return res.status(400).json({ error: 'min and max are required' });
+    }
+    const count = await JobBudgetRange.countDocuments();
+    const doc = await JobBudgetRange.create({
+      min: Math.min(minNum, maxNum),
+      max: Math.max(minNum, maxNum),
+      order: count,
+    });
+    return res.status(201).json({
+      id: doc._id.toString(),
+      min: doc.min,
+      max: doc.max,
+      order: doc.order ?? 0,
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : null,
+    });
+  } catch (err) {
+    console.error('[Admin] Job budget range create:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create job budget range' });
+  }
+});
+
+// PUT /api/admin/job-budget-ranges/:id
+router.put('/job-budget-ranges/:id', requireAdmin, async (req, res) => {
+  try {
+    const doc = await JobBudgetRange.findById(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Job budget range not found' });
+    const { min, max, order } = req.body;
+    if (min != null && !isNaN(Number(min))) doc.min = Number(min);
+    if (max != null && !isNaN(Number(max))) doc.max = Number(max);
+    if (order != null && !isNaN(Number(order))) doc.order = Number(order);
+    if (doc.max < doc.min) [doc.min, doc.max] = [doc.max, doc.min];
+    await doc.save();
+    return res.json({
+      id: doc._id.toString(),
+      min: doc.min,
+      max: doc.max,
+      order: doc.order ?? 0,
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : null,
+    });
+  } catch (err) {
+    console.error('[Admin] Job budget range update:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update job budget range' });
+  }
+});
+
+// DELETE /api/admin/job-budget-ranges/:id
+router.delete('/job-budget-ranges/:id', requireAdmin, async (req, res) => {
+  try {
+    const doc = await JobBudgetRange.findByIdAndDelete(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Job budget range not found' });
+    return res.json({ message: 'Job budget range deleted' });
+  } catch (err) {
+    console.error('[Admin] Job budget range delete:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete job budget range' });
+  }
+});
+
+// --- Admin Bids on Posts (list all quotes/bids with job + client + bid user) ---
+
+// GET /api/admin/job-bids – flattened list of all quotes; search, filter, sort, pagination
+router.get('/job-bids', requireAdmin, async (req, res) => {
+  try {
+    const { search, sortBy = 'createDate', sortOrder = 'desc', page = 1, limit = 20 } = req.query;
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+    const order = String(sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    let sortField = String(sortBy || 'createDate');
+    if (sortField === 'jobId') sortField = 'jobId';
+    if (sortField === 'createDate') sortField = 'createDate';
+    if (sortField === 'bidAmount') sortField = 'bidAmount';
+    if (sortField === 'jobTitle') sortField = 'jobTitle';
+    if (sortField === 'clientName') sortField = 'clientName';
+    if (sortField === 'bidUserName') sortField = 'bidUserName';
+
+    // clientName = job poster (clientId): tradingName if set, else "firstName lastName", else email
+    const pipeline = [
+      { $match: { 'quotes.0': { $exists: true } } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'clientId',
+          foreignField: '_id',
+          as: 'clientArr',
+          pipeline: [{ $project: { firstName: 1, lastName: 1, tradingName: 1, email: 1 } }],
+        },
+      },
+      { $addFields: { clientDoc: { $arrayElemAt: ['$clientArr', 0] } } },
+      { $unwind: { path: '$quotes', preserveNullAndEmptyArrays: false } },
+      {
+        $addFields: {
+          _fullName: {
+            $trim: {
+              input: {
+                $concat: [
+                  { $ifNull: ['$clientDoc.firstName', ''] },
+                  ' ',
+                  { $ifNull: ['$clientDoc.lastName', ''] },
+                ],
+              },
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          clientName: {
+            $cond: {
+              if: { $eq: ['$clientDoc', null] },
+              then: '—',
+              else: {
+                $cond: {
+                  if: { $and: [{ $ne: ['$clientDoc.tradingName', null] }, { $gt: [{ $strLenCP: { $ifNull: ['$clientDoc.tradingName', ''] } }, 0] }] },
+                  then: '$clientDoc.tradingName',
+                  else: {
+                    $cond: {
+                      if: { $gt: [{ $strLenCP: { $ifNull: ['$_fullName', ''] } }, 0] },
+                      then: '$_fullName',
+                      else: { $ifNull: ['$clientDoc.email', '—'] },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          jobId: { $toString: '$_id' },
+          clientName: { $ifNull: ['$clientName', '—'] },
+          bidUserName: { $ifNull: ['$quotes.professionalName', '—'] },
+          jobTitle: '$title',
+          description: '$description',
+          bidAmount: '$quotes.price',
+          createDate: '$quotes.submittedAt',
+        },
+      },
+    ];
+
+    if (search && String(search).trim() !== '') {
+      const term = String(search).trim();
+      pipeline.push({
+        $match: {
+          $or: [
+            { jobId: { $regex: term, $options: 'i' } },
+            { clientName: { $regex: term, $options: 'i' } },
+            { bidUserName: { $regex: term, $options: 'i' } },
+            { jobTitle: { $regex: term, $options: 'i' } },
+            { description: { $regex: term, $options: 'i' } },
+          ],
+        },
+      });
+    }
+
+    const sortStage = { $sort: { [sortField]: order } };
+    pipeline.push(sortStage);
+
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const dataPipeline = [...pipeline, { $skip: skip }, { $limit: limitNum }];
+
+    const [countResult, rows] = await Promise.all([
+      Job.aggregate(countPipeline).then((arr) => (arr[0] && arr[0].total) || 0),
+      Job.aggregate(dataPipeline),
+    ]);
+
+    const totalCount = countResult;
+    const totalPages = Math.max(1, Math.ceil(totalCount / limitNum));
+    const bids = rows.map((r) => ({
+      jobId: r.jobId,
+      clientName: r.clientName || '—',
+      bidUserName: r.bidUserName || '—',
+      jobTitle: r.jobTitle || '',
+      description: r.description || '',
+      bidAmount: r.bidAmount != null ? r.bidAmount : 0,
+      createDate: r.createDate ? new Date(r.createDate).toISOString() : null,
+    }));
+
+    return res.json({ bids, totalCount, totalPages });
+  } catch (err) {
+    console.error('[Admin] Job bids list:', err);
+    return res.status(500).json({ error: err.message || 'Failed to list bids' });
   }
 });
 

@@ -216,18 +216,10 @@ const categoriesBySector: { [key: string]: { value: string; label: string }[] } 
   ],
 };
 
-// Budget ranges: value -> { min, max } for storage and display
-const budgetRanges = [
-  { value: "under-500", label: "Under £500", min: 0, max: 500 },
-  { value: "500-1000", label: "£500 - £1,000", min: 500, max: 1000 },
-  { value: "1000-2500", label: "£1,000 - £2,500", min: 1000, max: 2500 },
-  { value: "2500-5000", label: "£2,500 - £5,000", min: 2500, max: 5000 },
-  { value: "5000-10000", label: "£5,000 - £10,000", min: 5000, max: 10000 },
-  { value: "10000-15000", label: "£10,000 - £15,000", min: 10000, max: 15000 },
-  { value: "15000-20000", label: "£15,000 - £20,000", min: 15000, max: 20000 },
-  { value: "over-20000", label: "Over £20,000", min: 20000, max: 500000 },
-  { value: "custom-budget", label: "Custom Budget", min: null, max: null },
-];
+// Budget range item for display and submit. Only API ranges + fixed Custom Budget are shown.
+type BudgetRangeItem = { value: string; label: string; min: number | null; max: number | null };
+
+const CUSTOM_BUDGET_ITEM: BudgetRangeItem = { value: "custom-budget", label: "Custom Budget", min: null, max: null };
 
 export default function PostJobPage() {
   const { isLoggedIn, userInfo, register: initiateRegistration, verifyRegistrationEmail, completeRegistration } = useAccount();
@@ -334,11 +326,44 @@ export default function PostJobPage() {
   const [urgency, setUrgency] = useState("");
   const [preferredStartDate, setPreferredStartDate] = useState("");
   
-  // Step 5: Budget
+  // Step 5: Budget (ranges from API + custom block)
+  const [budgetRangesFromApi, setBudgetRangesFromApi] = useState<BudgetRangeItem[]>([]);
+  const [budgetRangesLoading, setBudgetRangesLoading] = useState(true);
   const [selectedBudget, setSelectedBudget] = useState("");
   const [customBudgetMin, setCustomBudgetMin] = useState("");
   const [customBudgetMax, setCustomBudgetMax] = useState("");
-  
+
+  // API ranges only + fixed Custom Budget (no static fallback blocks)
+  const budgetRanges: BudgetRangeItem[] = [...budgetRangesFromApi, CUSTOM_BUDGET_ITEM];
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(resolveApiUrl("/api/jobs/budget-ranges"), { credentials: "include" });
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          const list = (data.ranges || []).map(
+            (r: { id: string; value: string; label: string; min: number; max: number }) => ({
+              value: r.value,
+              label: r.label,
+              min: r.min,
+              max: r.max,
+            })
+          );
+          setBudgetRangesFromApi(list);
+        }
+      } catch {
+        if (!cancelled) setBudgetRangesFromApi([]);
+      } finally {
+        if (!cancelled) setBudgetRangesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Account Creation (if not logged in) – same fields as LoginPage client registration
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -1537,6 +1562,9 @@ export default function PostJobPage() {
                   </p>
                 </div>
 
+                {budgetRangesLoading && (
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Loading options...</p>
+                )}
                 <RadioGroup value={selectedBudget} onValueChange={setSelectedBudget}>
                   <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
                     {budgetRanges.map((budget) => (

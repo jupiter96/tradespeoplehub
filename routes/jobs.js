@@ -6,6 +6,7 @@ import { authenticateToken, requireRole } from '../middleware/auth.js';
 const requirePdf = createRequire(import.meta.url);
 const PDFDocument = requirePdf('pdfkit');
 import Job, { slugify, randomDigits } from '../models/Job.js';
+import JobBudgetRange from '../models/JobBudgetRange.js';
 import User from '../models/User.js';
 import Review from '../models/Review.js';
 import Sector from '../models/Sector.js';
@@ -138,6 +139,26 @@ function toJobResponse(doc) {
     })),
   };
 }
+
+// GET /api/jobs/budget-ranges – public list of price blocks for post-job budget step (no auth)
+router.get('/budget-ranges', async (req, res) => {
+  try {
+    const list = await JobBudgetRange.find().sort({ order: 1, min: 1 }).lean();
+    return res.json({
+      ranges: list.map((r) => ({
+        id: r._id.toString(),
+        value: `range-${r._id.toString()}`,
+        label: r.max >= 500000 ? `Over £${(r.min / 1000).toFixed(0)}k` : r.min === 0 ? `Under £${r.max}` : `£${r.min.toLocaleString()} - £${r.max.toLocaleString()}`,
+        min: r.min,
+        max: r.max,
+        order: r.order ?? 0,
+      })),
+    });
+  } catch (err) {
+    console.error('[Jobs] budget-ranges:', err);
+    return res.status(500).json({ error: err.message || 'Failed to load budget ranges' });
+  }
+});
 
 // Generate job title and description using OpenAI (client only; key points required; sector optional)
 // No auth required: used when posting a job without login (user may register at step 6)
