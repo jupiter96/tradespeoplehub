@@ -30,7 +30,7 @@ import {
   Plus,
   ChevronDown,
   Info,
-  Inbox,
+  FileSearch,
   Sparkles,
   Pencil,
   Undo2,
@@ -88,6 +88,7 @@ import milestoneStep2 from "figma:asset/e1c037263ad447fb88ea0f991b3910b9cdd26dec
 import milestoneStep3 from "figma:asset/27504741573e0946b791d837bb57de9ad9c0f981.png";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import InviteProfessionalsList from "./InviteProfessionalsList";
+import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
 
 export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
@@ -277,6 +278,9 @@ export default function JobDetailPage() {
         (q) => q.status !== "awarded" && !(q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
       )
     : (userRole === "professional" && myAwardedQuote ? [] : myQuotes);
+  // Hide empty state and animation when there are list quotes OR when awarded section is shown
+  const showQuotesEmptyState =
+    listQuotes.length === 0 && !(isJobOwner && awardedQuotes.length > 0);
 
   const toggleQuoteMessageExpanded = (quoteId: string) => {
     setExpandedQuoteMessages((prev) => {
@@ -1137,19 +1141,40 @@ export default function JobDetailPage() {
                   </div>
                 ) : null}
 
-                {/* Quote list: hidden for professional when their awarded quote is shown above */}
-                {!(userRole === "professional" && myAwardedQuote) && (listQuotes.length === 0 ? (
+                {/* Quote list: hidden for professional when their awarded quote is shown above. When quotes exist, hide empty state + animation. */}
+                {!(userRole === "professional" && myAwardedQuote) && (showQuotesEmptyState ? (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 md:p-24 text-center">
-                    <div className="mx-auto mb-6 flex justify-center">
-                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-                        <Inbox className="h-12 w-12" strokeWidth={1.25} aria-hidden />
+                    {isJobOwner ? (
+                      <div className="mx-auto mb-6 flex min-h-[80px] justify-center">
+                        <RotatingGlobeWithLines />
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mx-auto mb-6 flex justify-center">
+                        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                          <FileSearch className="h-12 w-12" strokeWidth={1.25} aria-hidden />
+                        </div>
+                      </div>
+                    )}
                     <p className="font-['Poppins',sans-serif] text-[15px] text-[#6b7280] leading-relaxed max-w-xl mx-auto">
                       {isJobOwner
                         ? "Thank you for posting your job, our vetted professionals will quote soon."
                         : "You haven't submitted a quote yet. Submit a quote to appear here."}
                     </p>
+                    {isJobOwner && (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]/80 mt-2 inline-flex items-center gap-0.5">
+                        <span className="inline-flex gap-0.5" aria-hidden>
+                          <span className="w-1 h-1 rounded-full bg-[#FE8A0F]/80" style={{ animation: "quote-dot 1s ease-in-out infinite" }} />
+                          <span className="w-1 h-1 rounded-full bg-[#FE8A0F]/80" style={{ animation: "quote-dot 1s ease-in-out infinite 0.2s" }} />
+                          <span className="w-1 h-1 rounded-full bg-[#FE8A0F]/80" style={{ animation: "quote-dot 1s ease-in-out infinite 0.4s" }} />
+                        </span>
+                      </p>
+                    )}
+                    <style>{`
+                      @keyframes quote-dot {
+                        0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+                        40% { opacity: 1; transform: scale(1.2); }
+                      }
+                    `}</style>
                   </div>
                 ) : (
                   listQuotes.map((quote) => {
