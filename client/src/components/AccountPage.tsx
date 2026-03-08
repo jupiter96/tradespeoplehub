@@ -1943,6 +1943,7 @@ function DetailsSection() {
       townCity: userInfo?.townCity || "",
         county: userInfo?.county || "",
       postcode: userInfo?.postcode || "",
+        workType: (userInfo?.workType === "online" || userInfo?.workType === "inPerson") ? userInfo.workType : "inPerson",
         travelDistance: userInfo?.travelDistance || "",
         sector: userInfo?.sector || "",
         categories: categories || [],
@@ -2101,13 +2102,43 @@ function DetailsSection() {
         userInfo.services?.length && availableCategories.length && userInfo.sector
           ? (subcategoriesToUse.length > 0 ? subcategoriesToUse : prev.subcategories)
           : prev.subcategories;
+      // Preserve IP-filled address fields when userInfo has no address (avoid overwriting after geolocation)
+      const keepAddressFromPrev =
+        !(baseForm.townCity || "").trim() && !(baseForm.county || "").trim();
       return {
         ...baseForm,
+        townCity: keepAddressFromPrev && (prev.townCity || "").trim() ? prev.townCity : baseForm.townCity,
+        county: keepAddressFromPrev && (prev.county || "").trim() ? prev.county : baseForm.county,
         categories: nextCategories,
         subcategories: nextSubcategories,
       };
     });
   }, [userInfo, buildFormState, initialFormState, availableCategories]);
+
+  // IP-based geolocation: auto-fill country, state, city on My Details when address fields are empty
+  const ipGeolocationFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!userInfo || ipGeolocationFetchedRef.current) return;
+    const hasAddress = [userInfo.townCity, userInfo.county].some((v) => (v || "").trim() !== "");
+    if (hasAddress) return;
+
+    ipGeolocationFetchedRef.current = true;
+    const url = "https://ip-api.com/json/?fields=country,regionName,city";
+    fetch(url)
+      .then((res) => res.json())
+      .then((data: { country?: string; regionName?: string; city?: string }) => {
+        const city = (data.city || "").trim();
+        const region = (data.regionName || "").trim();
+        const country = (data.country || "").trim();
+        if (!city && !region && !country) return;
+        setFormData((prev) => ({
+          ...prev,
+          ...(city && { townCity: city }),
+          ...(region || country ? { county: [region, country].filter(Boolean).join(", ") } : {}),
+        }));
+      })
+      .catch(() => {});
+  }, [userInfo]);
 
   // NOTE: Do not use hardcoded sector/category lists here.
   // Categories and subcategories must come from the database via /api/categories and /api/subcategories.
@@ -2137,7 +2168,12 @@ function DetailsSection() {
 
     if (userRole === "professional") {
       payload.tradingName = latest.tradingName.trim() || undefined;
-      payload.travelDistance = latest.travelDistance || undefined;
+      payload.workType = (latest.workType === "inPerson" || latest.workType === "online") ? latest.workType : undefined;
+      if (latest.workType === "inPerson") {
+        payload.travelDistance = latest.travelDistance || undefined;
+      } else {
+        payload.travelDistance = undefined;
+      }
       
       // Sector cannot be changed after registration - it's read-only
       // Do not send sector in payload if it already exists
@@ -2439,26 +2475,57 @@ function DetailsSection() {
             />
           </div>
           {userRole === "professional" && (
-            <div>
-              <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
-                Travel Distance
-              </Label>
-              <Select value={formData.travelDistance} onValueChange={(value) => setFormData({...formData, travelDistance: value})}>
-                <SelectTrigger className="h-10 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5miles">5 miles</SelectItem>
-                  <SelectItem value="10miles">10 miles</SelectItem>
-                  <SelectItem value="15miles">15 miles</SelectItem>
-                  <SelectItem value="20miles">20 miles</SelectItem>
-                  <SelectItem value="30miles">30 miles</SelectItem>
-                  <SelectItem value="50miles">50 miles</SelectItem>
-                  <SelectItem value="100miles">100 miles</SelectItem>
-                  <SelectItem value="Nationwide">Nationwide</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+                  How do you work?
+                </Label>
+                <div className="flex gap-4 mt-2">
+                  <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[14px]">
+                    <input
+                      type="radio"
+                      name="details-work-type"
+                      checked={formData.workType === "inPerson"}
+                      onChange={() => setFormData({ ...formData, workType: "inPerson" })}
+                      className="w-4 h-4 border-2 border-[#FE8A0F] text-[#FE8A0F] focus:ring-[#FE8A0F]"
+                    />
+                    In Person
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[14px]">
+                    <input
+                      type="radio"
+                      name="details-work-type"
+                      checked={formData.workType === "online"}
+                      onChange={() => setFormData({ ...formData, workType: "online", travelDistance: "" })}
+                      className="w-4 h-4 border-2 border-[#FE8A0F] text-[#FE8A0F] focus:ring-[#FE8A0F]"
+                    />
+                    Online
+                  </label>
+                </div>
+              </div>
+              {formData.workType === "inPerson" && (
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2">
+                    Travel Distance
+                  </Label>
+                  <Select value={formData.travelDistance} onValueChange={(value) => setFormData({...formData, travelDistance: value})}>
+                    <SelectTrigger className="h-10 border-2 border-gray-200 focus:border-[#3B82F6] rounded-xl font-['Poppins',sans-serif] text-[14px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5miles">5 miles</SelectItem>
+                      <SelectItem value="10miles">10 miles</SelectItem>
+                      <SelectItem value="15miles">15 miles</SelectItem>
+                      <SelectItem value="20miles">20 miles</SelectItem>
+                      <SelectItem value="30miles">30 miles</SelectItem>
+                      <SelectItem value="50miles">50 miles</SelectItem>
+                      <SelectItem value="100miles">100 miles</SelectItem>
+                      <SelectItem value="Nationwide">Nationwide</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
           )}
         </div>
 

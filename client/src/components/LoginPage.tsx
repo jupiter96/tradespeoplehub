@@ -57,6 +57,40 @@ export default function LoginPage() {
   const initialTab = (searchParams.get('tab') === 'register' ? 'register' : 'login') as "login" | "register";
   const [tabValue, setTabValue] = useState<"login" | "register">(initialTab);
   const [isCompletingRegistration, setIsCompletingRegistration] = useState(false);
+
+  // IP-based location: UK users get phone field + phone verification; others get email-only
+  const [registrationCountryCode, setRegistrationCountryCode] = useState<string | null>(null);
+  const [registrationLocationLoaded, setRegistrationLocationLoaded] = useState(false);
+  const isUKUser = registrationCountryCode === "GB" || registrationCountryCode === "UK";
+
+  useEffect(() => {
+    let cancelled = false;
+    // ipapi.co supports HTTPS and CORS from browsers (ip-api.com free tier returns 403 over HTTPS)
+    const url = "https://ipapi.co/json/";
+    fetch(url)
+      .then((res) => res.json())
+      .then((data: { country_code?: string; country_name?: string; region?: string; city?: string }) => {
+        if (cancelled) return;
+        const code = (data.country_code || "").toUpperCase() || null;
+        setRegistrationCountryCode(code);
+        setRegistrationLocationLoaded(true);
+        console.log("[Registration] IP location detected:", {
+          country: data.country_name,
+          countryCode: data.country_code || code,
+          region: data.region,
+          city: data.city,
+          isUK: code === "GB" || code === "UK",
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRegistrationLocationLoaded(true);
+          console.log("[Registration] IP location detection failed, defaulting to UK (show phone)");
+          setRegistrationCountryCode("GB");
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
   
   // Email & Phone Verification states (after registration)
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -203,6 +237,7 @@ export default function LoginPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   
   // Register form state - Professional only fields
+  const [registerWorkType, setRegisterWorkType] = useState<"inPerson" | "online">("inPerson");
   const [registerTradingName, setRegisterTradingName] = useState("");
   const [registerTownCity, setRegisterTownCity] = useState("");
   const [registerCounty, setRegisterCounty] = useState("");
@@ -294,36 +329,28 @@ export default function LoginPage() {
     if (!registerLastName.trim()) {
       errors.lastName = "Last name is required";
     }
-    // Address is required for both client and professional
-    if (!registerAddress.trim()) {
-      errors.address = "Address is required";
-    }
-    if (!registerTownCity.trim()) {
-      errors.townCity = "Town/City is required";
-    }
-    if (!registerPostcode.trim()) {
-      errors.postcode = "Postcode is required";
-    }
+    // Address fields removed from registration; user can complete in My Details after login
     // Professional-specific required fields
     if (userType === "professional") {
       if (!registerTradingName.trim()) {
         errors.tradingName = "Trading name is required";
       }
-      if (!registerTravelDistance) {
-        errors.travelDistance = "Travel distance is required";
+      if (registerWorkType === "inPerson" && !registerTravelDistance) {
+        errors.travelDistance = "Travel distance is required when working in person";
       }
     }
-    // Parse phone value: format is "{countryCode}|{phoneNumber}"
-    const phoneParts = registerPhone.includes('|') ? registerPhone.split('|') : ['+44', registerPhone.replace(/\D/g, '')];
-    const countryCode = phoneParts[0] || '+44';
-    const phoneNumber = phoneParts[1] || '';
-    
-    if (!phoneNumber.trim()) {
-      errors.phone = "Phone number is required";
-    } else {
-      const phoneValidation = validatePhoneNumber(phoneNumber);
-      if (!phoneValidation.isValid) {
-        errors.phone = phoneValidation.error || "Invalid phone number format";
+    // Phone required only for UK users (IP-based)
+    if (isUKUser) {
+      const phoneParts = registerPhone.includes('|') ? registerPhone.split('|') : ['+44', registerPhone.replace(/\D/g, '')];
+      const countryCode = phoneParts[0] || '+44';
+      const phoneNumber = phoneParts[1] || '';
+      if (!phoneNumber.trim()) {
+        errors.phone = "Phone number is required";
+      } else {
+        const phoneValidation = validatePhoneNumber(phoneNumber);
+        if (!phoneValidation.isValid) {
+          errors.phone = phoneValidation.error || "Invalid phone number format";
+        }
       }
     }
     if (!registerEmail.trim()) {
@@ -353,23 +380,28 @@ export default function LoginPage() {
       return;
     }
 
-    // phoneParts, countryCode, and phoneNumber are already declared above
+    const phoneParts = registerPhone.includes('|') ? registerPhone.split('|') : ['+44', registerPhone.replace(/\D/g, '')];
+    const countryCode = phoneParts[0] || '+44';
+    const phoneNumber = phoneParts[1] || '';
     const registerData = {
       firstName: registerFirstName,
       lastName: registerLastName,
       email: registerEmail,
-      phone: normalizePhoneForBackend(phoneNumber, countryCode), // Add country code before sending
-      postcode: registerPostcode,
+      postcode: registerPostcode.trim() || "",
       password: registerPassword,
       referralCode: registerReferralCode,
       userType,
-      address: registerAddress.trim(), // Address is required for both client and professional
-      townCity: registerTownCity.trim(), // Town/City is required for both client and professional
-      county: registerCounty.trim(), // County is available for both client and professional
+      address: registerAddress.trim() || "",
+      townCity: registerTownCity.trim() || "",
+      county: registerCounty.trim() || "",
       ...(userType === "professional" && {
+        workType: registerWorkType,
         tradingName: registerTradingName.trim(),
-        travelDistance: registerTravelDistance,
-      })
+        ...(registerWorkType === "inPerson" && { travelDistance: registerTravelDistance }),
+      }),
+      ...(isUKUser
+        ? { phone: normalizePhoneForBackend(phoneNumber, countryCode) }
+        : { emailOnlyVerification: true as const, phone: "" }),
     };
     setIsSendingRegistration(true);
     setVerificationEmail(registerEmail);
@@ -379,13 +411,15 @@ export default function LoginPage() {
       firstName: registerFirstName,
       lastName: registerLastName,
       email: registerEmail,
-      phone: registerPhone,
-      postcode: registerPostcode,
-      address: registerAddress.trim(),
-      townCity: registerTownCity.trim(),
-      county: registerCounty.trim(),
+      phone: isUKUser ? registerPhone : "",
+      postcode: registerPostcode.trim() || "",
+      address: registerAddress.trim() || "",
+      townCity: registerTownCity.trim() || "",
+      county: registerCounty.trim() || "",
       ...(userType === "professional" && {
+        workType: registerWorkType,
         tradingName: registerTradingName.trim(),
+        ...(registerWorkType === "inPerson" && { travelDistance: registerTravelDistance }),
       })
     });
     try {
@@ -410,10 +444,22 @@ export default function LoginPage() {
     setRegisterError(null);
     setIsVerifyingEmail(true);
     try {
-      await verifyRegistrationEmail(emailVerificationCode, registerEmail);
+      const data = await verifyRegistrationEmail(emailVerificationCode, registerEmail) as { user?: { role?: string }; message?: string; phoneCode?: string };
+      if (data?.user) {
+        setShowEmailVerification(false);
+        setVerificationStep(1);
+        setEmailVerificationCode("");
+        setPhoneVerificationCode("");
+        if (data.user.role === "professional") {
+          navigate("/professional-registration-steps", { replace: true });
+        } else {
+          navigate("/account?tab=details", { replace: true });
+        }
+        return;
+      }
       setVerificationStep(2);
       setEmailVerificationCode("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       setRegisterError("Email verification failed");
     } finally {
       setIsVerifyingEmail(false);
@@ -439,11 +485,11 @@ export default function LoginPage() {
       setEmailVerificationCode("");
       setPhoneVerificationCode("");
 
-      // Navigate immediately based on user role
+      // Navigate immediately based on user role; show My Details tab after registration
       if (user.role === "professional") {
         navigate("/professional-registration-steps", { replace: true });
       } else {
-        navigate("/account", { replace: true });
+        navigate("/account?tab=details", { replace: true });
       }
     } catch (error) {
       setRegisterError(error instanceof Error ? error.message : "Registration failed");
@@ -502,8 +548,8 @@ export default function LoginPage() {
 
         setShowEmailVerification(false);
         setVerificationStep(1);
-        // After PRO setup, go straight to account verification section
-        navigate("/account?tab=verification");
+        // After PRO setup, show My Details tab so user can complete address etc.
+        navigate("/account?tab=details");
       } catch (error) {
         setRegisterError(error instanceof Error ? error.message : "Failed to save profile");
       } finally {
@@ -859,18 +905,12 @@ export default function LoginPage() {
                           const firstNames = ['James', 'Sarah', 'Michael', 'Emma', 'David', 'Olivia', 'Robert', 'Sophia', 'William', 'Isabella'];
                           const lastNames = ['Smith', 'Jones', 'Williams', 'Brown', 'Taylor', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Johnson'];
                           const tradingNames = ['ABC Plumbing Services', 'XYZ Electrical Solutions', 'Premier Home Repairs', 'Expert Builders Ltd', 'Quality Carpentry Co'];
-                          const addresses = ['123 High Street', '45 Oak Avenue', '78 Park Lane', '12 Garden Road', '56 Market Square'];
-                          const towns = ['London', 'Manchester', 'Birmingham', 'Leeds', 'Liverpool'];
-                          const postcodes = ['SW1A 1AA', 'M1 1AA', 'B1 1AA', 'LS1 1AA', 'L1 1AA'];
                           const travelDistances = ['5 miles', '10 miles', '15 miles', '20 miles', '30 miles'];
                           
                           const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
                           const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
                           const randomEmail = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 1000)}@gmail.com`;
                           const randomPhone = `+44${Math.floor(1000000000 + Math.random() * 9000000000)}`;
-                          const randomPostcode = postcodes[Math.floor(Math.random() * postcodes.length)];
-                          const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
-                          const randomTown = towns[Math.floor(Math.random() * towns.length)];
                           const randomTradingName = tradingNames[Math.floor(Math.random() * tradingNames.length)];
                           const randomTravelDistance = travelDistances[Math.floor(Math.random() * travelDistances.length)];
                           const randomPassword = 'Test123';
@@ -879,13 +919,10 @@ export default function LoginPage() {
                           setRegisterLastName(randomLastName);
                           setRegisterEmail(randomEmail);
                           setRegisterPhone(randomPhone);
-                          setRegisterPostcode(randomPostcode);
                           setRegisterPassword(randomPassword);
                           setRegisterConfirmPassword(randomPassword);
                           if (userType === 'professional') {
                             setRegisterTradingName(randomTradingName);
-                            setRegisterAddress(randomAddress);
-                            setRegisterTownCity(randomTown);
                             setRegisterTravelDistance(randomTravelDistance);
                           }
                         }}
@@ -1074,88 +1111,50 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {/* Postcode & Address Autocomplete */}
-                  <div className={userType === "professional" ? "md:col-span-2" : ""}>
-                    <AddressAutocomplete
-                      postcode={registerPostcode}
-                      onPostcodeChange={(value) => {
-                        setRegisterPostcode(value);
-                        if (fieldErrors.postcode) {
-                          setFieldErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.postcode;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                      address={registerAddress}
-                      onAddressChange={(value) => {
-                        setRegisterAddress(value);
-                        if (fieldErrors.address || fieldErrors.townCity) {
-                          setFieldErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.address;
-                            delete newErrors.townCity;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                      townCity={registerTownCity}
-                      onTownCityChange={(value) => {
-                        setRegisterTownCity(value);
-                        if (fieldErrors.townCity) {
-                          setFieldErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.townCity;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                      county={registerCounty}
-                      onCountyChange={(value) => {
-                        setRegisterCounty(value);
-                      }}
-                      onAddressSelect={(address) => {
-                        setRegisterPostcode(address.postcode || "");
-                        setRegisterAddress(address.address || "");
-                        setRegisterTownCity(address.townCity || "");
-                        setRegisterCounty(address.county || "");
-                        // Clear any related errors
-                        setFieldErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.postcode;
-                          delete newErrors.address;
-                          delete newErrors.townCity;
-                          return newErrors;
-                        });
-                      }}
-                      label="Postcode"
-                          required
-                      showAddressField={true}
-                      showTownCityField={true}
-                      showCountyField={true}
-                      addressLabel="Address"
-                      className="font-['Poppins',sans-serif]"
-                    />
-                    {fieldErrors.postcode && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                        {fieldErrors.postcode}
-                      </p>
-                    )}
-                    {fieldErrors.address && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                        {fieldErrors.address}
-                      </p>
-                    )}
-                    {fieldErrors.townCity && (
-                      <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                        {fieldErrors.townCity}
-                      </p>
-                  )}
-                  </div>
+                  {/* Address fields removed from registration; complete in My Details after login */}
 
-                  {/* Travel Distance (Professional only) */}
+                  {/* Work type: In Person vs Online (Professional only) */}
                   {userType === "professional" && (
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                        How do you work? *
+                      </Label>
+                      <div className="flex gap-4 mt-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px]">
+                          <input
+                            type="radio"
+                            name="register-work-type"
+                            checked={registerWorkType === "inPerson"}
+                            onChange={() => {
+                              setRegisterWorkType("inPerson");
+                              if (fieldErrors.travelDistance) {
+                                setFieldErrors(prev => {
+                                  const next = { ...prev };
+                                  delete next.travelDistance;
+                                  return next;
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 border-2 border-white text-[#FE8A0F] focus:ring-[#FE8A0F]"
+                          />
+                          In Person
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px]">
+                          <input
+                            type="radio"
+                            name="register-work-type"
+                            checked={registerWorkType === "online"}
+                            onChange={() => setRegisterWorkType("online")}
+                            className="w-4 h-4 border-2 border-[#FE8A0F] text-[#FE8A0F] focus:ring-[#FE8A0F]"
+                          />
+                          Online
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Travel Distance (Professional only, when In Person) */}
+                  {userType === "professional" && registerWorkType === "inPerson" && (
                     <div>
                       <Label htmlFor="register-travel-distance" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
                         How long are you willing to travel for work? *
@@ -1197,41 +1196,38 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {/* Phone Number */}
-                  <PhoneInput
-                        id="register-phone"
-                    label="Phone Number"
-                        value={registerPhone}
-                    onChange={(value) => {
-                      setRegisterPhone(value);
-                      // Parse phone value: format is "{countryCode}|{phoneNumber}"
-                      const phoneParts = value.includes('|') ? value.split('|') : ['+44', value.replace(/\D/g, '')];
-                      const phoneNumber = phoneParts[1] || '';
-                      
-                      // Clear field error when user starts typing or when validation passes
-                      if (phoneNumber) {
-                        const phoneValidation = validatePhoneNumber(phoneNumber);
-                        if (phoneValidation.isValid) {
-                          if (fieldErrors.phone) {
+                  {/* Phone Number - UK only (IP-based); non-UK uses email-only verification */}
+                  {isUKUser && (
+                    <PhoneInput
+                      id="register-phone"
+                      label="Phone Number"
+                      value={registerPhone}
+                      onChange={(value) => {
+                        setRegisterPhone(value);
+                        const phoneParts = value.includes('|') ? value.split('|') : ['+44', value.replace(/\D/g, '')];
+                        const phoneNumber = phoneParts[1] || '';
+                        if (phoneNumber) {
+                          const phoneValidation = validatePhoneNumber(phoneNumber);
+                          if (phoneValidation.isValid && fieldErrors.phone) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
                               delete newErrors.phone;
                               return newErrors;
                             });
                           }
+                        } else if (fieldErrors.phone) {
+                          setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.phone;
+                            return newErrors;
+                          });
                         }
-                      } else if (fieldErrors.phone) {
-                            setFieldErrors(prev => {
-                              const newErrors = { ...prev };
-                              delete newErrors.phone;
-                              return newErrors;
-                            });
-                          }
-                        }}
-                    placeholder="7123 456789"
-                    error={fieldErrors.phone}
-                        required
-                      />
+                      }}
+                      placeholder="7123 456789"
+                      error={fieldErrors.phone}
+                      required
+                    />
+                  )}
 
                   {/* Email */}
                   <div>
@@ -1468,10 +1464,12 @@ export default function LoginPage() {
                   Back
                 </button>
 
-                {/* Progress Indicator */}
+                {/* Progress Indicator: 2 steps for UK (email + phone), 1 for non-UK (email only) */}
                 <div className="flex items-center justify-center gap-2 mb-6">
                   <div className={`h-1.5 flex-1 rounded-full transition-all ${verificationStep >= 1 ? 'bg-[#FE8A0F]' : 'bg-gray-200'}`} />
-                  <div className={`h-1.5 flex-1 rounded-full transition-all ${verificationStep >= 2 ? 'bg-[#FE8A0F]' : 'bg-gray-200'}`} />
+                  {isUKUser && (
+                    <div className={`h-1.5 flex-1 rounded-full transition-all ${verificationStep >= 2 ? 'bg-[#FE8A0F]' : 'bg-gray-200'}`} />
+                  )}
                 </div>
                 
                 {/* Email Verification Step */}

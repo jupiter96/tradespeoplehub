@@ -36,17 +36,10 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required() {
-        // Admin and subadmin don't require phone
-        return this.role !== 'admin' && this.role !== 'subadmin';
-      },
       trim: true,
     },
     postcode: {
       type: String,
-      required() {
-        return this.role === 'client' || this.role === 'professional';
-      },
       trim: true,
     },
     referralCode: {
@@ -82,9 +75,6 @@ const userSchema = new mongoose.Schema(
     },
     address: {
       type: String,
-      required() {
-        return this.role === 'client' || this.role === 'professional';
-      },
       trim: true,
     },
     addresses: {
@@ -127,6 +117,11 @@ const userSchema = new mongoose.Schema(
         },
       }],
       default: [],
+    },
+    workType: {
+      type: String,
+      enum: ['inPerson', 'online'],
+      trim: true,
     },
     travelDistance: {
       type: String,

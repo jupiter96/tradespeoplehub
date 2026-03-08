@@ -754,37 +754,41 @@ const validateRegistrationPayload = (payload, { requirePassword } = { requirePas
     tradingName,
     townCity,
     address,
+    workType,
     travelDistance,
   } = payload;
 
+  const emailOnlyVerification = payload.emailOnlyVerification === true;
   if (
     !firstName ||
     !lastName ||
     !email ||
     (requirePassword && !password) ||
-    !phone ||
-    !postcode ||
     !userType
   ) {
     return 'Missing required fields';
+  }
+  if (!emailOnlyVerification && !phone) {
+    return 'Phone number is required';
   }
 
   if (!validateUserType(userType)) {
     return 'Invalid user type';
   }
 
-  // Address is required for both client and professional
-  if (!address || !address.trim()) {
-    return 'Address is required';
-  }
+  // Address fields are optional at registration; user can complete them in My Details after login
 
-  // For professionals: tradingName and travelDistance are required
+  // For professionals: tradingName and workType required; travelDistance only when workType is inPerson
   if (userType === 'professional') {
     if (!tradingName || !tradingName.trim()) {
       return 'Trading name is required for professionals';
     }
-    if (!travelDistance || !travelDistance.trim()) {
-      return 'Travel distance is required for professionals';
+    const wt = (workType || '').trim();
+    if (wt !== 'inPerson' && wt !== 'online') {
+      return 'Please select whether you work In Person or Online';
+    }
+    if (wt === 'inPerson' && (!travelDistance || !String(travelDistance).trim())) {
+      return 'Travel distance is required when working in person';
     }
   }
 
@@ -812,18 +816,19 @@ router.post('/register/initiate', async (req, res) => {
       townCity,
       county,
       address,
+      workType,
       travelDistance,
+      emailOnlyVerification: emailOnlyVerificationBody,
     } = req.body;
-
 
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Normalize phone number
-    const normalizedPhone = normalizePhone(phone);
-    if (!normalizedPhone) {
+    const isEmailOnlyFlow = emailOnlyVerificationBody === true;
+    const normalizedPhone = isEmailOnlyFlow ? '' : (normalizePhone(phone) || '');
+    if (!isEmailOnlyFlow && !normalizedPhone) {
       return res.status(400).json({ error: 'Phone number is required' });
     }
 
@@ -839,19 +844,15 @@ router.post('/register/initiate', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
 
-    // Check if phone number is already in use by another active user
-    const existingPhoneUser = await User.findOne({ 
-      phone: normalizedPhone, 
-      isDeleted: { $ne: true },
-      _id: { $ne: existingUser?._id } // Exclude current user if checking during update
-    });
-    if (existingPhoneUser) {
-      // console.log('[Registration] Phone number already in use:', {
-      //   phone: normalizedPhone,
-      //   existingUserId: existingPhoneUser._id,
-      //   existingUserEmail: existingPhoneUser.email
-      // });
-      return res.status(409).json({ error: 'This phone number is already registered to another account' });
+    // Check if phone number is already in use by another active user (only when phone is provided)
+    if (normalizedPhone) {
+      const existingPhoneUser = await User.findOne({
+        phone: normalizedPhone,
+        isDeleted: { $ne: true },
+      });
+      if (existingPhoneUser) {
+        return res.status(409).json({ error: 'This phone number is already registered to another account' });
+      }
     }
 
     // Check if there's an existing pending registration
@@ -873,44 +874,32 @@ router.post('/register/initiate', async (req, res) => {
         // console.log('[Registration] Found existing pending registration, updating with new data');
         existingPending.firstName = firstName;
         existingPending.lastName = lastName;
-        existingPending.phone = phone;
-        existingPending.postcode = postcode;
+        existingPending.phone = isEmailOnlyFlow ? '' : (normalizedPhone || phone || '');
+        existingPending.requirePhoneVerification = !isEmailOnlyFlow;
+        existingPending.postcode = (postcode != null && String(postcode).trim()) ? String(postcode).trim() : '';
+        existingPending.address = (address != null && String(address).trim()) ? String(address).trim() : '';
+        existingPending.townCity = (townCity != null && String(townCity).trim()) ? String(townCity).trim() : '';
+        existingPending.county = (county != null && String(county).trim()) ? String(county).trim() : '';
         existingPending.referralCode = referralCode;
         existingPending.role = userType;
         
         // Update professional fields if applicable
         if (userType === 'professional') {
+          const wt = (workType === 'inPerson' || workType === 'online') ? workType : 'inPerson';
+          existingPending.workType = wt;
           if (tradingName !== undefined && tradingName !== null) {
             const trimmedTradingName = String(tradingName).trim();
             if (trimmedTradingName) {
               existingPending.tradingName = trimmedTradingName;
             }
           }
-          if (travelDistance !== undefined && travelDistance !== null) {
+          if (wt === 'inPerson' && travelDistance !== undefined && travelDistance !== null) {
             const trimmedTravelDistance = String(travelDistance).trim();
             if (trimmedTravelDistance) {
               existingPending.travelDistance = trimmedTravelDistance;
             }
-          }
-        }
-        
-        // Update address fields
-        if (address !== undefined && address !== null) {
-          const trimmedAddress = String(address).trim();
-          if (trimmedAddress) {
-            existingPending.address = trimmedAddress;
-          }
-        }
-        if (townCity !== undefined && townCity !== null) {
-          const trimmedTownCity = String(townCity).trim();
-          if (trimmedTownCity) {
-            existingPending.townCity = trimmedTownCity;
-          }
-        }
-        if (county !== undefined && county !== null) {
-          const trimmedCounty = String(county).trim();
-          if (trimmedCounty) {
-            existingPending.county = trimmedCounty;
+          } else if (wt === 'online') {
+            existingPending.travelDistance = '';
           }
         }
         
@@ -1104,8 +1093,12 @@ router.post('/register/initiate', async (req, res) => {
       lastName,
       email: normalizedEmail,
       passwordHash,
-      phone,
-      postcode,
+      phone: isEmailOnlyFlow ? '' : (normalizedPhone || phone || ''),
+      requirePhoneVerification: !isEmailOnlyFlow,
+      postcode: (postcode != null && String(postcode).trim()) ? String(postcode).trim() : '',
+      address: (address != null && String(address).trim()) ? String(address).trim() : '',
+      townCity: (townCity != null && String(townCity).trim()) ? String(townCity).trim() : '',
+      county: (county != null && String(county).trim()) ? String(county).trim() : '',
       referralCode,
       role: userType,
       emailCodeHash,
@@ -1114,39 +1107,21 @@ router.post('/register/initiate', async (req, res) => {
 
     // Professional-specific fields
     if (userType === 'professional') {
-      // Always set tradingName if it exists (even if empty string, it will be trimmed)
+      const wt = (workType === 'inPerson' || workType === 'online') ? workType : 'inPerson';
+      pendingRegistrationData.workType = wt;
       if (tradingName !== undefined && tradingName !== null) {
         const trimmedTradingName = String(tradingName).trim();
         if (trimmedTradingName) {
           pendingRegistrationData.tradingName = trimmedTradingName;
         }
       }
-      if (travelDistance !== undefined && travelDistance !== null) {
+      if (wt === 'inPerson' && travelDistance !== undefined && travelDistance !== null) {
         const trimmedTravelDistance = String(travelDistance).trim();
         if (trimmedTravelDistance) {
           pendingRegistrationData.travelDistance = trimmedTravelDistance;
         }
-      }
-    }
-
-    // Address fields - available for both client and professional
-    // Always set address if it exists (even if empty string, it will be trimmed)
-    if (address !== undefined && address !== null) {
-      const trimmedAddress = String(address).trim();
-      if (trimmedAddress) {
-        pendingRegistrationData.address = trimmedAddress;
-      }
-    }
-    if (townCity !== undefined && townCity !== null) {
-      const trimmedTownCity = String(townCity).trim();
-      if (trimmedTownCity) {
-        pendingRegistrationData.townCity = trimmedTownCity;
-      }
-    }
-    if (county !== undefined && county !== null) {
-      const trimmedCounty = String(county).trim();
-      if (trimmedCounty) {
-        pendingRegistrationData.county = trimmedCounty;
+      } else {
+        pendingRegistrationData.travelDistance = '';
       }
     }
 
@@ -1411,6 +1386,75 @@ router.post('/register/verify-email', async (req, res) => {
     const match = await bcrypt.compare(code, pendingRegistration.emailCodeHash || '');
     if (!match) {
       return res.status(400).json({ error: 'Invalid verification code' });
+    }
+
+    // Email-only flow: complete registration without phone verification (e.g. non-UK users)
+    const requirePhoneVerification = pendingRegistration.requirePhoneVerification !== false && (pendingRegistration.phone || '').trim();
+    if (!requirePhoneVerification) {
+      pendingRegistration.emailVerified = true;
+      pendingRegistration.emailCodeHash = undefined;
+      pendingRegistration.emailCodeExpiresAt = undefined;
+      await pendingRegistration.save();
+
+      const normalizedPhoneForUser = (pendingRegistration.phone || '').trim()
+        ? (normalizePhone(pendingRegistration.phone) || pendingRegistration.phone || '')
+        : '';
+      const verification = {
+        email: { status: 'verified', verifiedAt: new Date() },
+        phone: normalizedPhoneForUser ? { status: 'verified', verifiedAt: new Date() } : { status: 'not-started' },
+        address: { status: 'not-started' },
+        idCard: { status: 'not-started' },
+        paymentMethod: { status: 'not-started' },
+        publicLiabilityInsurance: { status: 'not-started' },
+      };
+      const userData = {
+        firstName: pendingRegistration.firstName,
+        lastName: pendingRegistration.lastName,
+        email: pendingRegistration.email,
+        passwordHash: pendingRegistration.passwordHash,
+        phone: normalizedPhoneForUser,
+        postcode: (pendingRegistration.postcode != null && String(pendingRegistration.postcode).trim()) ? String(pendingRegistration.postcode).trim() : '',
+        address: (pendingRegistration.address != null && String(pendingRegistration.address).trim()) ? String(pendingRegistration.address).trim() : '',
+        townCity: (pendingRegistration.townCity != null && String(pendingRegistration.townCity).trim()) ? String(pendingRegistration.townCity).trim() : '',
+        county: (pendingRegistration.county != null && String(pendingRegistration.county).trim()) ? String(pendingRegistration.county).trim() : '',
+        referralCode: pendingRegistration.referralCode,
+        role: pendingRegistration.role,
+        verification,
+      };
+      if (pendingRegistration.role === 'professional') {
+        const wt = (pendingRegistration.workType === 'inPerson' || pendingRegistration.workType === 'online') ? pendingRegistration.workType : 'inPerson';
+        userData.workType = wt;
+        if ((pendingRegistration.tradingName || '').trim()) userData.tradingName = String(pendingRegistration.tradingName).trim();
+        if (wt === 'inPerson' && (pendingRegistration.travelDistance || '').trim()) userData.travelDistance = String(pendingRegistration.travelDistance).trim();
+      }
+      userData.referenceId = userData.referenceId || await generateReferenceId();
+      const user = new User(userData);
+      if (userData.address && userData.townCity && userData.postcode && userData.phone) {
+        user.addresses = [{
+          id: Date.now().toString(),
+          postcode: userData.postcode,
+          address: userData.address,
+          city: userData.townCity,
+          county: userData.county || '',
+          phone: userData.phone,
+          isDefault: true,
+          createdAt: new Date(),
+        }];
+      }
+      await user.save();
+      try {
+        await sendTemplatedEmail(user.email, 'welcome', { firstName: user.firstName }, 'no-reply');
+      } catch (welcomeEmailError) {
+        // ignore
+      }
+      req.session.userId = user._id.toString();
+      req.session.role = user.role;
+      await new Promise((resolve, reject) => {
+        req.session.save((err) => (err ? reject(err) : resolve()));
+      });
+      await pendingRegistration.deleteOne();
+      clearPendingRegistrationSession(req);
+      return res.status(201).json({ user: sanitizeUser(user) });
     }
 
     const smsCode = generateCode();
@@ -1694,7 +1738,10 @@ router.post('/register/verify-phone', async (req, res) => {
       email: pendingRegistration.email,
       passwordHash: pendingRegistration.passwordHash,
       phone: normalizedPhone || pendingRegistration.phone, // Use normalized phone
-      postcode: pendingRegistration.postcode,
+      postcode: (pendingRegistration.postcode != null && String(pendingRegistration.postcode).trim()) ? String(pendingRegistration.postcode).trim() : '',
+      address: (pendingRegistration.address != null && String(pendingRegistration.address).trim()) ? String(pendingRegistration.address).trim() : '',
+      townCity: (pendingRegistration.townCity != null && String(pendingRegistration.townCity).trim()) ? String(pendingRegistration.townCity).trim() : '',
+      county: (pendingRegistration.county != null && String(pendingRegistration.county).trim()) ? String(pendingRegistration.county).trim() : '',
       referralCode: pendingRegistration.referralCode,
       role: pendingRegistration.role,
       verification: verification,
@@ -1702,14 +1749,17 @@ router.post('/register/verify-phone', async (req, res) => {
 
     // Professional-specific fields
     if (pendingRegistration.role === 'professional') {
-      // Always set tradingName if it exists (even if empty string, it will be trimmed)
+      const wt = (pendingRegistration.workType === 'inPerson' || pendingRegistration.workType === 'online')
+        ? pendingRegistration.workType
+        : 'inPerson';
+      userData.workType = wt;
       if (pendingRegistration.tradingName !== undefined && pendingRegistration.tradingName !== null) {
         const trimmedTradingName = String(pendingRegistration.tradingName).trim();
         if (trimmedTradingName) {
           userData.tradingName = trimmedTradingName;
         }
       }
-      if (pendingRegistration.travelDistance !== undefined && pendingRegistration.travelDistance !== null) {
+      if (wt === 'inPerson' && pendingRegistration.travelDistance !== undefined && pendingRegistration.travelDistance !== null) {
         const trimmedTravelDistance = String(pendingRegistration.travelDistance).trim();
         if (trimmedTravelDistance) {
           userData.travelDistance = trimmedTravelDistance;
@@ -1729,49 +1779,7 @@ router.post('/register/verify-phone', async (req, res) => {
     //   countyType: typeof pendingData.county,
     // });
     
-    // Always set address if it exists (even if empty string, it will be trimmed)
-    if (pendingData.address !== undefined && pendingData.address !== null) {
-      const trimmedAddress = String(pendingData.address).trim();
-      if (trimmedAddress) {
-        userData.address = trimmedAddress;
-      }
-    }
-    
-    // Set townCity - check if it exists and is not empty
-    if (pendingData.townCity !== undefined && pendingData.townCity !== null) {
-      const trimmedTownCity = String(pendingData.townCity).trim();
-      // console.log('[Phone Verification] Registration - Processing townCity:', {
-      //   original: pendingData.townCity,
-      //   trimmed: trimmedTownCity,
-      //   isEmpty: !trimmedTownCity,
-      // });
-      if (trimmedTownCity) {
-        userData.townCity = trimmedTownCity;
-        // console.log('[Phone Verification] Registration - townCity added to userData:', userData.townCity);
-      } else {
-        // console.log('[Phone Verification] Registration - townCity is empty after trim, skipping');
-      }
-    } else {
-      // console.log('[Phone Verification] Registration - townCity is undefined or null in pendingRegistration');
-    }
-    
-    // Set county - check if it exists and is not empty
-    if (pendingData.county !== undefined && pendingData.county !== null) {
-      const trimmedCounty = String(pendingData.county).trim();
-      // console.log('[Phone Verification] Registration - Processing county:', {
-      //   original: pendingData.county,
-      //   trimmed: trimmedCounty,
-      //   isEmpty: !trimmedCounty,
-      // });
-      if (trimmedCounty) {
-        userData.county = trimmedCounty;
-        // console.log('[Phone Verification] Registration - county added to userData:', userData.county);
-      } else {
-        // console.log('[Phone Verification] Registration - county is empty after trim, skipping');
-      }
-    } else {
-      // console.log('[Phone Verification] Registration - county is undefined or null in pendingRegistration');
-    }
+    // Address fields already set in userData above (empty string if not provided)
 
     // console.log('[Phone Verification] Registration - Creating user with data:', {
     //   role: userData.role,
@@ -2925,6 +2933,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       townCity,
       county,
       tradingName,
+      workType,
       travelDistance,
     } = body;
     const {
@@ -3102,17 +3111,27 @@ router.put('/profile', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Trading name is required for professionals' });
       }
       
-      // Travel distance: only update when a non-empty value is provided.
-      // This prevents accidentally clearing the field when the frontend sends "" during multi-step profile setup.
-      if (travelDistance !== undefined && travelDistance !== null) {
-        const trimmedTravelDistance = String(travelDistance).trim();
-        if (trimmedTravelDistance) {
-          user.travelDistance = trimmedTravelDistance;
+      // Work type: In Person vs Online
+      const wt = (workType === 'inPerson' || workType === 'online') ? workType : undefined;
+      if (wt) {
+        user.workType = wt;
+      }
+      const effectiveWorkType = wt || user.workType || 'inPerson';
+      
+      // Travel distance: required only when workType is inPerson
+      if (effectiveWorkType === 'online') {
+        user.travelDistance = undefined;
+      } else {
+        if (travelDistance !== undefined && travelDistance !== null) {
+          const trimmedTravelDistance = String(travelDistance).trim();
+          if (trimmedTravelDistance) {
+            user.travelDistance = trimmedTravelDistance;
+          } else if (!user.travelDistance) {
+            return res.status(400).json({ error: 'Travel distance is required when working in person' });
+          }
         } else if (!user.travelDistance) {
-          return res.status(400).json({ error: 'Travel distance is required for professionals' });
+          return res.status(400).json({ error: 'Travel distance is required when working in person' });
         }
-      } else if (!user.travelDistance) {
-        return res.status(400).json({ error: 'Travel distance is required for professionals' });
       }
       
       // Sector: store only sector ID (resolve name to ID if needed); set once during registration
@@ -3209,6 +3228,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       }
     } else {
       user.tradingName = undefined;
+      user.workType = undefined;
       user.travelDistance = undefined;
       // Prevent clearing sector once it's been set
       // Sector is permanent after registration

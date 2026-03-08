@@ -541,6 +541,7 @@ export default function ProfessionalRegistrationSteps() {
                             address: userInfo?.address || "",
                             townCity: userInfo?.townCity || "",
                             county: userInfo?.county || "",
+                            workType: (userInfo?.workType === "inPerson" || userInfo?.workType === "online") ? userInfo.workType : "inPerson",
                             travelDistance: userInfo?.travelDistance || "",
                           };
                           // Don't save aboutService when skipping

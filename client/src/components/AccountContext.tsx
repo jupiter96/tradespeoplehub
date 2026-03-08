@@ -20,6 +20,7 @@ interface UserInfo {
   townCity?: string;
   county?: string;
   postcode?: string;
+  workType?: "inPerson" | "online";
   travelDistance?: string;
   referralCode?: string;
   referenceId?: string;
@@ -59,14 +60,17 @@ interface RegisterPayload {
   lastName: string;
   email: string;
   password: string;
-  phone: string;
+  phone?: string;
   postcode: string;
   referralCode?: string;
   tradingName?: string;
   townCity?: string;
   county?: string;
   address?: string;
+  workType?: "inPerson" | "online";
   travelDistance?: string;
+  /** When true, skip phone field and complete registration after email verification only (e.g. non-UK). */
+  emailOnlyVerification?: boolean;
 }
 
 interface SocialRegistrationPayload extends Omit<RegisterPayload, "password"> {
@@ -91,6 +95,7 @@ interface ProfileUpdatePayload {
   townCity?: string;
   county?: string;
   tradingName?: string;
+  workType?: "inPerson" | "online";
   travelDistance?: string;
   sector?: string;
   sectors?: string[];
@@ -226,18 +231,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
   const verifyRegistrationEmail = useCallback(
     async (code: string, email?: string) => {
-      // console.log('[Phone Code] Frontend - AccountContext - Verifying email, will trigger phone code generation');
       const data = await requestJson("/api/auth/register/verify-email", {
         method: "POST",
         body: JSON.stringify({ code, email }),
       });
-      // console.log('[Phone Code] Frontend - AccountContext - Email verified, phone code in response:', {
-      //   hasPhoneCode: !!data?.phoneCode,
-      //   phoneCode: data?.phoneCode || 'not provided'
-      // });
+      // Email-only flow: backend may return { user } when no phone verification required (e.g. non-UK)
+      if (data?.user) {
+        applyUserSession(data.user);
+      }
       return data;
     },
-    [requestJson]
+    [requestJson, applyUserSession]
   );
 
   const completeRegistration = useCallback(
