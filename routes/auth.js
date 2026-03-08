@@ -3135,7 +3135,8 @@ router.put('/profile', requireAuth, async (req, res) => {
           if (!currentSectorId) user.sector = newId;
         }
       }
-      if (Array.isArray(services)) {
+      // Persist full services array (category + subcategory IDs); only update when explicitly provided
+      if (Object.prototype.hasOwnProperty.call(body, 'services') && Array.isArray(services)) {
         user.services = services.map((service) => service?.toString().trim()).filter(Boolean);
       }
       if (req.body.sectors !== undefined && Array.isArray(req.body.sectors) && req.body.sectors.length > 0) {

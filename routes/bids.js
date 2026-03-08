@@ -1,9 +1,21 @@
 import express from 'express';
+import crypto from 'crypto';
+import { createRequire } from 'module';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import ProBidBalance from '../models/ProBidBalance.js';
 import User from '../models/User.js';
+import CreditPurchase from '../models/CreditPurchase.js';
 import { getOrCreateBalance, deductBid } from '../services/bids.js';
+
+const requirePdf = createRequire(import.meta.url);
+const PDFDocument = requirePdf('pdfkit');
+
+function generateInvoiceNumber() {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const rand = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `INV-CRED-${date}-${rand}`;
+}
 
 const router = express.Router();
 
@@ -125,6 +137,17 @@ router.post('/purchase', authenticateToken, requireRole(['professional']), async
       await proBalance.save();
     }
 
+    const planName = (plan.name || 'Basic').trim();
+    const invoiceNumber = generateInvoiceNumber();
+    await CreditPurchase.create({
+      userId: req.user.id,
+      purchasedAt: new Date(),
+      credits: plan.bids,
+      amountPounds,
+      planName: ['Basic', 'Standard', 'Premium'].includes(planName) ? planName : 'Basic',
+      invoiceNumber,
+    });
+
     const { totalAvailable, freeBidsRemaining, purchasedTotal } = await getOrCreateBalance(req.user.id);
     return res.json({
       message: 'Plan purchased',
@@ -193,6 +216,16 @@ router.post('/purchase-custom', authenticateToken, requireRole(['professional'])
       await proBalance.save();
     }
 
+    const invoiceNumber = generateInvoiceNumber();
+    await CreditPurchase.create({
+      userId: req.user.id,
+      purchasedAt: new Date(),
+      credits: quantity,
+      amountPounds,
+      planName: 'Custom',
+      invoiceNumber,
+    });
+
     const { totalAvailable, freeBidsRemaining, purchasedTotal } = await getOrCreateBalance(req.user.id);
     return res.json({
       message: `${quantity} bid${quantity !== 1 ? 's' : ''} purchased`,
@@ -203,6 +236,118 @@ router.post('/purchase-custom', authenticateToken, requireRole(['professional'])
   } catch (err) {
     console.error('[Bids] Purchase-custom error:', err);
     return res.status(500).json({ error: err.message || 'Failed to purchase bids' });
+  }
+});
+
+/**
+ * GET /api/bids/history
+ * Professional only. Returns all credit purchases for the current user (newest first).
+ */
+router.get('/history', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const list = await CreditPurchase.find({ userId: req.user.id })
+      .sort({ purchasedAt: -1 })
+      .lean();
+    const history = list.map((doc) => ({
+      id: doc._id.toString(),
+      purchasedAt: doc.purchasedAt,
+      credits: doc.credits,
+      amountPounds: doc.amountPounds,
+      planName: doc.planName,
+      invoiceNumber: doc.invoiceNumber,
+    }));
+    return res.json({ history });
+  } catch (err) {
+    console.error('[Bids] History error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to get history' });
+  }
+});
+
+/**
+ * GET /api/bids/invoice/:id
+ * Professional only. Returns PDF invoice for the given credit purchase id.
+ */
+router.get('/invoice/:id', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const purchase = await CreditPurchase.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
+    }).lean();
+    if (!purchase) return res.status(404).json({ error: 'Invoice not found' });
+
+    const user = await User.findById(req.user.id)
+      .select('firstName lastName tradingName address postcode townCity county')
+      .lean();
+    const proName = (user?.tradingName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Professional').trim();
+    const addressParts = [user?.address, user?.townCity, user?.county, user?.postcode].filter(Boolean);
+    const proAddress = addressParts.length > 0 ? addressParts.join(', ') : '';
+
+    const invoiceDate = new Date(purchase.purchasedAt).toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+    const description = purchase.planName === 'Custom'
+      ? `Quote credits – Custom (${purchase.credits} credits)`
+      : `Quote credits – ${purchase.planName} plan (${purchase.credits} credits)`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="invoice-${purchase.invoiceNumber}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    doc.pipe(res);
+
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a2e');
+    doc.text('Sortars.com', 50, 50);
+    doc.moveDown(0.5);
+
+    doc.fontSize(24).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('INVOICE', 400, 50, { width: 150, align: 'right' });
+    doc.fontSize(10).font('Helvetica').fillColor('#6b6b6b');
+    doc.text(`Invoice # ${purchase.invoiceNumber}`, 400, 78, { width: 150, align: 'right' });
+    doc.text(`Date: ${invoiceDate}`, 400, 92, { width: 150, align: 'right' });
+
+    let y = 120;
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Bill To', 50, y);
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(proName, 50, y + 14);
+    if (proAddress) doc.text(proAddress, 50, y + 28, { width: 260 });
+
+    doc.font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Service Provider', 320, y);
+    doc.font('Helvetica').fillColor('#333');
+    doc.text('Sortars', 320, y + 14);
+    y += 60;
+
+    doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
+    y += 20;
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Description', 50, y);
+    doc.text('Amount', 450, y, { width: 95, align: 'right' });
+    y += 22;
+    doc.strokeColor('#e0e0e0').lineWidth(0.3).moveTo(50, y).lineTo(545, y).stroke();
+    y += 12;
+
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(description, 50, y, { width: 390 });
+    doc.text(`£${(purchase.amountPounds || 0).toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    y += 24;
+
+    doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
+    y += 16;
+
+    doc.font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Total', 50, y);
+    doc.text(`£${(purchase.amountPounds || 0).toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    y += 30;
+
+    doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');
+    doc.text('This invoice is for quote credits purchased on Sortars. Thank you for your business.', 50, y, { width: 495 });
+
+    doc.end();
+  } catch (err) {
+    console.error('[Bids] Invoice PDF error:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Failed to generate invoice' });
   }
 });
 

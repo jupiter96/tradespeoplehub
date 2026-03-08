@@ -262,15 +262,16 @@ export default function PostJobPage() {
               const catName = cat.name || catSlug;
               const catId = cat._id?.toString?.() || `cat-${catSlug}`;
               const categoryItem: CategoryItem = { value: catSlug, label: catName, itemKey: catId };
-              flat.push(categoryItem);
               const subItems: CategoryItem[] = [];
               (cat.subCategories || []).forEach((sub: any) => {
                 const subSlug = sub.slug || (sub.name || '').toLowerCase().replace(/\s+/g, '-');
                 const subId = sub._id?.toString?.() || `sub-${catId}-${subSlug}`;
                 subItems.push({ value: subSlug, label: sub.name || subSlug, itemKey: subId });
-                flat.push({ value: subSlug, label: `${catName} › ${sub.name || subSlug}`, itemKey: subId });
+                flat.push({ value: subSlug, label: sub.name || subSlug, itemKey: subId });
               });
-              grouped.push({ category: categoryItem, subcategories: subItems });
+              if (subItems.length > 0) {
+                grouped.push({ category: categoryItem, subcategories: subItems });
+              }
             });
             flatMap[sector.slug] = flat;
             groupedMap[sector.slug] = grouped;
@@ -540,8 +541,8 @@ export default function PostJobPage() {
         // Step 2: Title & Description – both required
         return jobTitle.trim() !== "" && jobDescription.trim() !== "";
       case 3:
-        // Step 3: Category – sector and at least 3 categories
-        return selectedSector !== "" && selectedCategories.length >= 3;
+        // Step 3: Category – sector and at least 5 subcategories/skills
+        return selectedSector !== "" && selectedCategories.length >= 5;
       case 4:
         // Require urgency; if in-person also require postcode
         return urgency !== "" && (jobLocationType === "online" || postcode.trim() !== "");
@@ -1226,7 +1227,7 @@ export default function PostJobPage() {
                               ) : (
                                 <div className="flex items-center justify-between w-full">
                                   <span className="text-[#6b6b6b]">
-                                    {selectedSector ? "Search and select categories & skills..." : "Select sector first"}
+                                    {selectedSector ? "Search and select skills (subcategories)..." : "Select sector first"}
                                   </span>
                                   {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
                                 </div>
@@ -1239,37 +1240,17 @@ export default function PostJobPage() {
                             <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
                               <div className="p-2 border-b bg-muted/30">
                                 <CommandInput 
-                                  placeholder="Search categories and subcategories..." 
+                                  placeholder="Search subcategories / skills..." 
                                   className="font-['Poppins',sans-serif] h-10"
                                 />
                               </div>
                               <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
                                 <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No category or skill found.
+                                  No subcategory or skill found.
                                 </CommandEmpty>
                                 {effectiveGroupedBySector[selectedSector]?.length ? (
                                   effectiveGroupedBySector[selectedSector].map((group) => (
                                     <CommandGroup key={group.category.itemKey} heading={group.category.label} className="p-1">
-                                      <CommandItem
-                                        key={group.category.itemKey}
-                                        value={group.category.label}
-                                        onSelect={() => {
-                                          const isSelected = selectedCategories.includes(group.category.value);
-                                          if (isSelected) {
-                                            setSelectedCategories(selectedCategories.filter(c => c !== group.category.value));
-                                          } else {
-                                            setSelectedCategories([...selectedCategories, group.category.value]);
-                                          }
-                                        }}
-                                        className="font-['Poppins',sans-serif] cursor-pointer"
-                                      >
-                                        <div className="flex items-center justify-between w-full">
-                                          <span>{group.category.label}</span>
-                                          {selectedCategories.includes(group.category.value) && (
-                                            <Check className="w-4 h-4 text-[#FE8A0F]" />
-                                          )}
-                                        </div>
-                                      </CommandItem>
                                       {group.subcategories.map((sub) => {
                                         const isSelected = selectedCategories.includes(sub.value);
                                         return (
@@ -1283,7 +1264,7 @@ export default function PostJobPage() {
                                                 setSelectedCategories([...selectedCategories, sub.value]);
                                               }
                                             }}
-                                            className="font-['Poppins',sans-serif] cursor-pointer pl-6"
+                                            className="font-['Poppins',sans-serif] cursor-pointer pl-4"
                                           >
                                             <div className="flex items-center justify-between w-full">
                                               <span className="text-[13px]">{sub.label}</span>
@@ -1335,22 +1316,22 @@ export default function PostJobPage() {
                   <div className="mt-4">
                     <div className={cn(
                       "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
-                      selectedCategories.length >= 3 
+                      selectedCategories.length >= 5 
                         ? "bg-green-50 text-green-700" 
                         : "bg-orange-50 text-orange-700"
                     )}>
-                      {selectedCategories.length >= 3 ? (
+                      {selectedCategories.length >= 5 ? (
                         <>
                           <Check className="w-4 h-4 flex-shrink-0" />
                           <span>
-                            {selectedCategories.length} categories selected. Ready to continue!
+                            {selectedCategories.length} subcategories selected. Ready to continue!
                           </span>
                         </>
                       ) : (
                         <>
                           <Flame className="w-4 h-4 flex-shrink-0" />
                           <span>
-                            Please select at least {3 - selectedCategories.length} more {3 - selectedCategories.length === 1 ? 'category' : 'categories'} to continue
+                            Please select at least {5 - selectedCategories.length} more subcategor{(5 - selectedCategories.length) === 1 ? 'y' : 'ies'} to continue
                           </span>
                         </>
                       )}

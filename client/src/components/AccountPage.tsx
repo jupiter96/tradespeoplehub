@@ -181,7 +181,14 @@ export default function AccountPage() {
   // Sync activeSection from URL when location.search changes (e.g. back/forward navigation)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const tab = params.get("tab");
+    let tab = params.get("tab");
+    // Redirect legacy tab id to new one
+    if (tab === "bids-membership") {
+      params.set("tab", "quote-credits");
+      navigate(`/account?${params.toString()}`, { replace: true });
+      setActiveSection("quote-credits");
+      return;
+    }
     if (tab && tab !== activeSection) {
       setActiveSection(tab);
     } else if (!tab) {
@@ -393,7 +400,7 @@ export default function AccountPage() {
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "my-jobs", label: "My Jobs", icon: FileText },
     { id: "promo-code", label: "Promo Code", icon: Ticket },
-    { id: "bids-membership", label: "Bids & Membership", icon: Target },
+    { id: "quote-credits", label: "Quote credits", icon: Target },
     { 
       id: "notifications", 
       label: "Notifications", 
@@ -592,7 +599,7 @@ export default function AccountPage() {
               {activeSection === "my-jobs" && userRole === "professional" && <ProfessionalJobsSection />}
               {/* Promo Code (Professional only) */}
               {activeSection === "promo-code" && userRole === "professional" && <ProPromoCodeSection />}
-              {activeSection === "bids-membership" && userRole === "professional" && <BidsAndMembershipSection />}
+              {activeSection === "quote-credits" && userRole === "professional" && <BidsAndMembershipSection />}
               {activeSection === "verification" && (
                 <AccountVerificationSection 
                   onVerificationStatusChange={() => {
@@ -1960,6 +1967,8 @@ function DetailsSection() {
   );
 
   const [formData, setFormData] = useState(() => buildFormState(initialFormState));
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
   const [phoneError, setPhoneError] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1999,12 +2008,20 @@ function DetailsSection() {
   const [isResendingEmailOTP, setIsResendingEmailOTP] = useState(false);
   const [isResendingPhoneOTP, setIsResendingPhoneOTP] = useState(false);
 
-  // Load user's existing services when categories are loaded
-  // Support both ID-based (new) and name-based (legacy) storage
-  const [hasLoadedUserServices, setHasLoadedUserServices] = useState(false);
+  // Apply userInfo to form; resolve categories/subcategories from userInfo.services when we have sector + categories loaded
   useEffect(() => {
-    if (userInfo?.services && userInfo.services.length > 0 && availableCategories.length > 0 && userInfo?.sector && !hasLoadedUserServices) {
-      // Get category and subcategory IDs and names for matching
+    if (!userInfo) return;
+
+    const baseForm = buildFormState(initialFormState);
+    let categoriesToUse = baseForm.categories ?? [];
+    let subcategoriesToUse = baseForm.subcategories ?? [];
+
+    if (
+      userInfo.services &&
+      userInfo.services.length > 0 &&
+      availableCategories.length > 0 &&
+      userInfo.sector
+    ) {
       const categoryIds = availableCategories.map((cat: Category) => cat._id);
       const categoryNames = availableCategories.map((cat: Category) => cat.name);
       const subcategoryIds: string[] = [];
@@ -2015,62 +2032,82 @@ function DetailsSection() {
           subcategoryNames.push(...cat.subCategories.map((sc: SubCategory) => sc.name));
         }
       });
-      
-      // Try to match by ID first (new format)
-      const userCategoryIds = userInfo.services.filter((s: string) => categoryIds.includes(s));
-      const userSubcategoryIds = userInfo.services.filter((s: string) => subcategoryIds.includes(s));
-      
-      // If no IDs found, try matching by name (legacy support)
+      const categorySlugs = availableCategories.map((c: Category) => (c.slug || c.name || '').toLowerCase().replace(/\s+/g, '-'));
+      const subcategorySlugToId: Record<string, string> = {};
+      availableCategories.forEach((cat: Category) => {
+        if (cat.subCategories) {
+          cat.subCategories.forEach((sc: SubCategory) => {
+            const slug = (sc.slug || sc.name || '').toLowerCase().replace(/\s+/g, '-');
+            subcategorySlugToId[slug] = sc._id;
+          });
+        }
+      });
+
+      let userCategoryIds = userInfo.services.filter((s: string) => categoryIds.includes(s));
+      let userSubcategoryIds = userInfo.services.filter((s: string) => subcategoryIds.includes(s));
       const userCategoryNames = userInfo.services.filter((s: string) => categoryNames.includes(s));
       const userSubcategoryNames = userInfo.services.filter((s: string) => subcategoryNames.includes(s));
-      
-      // Convert names to IDs if found
-      const categoryIdsFromNames = userCategoryNames.map((name: string) => {
-        const cat = availableCategories.find((c: Category) => c.name === name);
-        return cat?._id;
+      const userCategorySlugs = userInfo.services.filter((s: string) => {
+        const n = String(s || '').toLowerCase().trim().replace(/\s+/g, '-');
+        return categorySlugs.includes(n);
+      });
+      const userSubcategorySlugs = userInfo.services.filter((s: string) => {
+        const n = String(s || '').toLowerCase().trim().replace(/\s+/g, '-');
+        return !!subcategorySlugToId[n];
+      });
+
+      const categoryIdsFromNames = userCategoryNames.map((name: string) =>
+        availableCategories.find((c: Category) => c.name === name)?._id
+      ).filter(Boolean) as string[];
+      const categoryIdsFromSlugs = userCategorySlugs.map((slugLike: string) => {
+        const n = String(slugLike || '').toLowerCase().trim().replace(/\s+/g, '-');
+        const idx = categorySlugs.indexOf(n);
+        return idx >= 0 ? availableCategories[idx]?._id : null;
       }).filter(Boolean) as string[];
-      
       const subcategoryIdsFromNames = userSubcategoryNames.map((name: string) => {
         for (const cat of availableCategories) {
-          if (cat.subCategories) {
-            const subcat = cat.subCategories.find((sc: SubCategory) => sc.name === name);
-            if (subcat) return subcat._id;
-          }
+          const subcat = cat.subCategories?.find((sc: SubCategory) => sc.name === name);
+          if (subcat) return subcat._id;
         }
         return null;
       }).filter(Boolean) as string[];
-      
-      const finalCategoryIds = userCategoryIds.length > 0 ? userCategoryIds : categoryIdsFromNames;
-      const finalSubcategoryIds = userSubcategoryIds.length > 0 ? userSubcategoryIds : subcategoryIdsFromNames;
-      
-      if (finalCategoryIds.length > 0 || finalSubcategoryIds.length > 0) {
-        setFormData(prev => ({
-          ...prev,
-          categories: finalCategoryIds.length > 0 ? finalCategoryIds : prev.categories,
-          subcategories: finalSubcategoryIds.length > 0 ? finalSubcategoryIds : prev.subcategories,
-        }));
-        setHasLoadedUserServices(true);
+      const subcategoryIdsFromSlugs = userSubcategorySlugs.map((slugLike: string) => {
+        const n = String(slugLike || '').toLowerCase().trim().replace(/\s+/g, '-');
+        return subcategorySlugToId[n] || null;
+      }).filter(Boolean) as string[];
+
+      let finalCategoryIds = userCategoryIds.length > 0 ? userCategoryIds : categoryIdsFromNames.length > 0 ? categoryIdsFromNames : categoryIdsFromSlugs;
+      let finalSubcategoryIds = userSubcategoryIds.length > 0 ? userSubcategoryIds : subcategoryIdsFromNames.length > 0 ? subcategoryIdsFromNames : subcategoryIdsFromSlugs;
+      if (finalSubcategoryIds.length > 0 && finalCategoryIds.length === 0) {
+        const parentIds = new Set<string>();
+        finalSubcategoryIds.forEach((subId: string) => {
+          const cat = availableCategories.find((c: Category) =>
+            c.subCategories?.some((sc: SubCategory) => sc._id === subId)
+          );
+          if (cat) parentIds.add(cat._id);
+        });
+        finalCategoryIds = Array.from(parentIds);
       }
+      categoriesToUse = finalCategoryIds;
+      subcategoriesToUse = finalSubcategoryIds;
     }
-  }, [userInfo?.services, availableCategories, userInfo?.sector, hasLoadedUserServices]);
-  
-  // Reset hasLoadedUserServices when sector changes
-  useEffect(() => {
-    setHasLoadedUserServices(false);
-  }, [userInfo?.sector]);
-  
-  // Update formData when userInfo changes (especially when townCity/county are loaded)
-  useEffect(() => {
-    if (userInfo) {
-      // console.log('[AccountPage] userInfo updated, updating formData:', {
-      //   townCity: userInfo.townCity,
-      //   county: userInfo.county,
-      //   address: userInfo.address,
-      //   postcode: userInfo.postcode,
-      // });
-    setFormData(buildFormState(initialFormState));
-    }
-  }, [userInfo, buildFormState, initialFormState]);
+
+    setFormData((prev) => {
+      const nextCategories =
+        userInfo.services?.length && availableCategories.length && userInfo.sector
+          ? (categoriesToUse.length > 0 ? categoriesToUse : prev.categories)
+          : prev.categories;
+      const nextSubcategories =
+        userInfo.services?.length && availableCategories.length && userInfo.sector
+          ? (subcategoriesToUse.length > 0 ? subcategoriesToUse : prev.subcategories)
+          : prev.subcategories;
+      return {
+        ...baseForm,
+        categories: nextCategories,
+        subcategories: nextSubcategories,
+      };
+    });
+  }, [userInfo, buildFormState, initialFormState, availableCategories]);
 
   // NOTE: Do not use hardcoded sector/category lists here.
   // Categories and subcategories must come from the database via /api/categories and /api/subcategories.
@@ -2080,8 +2117,11 @@ function DetailsSection() {
       return;
     }
 
+    // Use ref so we always send the latest form state (avoids stale closure when user selects then immediately saves)
+    const latest = formDataRef.current;
+
     // First name, last name, email, and phone are read-only after registration
-    if (!formData.postcode) {
+    if (!latest.postcode) {
       toast.error("Please complete the required fields.");
       return;
     }
@@ -2089,37 +2129,38 @@ function DetailsSection() {
 
     const payload: ProfileUpdatePayload = {
       // firstName, lastName, email, and phone are not allowed to be updated after registration
-      postcode: formData.postcode.trim(),
-      address: formData.address.trim() || undefined,
-      townCity: formData.townCity.trim() || undefined,
-      ...(formData.county && { county: formData.county.trim() }),
+      postcode: latest.postcode.trim(),
+      address: latest.address.trim() || undefined,
+      townCity: latest.townCity.trim() || undefined,
+      ...(latest.county && { county: latest.county.trim() }),
     };
 
     if (userRole === "professional") {
-      payload.tradingName = formData.tradingName.trim() || undefined;
-      payload.travelDistance = formData.travelDistance || undefined;
+      payload.tradingName = latest.tradingName.trim() || undefined;
+      payload.travelDistance = latest.travelDistance || undefined;
       
       // Sector cannot be changed after registration - it's read-only
       // Do not send sector in payload if it already exists
       
-      // Combine categories and subcategories into services array
-      const allServices = [...formData.categories, ...formData.subcategories];
-      payload.services = allServices;
+      // Combine categories and subcategories into services array (use latest ref so all selections are saved)
+      const categories = latest.categories ?? [];
+      const subcategories = latest.subcategories ?? [];
+      payload.services = [...categories, ...subcategories];
       
-      payload.aboutService = formData.aboutService.trim() || undefined;
+      payload.aboutService = latest.aboutService.trim() || undefined;
       payload.hasTradeQualification =
-        (formData.hasTradeQualification as "yes" | "no") || "no";
+        (latest.hasTradeQualification as "yes" | "no") || "no";
       payload.hasPublicLiability =
-        (formData.hasPublicLiability as "yes" | "no") || "no";
+        (latest.hasPublicLiability as "yes" | "no") || "no";
       
       // Insurance details
-      if (formData.hasPublicLiability === "yes") {
+      if (latest.hasPublicLiability === "yes") {
         // If blank, store as 0 (requested default)
-        payload.professionalIndemnityAmount = formData.professionalIndemnityAmount
-          ? parseFloat(formData.professionalIndemnityAmount) || 0
+        payload.professionalIndemnityAmount = latest.professionalIndemnityAmount
+          ? parseFloat(latest.professionalIndemnityAmount) || 0
           : 0;
-        if (formData.insuranceExpiryDate) {
-          payload.insuranceExpiryDate = new Date(formData.insuranceExpiryDate).toISOString();
+        if (latest.insuranceExpiryDate) {
+          payload.insuranceExpiryDate = new Date(latest.insuranceExpiryDate).toISOString();
         }
       } else {
         payload.professionalIndemnityAmount = undefined;
@@ -2557,36 +2598,35 @@ function DetailsSection() {
                     </p>
                   </div>
                 ) : (
-                  <div className="max-h-[300px] overflow-y-auto pr-2 border-2 border-gray-200 rounded-xl p-4">
+                  <div className="border-2 border-gray-200 rounded-xl p-4 max-h-[300px] overflow-y-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {allSubcategories.map((subcat: SubCategory) => (
-                        <div key={subcat._id} className="flex items-start space-x-2 p-2.5 rounded-lg hover:bg-[#FFF5EB] transition-colors border border-gray-100">
-                      <input
-                        type="checkbox"
-                            id={`subcat-${subcat._id}`}
+                        <label
+                          key={subcat._id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                            formData.subcategories.includes(subcat._id)
+                              ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                              : "border-gray-100 hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
+                          } cursor-pointer transition-all`}
+                        >
+                          <Checkbox
                             checked={formData.subcategories.includes(subcat._id)}
-                            onChange={() => {
-                              setFormData(prev => ({
+                            onCheckedChange={() => {
+                              setFormData((prev) => ({
                                 ...prev,
                                 subcategories: prev.subcategories.includes(subcat._id)
-                                  ? prev.subcategories.filter(s => s !== subcat._id)
-                                  : [...prev.subcategories, subcat._id]
+                                  ? prev.subcategories.filter((s) => s !== subcat._id)
+                                  : [...prev.subcategories, subcat._id],
                               }));
                             }}
-                            className="mt-0.5 w-4 h-4 text-[#FE8A0F] border-gray-300 rounded focus:ring-[#FE8A0F] flex-shrink-0"
-                      />
-                      <Label
-                            htmlFor={`subcat-${subcat._id}`}
-                        className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] cursor-pointer leading-relaxed flex-1"
-                      >
+                            className="border-2 border-gray-300 data-[state=checked]:bg-[#FE8A0F] data-[state=checked]:border-[#FE8A0F]"
+                          />
+                          <span className="text-sm text-[#2c353f] font-['Poppins',sans-serif]">
                             {subcat.name}
-                      </Label>
-                          {formData.subcategories.includes(subcat._id) && (
-                        <CheckCircle className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
-                      )}
+                          </span>
+                        </label>
+                      ))}
                     </div>
-                  ))}
-                </div>
                   </div>
                 )}
                 {formData.subcategories.length > 0 && (
