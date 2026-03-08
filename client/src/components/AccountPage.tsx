@@ -2115,7 +2115,7 @@ function DetailsSection() {
     });
   }, [userInfo, buildFormState, initialFormState, availableCategories]);
 
-  // IP-based geolocation: auto-fill country, state, city on My Details when address fields are empty
+  // IP-based geolocation: auto-fill country, region, city on My Details when address fields are empty (same as registration page; uses ipapi.co for HTTPS/CORS)
   const ipGeolocationFetchedRef = useRef(false);
   useEffect(() => {
     if (!userInfo || ipGeolocationFetchedRef.current) return;
@@ -2123,13 +2123,13 @@ function DetailsSection() {
     if (hasAddress) return;
 
     ipGeolocationFetchedRef.current = true;
-    const url = "https://ip-api.com/json/?fields=country,regionName,city";
+    const url = "https://ipapi.co/json/";
     fetch(url)
       .then((res) => res.json())
-      .then((data: { country?: string; regionName?: string; city?: string }) => {
+      .then((data: { city?: string; region?: string; country_name?: string }) => {
         const city = (data.city || "").trim();
-        const region = (data.regionName || "").trim();
-        const country = (data.country || "").trim();
+        const region = (data.region || "").trim();
+        const country = (data.country_name || "").trim();
         if (!city && !region && !country) return;
         setFormData((prev) => ({
           ...prev,

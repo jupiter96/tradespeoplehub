@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { 
   Mail, 
   Lock, 
@@ -40,7 +40,9 @@ import { validatePassword } from "../utils/passwordValidation";
 import { validatePhoneNumber, normalizePhoneForBackend } from "../utils/phoneValidation";
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const justNavigatedToAccountRef = useRef(false);
   const {
     login,
     register: initiateRegistration,
@@ -109,15 +111,16 @@ export default function LoginPage() {
   
   // Redirect to account page if already logged in (but not during registration or explicit register flow)
   useEffect(() => {
-    // If URL explicitly asks for register tab (e.g. from how-it-work-pro CTAs), don't auto-redirect
+    if (justNavigatedToAccountRef.current) {
+      justNavigatedToAccountRef.current = false;
+      return;
+    }
     const explicitRegister = searchParams.get("tab") === "register";
-
-    // Don't redirect if user is in the middle of registration process or explicit register view is requested
-    if (isLoggedIn && !showEmailVerification && !isCompletingRegistration && !explicitRegister) {
-      // Professionals should land on Account after login (even if profile setup is incomplete).
+    const stillOnLoginPage = location.pathname === "/login" || location.pathname === "/";
+    if (isLoggedIn && stillOnLoginPage && !showEmailVerification && !isCompletingRegistration && !explicitRegister) {
       navigate("/account", { replace: true });
     }
-  }, [isLoggedIn, navigate, showEmailVerification, isCompletingRegistration, searchParams]);
+  }, [isLoggedIn, navigate, showEmailVerification, isCompletingRegistration, searchParams, location.pathname]);
 
   // Start email resend timer when email verification modal opens
   useEffect(() => {
@@ -446,6 +449,7 @@ export default function LoginPage() {
     try {
       const data = await verifyRegistrationEmail(emailVerificationCode, registerEmail) as { user?: { role?: string }; message?: string; phoneCode?: string };
       if (data?.user) {
+        justNavigatedToAccountRef.current = true;
         setShowEmailVerification(false);
         setVerificationStep(1);
         setEmailVerificationCode("");
@@ -479,13 +483,12 @@ export default function LoginPage() {
     try {
       const user = await completeRegistration(phoneVerificationCode, registerEmail);
 
-      // Close verification modal first
+      justNavigatedToAccountRef.current = true;
       setShowEmailVerification(false);
       setVerificationStep(1);
       setEmailVerificationCode("");
       setPhoneVerificationCode("");
 
-      // Navigate immediately based on user role; show My Details tab after registration
       if (user.role === "professional") {
         navigate("/professional-registration-steps", { replace: true });
       } else {
