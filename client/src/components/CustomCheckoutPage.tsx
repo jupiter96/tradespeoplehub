@@ -33,6 +33,7 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 
 interface Address {
   id: string;
@@ -113,6 +114,7 @@ export default function CustomCheckoutPage() {
   const { pendingOffer, setPendingOffer, clearPendingOffer } = usePendingCustomOffer();
   const { isLoggedIn, authReady, userInfo } = useAccount();
   const { refreshOrders } = useOrders();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [restoringOffer, setRestoringOffer] = useState(true);
@@ -234,7 +236,7 @@ export default function CustomCheckoutPage() {
         setDiscount(data.promoCode.discount);
         setPromoCodeError(null);
         toast.success("Promo code applied!", {
-          description: `You saved £${formatCurrency(data.promoCode.discount)} on your order`,
+          description: `You saved ${formatPrice(data.promoCode.discount)} on your order`,
         });
       } else {
         setPromoCodeError("Invalid promo code");
@@ -1069,10 +1071,10 @@ export default function CustomCheckoutPage() {
                               <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#6b6b6b] mb-2">by {item.seller}</p>
                               <div className="flex items-center justify-between mt-2">
                                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                                  {formatNumber(item.quantity)} × £{formatCurrency(typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0)))}
+                                  {formatNumber(item.quantity)} × {formatPrice(typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0)))}
                                 </span>
                                 <p className="font-['Poppins',sans-serif] text-[14px] md:text-[16px] text-[#2c353f] font-medium">
-                                  £{formatCurrency((item.price + (item.addons?.reduce((s, a) => s + a.price, 0) || 0)) * item.quantity)}
+                                  {formatPrice((item.price + (item.addons?.reduce((s, a) => s + a.price, 0) || 0)) * item.quantity)}
                                 </p>
                               </div>
                             </div>
@@ -1121,7 +1123,7 @@ export default function CustomCheckoutPage() {
                           <div className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-green-600" />
                             <span className="font-['Poppins',sans-serif] text-[13px] text-green-700">
-                              {appliedPromo.code} Applied - £{formatCurrency(appliedPromo.discount)} off
+                              {appliedPromo.code} Applied - {formatPrice(appliedPromo.discount)} off
                             </span>
                           </div>
                           <button type="button" onClick={handleRemovePromo} className="text-red-500 hover:text-red-600">
@@ -1142,10 +1144,10 @@ export default function CustomCheckoutPage() {
                           <div key={item.id} className={index > 0 ? "pt-3 border-t border-gray-300" : ""}>
                             <div className="flex justify-between items-center mb-2">
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold">
-                                Service {index + 1} ({formatNumber(item.quantity)} × £{formatCurrency(typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0)))})
+                                Service {index + 1} ({formatNumber(item.quantity)} × {formatPrice(typeof item.price === "number" ? item.price : parseFloat(String(item.price || 0)))})
                               </p>
                               <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium">
-                                £{formatCurrency((item.price + (item.addons?.reduce((s, a) => s + a.price, 0) || 0)) * item.quantity)}
+                                {formatPrice((item.price + (item.addons?.reduce((s, a) => s + a.price, 0) || 0)) * item.quantity)}
                               </span>
                             </div>
                           </div>
@@ -1158,7 +1160,7 @@ export default function CustomCheckoutPage() {
                             Discount ({appliedPromo.code})
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[15px] text-green-600 font-semibold">
-                            -£{formatCurrency(discount)}
+                            -{formatPrice(discount)}
                           </span>
                         </div>
                       )}
@@ -1166,7 +1168,7 @@ export default function CustomCheckoutPage() {
                       {actualServiceFee > 0 && (
                         <div className="flex justify-between items-center pt-3 border-t border-gray-300">
                           <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] font-medium">Service Fee</span>
-                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold">£{formatCurrency(actualServiceFee)}</span>
+                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold">{formatPrice(actualServiceFee)}</span>
                         </div>
                       )}
 
@@ -1174,7 +1176,7 @@ export default function CustomCheckoutPage() {
                       {serviceFeeThreshold > 0 && orderSubtotal < serviceFeeThreshold && actualServiceFee > 0 && (
                         <div className="bg-[#FFF5EB] border border-[#FE8A0F]/30 rounded-lg p-4 mt-3 mb-3">
                           <p className="font-['Poppins',sans-serif] text-[14px] md:text-[15px] text-[#FE8A0F] font-semibold text-center">
-                            Add £{formatCurrency(serviceFeeThreshold - orderSubtotal)} more for FREE service fee!
+                            Add {formatPrice(serviceFeeThreshold - orderSubtotal)} more for FREE service fee!
                           </p>
                         </div>
                       )}
@@ -1194,7 +1196,7 @@ export default function CustomCheckoutPage() {
 
                       <div className="flex justify-between items-center pt-3 border-t-2 border-gray-400">
                         <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-bold">Total</span>
-                        <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-bold">£{formatCurrency(total)}</span>
+                        <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-bold">{formatPrice(total)}</span>
                       </div>
 
                       {/* Expected delivery date - below total */}
@@ -1223,21 +1225,21 @@ export default function CustomCheckoutPage() {
                             <Landmark className="w-3.5 h-3.5 text-[#10B981]" />
                             Wallet Balance Used
                           </span>
-                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#10B981] font-semibold">-£{formatCurrency(walletAmount)}</span>
+                          <span className="font-['Poppins',sans-serif] text-[15px] text-[#10B981] font-semibold">-{formatPrice(walletAmount)}</span>
                         </div>
                       )}
 
                       {walletBalance > 0 && remainderAmount > 0 && (
                         <div className="flex justify-between items-center pt-3 border-t-2 border-[#3B82F6] bg-blue-50/50 -mx-2 px-2 py-2 rounded mt-2">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#3B82F6] font-semibold">Remaining to Pay</span>
-                          <span className="font-['Poppins',sans-serif] text-[18px] text-[#3B82F6] font-bold">£{formatCurrency(remainderAmount)}</span>
+                          <span className="font-['Poppins',sans-serif] text-[18px] text-[#3B82F6] font-bold">{formatPrice(remainderAmount)}</span>
                         </div>
                       )}
 
                       {walletAmount > 0 && remainderAmount === 0 && (
                         <div className="flex justify-between items-center pt-3 border-t-2 border-[#10B981] bg-green-50/50 -mx-2 px-2 py-2 rounded mt-2">
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#10B981] font-semibold">Paid by Wallet</span>
-                          <span className="font-['Poppins',sans-serif] text-[18px] text-[#10B981] font-bold">£{formatCurrency(walletAmount)}</span>
+                          <span className="font-['Poppins',sans-serif] text-[18px] text-[#10B981] font-bold">{formatPrice(walletAmount)}</span>
                         </div>
                       )}
                     </div>

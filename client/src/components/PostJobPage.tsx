@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
+import { useCurrency } from "./CurrencyContext";
 import { useJobs } from "./JobsContext";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
@@ -224,6 +225,7 @@ const CUSTOM_BUDGET_ITEM: BudgetRangeItem = { value: "custom-budget", label: "Cu
 export default function PostJobPage() {
   const { isLoggedIn, userInfo, register: initiateRegistration, verifyRegistrationEmail, completeRegistration } = useAccount();
   const { addJob } = useJobs();
+  const { formatPrice, symbol } = useCurrency();
   const navigate = useNavigate();
   const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
@@ -1562,7 +1564,15 @@ export default function PostJobPage() {
                           htmlFor={budget.value}
                           className="md:ml-3 font-['Poppins',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
                         >
-                          {budget.label}
+                          {budget.value === "custom-budget"
+                            ? budget.label
+                            : budget.max !== null && budget.max >= 500000
+                              ? `Over ${formatPrice(budget.min ?? 0)}`
+                              : budget.min === 0 || budget.min === null
+                                ? `Under ${formatPrice(budget.max ?? 0)}`
+                                : budget.min === budget.max
+                                  ? formatPrice(budget.min)
+                                  : `${formatPrice(budget.min ?? 0)} - ${formatPrice(budget.max ?? 0)}`}
                         </Label>
                       </div>
                     ))}
@@ -1572,12 +1582,12 @@ export default function PostJobPage() {
                 {selectedBudget === "custom-budget" && (
                   <div className="mt-6 p-4 border-2 border-[#FE8A0F]/50 rounded-xl bg-[#FFF5EB]/30 space-y-4">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      Enter your budget range (min and max in £)
+                      Enter your budget range (min and max in {symbol})
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                          Minimum (£) <span className="text-red-500">*</span>
+                          Minimum ({symbol}) <span className="text-red-500">*</span>
                         </Label>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
@@ -1594,7 +1604,7 @@ export default function PostJobPage() {
                       </div>
                       <div>
                         <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                          Maximum (£) <span className="text-red-500">*</span>
+                          Maximum ({symbol}) <span className="text-red-500">*</span>
                         </Label>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />

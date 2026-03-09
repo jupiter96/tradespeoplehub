@@ -8,6 +8,7 @@ import { useCountdown } from "../hooks/useCountdown";
 import { useElapsedTime } from "../hooks/useElapsedTime";
 import { resolveApiUrl } from "../config/api";
 import { formatCurrency } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import {
   ShoppingBag,
   Package,
@@ -117,6 +118,7 @@ import {
 function ProfessionalOrdersSection() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { formatPrice } = useCurrency();
   const { orders, cancelOrder, deliverWork, deliverMilestone, deliverMilestones, professionalComplete, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, requestExtension, requestCancellation, respondToCancellation, withdrawCancellation, respondToRevision, completeRevision, respondToDispute, requestArbitration, cancelDispute, respondToClientReview, refreshOrders } = useOrders();
   const { userInfo } = useAccount();
   const { startConversation, refreshMessages } = useMessenger();
@@ -1016,7 +1018,7 @@ function ProfessionalOrdersSection() {
       return;
     }
     if (offerAmount > maxAmount + 0.01) {
-      toast.error(`Offer amount cannot exceed £${formatCurrency(maxAmount)}`);
+      toast.error(`Offer amount cannot exceed ${formatPrice(maxAmount)}`);
       return;
     }
     if (selectedOrder) {
@@ -1787,7 +1789,7 @@ function ProfessionalOrdersSection() {
                   {/* Amount Card */}
                   <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {formatCurrency(typeof dispute.amount === "number" ? dispute.amount : 0)}</span>
+                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">{formatPrice(typeof dispute.amount === "number" ? dispute.amount : 0)}</span>
                     </p>
                     <Separator className="my-4" />
                     <button className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:underline mb-4">
@@ -1801,7 +1803,7 @@ function ProfessionalOrdersSection() {
                           Professional (you)<br />want to receive:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-                          £{formatCurrency(dispute.respondentOffer?.amount) || "0.00"}
+                          {formatPrice(dispute.respondentOffer?.amount ?? 0)}
                         </p>
                       </div>
                       <div className="text-center">
@@ -1809,7 +1811,7 @@ function ProfessionalOrdersSection() {
                           Client ({dispute.claimantName})<br />wants to pay:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-                          £{formatCurrency(dispute.claimantOffer?.amount) || "0.00"}
+                          {formatPrice(dispute.claimantOffer?.amount ?? 0)}
                         </p>
                       </div>
                     </div>
@@ -1819,7 +1821,7 @@ function ProfessionalOrdersSection() {
                     {/* Agreed Amount */}
                     <div className="text-center">
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                        Agreed: <span className="text-[18px] text-[#2c353f]">£ 0.00</span>
+                        Agreed: <span className="text-[18px] text-[#2c353f]">{formatPrice(0)}</span>
                       </p>
                       {dispute.status === "closed" && (
                         <p className="font-['Poppins',sans-serif] text-[16px] text-red-600 mt-2">

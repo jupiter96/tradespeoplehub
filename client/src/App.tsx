@@ -26,6 +26,7 @@ import AdminDisputeViewPage from "./components/admin/AdminDisputeViewPage";
 import SocialOnboardingPage from "./components/SocialOnboardingPage";
 import ThankYouPage from "./components/ThankYouPage";
 import { CartProvider } from "./components/CartContext";
+import { CurrencyProvider } from "./components/CurrencyContext";
 import { PendingCustomOfferProvider } from "./components/PendingCustomOfferContext";
 import { AccountProvider, useAccount } from "./components/AccountContext";
 import { JobsProvider } from "./components/JobsContext";
@@ -90,19 +91,21 @@ function AppContent() {
 export default function App() {
   return (
     <AccountProvider>
-      <JobsProvider>
-        <MessengerProvider>
-          <OrdersProvider>
-            <CartProvider>
-              <PendingCustomOfferProvider>
-                <Router>
-                  <AppContent />
-                </Router>
-              </PendingCustomOfferProvider>
-            </CartProvider>
-          </OrdersProvider>
-        </MessengerProvider>
-      </JobsProvider>
+      <CurrencyProvider>
+        <JobsProvider>
+          <MessengerProvider>
+            <OrdersProvider>
+              <CartProvider>
+                <PendingCustomOfferProvider>
+                  <Router>
+                    <AppContent />
+                  </Router>
+                </PendingCustomOfferProvider>
+              </CartProvider>
+            </OrdersProvider>
+          </MessengerProvider>
+        </JobsProvider>
+      </CurrencyProvider>
     </AccountProvider>
   );
 }

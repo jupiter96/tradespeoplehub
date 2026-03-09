@@ -4,6 +4,7 @@ import { Star, Heart, MapPin, Medal, Play, Clock } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 
 // Video Thumbnail Component with Play Button (same as FeaturedServices)
 function VideoThumbnail({
@@ -121,7 +122,7 @@ const getPurchaseStats = (service: any): string | null => {
 const getCategoryTag = (service: any): string | null =>
   service.categoryName || service.subCategoryName || null;
 
-const getPriceRange = (service: any): { min: number; max: number; formatted: string } | null => {
+const getPriceRange = (service: any, formatPriceFn: (gbp: number) => string): { min: number; max: number; formatted: string } | null => {
   if (!service.packages || !Array.isArray(service.packages) || service.packages.length === 0) return null;
   let minPackagePrice = Infinity;
   let maxPackagePrice = 0;
@@ -142,12 +143,12 @@ const getPriceRange = (service: any): { min: number; max: number; formatted: str
   });
   if (minPackagePrice === Infinity || maxPackagePrice === 0) return null;
   if (minPackagePrice === maxPackagePrice) {
-    return { min: minPackagePrice, max: maxPackagePrice, formatted: `£${formatCurrency(minPackagePrice)}` };
+    return { min: minPackagePrice, max: maxPackagePrice, formatted: formatPriceFn(minPackagePrice) };
   }
   return {
     min: minPackagePrice,
     max: maxPackagePrice,
-    formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`,
+    formatted: `${formatPriceFn(minPackagePrice)} to ${formatPriceFn(maxPackagePrice)}`,
   };
 };
 
@@ -168,6 +169,7 @@ export default function ServiceCard({
   onLikeClick,
   renderFooter,
 }: ServiceCardProps) {
+  const { formatPrice } = useCurrency();
   const bestSeller = isBestSeller(service);
   const purchaseStatsText = getPurchaseStats(service);
   const categoryTag = getCategoryTag(service);
@@ -258,7 +260,7 @@ export default function ServiceCard({
 
         <div className="mb-2 md:mb-2.5">
           {(() => {
-            const priceRange = getPriceRange(service);
+            const priceRange = getPriceRange(service, formatPrice);
             if (priceRange) {
               const packagesWithDiscounts =
                 service.packages?.filter((pkg: any) => {
@@ -330,11 +332,11 @@ export default function ServiceCard({
               <>
                 <div className="flex items-baseline gap-2">
                   <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                    {service.originalPrice || service.price}
+                    {formatPrice(parseFloat(String(service.originalPrice || service.price).replace(/£|,/g, "")) || 0)}
                   </span>
                   {service.originalPrice && (
                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                      Was: {service.price}
+                      Was: {formatPrice(parseFloat(String(service.price).replace(/£|,/g, "")) || 0)}
                     </span>
                   )}
                 </div>

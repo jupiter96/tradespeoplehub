@@ -76,6 +76,7 @@ import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import { useAccount, ProfileUpdatePayload } from "./AccountContext";
+import { useCurrency } from "./CurrencyContext";
 import PaymentMethodModal from "./PaymentMethodModal";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
@@ -170,6 +171,7 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { userRole, userInfo, logout, isLoggedIn, authReady } = useAccount();
+  const { formatPrice } = useCurrency();
   const { contacts } = useMessenger();
   const [activeSection, setActiveSection] = useState<string>(() => {
     const params = new URLSearchParams(location.search);
@@ -657,6 +659,7 @@ export default function AccountPage() {
 
 // Overview Section - fetches real data from API
 function OverviewSection({ userRole }: { userRole: "client" | "professional" | null }) {
+  const { formatPrice } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<{
     totalOrders: number;
@@ -757,7 +760,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           <div className="bg-gradient-to-br from-[#E8F4FD] to-white p-4 md:p-6 rounded-xl border border-[#3D78CB]/20 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-[#3D78CB]/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-[#3D78CB] mb-2 md:mb-3" />
-            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(cd?.totalExpense ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{formatPrice(cd?.totalExpense ?? 0)}</h3>
             <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Expense</p>
             <div className="flex items-center gap-1 text-[#3D78CB]">
               {cd?.expenseChangePercent != null && cd.expenseChangePercent !== 0 && (
@@ -775,7 +778,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
           <div className="bg-gradient-to-br from-[#F0FDF4] to-white p-4 md:p-6 rounded-xl border border-green-200 relative overflow-hidden min-w-[260px] md:min-w-0 flex-shrink-0">
             <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
             <Wallet className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-2 md:mb-3" />
-            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(cd?.walletBalance ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
+            <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{formatPrice(cd?.walletBalance ?? 0)}</h3>
             <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">My Balance</p>
             <div className="flex items-center gap-1 text-green-600">
               <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px]">Available to spend</span>
@@ -821,7 +824,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                     borderRadius: "12px",
                     border: "1px solid #e5e5e5"
                   }}
-                  formatter={(value) => [`£${value}`, "Expense"]}
+                  formatter={(value) => [formatPrice(Number(value)), "Expense"]}
                 />
                 <Line 
                   type="monotone" 
@@ -889,7 +892,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                 Spending by Category
               </h3>
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-                Total: £{(cd?.totalExpense ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })} across all categories
+                Total: {formatPrice(cd?.totalExpense ?? 0)} across all categories
               </p>
             </div>
             <div className="flex lg:grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">
@@ -916,7 +919,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                         borderRadius: "12px",
                         border: "1px solid #e5e5e5"
                       }}
-                      formatter={(value) => [`£${value}`, "Spent"]}
+                      formatter={(value) => [formatPrice(Number(value)), "Spent"]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -945,7 +948,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                         borderRadius: "12px",
                         border: "1px solid #e5e5e5"
                       }}
-                      formatter={(value) => [`£${value}`, "Spent"]}
+                      formatter={(value) => [formatPrice(Number(value)), "Spent"]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -964,7 +967,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                       </span>
                     </div>
                     <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-medium">
-                      £{category.value.toLocaleString()}
+                      {formatPrice(category.value)}
                     </span>
                   </div>
                 ))}
@@ -983,7 +986,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                       </span>
                     </div>
                     <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                      £{category.value.toLocaleString()}
+                      {formatPrice(category.value)}
                     </span>
                   </div>
                 ))}
@@ -1078,7 +1081,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         <div className="bg-gradient-to-br from-[#F0FDF4] to-white p-4 md:p-6 rounded-xl border border-green-200 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-green-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-green-600 mb-2 md:mb-3" />
-          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(pd?.totalEarnings ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{formatPrice(pd?.totalEarnings ?? 0)}</h3>
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Total Earnings</p>
           <div className="flex items-center gap-1 text-green-600">
             {pd?.earningsChangePercent != null && pd.earningsChangePercent !== 0 && (
@@ -1096,7 +1099,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
         <div className="bg-gradient-to-br from-[#FEF3C7] to-white p-4 md:p-6 rounded-xl border border-amber-200 relative overflow-hidden min-w-[240px] lg:min-w-0 flex-shrink-0">
           <div className="absolute top-0 right-0 w-16 h-16 md:w-20 md:h-20 bg-amber-500/10 rounded-full -mr-8 md:-mr-10 -mt-8 md:-mt-10"></div>
           <Wallet className="w-6 h-6 md:w-8 md:h-8 text-amber-600 mb-2 md:mb-3" />
-          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">£{(pd?.walletBalance ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })}</h3>
+          <h3 className="font-['Poppins',sans-serif] text-[26px] md:text-[32px] text-[#2c353f] mb-1">{formatPrice(pd?.walletBalance ?? 0)}</h3>
           <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#6b6b6b] mb-1 md:mb-2">Available Balance</p>
           <div className="flex items-center gap-1 text-amber-600">
             <Clock className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -1135,7 +1138,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                   borderRadius: "12px",
                   border: "1px solid #e5e5e5"
                 }}
-                formatter={(value) => [`£${value}`, "Earnings"]}
+                formatter={(value) => [formatPrice(Number(value)), "Earnings"]}
               />
               <Line 
                 type="monotone" 
@@ -1195,7 +1198,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
               Earnings by Service Category
             </h3>
             <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d]">
-              Total: £{(pd?.totalEarnings ?? 0).toLocaleString('en-GB', { minimumFractionDigits: 2 })} across all categories
+              Total: {formatPrice(pd?.totalEarnings ?? 0)} across all categories
             </p>
           </div>
           <div className="flex lg:grid lg:grid-cols-2 gap-4 lg:gap-8 items-center">
@@ -1222,7 +1225,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                       borderRadius: "12px",
                       border: "1px solid #e5e5e5"
                     }}
-                    formatter={(value) => [`£${value}`, "Earned"]}
+                    formatter={(value) => [formatPrice(Number(value)), "Earned"]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -1251,7 +1254,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                       borderRadius: "12px",
                       border: "1px solid #e5e5e5"
                     }}
-                    formatter={(value) => [`£${value}`, "Earned"]}
+                    formatter={(value) => [formatPrice(Number(value)), "Earned"]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -1270,7 +1273,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                     </span>
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-medium">
-                    £{category.value.toLocaleString()}
+                    {formatPrice(category.value)}
                   </span>
                 </div>
               ))}
@@ -1289,7 +1292,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
                     </span>
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">
-                    £{category.value.toLocaleString()}
+                    {formatPrice(category.value)}
                   </span>
                 </div>
               ))}
@@ -2456,7 +2459,7 @@ function DetailsSection() {
               </div>
             </>
           )}
-          <div className={userRole === "professional" ? "md:col-span-2" : ""}>
+          <div className="md:col-span-2">
             <AddressAutocomplete
               postcode={formData.postcode}
               onPostcodeChange={(value) => setFormData({...formData, postcode: value})}
@@ -2484,8 +2487,8 @@ function DetailsSection() {
               className="font-['Poppins',sans-serif]"
             />
           </div>
-          <div className={userRole === "professional" ? "md:col-span-2" : ""}>
-            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+          <div className="md:col-span-2">
+            <Label className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f] mb-2 block">
               Country
             </Label>
             <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
@@ -3400,7 +3403,7 @@ function BillingSection() {
       setStripePaymentError(null);
 
       if (data.status === 'succeeded') {
-        toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
+        toast.success(`Wallet funded successfully! New balance: ${formatPrice(data.balance ?? 0)}`);
         await fetchWalletBalance();
         await fetchTransactions();
         setAmount("0");
@@ -3450,7 +3453,7 @@ function BillingSection() {
         const data = await response.json();
         if (response.ok && data.transaction?.status === 'completed') {
           clearInterval(poll);
-          toast.success(`Wallet funded successfully! New balance: £${data.balance?.toFixed(2)}`);
+          toast.success(`Wallet funded successfully! New balance: ${formatPrice(data.balance ?? 0)}`);
           await fetchWalletBalance();
           await fetchTransactions();
           setAmount("0");
@@ -3529,7 +3532,7 @@ function BillingSection() {
       }
 
       
-      toast.success(`Wallet funded successfully! New balance: £${result.balance?.toFixed(2)}`);
+      toast.success(`Wallet funded successfully! New balance: ${formatPrice(result.balance ?? 0)}`);
       await fetchWalletBalance();
       await fetchTransactions();
       setAmount("20");
@@ -3942,7 +3945,7 @@ function BillingSection() {
                       />
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                      Minimum: £10.00
+                      Minimum: {formatPrice(10)}
                     </p>
                   </div>
 
@@ -3953,7 +3956,7 @@ function BillingSection() {
                         Total due:
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                        £{calculateFees().total.toFixed(2)}
+                        {formatPrice(calculateFees().total)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -3968,7 +3971,7 @@ function BillingSection() {
                           <TooltipContent className="bg-white border border-gray-200 text-gray-800 shadow-lg p-3 max-w-xs">
                             <p className="font-['Poppins',sans-serif] text-[13px]">
                               {selectedPaymentType === "card"
-                                ? `Card charges (${paymentSettings.stripeCommissionPercentage}%+£${paymentSettings.stripeCommissionFixed}) processing fee and processes your payment immediately.`
+                                ? `Card charges (${paymentSettings.stripeCommissionPercentage}%+${formatPrice(paymentSettings.stripeCommissionFixed)}) processing fee and processes your payment immediately.`
                                 : selectedPaymentType === "bank"
                                 ? `We charge ${paymentSettings.bankProcessingFeePercentage}% processing fee and process your payment within 1-2 working days.`
                                 : "PayPal processing fee information"}
@@ -3977,7 +3980,7 @@ function BillingSection() {
                         </Tooltip>
                       </div>
                       <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                        £{calculateFees().fee.toFixed(2)}
+                        {formatPrice(calculateFees().fee)}
                       </span>
                     </div>
                     <div className="border-t border-gray-300 pt-3">
@@ -3986,7 +3989,7 @@ function BillingSection() {
                           Payment due:
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                          £{calculateFees().paymentDue.toFixed(2)}
+                          {formatPrice(calculateFees().paymentDue)}
                         </span>
                       </div>
                     </div>
@@ -4105,7 +4108,7 @@ function BillingSection() {
                             Processing payment...
                           </>
                         ) : (
-                          `Confirm and pay £${calculateFees().paymentDue.toFixed(2)} GBP`
+                          `Confirm and pay ${formatPrice(calculateFees().paymentDue)}`
                         )}
                       </Button>
                       {/* Loading Indicator */}
@@ -4159,7 +4162,7 @@ function BillingSection() {
                   >
                     <div className="flex-1">
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {(transaction.description || `${transaction.type} - £${transaction.amount}`).replace(/Stripe/gi, "Card").replace(/stripe/gi, "card")}
+                        {(transaction.description || `${transaction.type} - ${formatPrice(transaction.amount)}`).replace(/Stripe/gi, "Card").replace(/stripe/gi, "card")}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
                         {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.status}
@@ -4174,17 +4177,10 @@ function BillingSection() {
                         }`}
                       >
                         {transaction.type === "deposit" || transaction.type === "refund" ? "+" : "-"}
-                        £{(() => {
-                          // For deposits, show the actual deposited amount (fee excluded)
-                          // Use metadata.depositAmount if available, otherwise use amount
-                          if (transaction.type === "deposit" && transaction.metadata?.depositAmount !== undefined) {
-                            return transaction.metadata.depositAmount.toFixed(2);
-                          }
-                          return transaction.amount.toFixed(2);
-                        })()}
+                        {formatPrice(transaction.type === "deposit" && transaction.metadata?.depositAmount !== undefined ? transaction.metadata.depositAmount : transaction.amount)}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                        Balance: £{transaction.balance?.toFixed(2) || "0.00"}
+                        Balance: {formatPrice(transaction.balance ?? 0)}
                       </p>
                     </div>
                   </div>
@@ -4414,19 +4410,19 @@ function BillingSection() {
                 <div className="flex items-center justify-between">
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Amount:</span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    £{parseFloat(amount || "0").toFixed(2)}
+                    {formatPrice(parseFloat(amount || "0"))}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Processing fee:</span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    £{calculateFees().fee.toFixed(2)}
+                    {formatPrice(calculateFees().fee)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-gray-300">
                   <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">Total:</span>
                   <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                    £{calculateFees().paymentDue.toFixed(2)}
+                    {formatPrice(calculateFees().paymentDue)}
                   </span>
                 </div>
               </div>
@@ -4435,7 +4431,7 @@ function BillingSection() {
             {/* Confirmation Message */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-800">
-                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer £{calculateFees().paymentDue.toFixed(2)} using the account details above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
+                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer {formatPrice(calculateFees().paymentDue)} using the account details above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
               </p>
             </div>
 
@@ -4741,11 +4737,11 @@ function TransactionHistoryTab() {
                         }`}
                       >
                         {transaction.type === "deposit" || transaction.type === "refund" ? "+" : "-"}
-                        £{transaction.amount.toFixed(2)}
+                        {formatPrice(transaction.amount)}
                       </span>
                     </td>
                     <td className="py-3 px-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-nowrap">
-                      £{transaction.balance?.toFixed(2) || "0.00"}
+                      {formatPrice(transaction.balance ?? 0)}
                     </td>
                     <td className="py-3 px-4">
                       <span
@@ -5215,7 +5211,7 @@ function WithdrawSection() {
                 <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Pending</p>
               </div>
               <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
-                £{pendingAmount.toFixed(2)}
+                {formatPrice(pendingAmount)}
               </h3>
               <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] opacity-80">
                 From ongoing jobs
@@ -5229,7 +5225,7 @@ function WithdrawSection() {
                 <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Total Earnings</p>
               </div>
               <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
-                £{totalEarnings.toFixed(2)}
+                {formatPrice(totalEarnings)}
               </h3>
               <p className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] opacity-80">
                 All time
@@ -5487,7 +5483,7 @@ function WithdrawSection() {
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-1">
-                  Minimum: £50 • Maximum: £{walletBalance.toFixed(2)}
+                  Minimum: {formatPrice(50)} • Maximum: {formatPrice(walletBalance)}
                 </p>
               </div>
 
@@ -5592,7 +5588,7 @@ function WithdrawSection() {
                   <div className="space-y-2 font-['Poppins',sans-serif] text-[14px]">
                     <div className="flex justify-between">
                       <span className="text-[#6b6b6b]">Withdrawal Amount</span>
-                      <span className="text-[#2c353f]">£{parseFloat(withdrawAmount).toFixed(2)}</span>
+                      <span className="text-[#2c353f]">{formatPrice(parseFloat(withdrawAmount))}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-[#6b6b6b]">Processing Fee</span>
@@ -5604,7 +5600,7 @@ function WithdrawSection() {
                     <div className="flex justify-between">
                       <span className="text-[#2c353f]">You'll Receive</span>
                       <span className="text-[#10b981] font-medium">
-                        £{(parseFloat(withdrawAmount) - (parseFloat(withdrawAmount) >= 100 ? 0 : 2.50)).toFixed(2)}
+                        {formatPrice(parseFloat(withdrawAmount) - (parseFloat(withdrawAmount) >= 100 ? 0 : 2.50))}
                       </span>
                     </div>
                   </div>
@@ -5727,7 +5723,7 @@ function WithdrawSection() {
                       </td>
                       <td className="px-6 py-4 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         <span className={isDebit ? "text-red-600" : "text-green-600"}>
-                          {isDebit ? "-" : "+"}£{transaction.amount.toFixed(2)}
+                          {isDebit ? "-" : "+"}{formatPrice(transaction.amount)}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -5756,7 +5752,7 @@ function WithdrawSection() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl p-5">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total Withdrawn</p>
-              <p className="font-['Poppins',sans-serif] text-[28px] text-[#3B82F6]">£{withdrawalSummary.total.toFixed(2)}</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] text-[#3B82F6]">{formatPrice(withdrawalSummary.total)}</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-white border border-green-200 rounded-xl p-5">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Completed</p>
@@ -8482,7 +8478,7 @@ function ServicesSection() {
                             {categoryName}
                           </TableCell>
                           <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            £{service.price?.toFixed(2) || '0.00'}
+                            {formatPrice(service.price ?? 0)}
                             {service.priceUnit && service.priceUnit !== 'fixed' && (
                               <span className="text-[12px] text-[#8d8d8d] ml-1">
                                 / {service.priceUnit.replace('per ', '')}
@@ -9017,7 +9013,7 @@ function ServicesSection() {
                               {service.serviceCategory?.name || "N/A"}
                             </TableCell>
                             <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-nowrap">
-                              £{service.price?.toFixed(2) || "0.00"}
+                              {formatPrice(service.price ?? 0)}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">

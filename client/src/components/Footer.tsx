@@ -1,6 +1,8 @@
 import { Facebook, Twitter, Instagram, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { useCurrency } from "./CurrencyContext";
+import type { CurrencyCode } from "./CurrencyContext";
 import imgAppStore from "figma:asset/36bc166354a0af18b92c1b4cc94416c79f3cdd6c.png";
 import imgGooglePlay from "figma:asset/e7c88619f3afccee7ec2a322316aa19c8536ed04.png";
 import logoImage from "figma:asset/1836a20ae1cb76610d3554b773af9c32ebaae548.png";
@@ -43,6 +45,24 @@ function PinterestIcon() {
 
 export default function Footer() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { currency, setCurrency, loading } = useCurrency();
+
+  const currencySelect = (
+    <div className="mt-3">
+      <label htmlFor="footer-currency" className="text-gray-400 text-[12px] block mb-1">Currency</label>
+      <select
+        id="footer-currency"
+        value={currency}
+        onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+        disabled={loading}
+        className="w-full max-w-[140px] bg-[#0f172b] border border-gray-600 rounded-md text-white text-[13px] px-3 py-2 focus:border-[#FE8A0F] focus:outline-none"
+      >
+        <option value="GBP">GBP (£)</option>
+        <option value="USD">USD ($)</option>
+        <option value="EUR">EUR (€)</option>
+      </select>
+    </div>
+  );
 
   return (
     <footer className="w-full">
@@ -98,6 +118,12 @@ export default function Footer() {
               <div className="mt-6 grid grid-cols-2 gap-6">
                 {/* Left Column */}
                 <div className="space-y-6">
+                  <div>
+                    <p className="text-gray-300 text-[12px] leading-[1.24] mb-2">
+                      Our platform connects clients to trusted professionals across all service sectors.
+                    </p>
+                    {currencySelect}
+                  </div>
                   {/* Clients */}
                   <div>
                     <h3 className="text-white text-[13px] mb-3 font-semibold">Clients</h3>
@@ -172,6 +198,7 @@ export default function Footer() {
               <p className="text-gray-300 text-[14px] leading-[1.24]">
                 Our platform connects clients to trusted professionals across all service sectors.
               </p>
+              {currencySelect}
               {/* Payment Methods */}
               <div className="mt-6">
                 <img 

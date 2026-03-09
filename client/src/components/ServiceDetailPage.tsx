@@ -15,6 +15,7 @@ import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 
 // Helper function to resolve media URLs (images/videos)
 const resolveMediaUrl = (url: string | undefined): string => {
@@ -310,6 +311,7 @@ export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { formatPrice } = useCurrency();
   
   // Check if this is an admin access (from URL params or location state)
   const searchParams = new URLSearchParams(location.search);
@@ -399,13 +401,13 @@ export default function ServiceDetailPage() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: `£${formatCurrency(s.price)}`,
+            price: formatPrice(s.price),
             // Only treat originalPrice as active discount if it is within the valid date range
             originalPrice: (s.originalPrice && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? `£${formatCurrency(s.originalPrice)}`
+              ? formatPrice(s.originalPrice)
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -505,7 +507,7 @@ export default function ServiceDetailPage() {
     };
 
     fetchService();
-  }, [id, isAdminAccess, isLoggedIn, userRole]);
+  }, [id, isAdminAccess, isLoggedIn, userRole, formatPrice]);
 
   // Log service data when service state changes
   useEffect(() => {
@@ -1518,7 +1520,7 @@ export default function ServiceDetailPage() {
   // Use service.title as the page title
   const seoTitle = service.title || service.description;
   // Use service.about or service.description as the meta description
-  const seoDescription = service.about || service.description || `${service.subcategory || service.category} service by ${service.providerName}. Starting from £${service.price}.`;
+  const seoDescription = service.about || service.description || `${service.subcategory || service.category} service by ${service.providerName}. Starting from ${formatPrice(typeof service.price === 'number' ? service.price : parseFloat(String(service.price || 0).replace(/£|,/g, '')) || 0)}.`;
 
   return (
     <div className="w-full min-h-screen bg-[#f0f0f0]">
@@ -2251,7 +2253,7 @@ export default function ServiceDetailPage() {
                                   {/* Price */}
                                   <div className="p-4 border-b border-gray-200">
                                     <div className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] font-semibold text-center">
-                                      £{formatCurrency(pkgPrice)}
+                                      {formatPrice(pkgPrice)}
                                     </div>
                                   </div>
                                   
@@ -3051,11 +3053,11 @@ export default function ServiceDetailPage() {
                               <div className="flex items-baseline gap-2">
                                 {pkgDiscountedPrice && (
                                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] line-through">
-                                    £{formatCurrency(pkgRegularPrice)}
+                                    {formatPrice(pkgRegularPrice)}
                                   </span>
                                 )}
                                 <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                                  £{formatCurrency(pkgPrice)}
+                                  {formatPrice(pkgPrice)}
                                 </span>
                               </div>
                               {pkgDiscountedPrice && (() => {
@@ -3172,13 +3174,13 @@ export default function ServiceDetailPage() {
                       <div className="flex items-baseline gap-2 mb-2">
                         {originalPrice && (
                           <span className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] line-through">
-                            £{originalPrice}
+                            {formatPrice(originalPrice)}
                           </span>
                         )}
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="font-['Poppins',sans-serif] text-[32px] text-[#FE8A0F]">
-                          £{basePrice}
+                          {formatPrice(basePrice)}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                           / {service.priceUnit?.replace(/^per\s+/i, '') || service.priceUnit}
@@ -3352,7 +3354,7 @@ export default function ServiceDetailPage() {
                                     <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
                                       isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                     }`}>
-                                      +£{typeof addon.price === 'number' ? formatCurrency(addon.price) : addon.price}
+                                      +{formatPrice(typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0).replace(/£|,/g, '')) || 0)}
                                     </span>
                                     {addon.deliveryTime && (
                                       <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
@@ -3441,10 +3443,10 @@ export default function ServiceDetailPage() {
                       {/* Base price */}
                       <div className="flex items-center justify-between">
                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                          {selectedPackage ? `${selectedPackage.name} Package` : 'Service'} {quantity > 1 ? `(${formatNumber(quantity)} × £${formatCurrency(basePrice)})` : ''}
+                          {selectedPackage ? `${selectedPackage.name} Package` : 'Service'} {quantity > 1 ? `(${formatNumber(quantity)} × ${formatPrice(basePrice)})` : ''}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                          £{formatCurrency(basePrice * quantity)}
+                          {formatPrice(basePrice * quantity)}
                         </span>
                       </div>
                       
@@ -3455,7 +3457,7 @@ export default function ServiceDetailPage() {
                             Extras {quantity > 1 ? `(${quantity}x)` : ''}
                           </span>
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            £{formatCurrency(addonsTotal * quantity)}
+                            {formatPrice(addonsTotal * quantity)}
                           </span>
                         </div>
                       )}
@@ -3467,7 +3469,7 @@ export default function ServiceDetailPage() {
                           Total
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                          £{formatCurrency(totalPrice)}
+                          {formatPrice(totalPrice)}
                         </span>
                       </div>
                     </div>
@@ -3529,7 +3531,7 @@ export default function ServiceDetailPage() {
                 </span>
               )}
               <span className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                £{basePrice}
+                {formatPrice(basePrice)}
               </span>
             </div>
             <Sheet>
@@ -3592,13 +3594,13 @@ export default function ServiceDetailPage() {
                       <div className="flex items-baseline gap-2 mb-2">
                         {originalPrice && (
                           <span className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b] line-through">
-                            £{originalPrice}
+                            {formatPrice(originalPrice)}
                           </span>
                         )}
                       </div>
                       <div className="flex items-baseline gap-2">
                         <span className="font-['Poppins',sans-serif] text-[32px] text-[#FE8A0F]">
-                          £{basePrice}
+                          {formatPrice(basePrice)}
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                           / {(selectedPackage ? selectedPackage.priceUnit : service.priceUnit)?.replace(/^per\s+/i, '') || (selectedPackage ? selectedPackage.priceUnit : service.priceUnit)}
@@ -3812,7 +3814,7 @@ export default function ServiceDetailPage() {
                                       <span className={`font-['Poppins',sans-serif] text-[15px] font-medium ${
                                         isSelected ? 'text-[#FE8A0F]' : 'text-[#2c353f]'
                                       }`}>
-                                        +£{typeof addon.price === 'number' ? formatCurrency(addon.price) : addon.price}
+                                        +{formatPrice(typeof addon.price === 'number' ? addon.price : parseFloat(String(addon.price || 0).replace(/£|,/g, '')) || 0)}
                                       </span>
                                       {addon.deliveryTime && (
                                         <span className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
@@ -3899,7 +3901,7 @@ export default function ServiceDetailPage() {
                                 Base price {quantity > 1 ? `(${quantity}x)` : ''}
                               </span>
                               <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                                £{formatCurrency(basePrice * quantity)}
+                                {formatPrice(basePrice * quantity)}
                               </span>
                             </div>
                             
@@ -3909,7 +3911,7 @@ export default function ServiceDetailPage() {
                                   Extras {quantity > 1 ? `(${quantity}x)` : ''}
                                 </span>
                                 <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                                  £{formatCurrency(addonsTotal * quantity)}
+                                  {formatPrice(addonsTotal * quantity)}
                                 </span>
                               </div>
                             )}
@@ -3921,7 +3923,7 @@ export default function ServiceDetailPage() {
                                 Total
                               </span>
                               <span className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F] font-medium">
-                                £{formatCurrency(totalPrice)}
+                                {formatPrice(totalPrice)}
                               </span>
                             </div>
                           </div>

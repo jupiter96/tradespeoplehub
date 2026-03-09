@@ -48,6 +48,7 @@ import {
 import { useCart } from "./CartContext";
 import AddToCartModal from "./AddToCartModal";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -288,6 +289,7 @@ const geocodePostcode = (postcode: string): { latitude: number; longitude: numbe
 export default function ServicesPage() {
   const { addToCart } = useCart();
   const { isLoggedIn, userRole } = useAccount();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const { sectorSlug: sectorSlugFromPath, serviceCategorySlug: serviceCategorySlugFromPath, '*': serviceSubCategorySplat } =
     useParams<{
@@ -1020,13 +1022,13 @@ export default function ServicesPage() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: `£${formatCurrency(s.price)}`,
+            price: formatPrice(s.price),
             // Only use originalPrice if discount is still valid (within date range)
             originalPrice: (s.originalPrice && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? `£${formatCurrency(s.originalPrice)}`
+              ? formatPrice(s.originalPrice)
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -1060,8 +1062,8 @@ export default function ServicesPage() {
             packages: s.packages?.map((p: any) => ({
               id: p.id || p._id,
               name: p.name,
-price: `£${formatCurrency(p.price)}`,
-                            originalPrice: p.originalPrice ? `£${formatCurrency(p.originalPrice)}` : undefined,
+price: formatPrice(p.price),
+                            originalPrice: p.originalPrice ? formatPrice(p.originalPrice) : undefined,
               originalPriceValidFrom: p.originalPriceValidFrom || null,
               originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",
@@ -2344,10 +2346,10 @@ price: `£${formatCurrency(p.price)}`,
           />
           <div className="flex items-center justify-between">
             <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-              £{formatCurrency(priceRange[0])}
+              {formatPrice(priceRange[0])}
             </span>
             <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-              £{formatCurrency(priceRange[1])}
+              {formatPrice(priceRange[1])}
             </span>
           </div>
         </div>
@@ -2887,7 +2889,7 @@ price: `£${formatCurrency(p.price)}`,
                             return {
                                 min: minPackagePrice,
                                 max: maxPackagePrice,
-                                formatted: `£${formatCurrency(minPackagePrice)}`
+                                formatted: formatPrice(minPackagePrice)
                               };
                             }
                             
@@ -2895,7 +2897,7 @@ price: `£${formatCurrency(p.price)}`,
                             return {
                               min: minPackagePrice,
                               max: maxPackagePrice,
-                              formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`
+                              formatted: `${formatPrice(minPackagePrice)} to ${formatPrice(maxPackagePrice)}`
                             };
                           };
                           
@@ -3241,14 +3243,14 @@ price: `£${formatCurrency(p.price)}`,
                                 return {
                                   min: minPackagePrice,
                                   max: maxPackagePrice,
-                                  formatted: `£${formatCurrency(minPackagePrice)}`
+                                  formatted: formatPrice(minPackagePrice)
                                 };
                               }
                               
                               return {
                                 min: minPackagePrice,
                                 max: maxPackagePrice,
-                                formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`
+                                formatted: `${formatPrice(minPackagePrice)} to ${formatPrice(maxPackagePrice)}`
                               };
                             };
                             

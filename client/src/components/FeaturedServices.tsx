@@ -16,6 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import ServiceCard from "./ServiceCard";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -173,7 +174,7 @@ const getCategoryTag = (service: any) => {
 };
 
 // Helper function to calculate price range when packages exist
-const getPriceRange = (service: any) => {
+const getPriceRange = (service: any, formatPriceFn: (gbp: number) => string) => {
   if (!service.packages || service.packages.length === 0) {
     return null;
   }
@@ -187,7 +188,7 @@ const getPriceRange = (service: any) => {
   service.packages.forEach((pkg: any) => {
     // Use originalPrice (discount price) if available, otherwise use price (original price)
     // originalPrice = discount price (lower), price = original price (higher)
-    const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+    const pkgPrice = typeof (pkg.originalPrice ?? pkg.price) === "number" ? (pkg.originalPrice ?? pkg.price ?? 0) : parseFloat(String(pkg.originalPrice || pkg.price || 0).replace(/[£$,]/g, "")) || 0;
     if (pkgPrice > 0) {
       if (pkgPrice < minPackagePrice) {
         minPackagePrice = pkgPrice;
@@ -209,7 +210,7 @@ const getPriceRange = (service: any) => {
   return {
       min: minPackagePrice,
       max: maxPackagePrice,
-      formatted: `£${formatCurrency(minPackagePrice)}`
+      formatted: formatPriceFn(minPackagePrice)
     };
   }
   
@@ -219,7 +220,7 @@ const getPriceRange = (service: any) => {
   return {
     min: minPackagePrice,
     max: maxPackagePrice,
-    formatted: `£${formatCurrency(minPackagePrice)} to £${formatCurrency(maxPackagePrice)}`
+    formatted: `${formatPriceFn(minPackagePrice)} to ${formatPriceFn(maxPackagePrice)}`
   };
 };
 
@@ -256,6 +257,7 @@ type ViewMode = 'pane' | 'list';
 function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGridProps & { initialCount?: number }) {
   const navigate = useNavigate();
   const { isLoggedIn, userRole } = useAccount();
+  const { formatPrice } = useCurrency();
   const [visibleCount, setVisibleCount] = useState(initialCount);
   const [viewMode, setViewMode] = useState<ViewMode>('pane');
   const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
@@ -549,7 +551,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                   {/* Price Section */}
                   <div className="mb-2">
                     {(() => {
-                      const priceRange = getPriceRange(service);
+                      const priceRange = getPriceRange(service, formatPrice);
                       if (priceRange) {
                         // Show price range when packages exist
                             // Get all packages with discounts
@@ -622,22 +624,22 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                           <>
                             <div className="flex items-baseline gap-2">
                               <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
-                                {service.originalPrice || service.price}
+                                {formatPrice(Number(service.originalPrice) || Number(service.price) || 0)}
                               </span>
-                              {service.originalPrice && (
+                              {service.originalPrice != null && (
                                 <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#999] line-through">
-                                  Was: {service.price}
+                                  Was: {formatPrice(Number(service.price) || 0)}
                                 </span>
                               )}
                             </div>
                             {/* Discount Badge */}
-                            {service.originalPrice && (
+                            {service.originalPrice != null && Number(service.price) > 0 && (
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                 <span 
                                   className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
                                   style={{ backgroundColor: '#CC0C39' }}
                                 >
-                                  {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                  {Math.round(((Number(service.price) - Number(service.originalPrice)) / Number(service.price)) * 100)}% off
                                 </span>
                             </div>
                           )}
@@ -729,6 +731,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
 function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
   const navigate = useNavigate();
   const { isLoggedIn, userRole } = useAccount();
+  const { formatPrice } = useCurrency();
   const [likedServices, setLikedServices] = useState<Set<string>>(new Set());
   
   // Fetch favourites on mount (only for logged-in clients)
@@ -944,7 +947,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                       {/* Price Section */}
                       <div className="mb-2 md:mb-2.5">
                         {(() => {
-                          const priceRange = getPriceRange(service);
+                          const priceRange = getPriceRange(service, formatPrice);
                           if (priceRange) {
                             // Show price range when packages exist
                             // Get all packages with discounts
@@ -1017,16 +1020,16 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                               <>
                                 <div className="flex items-baseline gap-2">
                                   <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f]">
-                          {service.originalPrice || service.price}
+                                    {formatPrice(Number(service.originalPrice) || Number(service.price) || 0)}
                                   </span>
-                                  {service.originalPrice && (
+                                  {service.originalPrice != null && (
                                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                                      Was: {service.price}
+                                      Was: {formatPrice(Number(service.price) || 0)}
                                     </span>
                                   )}
                         </div>
                                 {/* Discount and Limited Time Offer - Below Price */}
-                                {service.originalPrice && (() => {
+                                {service.originalPrice != null && Number(service.price) > 0 && (() => {
                                   // Check if service has a valid time-limited discount
                                   // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
                                   // No end date means offer is valid indefinitely
@@ -1044,7 +1047,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                                         className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
                                         style={{ backgroundColor: '#CC0C39' }}
                                       >
-                                        {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                        {Math.round(((Number(service.price) - Number(service.originalPrice)) / Number(service.price)) * 100)}% off
                                       </span>
                                       {hasTimeLimitedDiscount && (
                                         <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
@@ -1183,6 +1186,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
 }
 
 export default function FeaturedServices() {
+  const { formatPrice } = useCurrency();
   // Fetch services from API
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1277,13 +1281,13 @@ export default function FeaturedServices() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: `£${formatCurrency(s.price)}`,
+            price: typeof s.price === "number" ? s.price : parseFloat(String(s.price).replace(/[£$,]/g, "")) || 0,
             // Only treat originalPrice as active discount if it is set and still within its valid date range
             originalPrice: (s.originalPrice && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? `£${formatCurrency(s.originalPrice)}`
+              ? (typeof s.originalPrice === "number" ? s.originalPrice : parseFloat(String(s.originalPrice).replace(/[£$,]/g, "")) || 0)
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -1307,8 +1311,8 @@ export default function FeaturedServices() {
             packages: s.packages?.map((p: any) => ({
               id: p.id || p._id,
               name: p.name,
-              price: `£${formatCurrency(p.price)}`,
-              originalPrice: p.originalPrice ? `£${formatCurrency(p.originalPrice)}` : undefined,
+              price: typeof p.price === "number" ? p.price : parseFloat(String(p.price || 0).replace(/[£$,]/g, "")) || 0,
+              originalPrice: p.originalPrice != null ? (typeof p.originalPrice === "number" ? p.originalPrice : parseFloat(String(p.originalPrice).replace(/[£$,]/g, "")) || 0) : undefined,
               originalPriceValidFrom: p.originalPriceValidFrom || null,
               originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",
@@ -1337,7 +1341,7 @@ export default function FeaturedServices() {
     };
 
     fetchServices();
-  }, []);
+  }, [formatPrice]);
 
   // Shuffle array function for random selection
   const shuffleArray = <T,>(array: T[]): T[] => {
