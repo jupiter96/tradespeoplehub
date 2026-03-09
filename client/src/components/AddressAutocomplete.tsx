@@ -1067,11 +1067,11 @@ export default function AddressAutocomplete({
         </div>
       )}
 
-      {/* Borough/Council Field (optional) */}
+      {/* Region/State Field (optional) */}
       {showCountyField && !showManualEntry && (
         <div className="mt-4 relative">
           <Label htmlFor="county" className="text-black mb-2">
-            Borough/Council
+            Region/State
           </Label>
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black/50/50" />
@@ -1082,7 +1082,7 @@ export default function AddressAutocomplete({
               onChange={(e) => {
                 onCountyChange?.(e.target.value);
               }}
-              placeholder="Borough/Council (optional)"
+              placeholder="Region/State (optional)"
               className="pl-10 bg-white border-[#222] text-black"
             />
           </div>
@@ -1176,7 +1176,7 @@ export default function AddressAutocomplete({
           
           <div>
             <Label htmlFor="manual-county" className="text-black">
-              Borough/Council
+              Region/State
             </Label>
             <Input
               id="manual-county"
@@ -1189,7 +1189,7 @@ export default function AddressAutocomplete({
                   e.stopPropagation();
                 }
               }}
-              placeholder="Borough/Council (optional)"
+              placeholder="Region/State (optional)"
               className="mt-1 bg-white border-[#222] text-black"
             />
           </div>

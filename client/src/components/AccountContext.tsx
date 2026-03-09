@@ -19,6 +19,7 @@ interface UserInfo {
   address?: string;
   townCity?: string;
   county?: string;
+  country?: string;
   postcode?: string;
   workType?: "inPerson" | "online";
   travelDistance?: string;
@@ -90,10 +91,11 @@ interface ProfileUpdatePayload {
   lastName?: string; // Read-only after registration, not allowed to be updated
   email: string;
   phone: string;
-  postcode: string;
+  postcode?: string;
   address?: string;
   townCity?: string;
   county?: string;
+  country?: string;
   tradingName?: string;
   workType?: "inPerson" | "online";
   travelDistance?: string;

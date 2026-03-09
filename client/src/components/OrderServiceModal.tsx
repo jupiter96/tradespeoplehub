@@ -47,7 +47,7 @@ export default function OrderServiceModal({
   const totalPrice = basePrice * quantity;
 
   const handleSubmit = () => {
-    if (!selectedDate || !selectedTime || !address || !postcode) {
+    if (!selectedDate || !selectedTime || !address) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -241,7 +241,7 @@ export default function OrderServiceModal({
                 setCounty(addressData.county || "");
               }}
               label="Postcode"
-              required
+              required={false}
               showAddressField={true}
               showTownCityField={true}
               showCountyField={true}

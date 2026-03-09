@@ -125,6 +125,15 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
 import AddressAutocomplete from "./AddressAutocomplete";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "./ui/command";
 import {
   Select,
   SelectContent,
@@ -132,6 +141,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { COUNTRY_NAMES } from "../data/countries";
 import {
   Table,
   TableBody,
@@ -1900,6 +1910,7 @@ function JobsSection() {
 function DetailsSection() {
   const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, resendEmailChangeOTP, resendPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
   const [isEditing, setIsEditing] = useState(false);
+  const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
   
   // Load sectors from API
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
@@ -1942,6 +1953,7 @@ function DetailsSection() {
       address: userInfo?.address || "",
       townCity: userInfo?.townCity || "",
         county: userInfo?.county || "",
+        country: userInfo?.country || "",
       postcode: userInfo?.postcode || "",
         workType: (userInfo?.workType === "online" || userInfo?.workType === "inPerson") ? userInfo.workType : "inPerson",
         travelDistance: userInfo?.travelDistance || "",
@@ -2109,6 +2121,7 @@ function DetailsSection() {
         ...baseForm,
         townCity: keepAddressFromPrev && (prev.townCity || "").trim() ? prev.townCity : baseForm.townCity,
         county: keepAddressFromPrev && (prev.county || "").trim() ? prev.county : baseForm.county,
+        country: keepAddressFromPrev && (prev.country || "").trim() ? prev.country : baseForm.country ?? "",
         categories: nextCategories,
         subcategories: nextSubcategories,
       };
@@ -2129,12 +2142,13 @@ function DetailsSection() {
       .then((data: { city?: string; region?: string; country_name?: string }) => {
         const city = (data.city || "").trim();
         const region = (data.region || "").trim();
-        const country = (data.country_name || "").trim();
-        if (!city && !region && !country) return;
+        const countryName = (data.country_name || "").trim();
+        if (!city && !region && !countryName) return;
         setFormData((prev) => ({
           ...prev,
           ...(city && { townCity: city }),
-          ...(region || country ? { county: [region, country].filter(Boolean).join(", ") } : {}),
+          ...(region || countryName ? { county: [region, countryName].filter(Boolean).join(", ") } : {}),
+          ...(countryName && { country: countryName }),
         }));
       })
       .catch(() => {});
@@ -2151,19 +2165,15 @@ function DetailsSection() {
     // Use ref so we always send the latest form state (avoids stale closure when user selects then immediately saves)
     const latest = formDataRef.current;
 
-    // First name, last name, email, and phone are read-only after registration
-    if (!latest.postcode) {
-      toast.error("Please complete the required fields.");
-      return;
-    }
     setIsSaving(true);
 
     const payload: ProfileUpdatePayload = {
       // firstName, lastName, email, and phone are not allowed to be updated after registration
-      postcode: latest.postcode.trim(),
+      postcode: latest.postcode.trim() || undefined,
       address: latest.address.trim() || undefined,
       townCity: latest.townCity.trim() || undefined,
       ...(latest.county && { county: latest.county.trim() }),
+      ...(latest.country && { country: latest.country.trim() }),
     };
 
     if (userRole === "professional") {
@@ -2466,13 +2476,56 @@ function DetailsSection() {
                 });
               }}
               label="Postcode"
-              required
+              required={false}
               showAddressField={true}
               showTownCityField={true}
               showCountyField={true}
               addressLabel="Address"
               className="font-['Poppins',sans-serif]"
             />
+          </div>
+          <div className={userRole === "professional" ? "md:col-span-2" : ""}>
+            <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
+              Country
+            </Label>
+            <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-10 w-full items-center justify-between rounded-xl border-2 border-gray-200 bg-white px-3 py-2 text-left font-['Poppins',sans-serif] text-[14px] focus:border-[#3B82F6] focus:outline-none"
+                >
+                  <span className={formData.country ? "text-[#2c353f]" : "text-gray-500"}>
+                    {formData.country || "Select country..."}
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0" align="start">
+                <Command className="rounded-lg border-0 shadow-none" shouldFilter={true}>
+                  <CommandInput placeholder="Search country..." className="font-['Poppins',sans-serif] h-10" />
+                  <CommandList className="max-h-[280px]">
+                    <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] py-4 text-center">
+                      No country found.
+                    </CommandEmpty>
+                    <CommandGroup className="p-1">
+                      {COUNTRY_NAMES.map((name) => (
+                        <CommandItem
+                          key={name}
+                          value={name}
+                          className="font-['Poppins',sans-serif] cursor-pointer"
+                          onSelect={() => {
+                            setFormData((prev) => ({ ...prev, country: name }));
+                            setCountryPopoverOpen(false);
+                          }}
+                        >
+                          {name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           {userRole === "professional" && (
             <>

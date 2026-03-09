@@ -587,7 +587,7 @@ export default function CustomOrderModal({
                       setCounty(addressData.county || "");
                     }}
                     label="Postcode"
-                    required
+                    required={false}
                     showAddressField={true}
                     showTownCityField={true}
                     showCountyField={true}
@@ -623,7 +623,7 @@ export default function CustomOrderModal({
               </Button>
               <Button
                 onClick={handlePlaceOrder}
-                disabled={!selectedService || !scheduledDate || !scheduledTime || !address || !postcode}
+                disabled={!selectedService || !scheduledDate || !scheduledTime || !address}
                 className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif] text-[14px]"
               >
                 <Check className="w-4 h-4 mr-2" />

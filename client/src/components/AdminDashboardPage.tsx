@@ -68,6 +68,7 @@ import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
 import AdminJobPostsPage from "./admin/AdminJobPostsPage";
 import AdminBidsOnPostsPage from "./admin/AdminBidsOnPostsPage";
 import AdminJobAmountPage from "./admin/AdminJobAmountPage";
+import AdminCountriesPage from "./admin/AdminCountriesPage";
 import PromoCodeSection from "./PromoCodeSection";
 import API_BASE_URL from "../config/api";
 import { useAdminPermissions } from "../hooks/useAdminPermissions";
@@ -357,6 +358,8 @@ export default function AdminDashboardPage() {
         return <AdminJobAmountPage key={activeSection} />;
       case "coupon-manage":
         return <PromoCodeSection key={activeSection} />;
+      case "countries":
+        return <AdminCountriesPage key={activeSection} />;
       case "completed-order":
         return (
           <AdminOrdersPage

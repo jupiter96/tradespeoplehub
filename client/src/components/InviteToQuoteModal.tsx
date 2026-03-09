@@ -89,7 +89,7 @@ export default function InviteToQuoteModal({
 
   const handleSubmit = () => {
     // Validate required fields
-    if (!formData.category || !formData.title || !formData.description || !formData.postcode) {
+    if (!formData.category || !formData.title || !formData.description) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -175,10 +175,10 @@ export default function InviteToQuoteModal({
             </p>
           </div>
 
-          {/* Postcode */}
+          {/* Postcode (optional) */}
           <div className="space-y-2">
             <Label htmlFor="postcode" className="font-['Poppins',sans-serif] text-[14px] font-medium">
-              Postcode <span className="text-red-500">*</span>
+              Postcode
             </Label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

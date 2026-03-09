@@ -2932,6 +2932,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       address,
       townCity,
       county,
+      country,
       tradingName,
       workType,
       travelDistance,
@@ -2959,9 +2960,6 @@ router.put('/profile', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Last name cannot be changed after registration' });
     }
     
-    if (hasField('postcode') && !String(postcode).trim()) {
-      return res.status(400).json({ error: 'Postcode is required' });
-    }
     if (hasField('email')) {
       const normalizedEmailAttempt = normalizeEmail(email);
       if (!normalizedEmailAttempt) {
@@ -3014,7 +3012,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     // First name and last name are not allowed to be updated after registration
     // if (hasField('firstName')) user.firstName = String(firstName).trim();
     // if (hasField('lastName')) user.lastName = String(lastName).trim();
-    if (hasField('postcode')) user.postcode = String(postcode).trim();
+    if (hasField('postcode')) user.postcode = (postcode != null && String(postcode).trim()) ? String(postcode).trim() : '';
     
     // Address is required for client and professional, preserve existing value if not provided
     if (address !== undefined && address !== null) {
@@ -3038,6 +3036,12 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (county !== undefined && county !== null) {
       const trimmedCounty = String(county).trim();
       user.county = trimmedCounty || undefined;
+    }
+
+    // Update country only if provided
+    if (country !== undefined && country !== null) {
+      const trimmedCountry = String(country).trim();
+      user.country = trimmedCountry || undefined;
     }
 
     // Initialize verification object if it doesn't exist
@@ -4018,8 +4022,8 @@ router.post('/profile/addresses', requireAuth, async (req, res) => {
 
     const { postcode, address, city, county, phone, isDefault } = req.body;
 
-    if (!postcode || !address || !city || !phone) {
-      return res.status(400).json({ error: 'Please fill in all required fields' });
+    if (!address || !city || !phone) {
+      return res.status(400).json({ error: 'Please fill in all required fields (address, city, phone)' });
     }
 
     // Generate unique ID for address
@@ -4043,7 +4047,7 @@ router.post('/profile/addresses', requireAuth, async (req, res) => {
 
     const newAddress = {
       id: addressId,
-      postcode: postcode.trim(),
+      postcode: (postcode != null && String(postcode).trim()) ? String(postcode).trim() : '',
       address: address.trim(),
       city: city.trim(),
       county: county?.trim() || '',
@@ -4084,8 +4088,8 @@ router.put('/profile/addresses/:addressId', requireAuth, async (req, res) => {
     const { addressId } = req.params;
     const { postcode, address, city, county, phone, isDefault } = req.body;
 
-    if (!postcode || !address || !city || !phone) {
-      return res.status(400).json({ error: 'Please fill in all required fields' });
+    if (!address || !city || !phone) {
+      return res.status(400).json({ error: 'Please fill in all required fields (address, city, phone)' });
     }
 
     if (!user.addresses || user.addresses.length === 0) {
@@ -4109,7 +4113,7 @@ router.put('/profile/addresses/:addressId', requireAuth, async (req, res) => {
     // Update the address
     const updatedAddress = {
       ...user.addresses[addressIndex].toObject ? user.addresses[addressIndex].toObject() : user.addresses[addressIndex],
-      postcode: postcode.trim(),
+      postcode: (postcode != null && String(postcode).trim()) ? String(postcode).trim() : '',
       address: address.trim(),
       city: city.trim(),
       county: county?.trim() || '',

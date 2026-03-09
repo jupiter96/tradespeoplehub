@@ -544,8 +544,8 @@ export default function PostJobPage() {
         // Step 3: Category – sector and at least 5 subcategories/skills
         return selectedSector !== "" && selectedCategories.length >= 5;
       case 4:
-        // Require urgency; if in-person also require postcode
-        return urgency !== "" && (jobLocationType === "online" || postcode.trim() !== "");
+        // Require urgency; postcode is optional
+        return urgency !== "";
       case 5:
         // Require budget; if custom, require valid min/max and min <= max
         if (selectedBudget === "") return false;
@@ -561,7 +561,6 @@ export default function PostJobPage() {
           lastName.trim() === "" ||
           registerAddress.trim() === "" ||
           registerTownCity.trim() === "" ||
-          registerPostcode.trim() === "" ||
           email.trim() === "" ||
           !agreeTerms
         )
@@ -662,7 +661,6 @@ export default function PostJobPage() {
     if (!lastName.trim()) errors.lastName = "Last name is required";
     if (!registerAddress.trim()) errors.address = "Address is required";
     if (!registerTownCity.trim()) errors.townCity = "Town/City is required";
-    if (!registerPostcode.trim()) errors.postcode = "Postcode is required";
     const phoneParts = phone.includes("|") ? phone.split("|") : ["+44", phone.replace(/\D/g, "")];
     const countryCode = phoneParts[0] || "+44";
     const phoneNumber = phoneParts[1] || "";
@@ -690,7 +688,7 @@ export default function PostJobPage() {
       lastName: lastName.trim(),
       email: email.trim(),
       phone: normalizePhoneForBackend(phoneNumber, countryCode),
-      postcode: registerPostcode.trim(),
+      postcode: registerPostcode.trim() || "",
       password,
       userType: "client" as const,
       address: registerAddress.trim(),
@@ -1407,7 +1405,7 @@ export default function PostJobPage() {
                       setCounty(addressData.county || "");
                     }}
                     label="Postcode"
-                    required
+                    required={false}
                     showAddressField={true}
                     showTownCityField={true}
                     showCountyField={true}
@@ -1687,7 +1685,7 @@ export default function PostJobPage() {
                       setFieldErrors((p) => ({ ...p, postcode: "", address: "", townCity: "" }));
                     }}
                     label="Postcode"
-                    required
+                    required={false}
                     showAddressField
                     showTownCityField
                     showCountyField

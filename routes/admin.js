@@ -415,6 +415,55 @@ router.post('/upload-image/:type/:entityType/:entityId', requireAdmin, (req, res
   }
 });
 
+// Get unique countries by analyzing the users collection (for admin /admin/countries)
+// Country is derived from user.county (last segment after comma, e.g. "California, United States" -> "United States")
+// or from user.country if the field exists in the schema.
+router.get('/countries', requireAdmin, async (req, res) => {
+  try {
+    const isSuperAdmin = !req.adminUser.permissions || req.adminUser.permissions.length === 0;
+    if (!isSuperAdmin && !req.adminUser.permissions.includes('region-management')) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    const list = await User.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      {
+        $project: {
+          country: {
+            $cond: {
+              if: { $and: [{ $ne: ['$country', null] }, { $ne: ['$country', ''] }] },
+              then: { $trim: { input: '$country' } },
+              else: {
+                $let: {
+                  vars: {
+                    parts: { $split: [{ $ifNull: ['$county', ''] }, ','] },
+                  },
+                  in: {
+                    $trim: {
+                      input: {
+                        $arrayElemAt: [
+                          '$$parts',
+                          { $subtract: [{ $size: '$$parts' }, 1] },
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      { $match: { country: { $ne: '' } } },
+      { $group: { _id: '$country', userCount: { $sum: 1 } } },
+      { $sort: { userCount: -1 } },
+      { $project: { country: '$_id', userCount: 1, _id: 0 } },
+    ]);
+    return res.json({ countries: list });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to get countries' });
+  }
+});
+
 // Get all users (with pagination and filters)
 router.get('/users', requireAdmin, async (req, res) => {
   try {

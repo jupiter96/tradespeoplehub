@@ -546,7 +546,7 @@ export default function CustomCheckoutPage() {
   };
 
   const handleSaveAddress = async () => {
-    if (!newAddress.postcode || !newAddress.address || !newAddress.city || !newAddress.phone) {
+    if (!newAddress.address || !newAddress.city || !newAddress.phone) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -792,7 +792,7 @@ export default function CustomCheckoutPage() {
                                   });
                                 }}
                                 label="Postcode"
-                                required
+                                required={false}
                                 showAddressField={true}
                                 showTownCityField={true}
                                 showCountyField={true}

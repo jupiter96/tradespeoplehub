@@ -186,7 +186,7 @@ export default function AdminUserModal({
 
     try {
       // Validation based on role
-      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.postcode) {
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone) {
         toast.error("Please fill in all required fields");
         setLoading(false);
         return;
@@ -233,7 +233,7 @@ export default function AdminUserModal({
         lastName: formData.lastName.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim(),
-        postcode: formData.postcode.trim(),
+        postcode: (formData.postcode && formData.postcode.trim()) ? formData.postcode.trim() : "",
         role: formData.role,
         ...(formData.referralCode && { referralCode: formData.referralCode.trim() }),
       };
@@ -459,7 +459,7 @@ export default function AdminUserModal({
                   });
                 }}
                 label="Postcode"
-                required
+                required={false}
                 showAddressField={true}
                 showTownCityField={true}
                 showCountyField={true}

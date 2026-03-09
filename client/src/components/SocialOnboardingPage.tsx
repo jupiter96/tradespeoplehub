@@ -113,9 +113,7 @@ export default function SocialOnboardingPage() {
     if (!townCity.trim()) {
       errors.townCity = "Town/City is required";
     }
-    if (!postcode.trim()) {
-      errors.postcode = "Postcode is required";
-    }
+    // Postcode is optional
     // Professional-specific required fields
     if (userType === "professional") {
       if (!tradingName.trim()) {
@@ -480,7 +478,7 @@ export default function SocialOnboardingPage() {
                     });
                   }}
                   label="Postcode"
-                  required
+                  required={false}
                   showAddressField={true}
                   showTownCityField={true}
                   showCountyField={true}
