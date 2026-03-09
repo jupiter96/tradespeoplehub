@@ -120,6 +120,7 @@ function ActiveJobsSection() {
   const navigate = useNavigate();
   const { getProfessionalActiveJobs } = useJobs();
   const { userInfo } = useAccount();
+  const { formatPrice } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
