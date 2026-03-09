@@ -332,12 +332,18 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        // Normalize avatars
-        const normalizedOrders = (data.orders || []).map((order: Order) => ({
-          ...order,
-          professionalAvatar: normalizeAvatar(order.professionalAvatar),
-          clientAvatar: normalizeAvatar(order.clientAvatar),
-        }));
+        // Normalize avatars and ensure amountValue is set for currency display (API returns GBP)
+        const normalizedOrders = (data.orders || []).map((order: Order) => {
+          const o = order as unknown as { amountValue?: number; total?: number; amount?: string; subtotal?: number };
+          const raw = o.amountValue ?? (typeof o.total === 'number' && o.total > 0 ? o.total : null) ?? (typeof o.subtotal === 'number' && o.subtotal > 0 ? o.subtotal : null);
+          const amountValue = Number.isFinite(raw) && raw > 0 ? raw : (parseFloat(String(o.amount || '').replace(/[^0-9.]/g, '')) || 0);
+          return {
+            ...order,
+            professionalAvatar: normalizeAvatar(order.professionalAvatar),
+            clientAvatar: normalizeAvatar(order.clientAvatar),
+            amountValue: Number.isFinite(amountValue) ? amountValue : 0,
+          };
+        });
         setOrders(normalizedOrders);
       } else {
         console.error("Failed to fetch orders:", response.statusText);

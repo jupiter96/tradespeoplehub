@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useOrders } from "./OrdersContext";
+import { useOrders, Order } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { usePendingCustomOffer } from "./PendingCustomOfferContext";
@@ -195,6 +195,10 @@ function VideoThumbnail({
       )}
     </div>
   );
+}
+
+function orderAmountNum(order: Order): number {
+  return Number(order.amountValue) || parseFloat(String(order.amount || '').replace(/[^0-9.]/g, '')) || 0;
 }
 
 export default function ClientOrdersSection() {
@@ -1860,7 +1864,7 @@ export default function ClientOrdersSection() {
         </div>
         <div className="text-right">
           <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] mb-1">
-            {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+            {formatPrice(orderAmountNum(order))}
           </p>
           {order.rating && (
             <div className="flex items-center gap-1 justify-end">
@@ -3129,7 +3133,7 @@ export default function ClientOrdersSection() {
                             Order Amount
                           </p>
                           <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
-                            {formatPrice(Number((currentOrder as any).amountValue ?? currentOrder.amount) || parseFloat(String(currentOrder.amount).replace(/[£$,]/g, "")) || 0)}
+                            {formatPrice(orderAmountNum(currentOrder))}
                           </p>
                         </div>
                         <div>
@@ -5046,7 +5050,7 @@ export default function ClientOrdersSection() {
                     Total Price
                   </p>
                   <p className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F]">
-                    {formatPrice(Number((currentOrder as any).amountValue ?? currentOrder.amount) || parseFloat(String(currentOrder.amount).replace(/[£$,]/g, "")) || 0)}
+                    {formatPrice(orderAmountNum(currentOrder))}
                   </p>
                 </div>
 
@@ -6977,7 +6981,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+                        {formatPrice(orderAmountNum(order))}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -7076,7 +7080,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+                        {formatPrice(orderAmountNum(order))}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -7175,7 +7179,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+                        {formatPrice(orderAmountNum(order))}
                       </TableCell>
                       <TableCell>
                         {order.rating && (
@@ -7274,7 +7278,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+                        {formatPrice(orderAmountNum(order))}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -7358,7 +7362,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+                        {formatPrice(orderAmountNum(order))}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>

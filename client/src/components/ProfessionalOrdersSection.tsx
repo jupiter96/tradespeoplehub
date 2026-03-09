@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useOrders } from "./OrdersContext";
+import { useOrders, Order } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import DeliveryCountdown from "./DeliveryCountdown";
@@ -114,6 +114,10 @@ import {
   isVideoFile,
   OrderMilestoneTable,
 } from "./orders";
+
+function orderAmountNum(order: Order): number {
+  return Number(order.amountValue) || parseFloat(String(order.amount || '').replace(/[^0-9.]/g, '')) || 0;
+}
 
 function ProfessionalOrdersSection() {
   const navigate = useNavigate();
@@ -1237,7 +1241,7 @@ function ProfessionalOrdersSection() {
         </div>
         <div className="text-right">
           <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] mb-1">
-            {formatPrice(Number(order.amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
+            {formatPrice(orderAmountNum(order))}
           </p>
           {order.rating && (
             <div className="flex items-center gap-1 justify-end">
@@ -2777,6 +2781,7 @@ function ProfessionalOrdersSection() {
         onActiveTabChange={setActiveTab}
         onViewOrder={handleViewOrder}
         onStartConversation={startConversation}
+        formatAmount={formatPrice}
       />
     </>
   );

@@ -31,6 +31,11 @@ import { Order } from "./types";
 import { formatDate, formatMoney, getStatusBadge, getStatusIcon, getStatusLabelForTable, resolveAvatarUrl } from "./utils";
 import { formatNumber } from "../../utils/formatNumber";
 
+/** Get numeric order amount (GBP) for display with formatPrice/formatAmount */
+function orderAmountNum(order: Order): number {
+  return Number(order.amountValue) || parseFloat(String(order.amount || '').replace(/[^0-9.]/g, '')) || 0;
+}
+
 interface ProfessionalOrderListProps {
   orders: Order[];
   allOrders: Order[];
@@ -53,6 +58,8 @@ interface ProfessionalOrderListProps {
     jobId?: string;
     jobTitle?: string;
   }) => void;
+  /** Format numeric amount (GBP) with selected currency; used for table Amount column */
+  formatAmount?: (amount: number) => string;
 }
 
 export default function ProfessionalOrderList({
@@ -70,6 +77,7 @@ export default function ProfessionalOrderList({
   onActiveTabChange,
   onViewOrder,
   onStartConversation,
+  formatAmount,
 }: ProfessionalOrderListProps) {
   const handleStartChat = (order: Order) => {
     if (order.client && order.clientId) {
@@ -141,7 +149,7 @@ export default function ProfessionalOrderList({
                   {formatDate(order.date)}
                 </TableCell>
                 <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                  {formatMoney(typeof order.amount === "number" || typeof order.amount === "string" ? order.amount : undefined)}
+                  {formatAmount ? formatAmount(orderAmountNum(order)) : formatMoney(orderAmountNum(order))}
                 </TableCell>
                 <TableCell>
                   <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -229,7 +237,7 @@ export default function ProfessionalOrderList({
                   {formatDate(order.date)}
                 </TableCell>
                 <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                  {formatMoney(typeof order.amount === "number" || typeof order.amount === "string" ? order.amount : undefined)}
+                  {formatAmount ? formatAmount(orderAmountNum(order)) : formatMoney(orderAmountNum(order))}
                 </TableCell>
                 <TableCell>
                   {order.rating && (

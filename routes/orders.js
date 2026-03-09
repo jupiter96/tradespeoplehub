@@ -2608,10 +2608,13 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
       const serviceName = order.items?.[0]?.title || 'Service Order';
       
       // Amount: client sees total WITH service fee; professional sees total WITHOUT service fee
-      const totalWithServiceFee = (order.subtotal || 0) - (order.discount || 0) + (order.serviceFee || 0);
-      const totalWithoutServiceFee = (order.subtotal || 0) - (order.discount || 0);
-      const displayTotal = userRole === 'professional' ? totalWithoutServiceFee : totalWithServiceFee;
-      const amount = `£${displayTotal.toFixed(2)}`;
+      const totalWithServiceFee = (order.subtotal ?? order.total ?? 0) - (order.discount || 0) + (order.serviceFee || 0);
+      const totalWithoutServiceFee = (order.subtotal ?? order.total ?? 0) - (order.discount || 0);
+      let displayTotal = userRole === 'professional' ? totalWithoutServiceFee : totalWithServiceFee;
+      if ((displayTotal == null || Number(displayTotal) <= 0) && Number(order.total) > 0) {
+        displayTotal = Number(order.total);
+      }
+      const amount = `£${Number(displayTotal).toFixed(2)}`;
       
       // Map status
       let status = order.status || 'In Progress';
@@ -2709,6 +2712,7 @@ router.get('/', authenticateToken, requireRole(['client', 'professional']), asyn
         status,
         amount,
         amountValue: displayTotal,
+        total: order.total ?? displayTotal,
         professional: professional?.tradingName || 'Professional',
         professionalId: professional?._id ? professional._id.toString() : undefined,
         clientId: client?._id ? client._id.toString() : undefined,
