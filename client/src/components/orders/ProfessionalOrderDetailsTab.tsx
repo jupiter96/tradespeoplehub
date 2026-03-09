@@ -1,5 +1,6 @@
 import { Order } from "./types";
 import OrderDetailsTab from "./OrderDetailsTab";
+import { useCurrency } from "../CurrencyContext";
 
 interface ProfessionalOrderDetailsTabProps {
   order: Order;
@@ -8,5 +9,12 @@ interface ProfessionalOrderDetailsTabProps {
 export default function ProfessionalOrderDetailsTab({
   order,
 }: ProfessionalOrderDetailsTabProps) {
-  return <OrderDetailsTab order={order} hideServiceFee />;
+  const { formatPrice } = useCurrency();
+  return (
+    <OrderDetailsTab
+      order={order}
+      hideServiceFee
+      formatMoneyFn={(v) => formatPrice(Number(v) ?? 0)}
+    />
+  );
 }

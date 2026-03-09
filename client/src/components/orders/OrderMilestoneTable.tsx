@@ -1,5 +1,6 @@
 import React from "react";
 import { formatDateOrdinal } from "./utils";
+import { useCurrency } from "../CurrencyContext";
 
 type RevisionRequestLike = {
   index?: number;
@@ -38,6 +39,7 @@ interface OrderMilestoneTableProps {
 }
 
 export default function OrderMilestoneTable({ order, inProgressLabel = "Active" }: OrderMilestoneTableProps) {
+  const { formatPrice } = useCurrency();
   const paymentType = order.metadata?.paymentType;
   const milestones = order.metadata?.milestones;
   if (paymentType !== "milestone" || !Array.isArray(milestones) || milestones.length === 0) {
@@ -129,7 +131,7 @@ export default function OrderMilestoneTable({ order, inProgressLabel = "Active" 
                     {m.description || (m.chargePer ? `${m.chargePer} x${noOfVal}` : "—")}
                   </td>
                   <td className="py-3 px-4 text-[#FE8A0F] font-medium">
-                    £{typeof amt === "number" ? amt.toFixed(2) : "0.00"}
+                    {formatPrice(typeof amt === "number" ? amt : 0)}
                   </td>
                   <td className={`py-3 px-4 ${milestoneStatus.color}`}>{milestoneStatus.label}</td>
                 </tr>

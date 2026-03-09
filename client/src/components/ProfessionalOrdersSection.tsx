@@ -1237,7 +1237,7 @@ function ProfessionalOrdersSection() {
         </div>
         <div className="text-right">
           <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] mb-1">
-            {order.amount}
+            {formatPrice(Number(order.amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
           </p>
           {order.rating && (
             <div className="flex items-center gap-1 justify-end">

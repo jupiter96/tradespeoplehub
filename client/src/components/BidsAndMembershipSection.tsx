@@ -388,7 +388,7 @@ export default function BidsAndMembershipSection() {
                     </div>
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
-                    {plan.amountFormatted}
+                    {formatPrice(plan.amountPence / 100)}
                   </span>
                 </label>
               ))}
@@ -465,7 +465,7 @@ export default function BidsAndMembershipSection() {
                   {selectedPlan && (
                     <>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        {selectedPlan.name}: {selectedPlan.bids} credits for {selectedPlan.amountFormatted}
+                        {selectedPlan.name}: {selectedPlan.bids} credits for {formatPrice(selectedPlan.amountPence / 100)}
                       </p>
                       <Button
                         onClick={handleBuyCredit}

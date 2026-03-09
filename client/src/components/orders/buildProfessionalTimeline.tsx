@@ -709,7 +709,7 @@ export function buildProfessionalTimeline(order: Order, formatPrice?: (n: number
       ? formatAcceptedAt(disp.negotiationDeadline).split(" ").slice(1, 4).join(" ")
       : "the deadline";
     const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
-      ? ` The arbitration fee is £${formatCurrency(disp.arbitrationFeeAmount)} per party.`
+      ? ` The arbitration fee is ${fmt(disp.arbitrationFeeAmount)} per party.`
       : "";
     // Professional submitted the first response when they are the respondent (other party opened the dispute).
     const isProfessionalRespondent = Boolean(respondentId && professionalId && respondentId === professionalId);
@@ -870,8 +870,8 @@ export function buildProfessionalTimeline(order: Order, formatPrice?: (n: number
           {
             at: offer.offeredAt,
             label: "You made an offer.",
-            description: `You proposed £${formatCurrency(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
-            message: `You proposed £${formatCurrency(offer.amount)} as a settlement. ${clientDisplayName} has been notified and can accept or counter with their own offer.`,
+            description: `You proposed ${fmt(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+            message: `You proposed ${fmt(offer.amount)} as a settlement. ${clientDisplayName} has been notified and can accept or counter with their own offer.`,
             colorClass: "bg-amber-500",
             icon: <Handshake className="w-5 h-5 text-amber-600" />,
           },
@@ -882,8 +882,8 @@ export function buildProfessionalTimeline(order: Order, formatPrice?: (n: number
           {
             at: offer.offeredAt,
             label: "You received an offer.",
-            description: `${clientDisplayName} proposed £${formatCurrency(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
-            message: `${clientDisplayName} has proposed £${formatCurrency(offer.amount)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
+            description: `${clientDisplayName} proposed ${fmt(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+            message: `${clientDisplayName} has proposed ${fmt(offer.amount)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
             colorClass: "bg-amber-500",
             icon: <Handshake className="w-5 h-5 text-amber-600" />,
           },

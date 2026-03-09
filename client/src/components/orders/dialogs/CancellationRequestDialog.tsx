@@ -6,7 +6,7 @@ import { Textarea } from "../../ui/textarea";
 import { toast } from "sonner";
 import { Paperclip, X } from "lucide-react";
 import { Order } from "../types";
-import { formatCurrency } from "../../../utils/formatNumber";
+import { useCurrency } from "../../CurrencyContext";
 
 interface CancellationRequestDialogProps {
   open: boolean;
@@ -33,6 +33,7 @@ export default function CancellationRequestDialog({
   selectedMilestoneIndices = [],
   onSelectedMilestoneIndicesChange,
 }: CancellationRequestDialogProps) {
+  const { formatPrice } = useCurrency();
   const [cancellationFiles, setCancellationFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -230,7 +231,7 @@ export default function CancellationRequestDialog({
                         }}
                       />
                       <span>
-                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{formatCurrency(total)}
+                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — {formatPrice(total)}
                         {m?.description && (
                           <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
                         )}

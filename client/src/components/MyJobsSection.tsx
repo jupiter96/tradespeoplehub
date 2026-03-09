@@ -26,7 +26,8 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ import { resolveAvatarUrl } from "./orders/utils";
 
 export default function MyJobsSection() {
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
   const { jobs, getUserJobs, deleteJob, updateJob, updateQuoteStatus } = useJobs();
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
@@ -263,8 +265,8 @@ export default function MyJobsSection() {
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
                           {job.budgetMin != null && job.budgetMax != null
-                          ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}`
-                          : `£${formatNumber(job.budgetAmount, 1)}`} ({job.budgetType})
+                          ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
+                          : formatPrice(job.budgetAmount ?? 0)} ({job.budgetType})
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4" />
@@ -366,8 +368,8 @@ export default function MyJobsSection() {
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.budgetMin != null && currentJob.budgetMax != null
-                        ? `£${formatNumber(currentJob.budgetMin, 1)} - £${formatNumber(currentJob.budgetMax, 1)}`
-                        : `£${formatNumber(currentJob.budgetAmount, 1)}`} ({currentJob.budgetType})
+                        ? `${formatPrice(currentJob.budgetMin)} - ${formatPrice(currentJob.budgetMax)}`
+                        : formatPrice(currentJob.budgetAmount ?? 0)} ({currentJob.budgetType})
                       </p>
                     </div>
                   </div>
@@ -434,7 +436,7 @@ export default function MyJobsSection() {
                             </div>
                             <div className="text-right whitespace-nowrap">
                               <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-1">
-                                £{formatNumber(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
+                                {formatPrice(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
                               </p>
                               {quote.status === "accepted" && (
                                 <Badge className="bg-green-100 text-green-700 border-green-300">

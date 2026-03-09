@@ -22,7 +22,7 @@ export default function OrderDetailsTab({
   formatMoneyFn,
   hideServiceFee = false,
 }: OrderDetailsTabProps) {
-  const formatVal = formatMoneyFn || formatMoney;
+  const formatVal = formatMoneyFn || ((v: number | string | undefined) => `£${formatMoney(v)}`);
   const meta = (order as any).metadata || {};
   const primaryItem = order.items?.[0];
   const priceUnitLabel = getPriceUnitLabel(
@@ -177,7 +177,7 @@ export default function OrderDetailsTab({
                         Milestone {idx + 1}{m.name ? `: ${m.name}` : ""} — Price
                       </td>
                       <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                        £{formatVal(mPrice)}{mUnitDisplay !== "service" && mUnitDisplay !== "fixed" ? ` / ${mUnitDisplay}` : " / service"}
+                        {formatVal(mPrice)}{mUnitDisplay !== "service" && mUnitDisplay !== "fixed" ? ` / ${mUnitDisplay}` : " / service"}
                       </td>
                     </tr>
                     <tr className="border-t border-gray-200">
@@ -193,7 +193,7 @@ export default function OrderDetailsTab({
                         Milestone {idx + 1} total
                       </td>
                       <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                        £{formatVal(mTotal)}
+                        {formatVal(mTotal)}
                       </td>
                     </tr>
                   </Fragment>
@@ -205,7 +205,7 @@ export default function OrderDetailsTab({
                   Price ({priceUnitDisplay === "service" || priceUnitDisplay === "fixed" ? "per service" : `per ${priceUnitDisplay}`})
                 </td>
                 <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                  £{formatVal(unitPrice)}{priceUnitDisplay !== "service" && priceUnitDisplay !== "fixed" ? ` / ${priceUnitDisplay}` : ""}
+                  {formatVal(unitPrice)}{priceUnitDisplay !== "service" && priceUnitDisplay !== "fixed" ? ` / ${priceUnitDisplay}` : ""}
                 </td>
               </tr>
             )}
@@ -236,7 +236,7 @@ export default function OrderDetailsTab({
                 Subtotal
               </td>
               <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                £{formatVal(isMilestoneCustomOffer ? displaySubtotal : subtotal)}
+                {formatVal(isMilestoneCustomOffer ? displaySubtotal : subtotal)}
               </td>
             </tr>
             {discount > 0 && (
@@ -245,7 +245,7 @@ export default function OrderDetailsTab({
                   Discount{promoCode ? ` (${promoCode})` : ""}
                 </td>
                 <td className="px-4 py-3 text-right text-[14px] text-green-600">
-                  -£{formatVal(discount)}
+                  -{formatVal(discount)}
                 </td>
               </tr>
             )}
@@ -255,7 +255,7 @@ export default function OrderDetailsTab({
                   Service Fee
                 </td>
                 <td className="px-4 py-3 text-right text-[14px] text-[#2c353f]">
-                  £{formatVal(serviceFee ?? 0)}
+                  {formatVal(serviceFee ?? 0)}
                 </td>
               </tr>
             )}
@@ -264,7 +264,7 @@ export default function OrderDetailsTab({
                 Total
               </td>
               <td className="px-4 py-3 text-right text-[16px] font-semibold text-[#2c353f]">
-                £{formatVal(typeof total === "string" ? parseFloat(total) : total)}
+                {formatVal(typeof total === "string" ? parseFloat(total) : total)}
               </td>
             </tr>
           </tbody>

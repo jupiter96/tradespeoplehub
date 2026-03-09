@@ -4,6 +4,7 @@ import { useOrders } from "./OrdersContext";
 import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { usePendingCustomOffer } from "./PendingCustomOfferContext";
+import { useCurrency } from "./CurrencyContext";
 import { useCountdown } from "../hooks/useCountdown";
 import { useElapsedTime } from "../hooks/useElapsedTime";
 import { resolveApiUrl } from "../config/api";
@@ -202,6 +203,7 @@ export default function ClientOrdersSection() {
   const { orders, cancelOrder, acceptDelivery, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
   const { startConversation, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
+  const { formatPrice } = useCurrency();
   const { setPendingOffer } = usePendingCustomOffer();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
@@ -1138,7 +1140,7 @@ export default function ClientOrdersSection() {
         ? formatDateOrdinal(disp.negotiationDeadline)
         : "the deadline";
       const arbitrationFeeAmount = typeof disp.arbitrationFeeAmount === "number"
-        ? ` The arbitration fee is £${formatMoney(disp.arbitrationFeeAmount)} per party.`
+        ? ` The arbitration fee is ${formatPrice(disp.arbitrationFeeAmount ?? 0)} per party.`
         : "";
       if (isClientClaimant) {
         push(
@@ -1279,8 +1281,8 @@ export default function ClientOrdersSection() {
             {
               at: offer.offeredAt,
               title: "You made an offer.",
-              description: `You proposed £${formatMoney(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
-              message: `You proposed £${formatMoney(offer.amount)} as a settlement. ${professionalDisplayName} has been notified and can accept or counter with their own offer.`,
+              description: `You proposed ${formatPrice(offer.amount ?? 0)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+              message: `You proposed ${formatPrice(offer.amount ?? 0)} as a settlement. ${professionalDisplayName} has been notified and can accept or counter with their own offer.`,
               colorClass: "bg-amber-500",
               icon: <Handshake className="w-5 h-5 text-amber-600" />,
             },
@@ -1291,8 +1293,8 @@ export default function ClientOrdersSection() {
             {
               at: offer.offeredAt,
               title: "You received an offer.",
-              description: `${professionalDisplayName} proposed £${formatMoney(offer.amount)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
-              message: `${professionalDisplayName} has proposed £${formatMoney(offer.amount)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
+              description: `${professionalDisplayName} proposed ${formatPrice(offer.amount ?? 0)} as a settlement amount.${offerDateStr ? ` ${offerDateStr}` : ""}`,
+              message: `${professionalDisplayName} has proposed ${formatPrice(offer.amount ?? 0)} as a settlement. You can accept this offer to resolve the dispute, or counter with your own offer.`,
               colorClass: "bg-amber-500",
               icon: <Handshake className="w-5 h-5 text-amber-600" />,
             },
@@ -1326,7 +1328,7 @@ export default function ClientOrdersSection() {
         Boolean(clientIdForRejection && rejectorId) &&
         clientIdForRejection.toString() === rejectorId.toString();
 
-      const amountText = typeof rejectedAmount === "number" ? `£${formatMoney(rejectedAmount)}` : "the latest settlement";
+      const amountText = typeof rejectedAmount === "number" ? formatPrice(rejectedAmount) : "the latest settlement";
 
       if (rejectedByClient) {
         push(
@@ -1362,7 +1364,7 @@ export default function ClientOrdersSection() {
         typeof (disp as any)?.lastRejectedOfferAmount === "number"
           ? (disp as any).lastRejectedOfferAmount
           : undefined;
-      const amountText = typeof rejectedAmount === "number" ? `£${formatMoney(rejectedAmount)}` : "the latest settlement";
+      const amountText = typeof rejectedAmount === "number" ? formatPrice(rejectedAmount) : "the latest settlement";
       const rejectedByClient = (disp as any)?.lastOfferRejectedByRole === "client";
 
       push(
@@ -1698,7 +1700,7 @@ export default function ClientOrdersSection() {
       return;
     }
     if (offerAmount > maxAmount + 0.01) {
-      toast.error(`Offer amount cannot exceed £${formatMoney(maxAmount)}`);
+      toast.error(`Offer amount cannot exceed ${formatPrice(maxAmount)}`);
       return;
     }
     if (selectedOrder) {
@@ -1857,7 +1859,7 @@ export default function ClientOrdersSection() {
         </div>
         <div className="text-right">
           <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F] mb-1">
-            {formatMoney(order.amount)}
+            {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
           </p>
           {order.rating && (
             <div className="flex items-center gap-1 justify-end">
@@ -3126,7 +3128,7 @@ export default function ClientOrdersSection() {
                             Order Amount
                           </p>
                           <p className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
-                            {formatMoney(currentOrder.amount)}
+                            {formatPrice(Number((currentOrder as any).amountValue ?? currentOrder.amount) || parseFloat(String(currentOrder.amount).replace(/[£$,]/g, "")) || 0)}
                           </p>
                         </div>
                         <div>
@@ -4274,7 +4276,7 @@ export default function ClientOrdersSection() {
           <TabsContent value="details" className="mt-4 md:mt-6 px-4 md:px-6">
             <OrderDetailsTab
               order={currentOrder}
-              formatMoneyFn={(v, fb) => formatMoney(v, fb ?? "0.00")}
+              formatMoneyFn={(v, fb) => formatPrice(Number(v) ?? 0)}
             />
           </TabsContent>
 
@@ -5043,7 +5045,7 @@ export default function ClientOrdersSection() {
                     Total Price
                   </p>
                   <p className="font-['Poppins',sans-serif] text-[24px] text-[#FE8A0F]">
-                    {formatMoney(currentOrder.amount)}
+                    {formatPrice(Number((currentOrder as any).amountValue ?? currentOrder.amount) || parseFloat(String(currentOrder.amount).replace(/[£$,]/g, "")) || 0)}
                   </p>
                 </div>
 
@@ -5168,7 +5170,7 @@ export default function ClientOrdersSection() {
                   {/* Amount Card */}
                   <div className="bg-white rounded-lg p-6 text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">£ {formatMoney(typeof dispute.amount === "number" ? dispute.amount : 0)}</span>
+                      Total disputed milestone<br />amount: <span className="text-[32px] text-[#2c353f]">{formatPrice(typeof dispute.amount === "number" ? dispute.amount : 0)}</span>
                     </p>
                     <Separator className="my-4" />
                     <button className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:underline mb-4">
@@ -5182,7 +5184,7 @@ export default function ClientOrdersSection() {
                           Professional ({dispute.respondentName})<br />want to receive:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-                          £{formatMoney(dispute.respondentOffer?.amount) || "0.00"}
+                          {formatPrice(dispute.respondentOffer?.amount ?? 0)}
                         </p>
                       </div>
                       <div className="text-center">
@@ -5190,7 +5192,7 @@ export default function ClientOrdersSection() {
                           Client ({dispute.claimantName})<br />wants to pay:
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
-                          £{formatMoney(dispute.claimantOffer?.amount) || "0.00"}
+                          {formatPrice(dispute.claimantOffer?.amount ?? 0)}
                         </p>
                       </div>
                     </div>
@@ -5200,7 +5202,7 @@ export default function ClientOrdersSection() {
                     {/* Agreed Amount */}
                     <div className="text-center">
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                        Agreed: <span className="text-[18px] text-[#2c353f]">£ 0.00</span>
+                        Agreed: <span className="text-[18px] text-[#2c353f]">{formatPrice(0)}</span>
                       </p>
                       {dispute.status === "closed" && (
                         <p className="font-['Poppins',sans-serif] text-[16px] text-red-600 mt-2">
@@ -5755,7 +5757,7 @@ export default function ClientOrdersSection() {
                               onChange={() => toggleOne(idx)}
                             />
                             <span>
-                              Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{formatMoney(total)}
+                              Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — {formatPrice(total)}
                               {m?.description && (
                                 <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
                               )}
@@ -5974,7 +5976,7 @@ export default function ClientOrdersSection() {
                                   onCheckedChange={() => toggleMilestone(idx)}
                                 />
                                 <span>
-                                  Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{formatMoney(total)}
+                                  Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — {formatPrice(total)}
                                   {m?.description && (
                                     <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
                                   )}
@@ -5987,7 +5989,7 @@ export default function ClientOrdersSection() {
                     </div>
                     {selectedMilestoneIndices.length > 0 && (
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
-                        Total dispute amount: £{formatMoney(totalFromSelection)}
+                        Total dispute amount: {formatPrice(totalFromSelection)}
                       </p>
                     )}
                   </div>
@@ -6042,8 +6044,8 @@ export default function ClientOrdersSection() {
                   const offerValue = parseFloat(disputeOfferAmount);
                   const isOverLimit = !Number.isNaN(offerValue) && offerValue > maxAmount;
                   const helperText = isMilestoneOrder
-                    ? `You can enter the amount. Maximum: £${formatMoney(maxAmount)} (sum of selected milestones).`
-                    : `Must be between £0.00 and £${formatMoney(maxAmount)} (refundable amount, excl. service fee)`;
+                    ? `You can enter the amount. Maximum: ${formatPrice(maxAmount)} (sum of selected milestones).`
+                    : `Must be between ${formatPrice(0)} and ${formatPrice(maxAmount)} (refundable amount, excl. service fee)`;
                   return (
                     <p
                       className={`font-['Poppins',sans-serif] text-[12px] mt-1 ${
@@ -6974,7 +6976,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatMoney(order.amount)}
+                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -7073,7 +7075,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatMoney(order.amount)}
+                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -7172,7 +7174,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatMoney(order.amount)}
+                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
                       </TableCell>
                       <TableCell>
                         {order.rating && (
@@ -7271,7 +7273,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatMoney(order.amount)}
+                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>
@@ -7355,7 +7357,7 @@ export default function ClientOrdersSection() {
                         {formatDate(order.date)}
                       </TableCell>
                       <TableCell className="font-['Poppins',sans-serif] text-[14px] text-[#FE8A0F]">
-                        {formatMoney(order.amount)}
+                        {formatPrice(Number((order as any).amountValue ?? order.amount) || parseFloat(String(order.amount).replace(/[£$,]/g, "")) || 0)}
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusBadge(order.status)} font-['Poppins',sans-serif] text-[11px]`}>

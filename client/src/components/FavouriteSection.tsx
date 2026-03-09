@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { toast } from "sonner@2.0.3";
 import { resolveApiUrl } from "../config/api";
 import { useCart } from "./CartContext";
+import { useCurrency } from "./CurrencyContext";
 
 // Video Thumbnail Component with Play Button (same as FeaturedServices)
 function VideoThumbnail({
@@ -133,6 +134,7 @@ const resolveMediaUrl = (url: string | undefined): string => {
 
 export default function FavouriteSection() {
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
   const { addToCart } = useCart();
   const [searchQuery, setSearchQuery] = useState("");
   const [favourites, setFavourites] = useState<any[]>([]);
@@ -253,9 +255,6 @@ export default function FavouriteSection() {
     return {
       min: minPackagePrice,
       max: maxPackagePrice,
-      formatted: minPackagePrice === maxPackagePrice 
-        ? `£${minPackagePrice.toFixed(2)}`
-        : `£${minPackagePrice.toFixed(2)} - £${maxPackagePrice.toFixed(2)}`,
     };
   };
 
@@ -418,11 +417,13 @@ export default function FavouriteSection() {
                   <div className="mb-2 md:mb-2.5">
                     {priceRange ? (
                       <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                        {priceRange.formatted}
+                        {priceRange.min === priceRange.max
+                          ? formatPrice(priceRange.min)
+                          : `${formatPrice(priceRange.min)} - ${formatPrice(priceRange.max)}`}
                       </span>
                     ) : (
                       <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                        {service.originalPrice || service.price || '£0.00'}
+                        {formatPrice(Number(service.originalPrice || service.price || 0))}
                   </span>
                     )}
                 </div>

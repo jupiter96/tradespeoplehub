@@ -1308,6 +1308,7 @@ function OverviewSection({ userRole }: { userRole: "client" | "professional" | n
 
 // Jobs Section (Professional)
 function JobsSection() {
+  const { formatPrice } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -7428,6 +7429,7 @@ function SupportSection() {
 
 // Invite Section
 function InviteSection() {
+  const { formatPrice } = useCurrency();
   const [mainTab, setMainTab] = useState<"referral-links" | "referral-report">("referral-links");
   const [activeReferralTab, setActiveReferralTab] = useState<"order" | "posted-task">("order");
   const [entriesPerPage, setEntriesPerPage] = useState("25");
@@ -7859,7 +7861,7 @@ function InviteSection() {
                       {item.orderCompleted}
                     </TableCell>
                     <TableCell className="font-['Poppins',sans-serif] text-[14px]">
-                      {item.earnings.toFixed(2)}
+                      {formatPrice(item.earnings)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -7874,6 +7876,7 @@ function InviteSection() {
 
 // Services Section - Professional Only
 function ServicesSection() {
+  const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<"myservices" | "packageservice" | "reviews" | "analytics">("myservices");
   const [isAddingPackageService, setIsAddingPackageService] = useState(false);
   const { userInfo } = useAccount();

@@ -58,6 +58,7 @@ import { Card, CardContent } from "./ui/card";
 import API_BASE_URL, { resolveApiUrl } from "../config/api";
 import { allServices } from "./servicesData";
 import ServiceCard from "./ServiceCard";
+import { useCurrency } from "./CurrencyContext";
 
 interface PortfolioItem {
   id: string;
@@ -87,6 +88,7 @@ const resolveMediaUrl = (url: string | undefined): string => {
 
 export default function ProfileSection() {
   const navigate = useNavigate();
+  const { formatPrice, currency } = useCurrency();
   const { userInfo, updateProfile, uploadAvatar } = useAccount();
   const [bio, setBio] = useState("");
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
@@ -1313,7 +1315,7 @@ export default function ProfileSection() {
         {isEditing ? (
           <div className="space-y-4 mt-2">
             <div>
-              <Label className="text-black mb-1 block">Professional Indemnity Insurance Amount (£)</Label>
+              <Label className="text-black mb-1 block">Professional Indemnity Insurance Amount ({currency})</Label>
               <Input
                 type="number"
                 value={professionalIndemnityAmount || ""}
@@ -1337,7 +1339,7 @@ export default function ProfileSection() {
             <div className="space-y-2">
               {professionalIndemnityAmount && (
                 <p className="text-black">
-                  <span className="font-semibold">Limit of indemnity:</span> £{professionalIndemnityAmount.toLocaleString()}
+                  <span className="font-semibold">Limit of indemnity:</span> {formatPrice(professionalIndemnityAmount)}
                 </p>
               )}
               {insuranceExpiryDate && (
@@ -1969,7 +1971,7 @@ export default function ProfileSection() {
                               <div className="space-y-1 md:space-y-2">
                                 {professionalIndemnityAmount && (
                                   <p className="text-gray-700  text-[12px] md:text-[14px]">
-                                    <span className="font-semibold">Limit of indemnity:</span> £{professionalIndemnityAmount.toLocaleString()}
+                                    <span className="font-semibold">Limit of indemnity:</span> {formatPrice(professionalIndemnityAmount)}
                                   </p>
                                 )}
                                 {insuranceExpiryDate && (
@@ -2221,7 +2223,7 @@ export default function ProfileSection() {
                                 {service.description}
                               </h4>
                               <span className="text-[#FE8A0F] font-semibold text-[12px] md:text-[16px]">
-                                £{service.price}
+                                {formatPrice(Number(service.price) || 0)}
                               </span>
                             </div>
                           </div>

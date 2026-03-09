@@ -7,7 +7,7 @@ import { Textarea } from "../../ui/textarea";
 import { Checkbox } from "../../ui/checkbox";
 import { AlertTriangle, Paperclip, PoundSterling, X } from "lucide-react";
 import { Order } from "../types";
-import { formatCurrency } from "../../../utils/formatNumber";
+import { useCurrency } from "../../CurrencyContext";
 
 interface MilestoneItem {
   name?: string;
@@ -53,6 +53,7 @@ export default function DisputeDialog({
   onSubmit,
   onCancel,
 }: DisputeDialogProps) {
+  const { formatPrice } = useCurrency();
   const meta = (currentOrder as any)?.metadata || {};
   const isMilestoneOrder =
     meta.fromCustomOffer &&
@@ -275,7 +276,7 @@ export default function DisputeDialog({
                         onCheckedChange={() => toggleMilestone(idx)}
                       />
                       <span>
-                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — £{formatCurrency(total)}
+                        Milestone {idx + 1}{m?.name ? `: ${m.name}` : ""} — {formatPrice(total)}
                         {m?.description && (
                           <span className="block text-[11px] text-[#6b6b6b]">{m.description}</span>
                         )}
@@ -288,7 +289,7 @@ export default function DisputeDialog({
               </div>
               {selectedMilestoneIndices.length > 0 && (
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-2">
-                  Total dispute amount: £{formatCurrency(maxDisputeAmount)}
+                  Total dispute amount: {formatPrice(maxDisputeAmount)}
                 </p>
               )}
             </div>
@@ -323,8 +324,8 @@ export default function DisputeDialog({
               }`}
             >
               {isMilestoneOrder && onSelectedMilestoneIndicesChange
-                ? `You can edit the amount. Maximum: £${formatCurrency(maxDisputeAmount)} (sum of selected milestones).`
-                : `Must be between £0.00 and £${formatCurrency(currentOrder?.amountValue) || "0.00"} (order amount)`}
+                ? `You can edit the amount. Maximum: ${formatPrice(maxDisputeAmount)} (sum of selected milestones).`
+                : `Must be between ${formatPrice(0)} and ${formatPrice(currentOrder?.amountValue ?? 0)} (order amount)`}
             </p>
           </div>
 
