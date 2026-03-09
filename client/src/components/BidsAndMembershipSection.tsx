@@ -304,15 +304,6 @@ export default function BidsAndMembershipSection() {
             <p className="font-['Poppins',sans-serif] text-[20px] font-medium text-[#2c353f]">
               {balance?.purchasedTotal ?? 0} <span className="text-[13px] font-normal text-[#6b6b6b]">credits</span>
             </p>
-            {balance?.purchasedBlocks && balance.purchasedBlocks.length > 0 && (
-              <ul className="mt-1 space-y-0.5">
-                {balance.purchasedBlocks.slice(0, 3).map((b, i) => (
-                  <li key={i} className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                    {b.bids} credit{b.bids !== 1 ? "s" : ""} until {formatDate(b.expiresAt)}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
 
