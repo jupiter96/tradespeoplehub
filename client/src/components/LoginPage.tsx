@@ -239,13 +239,11 @@ export default function LoginPage() {
   const [registerReferralCode, setRegisterReferralCode] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   
-  // Register form state - Professional only fields
-  const [registerWorkType, setRegisterWorkType] = useState<"inPerson" | "online">("inPerson");
+  // Register form state - Professional only fields (work type & travel moved to profile setup stepper)
   const [registerTradingName, setRegisterTradingName] = useState("");
   const [registerTownCity, setRegisterTownCity] = useState("");
   const [registerCounty, setRegisterCounty] = useState("");
   const [registerAddress, setRegisterAddress] = useState("");
-  const [registerTravelDistance, setRegisterTravelDistance] = useState("");
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSendingRegistration, setIsSendingRegistration] = useState(false);
@@ -338,9 +336,6 @@ export default function LoginPage() {
       if (!registerTradingName.trim()) {
         errors.tradingName = "Trading name is required";
       }
-      if (registerWorkType === "inPerson" && !registerTravelDistance) {
-        errors.travelDistance = "Travel distance is required when working in person";
-      }
     }
     // Phone required only for UK users (IP-based)
     if (isUKUser) {
@@ -398,9 +393,8 @@ export default function LoginPage() {
       townCity: registerTownCity.trim() || "",
       county: registerCounty.trim() || "",
       ...(userType === "professional" && {
-        workType: registerWorkType,
         tradingName: registerTradingName.trim(),
-        ...(registerWorkType === "inPerson" && { travelDistance: registerTravelDistance }),
+        workType: "inPerson" as const,
       }),
       ...(isUKUser
         ? { phone: normalizePhoneForBackend(phoneNumber, countryCode) }
@@ -420,9 +414,8 @@ export default function LoginPage() {
       townCity: registerTownCity.trim() || "",
       county: registerCounty.trim() || "",
       ...(userType === "professional" && {
-        workType: registerWorkType,
         tradingName: registerTradingName.trim(),
-        ...(registerWorkType === "inPerson" && { travelDistance: registerTravelDistance }),
+        workType: "inPerson",
       })
     });
     try {
@@ -908,14 +901,12 @@ export default function LoginPage() {
                           const firstNames = ['James', 'Sarah', 'Michael', 'Emma', 'David', 'Olivia', 'Robert', 'Sophia', 'William', 'Isabella'];
                           const lastNames = ['Smith', 'Jones', 'Williams', 'Brown', 'Taylor', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Johnson'];
                           const tradingNames = ['ABC Plumbing Services', 'XYZ Electrical Solutions', 'Premier Home Repairs', 'Expert Builders Ltd', 'Quality Carpentry Co'];
-                          const travelDistances = ['5 miles', '10 miles', '15 miles', '20 miles', '30 miles'];
                           
                           const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
                           const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
                           const randomEmail = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 1000)}@gmail.com`;
                           const randomPhone = `+44${Math.floor(1000000000 + Math.random() * 9000000000)}`;
                           const randomTradingName = tradingNames[Math.floor(Math.random() * tradingNames.length)];
-                          const randomTravelDistance = travelDistances[Math.floor(Math.random() * travelDistances.length)];
                           const randomPassword = 'Test123';
                           
                           setRegisterFirstName(randomFirstName);
@@ -926,7 +917,6 @@ export default function LoginPage() {
                           setRegisterConfirmPassword(randomPassword);
                           if (userType === 'professional') {
                             setRegisterTradingName(randomTradingName);
-                            setRegisterTravelDistance(randomTravelDistance);
                           }
                         }}
                         variant="outline"
@@ -1115,89 +1105,7 @@ export default function LoginPage() {
                   )}
 
                   {/* Address fields removed from registration; complete in My Details after login */}
-
-                  {/* Work type: In Person vs Online (Professional only) */}
-                  {userType === "professional" && (
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        How do you work? *
-                      </Label>
-                      <div className="flex gap-4 mt-2">
-                        <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px]">
-                          <input
-                            type="radio"
-                            name="register-work-type"
-                            checked={registerWorkType === "inPerson"}
-                            onChange={() => {
-                              setRegisterWorkType("inPerson");
-                              if (fieldErrors.travelDistance) {
-                                setFieldErrors(prev => {
-                                  const next = { ...prev };
-                                  delete next.travelDistance;
-                                  return next;
-                                });
-                              }
-                            }}
-                            className="w-4 h-4 border-2 border-white text-[#FE8A0F] focus:ring-[#FE8A0F]"
-                          />
-                          In Person
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer font-['Poppins',sans-serif] text-[13px]">
-                          <input
-                            type="radio"
-                            name="register-work-type"
-                            checked={registerWorkType === "online"}
-                            onChange={() => setRegisterWorkType("online")}
-                            className="w-4 h-4 border-2 border-[#FE8A0F] text-[#FE8A0F] focus:ring-[#FE8A0F]"
-                          />
-                          Online
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Travel Distance (Professional only, when In Person) */}
-                  {userType === "professional" && registerWorkType === "inPerson" && (
-                    <div>
-                      <Label htmlFor="register-travel-distance" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5">
-                        How long are you willing to travel for work? *
-                      </Label>
-                      <Select 
-                        value={registerTravelDistance} 
-                        onValueChange={(value) => {
-                          setRegisterTravelDistance(value);
-                          if (fieldErrors.travelDistance) {
-                            setFieldErrors(prev => {
-                              const newErrors = { ...prev };
-                              delete newErrors.travelDistance;
-                              return newErrors;
-                            });
-                          }
-                        }}
-                      >
-                        <SelectTrigger className={`h-10 border-2 rounded-xl font-['Poppins',sans-serif] text-[13px] ${
-                          fieldErrors.travelDistance ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-[#FE8A0F]'
-                        }`}>
-                          <SelectValue placeholder="Select distance" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5miles">5 miles</SelectItem>
-                          <SelectItem value="10miles">10 miles</SelectItem>
-                          <SelectItem value="15miles">15 miles</SelectItem>
-                          <SelectItem value="20miles">20 miles</SelectItem>
-                          <SelectItem value="30miles">30 miles</SelectItem>
-                          <SelectItem value="40miles">40 miles</SelectItem>
-                          <SelectItem value="50miles">50 miles</SelectItem>
-                          <SelectItem value="morethan50miles">More than 50 miles</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {fieldErrors.travelDistance && (
-                        <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">
-                          {fieldErrors.travelDistance}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {/* Work type & travel distance moved to profile setup stepper (professional-registration-steps) */}
 
                   {/* Phone Number - UK only (IP-based); non-UK uses email-only verification */}
                   {isUKUser && (

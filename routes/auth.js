@@ -778,17 +778,10 @@ const validateRegistrationPayload = (payload, { requirePassword } = { requirePas
 
   // Address fields are optional at registration; user can complete them in My Details after login
 
-  // For professionals: tradingName and workType required; travelDistance only when workType is inPerson
+  // For professionals: only tradingName required at registration. workType/travelDistance are set in profile setup stepper.
   if (userType === 'professional') {
     if (!tradingName || !tradingName.trim()) {
       return 'Trading name is required for professionals';
-    }
-    const wt = (workType || '').trim();
-    if (wt !== 'inPerson' && wt !== 'online') {
-      return 'Please select whether you work In Person or Online';
-    }
-    if (wt === 'inPerson' && (!travelDistance || !String(travelDistance).trim())) {
-      return 'Travel distance is required when working in person';
     }
   }
 
@@ -3014,16 +3007,16 @@ router.put('/profile', requireAuth, async (req, res) => {
     // if (hasField('lastName')) user.lastName = String(lastName).trim();
     if (hasField('postcode')) user.postcode = (postcode != null && String(postcode).trim()) ? String(postcode).trim() : '';
     
-    // Address is required for client and professional, preserve existing value if not provided
-    if (address !== undefined && address !== null) {
+    // Address: only validate when the client is sending address (e.g. My Details form). Profile stepper partial updates do not send address.
+    if (hasField('address')) {
       const trimmedAddress = String(address).trim();
       if (trimmedAddress) {
         user.address = trimmedAddress;
       } else if ((user.role === 'client' || user.role === 'professional') && !user.address) {
         return res.status(400).json({ error: 'Address is required' });
+      } else if (!trimmedAddress && user.address) {
+        user.address = trimmedAddress;
       }
-    } else if ((user.role === 'client' || user.role === 'professional') && !user.address) {
-      return res.status(400).json({ error: 'Address is required' });
     }
     
     // Update townCity only if provided, preserve existing value if not
@@ -3103,16 +3096,16 @@ router.put('/profile', requireAuth, async (req, res) => {
     }
 
     if (user.role === 'professional') {
-      // Trading name is required for professionals, preserve existing value if not provided
-      if (tradingName !== undefined && tradingName !== null) {
+      // Trading name: only validate when the client is sending it (e.g. My Details). Stepper partial updates may not send it.
+      if (hasField('tradingName')) {
         const trimmedTradingName = String(tradingName).trim();
         if (trimmedTradingName) {
           user.tradingName = trimmedTradingName;
         } else if (!user.tradingName) {
           return res.status(400).json({ error: 'Trading name is required for professionals' });
+        } else {
+          user.tradingName = trimmedTradingName;
         }
-      } else if (!user.tradingName) {
-        return res.status(400).json({ error: 'Trading name is required for professionals' });
       }
       
       // Work type: In Person vs Online
@@ -3122,19 +3115,13 @@ router.put('/profile', requireAuth, async (req, res) => {
       }
       const effectiveWorkType = wt || user.workType || 'inPerson';
       
-      // Travel distance: required only when workType is inPerson
+      // Travel distance: set when provided; validation for inPerson is done in profile setup stepper, not here
       if (effectiveWorkType === 'online') {
         user.travelDistance = undefined;
-      } else {
-        if (travelDistance !== undefined && travelDistance !== null) {
-          const trimmedTravelDistance = String(travelDistance).trim();
-          if (trimmedTravelDistance) {
-            user.travelDistance = trimmedTravelDistance;
-          } else if (!user.travelDistance) {
-            return res.status(400).json({ error: 'Travel distance is required when working in person' });
-          }
-        } else if (!user.travelDistance) {
-          return res.status(400).json({ error: 'Travel distance is required when working in person' });
+      } else if (travelDistance !== undefined && travelDistance !== null) {
+        const trimmedTravelDistance = String(travelDistance).trim();
+        if (trimmedTravelDistance) {
+          user.travelDistance = trimmedTravelDistance;
         }
       }
       

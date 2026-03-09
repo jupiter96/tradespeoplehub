@@ -10,7 +10,8 @@ import {
   Loader2,
   User,
   Plus,
-  X
+  X,
+  MapPin
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -35,6 +36,7 @@ const STEPS = [
   { id: 3, title: "Category", icon: FolderTree, description: "Select your service category" },
   { id: 4, title: "Subcategories", icon: FolderTree, description: "Choose all services you offer" },
   { id: 5, title: "Insurance", icon: Shield, description: "Public liability insurance status" },
+  { id: 6, title: "Work type", icon: MapPin, description: "How you work & travel area" },
 ];
 
 // SECTORS will be loaded from API
@@ -65,6 +67,8 @@ export default function ProfessionalRegistrationSteps() {
   const [insurance, setInsurance] = useState<"yes" | "no">("no");
   const [professionalIndemnityAmount, setProfessionalIndemnityAmount] = useState<string>("");
   const [insuranceExpiryDate, setInsuranceExpiryDate] = useState<string>("");
+  const [workType, setWorkType] = useState<"inPerson" | "online">("inPerson");
+  const [travelDistance, setTravelDistance] = useState<string>("");
   
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -138,6 +142,12 @@ export default function ProfessionalRegistrationSteps() {
       const date = new Date(userInfo.insuranceExpiryDate);
       setInsuranceExpiryDate(date.toISOString().split('T')[0]);
     }
+    if (userInfo?.workType === "online" || userInfo?.workType === "inPerson") {
+      setWorkType(userInfo.workType);
+    }
+    if (userInfo?.travelDistance) {
+      setTravelDistance(userInfo.travelDistance);
+    }
   }, [userInfo]);
 
   // Redirect if not logged in or not professional
@@ -173,6 +183,11 @@ export default function ProfessionalRegistrationSteps() {
     }
     if (step === 5 && !insurance) {
       newErrors.insurance = "Please select insurance status";
+    }
+    if (step === 6) {
+      if (workType === "inPerson" && !travelDistance) {
+        newErrors.travelDistance = "Please select how far you're willing to travel";
+      }
     }
     
     setErrors(newErrors);
@@ -232,6 +247,14 @@ export default function ProfessionalRegistrationSteps() {
             updateData.insuranceExpiryDate = null;
           }
         }
+        if (currentStep >= 6) {
+          updateData.workType = workType;
+          if (workType === "inPerson") {
+            updateData.travelDistance = travelDistance || undefined;
+          } else {
+            updateData.travelDistance = undefined;
+          }
+        }
 
         await updateProfile(updateData);
         setCurrentStep(currentStep + 1);
@@ -282,6 +305,12 @@ export default function ProfessionalRegistrationSteps() {
       } else {
         updateData.professionalIndemnityAmount = null;
         updateData.insuranceExpiryDate = null;
+      }
+      updateData.workType = workType;
+      if (workType === "inPerson") {
+        updateData.travelDistance = travelDistance || undefined;
+      } else {
+        updateData.travelDistance = undefined;
       }
 
       // Always update sector if provided (during registration); use ID as canonical value
@@ -539,8 +568,6 @@ export default function ProfessionalRegistrationSteps() {
                             address: userInfo?.address || "",
                             townCity: userInfo?.townCity || "",
                             county: userInfo?.county || "",
-                            workType: (userInfo?.workType === "inPerson" || userInfo?.workType === "online") ? userInfo.workType : "inPerson",
-                            travelDistance: userInfo?.travelDistance || "",
                           };
                           // Don't save aboutService when skipping
                           await updateProfile(updateData);
@@ -1033,6 +1060,97 @@ export default function ProfessionalRegistrationSteps() {
                         </p>
                       )}
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 6: Work type & travel */}
+            {currentStep === 6 && (
+              <div className="space-y-6">
+                <div>
+                  <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-3 block">
+                    How do you work? <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex gap-6 mt-2">
+                    <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-[#FE8A0F] cursor-pointer transition-all flex-1 bg-white">
+                      <input
+                        type="radio"
+                        name="work-type"
+                        checked={workType === "inPerson"}
+                        onChange={() => {
+                          setWorkType("inPerson");
+                          if (errors.travelDistance) {
+                            setErrors(prev => {
+                              const next = { ...prev };
+                              delete next.travelDistance;
+                              return next;
+                            });
+                          }
+                        }}
+                        className="w-5 h-5 text-[#FE8A0F] focus:ring-[#FE8A0F]"
+                      />
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">In Person</span>
+                    </label>
+                    <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-[#FE8A0F] cursor-pointer transition-all flex-1 bg-white">
+                      <input
+                        type="radio"
+                        name="work-type"
+                        checked={workType === "online"}
+                        onChange={() => {
+                          setWorkType("online");
+                          setTravelDistance("");
+                          if (errors.travelDistance) {
+                            setErrors(prev => {
+                              const next = { ...prev };
+                              delete next.travelDistance;
+                              return next;
+                            });
+                          }
+                        }}
+                        className="w-5 h-5 text-[#FE8A0F] focus:ring-[#FE8A0F]"
+                      />
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">Online</span>
+                    </label>
+                  </div>
+                </div>
+                {workType === "inPerson" && (
+                  <div>
+                    <Label className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-2 block">
+                      How far are you willing to travel? <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={travelDistance}
+                      onValueChange={(value) => {
+                        setTravelDistance(value);
+                        if (errors.travelDistance) {
+                          setErrors(prev => {
+                            const next = { ...prev };
+                            delete next.travelDistance;
+                            return next;
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
+                        <SelectValue placeholder="Select distance" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5miles">5 miles</SelectItem>
+                        <SelectItem value="10miles">10 miles</SelectItem>
+                        <SelectItem value="15miles">15 miles</SelectItem>
+                        <SelectItem value="20miles">20 miles</SelectItem>
+                        <SelectItem value="30miles">30 miles</SelectItem>
+                        <SelectItem value="50miles">50 miles</SelectItem>
+                        <SelectItem value="100miles">100 miles</SelectItem>
+                        <SelectItem value="Nationwide">Nationwide</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.travelDistance && (
+                      <p className="mt-1 text-sm text-red-600 font-['Poppins',sans-serif]">
+                        {errors.travelDistance}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
