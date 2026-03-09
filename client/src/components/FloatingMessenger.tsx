@@ -654,7 +654,11 @@ export default function FloatingMessenger() {
                                           Amount:
                                         </span>
                                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
-                                          {message.orderDetails.amount || (message.orderDetails.price != null ? formatPrice(Number(message.orderDetails.price)) : "—")}
+                                          {(() => {
+                                            const raw = message.orderDetails.price ?? message.orderDetails.amount;
+                                            const num = typeof raw === "number" ? raw : parseFloat(String(raw || "").replace(/[£$,]/g, ""));
+                                            return Number.isFinite(num) ? formatPrice(num) : "—";
+                                          })()}
                                         </span>
                                       </div>
                                       {message.type === "custom_offer" && message.orderDetails.deliveryDays && (

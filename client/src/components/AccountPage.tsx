@@ -1913,6 +1913,7 @@ function JobsSection() {
 // Details Section
 function DetailsSection() {
   const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, resendEmailChangeOTP, resendPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
+  const { currency, symbol } = useCurrency();
   const [isEditing, setIsEditing] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
   
@@ -2845,10 +2846,10 @@ function DetailsSection() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="indemnityAmount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                        Professional Indemnity Insurance Amount
+                        Professional Indemnity Insurance Amount ({currency})
                       </Label>
                       <div className="relative">
-                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[#2c353f] font-medium">{symbol}</span>
                         <Input
                           id="indemnityAmount"
                           type="number"
@@ -2951,7 +2952,7 @@ function BillingSection() {
   const { userInfo, refreshUser } = useAccount();
   const { formatPrice, symbol, currency } = useCurrency();
   const location = useLocation();
-  const [billingTab, setBillingTab] = useState<"wallet" | "card" | "invoice" | "history">("wallet");
+  const [billingTab, setBillingTab] = useState<"wallet" | "card" | "history">("wallet");
   
   // Check URL parameters for billing tab and add-fund (e.g. redirect from job award when balance insufficient)
   useEffect(() => {
@@ -3610,7 +3611,6 @@ function BillingSection() {
           {[
             { id: "wallet", label: "Wallet", icon: Wallet },
             { id: "card", label: "Payment Cards", icon: CreditCard },
-            { id: "invoice", label: "Invoices", icon: FileText },
             { id: "history", label: "History", icon: History },
           ].map((tab) => {
           const Icon = tab.icon;
@@ -4316,18 +4316,6 @@ function BillingSection() {
         />
       )}
 
-      {/* Invoice Content */}
-      {billingTab === "invoice" && (
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
-            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              No invoices yet
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Transaction History Content */}
       {billingTab === "history" && (
         <TransactionHistoryTab />
@@ -4470,6 +4458,7 @@ function BillingSection() {
 
 // Transaction History Tab Component
 function TransactionHistoryTab() {
+  const { formatPrice, currency } = useCurrency();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -4560,6 +4549,11 @@ function TransactionHistoryTab() {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  const handleViewInvoice = (transactionId: string) => {
+    const url = resolveApiUrl(`/api/wallet/transactions/${transactionId}/invoice?currency=${encodeURIComponent(currency)}`);
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const formatDate = (dateString: string) => {
@@ -4719,6 +4713,9 @@ function TransactionHistoryTab() {
                   <th className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
                     Description
                   </th>
+                  <th className="text-left py-3 px-4 font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -4765,6 +4762,18 @@ function TransactionHistoryTab() {
                         {transaction.description || "N/A"}
                       </div>
                     </td>
+                    <td className="py-3 px-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewInvoice(transaction._id)}
+                        className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                      >
+                        <FileText className="w-4 h-4 mr-1.5" />
+                        View invoice
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -4806,6 +4815,7 @@ function TransactionHistoryTab() {
 // Withdraw Section (Professional)
 function WithdrawSection() {
   const { userInfo } = useAccount();
+  const { formatPrice, currency } = useCurrency();
   const [withdrawTab, setWithdrawTab] = useState<"balance" | "accounts" | "withdraw" | "history">("balance");
   const [showAddPayPal, setShowAddPayPal] = useState(false);
   const [showBankVerificationModal, setShowBankVerificationModal] = useState(false);
@@ -5047,6 +5057,11 @@ function WithdrawSection() {
     if (tx.type === "refund" && refStr) return `Refund for order ${refStr}`;
     if (tx.type === "manual_transfer") return `Bank transfer${refStr ? ` — ${refStr}` : ""}`;
     return typeLabel + (refStr ? ` — ${refStr}` : "");
+  };
+
+  const handleViewInvoice = (transactionId: string) => {
+    const url = resolveApiUrl(`/api/wallet/transactions/${transactionId}/invoice?currency=${encodeURIComponent(currency)}`);
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const transactionRows = useMemo(() => {
@@ -5687,19 +5702,22 @@ function WithdrawSection() {
                     <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                       Status
                     </th>
+                    <th className="px-6 py-4 text-left font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {loadingTransactions && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <td colSpan={7} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         Loading transactions...
                       </td>
                     </tr>
                   )}
                   {!loadingTransactions && transactionRows.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      <td colSpan={7} className="px-6 py-6 text-center font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
                         No transactions found
                       </td>
                     </tr>
@@ -5742,6 +5760,18 @@ function WithdrawSection() {
                         `}>
                           {transaction.statusLabel}
                         </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewInvoice(transaction.id)}
+                          className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                        >
+                          <FileText className="w-4 h-4 mr-1.5" />
+                          View invoice
+                        </Button>
                       </td>
                     </tr>
                   )})}
@@ -6529,6 +6559,7 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
 // Messenger Section
 function MessengerSection() {
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
   const { contacts, getMessages, refreshMessages, addMessage, uploadFile, userRole, setUserRole } = useMessenger();
   const { userInfo, userRole: accountUserRole } = useAccount();
 

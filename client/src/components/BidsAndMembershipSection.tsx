@@ -49,7 +49,7 @@ const TABS: { id: CreditTab; label: string }[] = [
 ];
 
 export default function BidsAndMembershipSection() {
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CreditTab>("balance");
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -155,7 +155,7 @@ export default function BidsAndMembershipSection() {
   }, [historyList, historySearch, historySortBy, historySortDir]);
 
   const handleViewInvoice = (purchaseId: string) => {
-    const url = resolveApiUrl(`/api/bids/invoice/${purchaseId}`);
+    const url = resolveApiUrl(`/api/bids/invoice/${purchaseId}?currency=${encodeURIComponent(currency)}`);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

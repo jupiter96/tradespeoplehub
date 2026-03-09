@@ -964,7 +964,7 @@ export default function ProfilePage() {
                               </div>
                               <div className="insurance-lines">
                                 {typeof insuranceInfo.indemnity === "number" && insuranceInfo.indemnity > 0 ? (
-                                  <div>Professional indemnity up to £{Number(insuranceInfo.indemnity).toLocaleString("en-GB")}</div>
+                                  <div>Professional indemnity up to {formatPrice(insuranceInfo.indemnity)}</div>
                                 ) : insuranceInfo.hasPublicLiability ? (
                                   <div>Public liability insurance: Yes</div>
                                 ) : null}

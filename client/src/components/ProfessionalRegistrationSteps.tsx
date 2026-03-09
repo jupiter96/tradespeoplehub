@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useSectors, useCategories, useSubCategories } from "../hooks/useSectorsAndCategories";
 import type { Sector, Category, SubCategory } from "../hooks/useSectorsAndCategories";
 import SEOHead from "./SEOHead";
+import { useCurrency } from "./CurrencyContext";
 
 const STEPS = [
   { id: 1, title: "About Me", icon: User, description: "Tell us about yourself" },
@@ -41,6 +42,7 @@ const STEPS = [
 
 export default function ProfessionalRegistrationSteps() {
   const navigate = useNavigate();
+  const { formatPrice, symbol, currency } = useCurrency();
   const { userInfo, updateProfile, isLoggedIn } = useAccount();
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
   const [currentStep, setCurrentStep] = useState(1);
@@ -974,10 +976,10 @@ export default function ProfessionalRegistrationSteps() {
                   <div className="space-y-4 pt-4 border-t border-gray-200">
                     <div>
                       <Label htmlFor="indemnityAmount" className="text-[#2c353f] font-['Poppins',sans-serif] text-sm mb-2 block">
-                        How much professional indemnity insurance do you have?
+                        How much professional indemnity insurance do you have? ({currency})
                       </Label>
                       <div className="relative">
-                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[#2c353f] font-medium">{symbol}</span>
                         <Input
                           id="indemnityAmount"
                           type="number"
@@ -994,7 +996,7 @@ export default function ProfessionalRegistrationSteps() {
                               });
                             }
                           }}
-                          placeholder="Enter amount"
+                          placeholder={`Enter amount in ${currency}`}
                           className="pl-10 h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif]"
                         />
                       </div>

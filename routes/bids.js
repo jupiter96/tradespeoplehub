@@ -11,6 +11,16 @@ import { getOrCreateBalance, deductBid } from '../services/bids.js';
 const requirePdf = createRequire(import.meta.url);
 const PDFDocument = requirePdf('pdfkit');
 
+const CURRENCY_RATES = { GBP: 1, USD: 1 / 0.75, EUR: 0.87 / 0.75 };
+const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€' };
+function formatAmountInCurrency(gbpAmount, currencyCode = 'GBP') {
+  const code = ['GBP', 'USD', 'EUR'].includes(currencyCode) ? currencyCode : 'GBP';
+  const rate = CURRENCY_RATES[code];
+  const symbol = CURRENCY_SYMBOLS[code];
+  const value = (Number(gbpAmount) * rate).toFixed(2);
+  return `${symbol}${value}`;
+}
+
 function generateInvoiceNumber() {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const rand = crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -275,6 +285,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
     }).lean();
     if (!purchase) return res.status(404).json({ error: 'Invoice not found' });
 
+    const currency = ['GBP', 'USD', 'EUR'].includes(req.query.currency) ? req.query.currency : 'GBP';
     const user = await User.findById(req.user.id)
       .select('firstName lastName tradingName address postcode townCity county')
       .lean();
@@ -304,6 +315,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
     doc.fontSize(10).font('Helvetica').fillColor('#6b6b6b');
     doc.text(`Invoice # ${purchase.invoiceNumber}`, 400, 78, { width: 150, align: 'right' });
     doc.text(`Date: ${invoiceDate}`, 400, 92, { width: 150, align: 'right' });
+    doc.text(`Currency: ${currency}`, 400, 106, { width: 150, align: 'right' });
 
     let y = 120;
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
@@ -330,7 +342,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
 
     doc.font('Helvetica').fillColor('#333');
     doc.text(description, 50, y, { width: 390 });
-    doc.text(`£${(purchase.amountPounds || 0).toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(purchase.amountPounds || 0, currency), 450, y, { width: 95, align: 'right' });
     y += 24;
 
     doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
@@ -338,7 +350,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
 
     doc.font('Helvetica-Bold').fillColor('#2c353f');
     doc.text('Total', 50, y);
-    doc.text(`£${(purchase.amountPounds || 0).toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(purchase.amountPounds || 0, currency), 450, y, { width: 95, align: 'right' });
     y += 30;
 
     doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');

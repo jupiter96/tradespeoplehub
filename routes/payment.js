@@ -1,5 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import { createRequire } from 'module';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import Wallet from '../models/Wallet.js';
@@ -7,7 +8,21 @@ import User from '../models/User.js';
 import Stripe from 'stripe';
 import paypal from '@paypal/checkout-server-sdk';
 
+const requirePdf = createRequire(import.meta.url);
+const PDFDocument = requirePdf('pdfkit');
+
 const router = express.Router();
+
+// Currency display for invoice PDF (same defaults as frontend CurrencyContext)
+const CURRENCY_RATES = { GBP: 1, USD: 1 / 0.75, EUR: 0.87 / 0.75 };
+const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€' };
+function formatAmountInCurrency(gbpAmount, currencyCode = 'GBP') {
+  const code = ['GBP', 'USD', 'EUR'].includes(currencyCode) ? currencyCode : 'GBP';
+  const rate = CURRENCY_RATES[code];
+  const symbol = CURRENCY_SYMBOLS[code];
+  const value = (gbpAmount * rate).toFixed(2);
+  return `${symbol}${value}`;
+}
 
 // Helper function to resolve Stripe environment (supports legacy flags)
 function getStripeEnvironment(settings) {
@@ -167,6 +182,100 @@ router.get('/wallet/transactions', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch wallet transactions' });
+  }
+});
+
+/**
+ * GET /wallet/transactions/:id/invoice
+ * Returns PDF invoice for the given wallet transaction. Query: currency=GBP|USD|EUR (default GBP).
+ */
+router.get('/wallet/transactions/:id/invoice', authenticateToken, async (req, res) => {
+  try {
+    const transaction = await Wallet.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
+    }).lean();
+    if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+
+    const currency = ['GBP', 'USD', 'EUR'].includes(req.query.currency) ? req.query.currency : 'GBP';
+    const invoiceNumber = `INV-WLT-${transaction._id.toString().slice(-8)}`;
+    const invoiceDate = new Date(transaction.createdAt).toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+
+    const user = await User.findById(req.user.id)
+      .select('firstName lastName email tradingName address postcode townCity county')
+      .lean();
+    const userName = (user?.tradingName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User').trim();
+    const addressParts = [user?.address, user?.townCity, user?.county, user?.postcode].filter(Boolean);
+    const userAddress = addressParts.length > 0 ? addressParts.join(', ') : '';
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="invoice-${invoiceNumber}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    doc.pipe(res);
+
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a2e');
+    doc.text('Sortars.com', 50, 50);
+    doc.moveDown(0.5);
+
+    doc.fontSize(24).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('INVOICE', 400, 50, { width: 150, align: 'right' });
+    doc.fontSize(10).font('Helvetica').fillColor('#6b6b6b');
+    doc.text(`Invoice # ${invoiceNumber}`, 400, 78, { width: 150, align: 'right' });
+    doc.text(`Date: ${invoiceDate}`, 400, 92, { width: 150, align: 'right' });
+    doc.text(`Currency: ${currency}`, 400, 106, { width: 150, align: 'right' });
+
+    let y = 130;
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Bill To', 50, y);
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(userName, 50, y + 14);
+    if (userAddress) doc.text(userAddress, 50, y + 28, { width: 260 });
+
+    doc.font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Service Provider', 320, y);
+    doc.font('Helvetica').fillColor('#333');
+    doc.text('Sortars', 320, y + 14);
+    y += 60;
+
+    doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
+    y += 20;
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Description', 50, y);
+    doc.text('Amount', 450, y, { width: 95, align: 'right' });
+    y += 22;
+    doc.strokeColor('#e0e0e0').lineWidth(0.3).moveTo(50, y).lineTo(545, y).stroke();
+    y += 12;
+
+    const typeLabel = (transaction.type || 'transaction').replace(/_/g, ' ');
+    const description = transaction.description || `${typeLabel} – Wallet transaction`;
+    doc.font('Helvetica').fillColor('#333');
+    doc.text(description, 50, y, { width: 390 });
+    doc.text(formatAmountInCurrency(transaction.amount, currency), 450, y, { width: 95, align: 'right' });
+    y += 24;
+
+    doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
+    y += 16;
+
+    doc.font('Helvetica-Bold').fillColor('#2c353f');
+    doc.text('Amount', 50, y);
+    doc.text(formatAmountInCurrency(transaction.amount, currency), 450, y, { width: 95, align: 'right' });
+    y += 20;
+    doc.font('Helvetica').fillColor('#333');
+    doc.text('Balance after', 50, y);
+    doc.text(formatAmountInCurrency(transaction.balance ?? 0, currency), 450, y, { width: 95, align: 'right' });
+    y += 30;
+
+    doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');
+    doc.text('This invoice is for your wallet transaction on Sortars. Thank you for your business.', 50, y, { width: 495 });
+
+    doc.end();
+  } catch (err) {
+    console.error('[Wallet] Invoice PDF error:', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Failed to generate invoice' });
   }
 });
 
