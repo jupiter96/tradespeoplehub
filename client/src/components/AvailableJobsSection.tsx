@@ -56,7 +56,7 @@ export default function AvailableJobsSection() {
   const { getAvailableJobs, addQuoteToJob } = useJobs();
   const { userInfo } = useAccount();
   const { sectors: sectorsList } = useSectors();
-  const { formatPrice, symbol } = useCurrency();
+  const { formatPrice, symbol, toGBP } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,24 +136,25 @@ export default function AvailableJobsSection() {
       toast.error("Please fill in all fields");
       return;
     }
-    const price = parseFloat(quotePrice);
-    if (isNaN(price) || price <= 0) {
+    const priceInSelected = parseFloat(quotePrice);
+    if (isNaN(priceInSelected) || priceInSelected <= 0) {
       toast.error("Please enter a valid price");
       return;
     }
+    const priceGBP = toGBP(priceInSelected);
     const minPrice = currentJob.budgetMin ?? currentJob.budgetAmount;
     const maxPrice = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
-    if (price < minPrice || price > maxPrice) {
-      toast.error(`Price must be between £${formatNumber(minPrice, 0)} and £${formatNumber(maxPrice, 0)} (job budget range)`);
+    if (priceGBP < minPrice || priceGBP > maxPrice) {
+      toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)} (job budget range)`);
       return;
     }
     try {
       const cleanedSuggestedMilestones = milestones
         .map((m) => {
           const description = (m.description || "").trim();
-          const amount = m.amount != null && m.amount !== "" ? Number(m.amount) : NaN;
-          if (!description || isNaN(amount) || amount <= 0) return null;
-          return { description, amount };
+          const amountInSelected = m.amount != null && m.amount !== "" ? Number(m.amount) : NaN;
+          if (!description || isNaN(amountInSelected) || amountInSelected <= 0) return null;
+          return { description, amount: toGBP(amountInSelected) };
         })
         .filter((m): m is { description: string; amount: number } => !!m);
 
@@ -163,7 +164,7 @@ export default function AvailableJobsSection() {
         professionalAvatar: userInfo?.avatar,
         professionalRating: 4.8,
         professionalReviews: 127,
-        price: price,
+        price: priceGBP,
         deliveryTime: quoteDeliveryTime,
         message: quoteMessage,
           suggestedMilestones: cleanedSuggestedMilestones,

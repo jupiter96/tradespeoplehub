@@ -98,7 +98,7 @@ export default function JobDetailPage() {
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
-  const { formatPrice, symbol } = useCurrency();
+  const { formatPrice, symbol, toGBP, fromGBP } = useCurrency();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
@@ -367,7 +367,7 @@ export default function JobDetailPage() {
 
   const handleOpenAwardModal = (quote: JobQuote) => {
     setSelectedQuoteForAward(quote);
-    setAwardMilestones([{ name: "", amount: quote.price.toString() }]);
+    setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toString() }]);
     setShowAwardModal(true);
   };
 
@@ -380,7 +380,7 @@ export default function JobDetailPage() {
         toast.error("Add at least one milestone with a name and valid amount");
         return;
       }
-      const milestones = valid.map((m) => ({ name: m.name.trim(), amount: parseFloat(m.amount) }));
+      const milestones = valid.map((m) => ({ name: m.name.trim(), amount: toGBP(parseFloat(m.amount)) }));
       try {
         await awardJobWithMilestone(job.id, selectedQuoteForAward.id, selectedQuoteForAward.professionalId, milestones);
         toast.success(`Job awarded with ${milestones.length} milestone(s)!`);
@@ -518,14 +518,14 @@ export default function JobDetailPage() {
       return;
     }
 
-    const amount = parseFloat(newMilestoneForm.amount);
-    if (isNaN(amount) || amount <= 0) {
+    const amountInSelected = parseFloat(newMilestoneForm.amount);
+    if (isNaN(amountInSelected) || amountInSelected <= 0) {
       toast.error("Please enter a valid amount");
       return;
     }
 
     try {
-      await addMilestone(job.id, nameOrDesc, amount);
+      await addMilestone(job.id, nameOrDesc, toGBP(amountInSelected));
       toast.success("Milestone created successfully!");
       setShowNewMilestoneDialog(false);
       setNewMilestoneForm({ name: "", description: "", amount: "" });
@@ -662,7 +662,7 @@ export default function JobDetailPage() {
     if (!job) return;
     setEditingQuoteMeta({ jobId: job.id, quoteId: quote.id });
     setQuoteForm({
-      price: String(quote.price),
+      price: String(fromGBP(quote.price)),
       deliveryTime: quote.deliveryTime || "",
       message: quote.message || "",
     });
@@ -674,14 +674,15 @@ export default function JobDetailPage() {
       toast.error("Please fill in all fields");
       return;
     }
-    const price = parseFloat(quoteForm.price);
-    if (isNaN(price) || price <= 0) {
+    const priceInSelected = parseFloat(quoteForm.price);
+    if (isNaN(priceInSelected) || priceInSelected <= 0) {
       toast.error("Please enter a valid price");
       return;
     }
+    const priceGBP = toGBP(priceInSelected);
     const minPrice = job.budgetMin ?? job.budgetAmount;
     const maxPrice = job.budgetMax ?? job.budgetAmount * 1.2;
-    if (price < minPrice || price > maxPrice) {
+    if (priceGBP < minPrice || priceGBP > maxPrice) {
       toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)} (job budget range)`);
       return;
     }
@@ -689,7 +690,7 @@ export default function JobDetailPage() {
       setEditSubmitting(true);
       try {
         await updateQuoteByProfessional(editingQuoteMeta.jobId, editingQuoteMeta.quoteId, {
-          price,
+          price: priceGBP,
           deliveryTime: quoteForm.deliveryTime.trim(),
           message: quoteForm.message.trim(),
         });
@@ -708,9 +709,9 @@ export default function JobDetailPage() {
       const cleanedSuggestedMilestones = milestones
         .map((m) => {
           const description = (m.description || "").trim();
-          const amount = m.amount != null && m.amount !== "" ? Number(m.amount) : NaN;
-          if (!description || isNaN(amount) || amount <= 0) return null;
-          return { description, amount };
+          const amountInSelected = m.amount != null && m.amount !== "" ? Number(m.amount) : NaN;
+          if (!description || isNaN(amountInSelected) || amountInSelected <= 0) return null;
+          return { description, amount: toGBP(amountInSelected) };
         })
         .filter((m): m is { description: string; amount: number } => !!m);
 
@@ -720,7 +721,7 @@ export default function JobDetailPage() {
         professionalAvatar: userInfo?.avatar,
         professionalRating: 4.8,
         professionalReviews: 0,
-        price,
+        price: priceGBP,
         deliveryTime: quoteForm.deliveryTime,
         message: quoteForm.message,
         suggestedMilestones: cleanedSuggestedMilestones,

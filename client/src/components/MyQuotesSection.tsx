@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import {
   Select,
   SelectContent,
@@ -58,6 +59,7 @@ export default function MyQuotesSection() {
   const navigate = useNavigate();
   const { getProfessionalQuotes, withdrawQuote, updateQuoteByProfessional } = useJobs();
   const { userInfo } = useAccount();
+  const { formatPrice, toGBP, fromGBP } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<string>("date");
@@ -167,7 +169,7 @@ export default function MyQuotesSection() {
 
   const openEditModal = (job: Job, quote: JobQuote) => {
     setEditingQuote({ job, quote });
-    setEditPrice(String(quote.price));
+    setEditPrice(String(fromGBP(quote.price)));
     setEditDeliveryTime(quote.deliveryTime || "");
     setEditMessage(quote.message || "");
   };
@@ -188,8 +190,8 @@ export default function MyQuotesSection() {
 
   const handleEditSubmit = async () => {
     if (!editingQuote) return;
-    const price = parseFloat(editPrice);
-    if (isNaN(price) || price < 0) {
+    const priceInSelected = parseFloat(editPrice);
+    if (isNaN(priceInSelected) || priceInSelected < 0) {
       toast.error("Please enter a valid price");
       return;
     }
@@ -201,16 +203,17 @@ export default function MyQuotesSection() {
       toast.error("Please enter a message to the client");
       return;
     }
+    const priceGBP = toGBP(priceInSelected);
     const minPrice = editingQuote.job.budgetMin ?? editingQuote.job.budgetAmount;
     const maxPrice = editingQuote.job.budgetMax ?? editingQuote.job.budgetAmount * 1.2;
-    if (price < minPrice || price > maxPrice) {
-      toast.error(`Price must be between £${formatNumber(minPrice, 0)} and £${formatNumber(maxPrice, 0)}`);
+    if (priceGBP < minPrice || priceGBP > maxPrice) {
+      toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)}`);
       return;
     }
     setEditSubmitting(true);
     try {
       await updateQuoteByProfessional(editingQuote.job.id, editingQuote.quote.id, {
-        price,
+        price: priceGBP,
         deliveryTime: editDeliveryTime.trim(),
         message: editMessage.trim(),
       });

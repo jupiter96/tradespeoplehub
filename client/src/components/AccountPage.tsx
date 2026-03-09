@@ -1913,7 +1913,7 @@ function JobsSection() {
 // Details Section
 function DetailsSection() {
   const { userInfo, userRole, updateProfile, requestEmailChangeOTP, requestPhoneChangeOTP, resendEmailChangeOTP, resendPhoneChangeOTP, verifyOTP, uploadAvatar, removeAvatar } = useAccount();
-  const { currency, symbol } = useCurrency();
+  const { currency, symbol, toGBP, fromGBP } = useCurrency();
   const [isEditing, setIsEditing] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
   
@@ -1968,11 +1968,11 @@ function DetailsSection() {
       aboutService: userInfo?.aboutService || "",
       hasTradeQualification: userInfo?.hasTradeQualification || "no",
       hasPublicLiability: userInfo?.hasPublicLiability || "no",
-        professionalIndemnityAmount: userInfo?.professionalIndemnityAmount?.toString() || "",
+        professionalIndemnityAmount: userInfo?.professionalIndemnityAmount != null ? String(fromGBP(Number(userInfo.professionalIndemnityAmount))) : "",
         insuranceExpiryDate: insuranceExpiryDateFormatted,
       };
     },
-    [userInfo]
+    [userInfo, fromGBP]
   );
 
   const buildFormState = useCallback(
@@ -2204,11 +2204,10 @@ function DetailsSection() {
       payload.hasPublicLiability =
         (latest.hasPublicLiability as "yes" | "no") || "no";
       
-      // Insurance details
+      // Insurance details (user enters in selected currency; convert to GBP for API)
       if (latest.hasPublicLiability === "yes") {
-        // If blank, store as 0 (requested default)
         payload.professionalIndemnityAmount = latest.professionalIndemnityAmount
-          ? parseFloat(latest.professionalIndemnityAmount) || 0
+          ? toGBP(parseFloat(latest.professionalIndemnityAmount)) || 0
           : 0;
         if (latest.insuranceExpiryDate) {
           payload.insuranceExpiryDate = new Date(latest.insuranceExpiryDate).toISOString();
@@ -2950,7 +2949,7 @@ const BankLogo = () => (
 // Billing Section
 function BillingSection() {
   const { userInfo, refreshUser } = useAccount();
-  const { formatPrice, symbol, currency } = useCurrency();
+  const { formatPrice, symbol, currency, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const location = useLocation();
   const [billingTab, setBillingTab] = useState<"wallet" | "card" | "history">("wallet");
   
@@ -3160,18 +3159,19 @@ function BillingSection() {
     return brand.toUpperCase().slice(0, 4);
   };
 
-  // Calculate fees
+  // Calculate fees (amount and fee in selected currency for display)
   const calculateFees = () => {
     const amountNum = parseFloat(amount) || 0;
     if (amountNum <= 0) return { total: 0, fee: 0, paymentDue: 0 };
 
     let fee = 0;
     if (selectedPaymentType === "card") {
-      fee = (amountNum * paymentSettings.stripeCommissionPercentage / 100) + paymentSettings.stripeCommissionFixed;
+      const fixedInSelected = fromGBP(paymentSettings.stripeCommissionFixed);
+      fee = (amountNum * paymentSettings.stripeCommissionPercentage / 100) + fixedInSelected;
     } else if (selectedPaymentType === "bank") {
       fee = amountNum * paymentSettings.bankProcessingFeePercentage / 100;
     } else if (selectedPaymentType === "paypal") {
-      fee = (amountNum * 3.0 / 100) + 0.30;
+      fee = (amountNum * 3.0 / 100) + fromGBP(0.30);
     }
 
     return {
@@ -3375,7 +3375,7 @@ function BillingSection() {
     
     try {
       const requestBody = { 
-        amount: parseFloat(amount),
+        amount: toGBP(parseFloat(amount)),
         paymentMethodId: selectedPaymentMethod,
       };
       
@@ -3490,7 +3490,7 @@ function BillingSection() {
         },
         credentials: "include",
         body: JSON.stringify({ 
-          amount: parseFloat(amount),
+          amount: toGBP(parseFloat(amount)),
         }),
       });
 
@@ -3573,7 +3573,7 @@ function BillingSection() {
         },
         credentials: "include",
         body: JSON.stringify({
-          amount: parseFloat(amount),
+          amount: toGBP(parseFloat(amount)),
           fullName: fullName.trim(),
         }),
       });
@@ -3947,7 +3947,7 @@ function BillingSection() {
                       />
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                      Minimum: {formatPrice(10)}
+                      Minimum: {formatAmountInSelectedCurrency(10)}
                     </p>
                   </div>
 
@@ -3958,7 +3958,7 @@ function BillingSection() {
                         Total due:
                       </span>
                       <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                        {formatPrice(calculateFees().total)}
+                        {formatAmountInSelectedCurrency(calculateFees().total)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -3982,7 +3982,7 @@ function BillingSection() {
                         </Tooltip>
                       </div>
                       <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                        {formatPrice(calculateFees().fee)}
+                        {formatAmountInSelectedCurrency(calculateFees().fee)}
                       </span>
                     </div>
                     <div className="border-t border-gray-300 pt-3">
@@ -3991,7 +3991,7 @@ function BillingSection() {
                           Payment due:
                         </span>
                         <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                          {formatPrice(calculateFees().paymentDue)}
+                          {formatAmountInSelectedCurrency(calculateFees().paymentDue)}
                         </span>
                       </div>
                     </div>
@@ -4110,7 +4110,7 @@ function BillingSection() {
                             Processing payment...
                           </>
                         ) : (
-                          `Confirm and pay ${formatPrice(calculateFees().paymentDue)}`
+                          `Confirm and pay ${formatAmountInSelectedCurrency(calculateFees().paymentDue)}`
                         )}
                       </Button>
                       {/* Loading Indicator */}
@@ -4400,19 +4400,19 @@ function BillingSection() {
                 <div className="flex items-center justify-between">
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Amount:</span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    {formatPrice(parseFloat(amount || "0"))}
+                    {formatAmountInSelectedCurrency(parseFloat(amount || "0"))}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Processing fee:</span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    {formatPrice(calculateFees().fee)}
+                    {formatAmountInSelectedCurrency(calculateFees().fee)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-gray-300">
                   <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">Total:</span>
                   <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                    {formatPrice(calculateFees().paymentDue)}
+                    {formatAmountInSelectedCurrency(calculateFees().paymentDue)}
                   </span>
                 </div>
               </div>
@@ -4421,7 +4421,7 @@ function BillingSection() {
             {/* Confirmation Message */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="font-['Poppins',sans-serif] text-[14px] text-yellow-800">
-                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer {formatPrice(calculateFees().paymentDue)} using the account details above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
+                <strong>Important:</strong> To complete your transfer, go to your online bank or banking app and transfer {formatAmountInSelectedCurrency(calculateFees().paymentDue)} using the account details above. Make sure to include your Reference ID ({userInfo?.referenceId || "N/A"}) in the payment description. Once you confirm, we will process your request and credit your wallet once we receive your payment.
               </p>
             </div>
 
@@ -4815,7 +4815,7 @@ function TransactionHistoryTab() {
 // Withdraw Section (Professional)
 function WithdrawSection() {
   const { userInfo } = useAccount();
-  const { formatPrice, currency } = useCurrency();
+  const { formatPrice, currency, symbol, toGBP } = useCurrency();
   const [withdrawTab, setWithdrawTab] = useState<"balance" | "accounts" | "withdraw" | "history">("balance");
   const [showAddPayPal, setShowAddPayPal] = useState(false);
   const [showBankVerificationModal, setShowBankVerificationModal] = useState(false);
@@ -5135,12 +5135,13 @@ function WithdrawSection() {
   }, [transactions]);
 
   const handleWithdraw = async () => {
-    const amount = parseFloat(withdrawAmount);
-    if (!amount || amount < 50) {
+    const amountInSelected = parseFloat(withdrawAmount);
+    const amountGBP = toGBP(amountInSelected);
+    if (!amountInSelected || amountGBP < 50) {
       toast.error(`Minimum withdrawal amount is ${formatPrice(50)}`);
       return;
     }
-    if (amount > walletBalance) {
+    if (amountGBP > walletBalance) {
       toast.error("Insufficient balance");
       return;
     }
@@ -5150,8 +5151,8 @@ function WithdrawSection() {
     }
     
     try {
-      // TODO: Implement withdrawal API call
-      toast.success(`Withdrawal request for ${formatPrice(amount)} submitted successfully!`);
+      // TODO: Implement withdrawal API call - send amountGBP (user amount in selected currency converted to GBP)
+      toast.success(`Withdrawal request for ${formatPrice(amountGBP)} submitted successfully!`);
     setShowWithdrawDialog(false);
     setWithdrawAmount("");
     setSelectedWithdrawMethod("");

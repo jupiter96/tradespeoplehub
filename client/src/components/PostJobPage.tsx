@@ -225,7 +225,7 @@ const CUSTOM_BUDGET_ITEM: BudgetRangeItem = { value: "custom-budget", label: "Cu
 export default function PostJobPage() {
   const { isLoggedIn, userInfo, register: initiateRegistration, verifyRegistrationEmail, completeRegistration } = useAccount();
   const { addJob } = useJobs();
-  const { formatPrice, symbol } = useCurrency();
+  const { formatPrice, symbol, toGBP } = useCurrency();
   const navigate = useNavigate();
   const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
@@ -615,8 +615,9 @@ export default function PostJobPage() {
   const buildJobPayload = (clientId: string) => {
     let budgetMin: number, budgetMax: number;
     if (selectedBudget === "custom-budget") {
-      budgetMin = parseFloat(customBudgetMin);
-      budgetMax = parseFloat(customBudgetMax);
+      // User enters in selected currency; convert to GBP for API
+      budgetMin = toGBP(parseFloat(customBudgetMin));
+      budgetMax = toGBP(parseFloat(customBudgetMax));
     } else {
       const preset = budgetRanges.find((r) => r.value === selectedBudget);
       budgetMin = preset?.min ?? 0;

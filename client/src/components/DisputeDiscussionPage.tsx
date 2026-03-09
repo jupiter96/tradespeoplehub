@@ -62,7 +62,7 @@ export default function DisputeDiscussionPage() {
   const { getDisputeById, getJobById, addDisputeMessage, makeDisputeOffer } = useJobs();
   const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, refreshOrders, orders } = useOrders();
   const { currentUser } = useAccount();
-  const { formatPrice, currency } = useCurrency();
+  const { formatPrice, currency, toGBP } = useCurrency();
   
   // Try to get dispute from both contexts
   const [dispute, setDispute] = useState<any | null>(null);
@@ -238,28 +238,29 @@ export default function DisputeDiscussionPage() {
       toast.error("You cannot submit an offer without first replying to the dispute.");
       return;
     }
-    const amount = parseFloat(newOffer);
-    if (isNaN(amount) || amount < 0) {
+    const amountInSelected = parseFloat(newOffer);
+    if (isNaN(amountInSelected) || amountInSelected < 0) {
       toast.error("Please enter a valid amount");
       return;
     }
-    if (!isCurrentUserClient && typeof userOffer === "number" && amount > userOffer) {
+    const amountGBP = toGBP(amountInSelected);
+    if (!isCurrentUserClient && typeof userOffer === "number" && amountGBP > userOffer) {
       toast.error("You cannot make an offer higher than your initial offer.");
       return;
     }
-    if (isCurrentUserClient && typeof userOffer === "number" && amount < userOffer) {
+    if (isCurrentUserClient && typeof userOffer === "number" && amountGBP < userOffer) {
       toast.error("You cannot make an offer lower than your initial offer.");
       return;
     }
-    if (amount > maxOfferAmount) {
-      toast.error(`Offer cannot exceed ${isOrderDispute ? "order" : "milestone"} amount of £${formatCurrency(maxOfferAmount)}`);
+    if (amountGBP > maxOfferAmount) {
+      toast.error(`Offer cannot exceed ${isOrderDispute ? "order" : "milestone"} amount of ${formatPrice(maxOfferAmount)}`);
       return;
     }
     try {
       if (isOrderDispute) {
-        await makeOrderDisputeOffer(disputeId, amount);
+        await makeOrderDisputeOffer(disputeId, amountGBP);
       } else {
-        makeDisputeOffer(disputeId, amount);
+        makeDisputeOffer(disputeId, amountGBP);
       }
       setNewOffer("");
       toast.success("Offer submitted");

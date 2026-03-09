@@ -68,7 +68,7 @@ const BankLogo = () => (
 
 export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFundModalProps) {
   const { userInfo } = useAccount();
-  const { formatPrice, symbol, currency } = useCurrency();
+  const { formatPrice, symbol, currency, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const [selectedPaymentType, setSelectedPaymentType] = useState<"card" | "paypal" | "bank">("card");
   const [expandedPaymentType, setExpandedPaymentType] = useState<"card" | "paypal" | "bank" | null>("card");
   const [amount, setAmount] = useState("20");
@@ -94,19 +94,19 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     bankProcessingFeePercentage: 2.00,
   });
 
-  // Calculate fees
+  // Calculate fees (amount and fee in selected currency for display)
   const calculateFees = () => {
     const amountNum = parseFloat(amount) || 0;
     if (amountNum <= 0) return { total: 0, fee: 0, paymentDue: 0 };
 
     let fee = 0;
     if (selectedPaymentType === "card") {
-      fee = (amountNum * paymentSettings.stripeCommissionPercentage / 100) + paymentSettings.stripeCommissionFixed;
+      const fixedInSelected = fromGBP(paymentSettings.stripeCommissionFixed);
+      fee = (amountNum * paymentSettings.stripeCommissionPercentage / 100) + fixedInSelected;
     } else if (selectedPaymentType === "bank") {
       fee = amountNum * paymentSettings.bankProcessingFeePercentage / 100;
     } else if (selectedPaymentType === "paypal") {
-      // PayPal fees (if configured)
-      fee = (amountNum * 3.0 / 100) + 0.30;
+      fee = (amountNum * 3.0 / 100) + fromGBP(0.30);
     }
 
     return {
@@ -293,7 +293,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
         },
         credentials: "include",
         body: JSON.stringify({ 
-          amount: parseFloat(amount),
+          amount: toGBP(parseFloat(amount)),
           paymentMethodId: selectedPaymentMethod,
         }),
       });
@@ -386,7 +386,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
         },
         credentials: "include",
         body: JSON.stringify({
-          amount: parseFloat(amount),
+          amount: toGBP(parseFloat(amount)),
           reference: reference.trim(),
           fullName: fullName.trim(),
           dateOfDeposit: dateOfDeposit,
@@ -819,7 +819,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                  Minimum: {formatPrice(10)}
+                  Minimum: {formatAmountInSelectedCurrency(10)}
                 </p>
               </div>
 
@@ -830,7 +830,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     Total due:
                   </span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    {formatPrice(fees.total)}
+                    {formatAmountInSelectedCurrency(fees.total)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -854,7 +854,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     </Tooltip>
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    {formatPrice(fees.fee)}
+                    {formatAmountInSelectedCurrency(fees.fee)}
                   </span>
                 </div>
                 <div className="border-t border-gray-300 pt-3">
@@ -863,7 +863,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                       Payment due:
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                      {formatPrice(fees.paymentDue)}
+                      {formatAmountInSelectedCurrency(fees.paymentDue)}
                     </span>
                   </div>
                 </div>
@@ -881,7 +881,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     Processing...
                   </>
                 ) : (
-                  `Confirm and pay ${formatPrice(fees.paymentDue)} ${currency}`
+                  `Confirm and pay ${formatAmountInSelectedCurrency(fees.paymentDue)}`
                 )}
               </Button>
 

@@ -88,7 +88,7 @@ const resolveMediaUrl = (url: string | undefined): string => {
 
 export default function ProfileSection() {
   const navigate = useNavigate();
-  const { formatPrice, currency } = useCurrency();
+  const { formatPrice, currency, toGBP, fromGBP } = useCurrency();
   const { userInfo, updateProfile, uploadAvatar } = useAccount();
   const [bio, setBio] = useState("");
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
@@ -524,7 +524,7 @@ export default function ProfileSection() {
       } else {
         setInsuranceExpiryDate("");
       }
-      setProfessionalIndemnityAmount(userInfo.professionalIndemnityAmount || null);
+      setProfessionalIndemnityAmount(userInfo.professionalIndemnityAmount != null ? fromGBP(userInfo.professionalIndemnityAmount) : null);
       setAvatarPreview(userInfo.avatar || null);
     }
   }, [userInfo, availableCategories]);
@@ -583,7 +583,7 @@ export default function ProfileSection() {
       // and require OTP verification for changes
       const profileData: any = {
         services: serviceIds, // Save as IDs
-        professionalIndemnityAmount: professionalIndemnityAmount == null ? 0 : professionalIndemnityAmount,
+        professionalIndemnityAmount: professionalIndemnityAmount == null ? 0 : toGBP(professionalIndemnityAmount),
         insuranceExpiryDate: insuranceExpiryDate ? new Date(insuranceExpiryDate).toISOString() : undefined,
         publicProfile: {
           bio,
@@ -978,7 +978,7 @@ export default function ProfileSection() {
                   } else {
                     setInsuranceExpiryDate("");
                   }
-                  setProfessionalIndemnityAmount(userInfo?.professionalIndemnityAmount || null);
+                  setProfessionalIndemnityAmount(userInfo?.professionalIndemnityAmount != null ? fromGBP(userInfo.professionalIndemnityAmount) : null);
                 }}
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
@@ -1339,7 +1339,7 @@ export default function ProfileSection() {
             <div className="space-y-2">
               {professionalIndemnityAmount && (
                 <p className="text-black">
-                  <span className="font-semibold">Limit of indemnity:</span> {formatPrice(professionalIndemnityAmount)}
+                  <span className="font-semibold">Limit of indemnity:</span> {formatPrice(toGBP(professionalIndemnityAmount ?? 0))}
                 </p>
               )}
               {insuranceExpiryDate && (
@@ -1971,7 +1971,7 @@ export default function ProfileSection() {
                               <div className="space-y-1 md:space-y-2">
                                 {professionalIndemnityAmount && (
                                   <p className="text-gray-700  text-[12px] md:text-[14px]">
-                                    <span className="font-semibold">Limit of indemnity:</span> {formatPrice(professionalIndemnityAmount)}
+                                    <span className="font-semibold">Limit of indemnity:</span> {formatPrice(toGBP(professionalIndemnityAmount ?? 0))}
                                   </p>
                                 )}
                                 {insuranceExpiryDate && (

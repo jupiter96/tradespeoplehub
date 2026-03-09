@@ -49,6 +49,7 @@ import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 import type { ServiceCategory, ServiceSubCategory, Sector } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
 import { useAccount } from "./AccountContext";
+import { useCurrency } from "./CurrencyContext";
 import {
   Dialog,
   DialogContent,
@@ -1568,6 +1569,7 @@ function SubCategoryLevelDisplay({
 
 export default function AddServiceSection({ onClose, onSave, initialService, isPackageService = false }: AddServiceSectionProps) {
   const { userInfo } = useAccount();
+  const { toGBP, fromGBP } = useCurrency();
 
   // Store original service data for comparison (deep clone to avoid mutations)
   const originalServiceData = useRef<any>(null);
@@ -2075,8 +2077,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
       setServiceTitle(initialService.title || "");
       setDescription(initialService.description || "");
       setAboutMe(initialService.aboutMe || "");
-      setBasePrice(initialService.price?.toString() || "");
-      setOriginalPrice(initialService.originalPrice?.toString() || "");
+      setBasePrice(initialService.price != null ? fromGBP(Number(initialService.price)).toString() : "");
+      setOriginalPrice(initialService.originalPrice != null ? fromGBP(Number(initialService.originalPrice)).toString() : "");
       setPriceUnit(initialService.priceUnit || "fixed");
       setServiceType(initialService.serviceType || "in-person");
       setOnlineDeliveryDays(initialService.onlineDeliveryDays || "");
@@ -2172,8 +2174,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           return {
             ...pkg,
             deliveryDays: deliveryDaysStr,
-            price: pkg.price?.toString() || "",
-            originalPrice: pkg.originalPrice?.toString() || "",
+            price: pkg.price != null ? fromGBP(typeof pkg.price === "number" ? pkg.price : parseFloat(String(pkg.price))).toString() : "",
+            originalPrice: pkg.originalPrice != null ? fromGBP(typeof pkg.originalPrice === "number" ? pkg.originalPrice : parseFloat(String(pkg.originalPrice))).toString() : "",
             originalPriceValidFrom: pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom).toISOString().split("T")[0] : "",
             originalPriceValidUntil: pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil).toISOString().split("T")[0] : "",
           };
@@ -2187,7 +2189,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         const mappedAddons = initialService.addons.map((addon: any, index: number) => ({
           id: addon.id || `extra-${index}`,
           title: addon.name || addon.title || "",
-          price: addon.price?.toString() || "",
+          price: addon.price != null ? fromGBP(typeof addon.price === "number" ? addon.price : parseFloat(String(addon.price))).toString() : "",
           description: addon.description || "",
         }));
         setExtraServices(mappedAddons);
@@ -2460,10 +2462,10 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
     // Load base price, sale price, and valid-until when editing an existing service
     if (isEditMode && initialService) {
       if (typeof initialService.price === "number") {
-        setBasePrice(initialService.price.toString());
+        setBasePrice(fromGBP(initialService.price).toString());
       }
       if (typeof initialService.originalPrice === "number") {
-        setOriginalPrice(initialService.originalPrice.toString());
+        setOriginalPrice(fromGBP(initialService.originalPrice).toString());
       }
       if (initialService.originalPriceValidFrom) {
         const d = new Date(initialService.originalPriceValidFrom);
@@ -4532,8 +4534,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
         aboutMe: aboutMe.trim(),
         // For package services, price is not required (packages have their own prices)
         // For single services, price is required
-        price: isPackageService ? undefined : (basePrice ? parseFloat(basePrice) : undefined),
-        originalPrice: isPackageService ? undefined : (originalPrice ? parseFloat(originalPrice) : undefined),
+        price: isPackageService ? undefined : (basePrice ? toGBP(parseFloat(basePrice)) : undefined),
+        originalPrice: isPackageService ? undefined : (originalPrice ? toGBP(parseFloat(originalPrice)) : undefined),
         originalPriceValidFrom: isPackageService ? undefined : (saleValidFrom || undefined),
         originalPriceValidUntil: isPackageService ? undefined : (saleValidUntil || undefined),
         priceUnit: priceUnit || "fixed",
@@ -4604,8 +4606,8 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
           id: pkg.id,
           name: pkg.name,
           description: pkg.description || "",
-          price: pkg.price ? parseFloat(String(pkg.price)) : 0,
-          originalPrice: pkg.originalPrice ? parseFloat(String(pkg.originalPrice)) : undefined,
+          price: pkg.price ? toGBP(parseFloat(String(pkg.price))) : 0,
+          originalPrice: pkg.originalPrice ? toGBP(parseFloat(String(pkg.originalPrice))) : undefined,
             originalPriceValidFrom: pkg.originalPriceValidFrom ? new Date(pkg.originalPriceValidFrom).toISOString() : undefined,
             originalPriceValidUntil: pkg.originalPriceValidUntil ? new Date(pkg.originalPriceValidUntil).toISOString() : undefined,
             deliveryDays: deliveryDaysValue,
@@ -4620,7 +4622,7 @@ export default function AddServiceSection({ onClose, onSave, initialService, isP
             id: e.id,
             name: e.title,
             description: e.description || "",
-            price: parseFloat(e.price),
+            price: toGBP(parseFloat(e.price)),
             order: index,
           })),
         highlights: serviceHighlights.map(id => {

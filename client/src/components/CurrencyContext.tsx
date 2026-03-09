@@ -24,6 +24,12 @@ interface CurrencyContextType {
   symbol: string;
   /** Multiplier from GBP to current currency (1 for GBP) */
   rate: number;
+  /** Convert amount entered in selected currency to GBP (for sending to API). */
+  toGBP: (amountInSelectedCurrency: number) => number;
+  /** Convert GBP amount from API to selected currency for display in inputs. */
+  fromGBP: (gbpAmount: number) => number;
+  /** Format amount that is already in selected currency (e.g. user input) with symbol — no conversion. Use for fund amount, fee, total in billing. */
+  formatAmountInSelectedCurrency: (amount: number, options?: { minFractionDigits?: number; maxFractionDigits?: number }) => string;
 }
 
 // Fallback when API fails: 1 USD = 0.87 EUR = 0.75 GBP → 1 GBP = 1/0.75 USD, 1 GBP = 0.87/0.75 EUR
@@ -145,6 +151,29 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     [rate, symbol]
   );
 
+  const toGBP = useCallback(
+    (amountInSelectedCurrency: number) => (rate === 0 ? amountInSelectedCurrency : amountInSelectedCurrency / rate),
+    [rate]
+  );
+
+  const fromGBP = useCallback(
+    (gbpAmount: number) => gbpAmount * rate,
+    [rate]
+  );
+
+  const formatAmountInSelectedCurrency = useCallback(
+    (amount: number, options?: { minFractionDigits?: number; maxFractionDigits?: number }) => {
+      const minF = options?.minFractionDigits ?? 2;
+      const maxF = options?.maxFractionDigits ?? 2;
+      const formatted = amount.toLocaleString("en-US", {
+        minimumFractionDigits: minF,
+        maximumFractionDigits: maxF,
+      });
+      return `${symbol}${formatted}`;
+    },
+    [symbol]
+  );
+
   const value = useMemo<CurrencyContextType>(
     () => ({
       currency,
@@ -155,8 +184,11 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       formatPrice,
       symbol,
       rate,
+      toGBP,
+      fromGBP,
+      formatAmountInSelectedCurrency,
     }),
-    [currency, setCurrency, rates, loading, error, formatPrice, symbol, rate]
+    [currency, setCurrency, rates, loading, error, formatPrice, symbol, rate, toGBP, fromGBP, formatAmountInSelectedCurrency]
   );
 
   return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;

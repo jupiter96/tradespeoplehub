@@ -203,7 +203,7 @@ export default function ClientOrdersSection() {
   const { orders, cancelOrder, acceptDelivery, createOrderDispute, updateOrderAfterDisputeCreated, getOrderDisputeById, rateOrder, respondToExtension, requestCancellation, respondToCancellation, withdrawCancellation, requestRevision, respondToDispute, requestArbitration, cancelDispute, addAdditionalInfo, refreshOrders } = useOrders();
   const { startConversation, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, toGBP } = useCurrency();
   const { setPendingOffer } = usePendingCustomOffer();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
@@ -1677,7 +1677,8 @@ export default function ClientOrdersSection() {
       return;
     }
 
-    const offerAmount = parseFloat(disputeOfferAmount);
+    const offerAmountInSelected = parseFloat(disputeOfferAmount);
+    const offerAmount = toGBP(offerAmountInSelected);
     let maxAmount: number;
     if (isMilestoneOrder && selectedMilestoneIndices.length > 0) {
       maxAmount = selectedMilestoneIndices.reduce((s, i) => {
@@ -1691,7 +1692,7 @@ export default function ClientOrdersSection() {
       maxAmount = ord ? (ord.refundableAmount ?? ord.amountValue ?? 0) : 0;
     }
 
-    if (disputeOfferAmount === '' || isNaN(offerAmount)) {
+    if (disputeOfferAmount === '' || isNaN(offerAmountInSelected)) {
       toast.error("Please enter a valid offer amount");
       return;
     }
@@ -1738,7 +1739,7 @@ export default function ClientOrdersSection() {
     const isMilestoneOrder = meta.fromCustomOffer && meta.paymentType === "milestone" && Array.isArray(meta.milestones) && meta.milestones.length > 0;
     const reqs = disputeRequirements;
     const unmet = disputeUnmetRequirements;
-    const offer = disputeOfferAmount;
+    const offer = String(toGBP(parseFloat(disputeOfferAmount)));
     const evidenceFiles = disputeEvidenceFiles;
     // Only send milestone indices that are disputable (delivered, not approved); completed milestones must not be included
     const milestoneDeliveries = (meta.milestoneDeliveries || []) as Array<{ milestoneIndex: number; approvedAt?: string | Date | null }>;

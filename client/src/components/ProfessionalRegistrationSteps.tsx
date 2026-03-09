@@ -42,7 +42,7 @@ const STEPS = [
 
 export default function ProfessionalRegistrationSteps() {
   const navigate = useNavigate();
-  const { formatPrice, symbol, currency } = useCurrency();
+  const { formatPrice, symbol, currency, toGBP, fromGBP } = useCurrency();
   const { userInfo, updateProfile, isLoggedIn } = useAccount();
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
   const [currentStep, setCurrentStep] = useState(1);
@@ -130,8 +130,8 @@ export default function ProfessionalRegistrationSteps() {
     if (userInfo?.hasPublicLiability !== undefined) {
       setInsurance(userInfo.hasPublicLiability === true || userInfo.hasPublicLiability === "yes" ? "yes" : "no");
     }
-    if (userInfo?.professionalIndemnityAmount) {
-      setProfessionalIndemnityAmount(userInfo.professionalIndemnityAmount.toString());
+    if (userInfo?.professionalIndemnityAmount != null) {
+      setProfessionalIndemnityAmount(String(fromGBP(Number(userInfo.professionalIndemnityAmount))));
     }
     if (userInfo?.insuranceExpiryDate) {
       // Format date for input (YYYY-MM-DD)
@@ -221,15 +221,13 @@ export default function ProfessionalRegistrationSteps() {
         if (currentStep >= 5) {
           updateData.hasPublicLiability = insurance;
           if (insurance === "yes") {
-            // If blank, store as 0 (requested default)
             updateData.professionalIndemnityAmount = professionalIndemnityAmount
-              ? parseFloat(professionalIndemnityAmount) || 0
+              ? toGBP(parseFloat(professionalIndemnityAmount)) || 0
               : 0;
             if (insuranceExpiryDate) {
               updateData.insuranceExpiryDate = new Date(insuranceExpiryDate);
             }
           } else {
-            // Clear insurance details if no insurance
             updateData.professionalIndemnityAmount = null;
             updateData.insuranceExpiryDate = null;
           }
@@ -275,15 +273,13 @@ export default function ProfessionalRegistrationSteps() {
       }
 
       if (insurance === "yes") {
-        // If blank, store as 0 (requested default)
         updateData.professionalIndemnityAmount = professionalIndemnityAmount
-          ? parseFloat(professionalIndemnityAmount) || 0
+          ? toGBP(parseFloat(professionalIndemnityAmount)) || 0
           : 0;
         if (insuranceExpiryDate) {
           updateData.insuranceExpiryDate = new Date(insuranceExpiryDate);
         }
       } else {
-        // Clear insurance details if no insurance
         updateData.professionalIndemnityAmount = null;
         updateData.insuranceExpiryDate = null;
       }

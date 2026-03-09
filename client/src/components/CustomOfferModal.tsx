@@ -86,7 +86,7 @@ export default function CustomOfferModal({
 }: CustomOfferModalProps) {
   const { getContactById, refreshMessages } = useMessenger();
   const { userInfo } = useAccount();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, toGBP } = useCurrency();
   
   const [step, setStep] = useState<"select" | "payment" | "customize">("select");
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -361,7 +361,8 @@ export default function CustomOfferModal({
         return;
       }
 
-      const totalPrice = paymentType === "milestone" ? milestones.reduce((s, m) => s + m.price * (m.noOf || 1), 0) : parseFloat(customPrice);
+      const totalPriceInSelected = paymentType === "milestone" ? milestones.reduce((s, m) => s + m.price * (m.noOf || 1), 0) : parseFloat(customPrice);
+      const totalPrice = toGBP(totalPriceInSelected);
       const totalDeliveryDays = paymentType === "milestone" ? milestones.reduce((s, m) => s + m.deliveryInDays, 0) : parseInt(deliveryDays, 10);
 
       // Call API to create custom offer
@@ -381,7 +382,7 @@ export default function CustomOfferModal({
           chargePer: chargePer,
           description: offerDescription,
           paymentType: paymentType,
-          milestones: paymentType === "milestone" ? milestones.map(({ id, ...m }) => m) : undefined,
+          milestones: paymentType === "milestone" ? milestones.map(({ id, ...m }) => ({ ...m, price: toGBP(m.price) })) : undefined,
           attributes: selectedAttributes,
           idealFor: selectedIdealFor.length > 0 ? selectedIdealFor : undefined,
           responseTimeHours: parseInt(offerExpireInHours, 10) || 72,
