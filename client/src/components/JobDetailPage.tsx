@@ -5,6 +5,7 @@ import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import {
@@ -97,6 +98,7 @@ export default function JobDetailPage() {
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
+  const { formatPrice, symbol } = useCurrency();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
@@ -680,7 +682,7 @@ export default function JobDetailPage() {
     const minPrice = job.budgetMin ?? job.budgetAmount;
     const maxPrice = job.budgetMax ?? job.budgetAmount * 1.2;
     if (price < minPrice || price > maxPrice) {
-      toast.error(`Price must be between £${formatNumber(minPrice, 0)} and £${formatNumber(maxPrice, 0)} (job budget range)`);
+      toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)} (job budget range)`);
       return;
     }
     if (editingQuoteMeta) {
@@ -921,8 +923,8 @@ export default function JobDetailPage() {
                   <div className="text-right">
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
                       {job.budgetMin != null && job.budgetMax != null
-                        ? `£${formatNumber(job.budgetMin)} - £${formatNumber(job.budgetMax)}`
-                        : `£${formatNumber(job.budgetAmount)} - £${formatNumber(job.budgetAmount * 1.2)}`}
+                        ? `${formatPrice(job.budgetMin ?? 0)} - ${formatPrice(job.budgetMax ?? 0)}`
+                        : `${formatPrice(job.budgetAmount ?? 0)} - ${formatPrice((job.budgetAmount ?? 0) * 1.2)}`}
                     </p>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                       Posted: {formatDate(job.postedAt)}
@@ -1021,7 +1023,7 @@ export default function JobDetailPage() {
                           </div>
                         </div>
                         <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">
-                          £{formatNumber(myAwardedQuote.price)} in {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
+                          {formatPrice(Number(myAwardedQuote.price))} in {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
                         </p>
                       </div>
                       <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
@@ -1112,7 +1114,7 @@ export default function JobDetailPage() {
                                 </div>
                               </div>
                             </div>
-                            <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">£{formatNumber(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}</p>
+                            <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f] flex-shrink-0 whitespace-nowrap">{formatPrice(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}</p>
                           </div>
                           <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
                             {expanded ? (
@@ -1235,7 +1237,7 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right flex-shrink-0 whitespace-nowrap">
-                            <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">£{formatNumber(Number(quote.price))}</span>
+                            <span className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">{formatPrice(Number(quote.price))}</span>
                             <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                           </div>
                         </div>
@@ -1339,7 +1341,7 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right ml-4 flex-shrink-0 whitespace-nowrap">
-                            <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">£{formatNumber(Number(quote.price))}</span>
+                            <span className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">{formatPrice(Number(quote.price))}</span>
                             <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"> in {formatDeliveryDisplay(quote.deliveryTime || "")}</span>
                           </div>
                         </div>
@@ -1475,7 +1477,7 @@ export default function JobDetailPage() {
                                   {m.description || "Milestone"}
                                 </td>
                                 <td className="py-2.5 px-3 text-right text-[#1f2933]">
-                                  £{formatNumber(Number(m.amount || 0), 1)}
+                                  {formatPrice(Number(m.amount || 0))}
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
                                   {m.status === "pending" && (
@@ -1673,7 +1675,7 @@ export default function JobDetailPage() {
                                   <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] px-2 py-0">Cancelled</Badge>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-right text-[#2c353f]">£{formatNumber(Number(milestone.amount), 1)}</td>
+                              <td className="py-3 px-4 text-right text-[#2c353f]">{formatPrice(Number(milestone.amount))}</td>
                               <td className="py-3 px-4 text-right">
                                 {/* Client: awaiting-accept (pro not accepted yet) → Close + View invoice */}
                                 {isJobOwner && milestone.status === "awaiting-accept" && (
@@ -1928,13 +1930,13 @@ export default function JobDetailPage() {
                       <div className="flex items-center justify-between">
                         <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">Total Milestones:</p>
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                          £{formatNumber(job.milestones.reduce((sum, m) => sum + m.amount, 0), 1)}
+                          {formatPrice(job.milestones.reduce((sum, m) => sum + m.amount, 0))}
                         </p>
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Released:</p>
                         <p className="font-['Poppins',sans-serif] text-[16px] text-green-600">
-                          £{formatNumber(job.milestones.filter((m) => m.status === "released").reduce((sum, m) => sum + m.amount, 0), 1)}
+                          {formatPrice(job.milestones.filter((m) => m.status === "released").reduce((sum, m) => sum + m.amount, 0))}
                         </p>
                       </div>
                     </div>
@@ -2164,7 +2166,7 @@ export default function JobDetailPage() {
             <AlertDialogDescription className="font-['Poppins',sans-serif]">
               {milestoneToRelease && (
                 <>
-                  Release £{formatNumber(milestoneToRelease.milestone.amount)} &nbsp; for &quot;{milestoneToRelease.milestone.name || milestoneToRelease.milestone.description || "Milestone"} &quot;? The professional will receive this payment.
+                  Release {formatPrice(milestoneToRelease.milestone.amount)} &nbsp; for &quot;{milestoneToRelease.milestone.name || milestoneToRelease.milestone.description || "Milestone"} &quot;? The professional will receive this payment.
                 </>
               )}
             </AlertDialogDescription>
@@ -2346,8 +2348,8 @@ export default function JobDetailPage() {
                 <div className="pt-3 border-t border-gray-100 space-y-2">
                   <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                     {job.budgetMin != null && job.budgetMax != null
-                      ? `£${formatNumber(job.budgetMin)} - £${formatNumber(job.budgetMax)}`
-                      : `£${formatNumber(job.budgetAmount)} - £${formatNumber(job.budgetAmount * 1.2)}`}
+                      ? `${formatPrice(job.budgetMin ?? 0)} - ${formatPrice(job.budgetMax ?? 0)}`
+                      : `${formatPrice(job.budgetAmount ?? 0)} - ${formatPrice((job.budgetAmount ?? 0) * 1.2)}`}
                   </div>
                   {job.location && (
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
@@ -2368,7 +2370,7 @@ export default function JobDetailPage() {
               <div className="space-y-5">
                 <div className="bg-white rounded-lg p-4 border border-orange-100">
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Your Price (£) <span className="text-red-500">*</span>
+                    Your Price ({symbol}) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="number"
@@ -2390,7 +2392,7 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: £{formatNumber(job.budgetMin ?? job.budgetAmount)} - £{formatNumber(job.budgetMax ?? job.budgetAmount * 1.2)} (price must be within this range)
+                    💡 Client's budget: {formatPrice(job.budgetMin ?? job.budgetAmount ?? 0)} - {formatPrice(job.budgetMax ?? (job.budgetAmount ?? 0) * 1.2)} (price must be within this range)
                   </p>
                 </div>
 
@@ -2500,7 +2502,7 @@ export default function JobDetailPage() {
                             </Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
-                                £
+                                {symbol}
                               </span>
                               <Input
                                 type="number"
@@ -2668,7 +2670,7 @@ export default function JobDetailPage() {
                         className="flex-1 font-['Poppins',sans-serif] text-[14px]"
                       />
                       <div className="flex items-center gap-1 w-[120px]">
-                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">£</span>
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">{symbol}</span>
                         <Input
                           type="number"
                           value={row.amount}
@@ -2710,9 +2712,9 @@ export default function JobDetailPage() {
               {/* Total */}
               <div className="border-t border-gray-200 pt-3 sm:pt-4">
                 <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
-                  Total: <strong>£{awardWithMilestone
-                    ? formatCurrency(awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0))
-                    : selectedQuoteForAward.price} GBP</strong>
+                  Total: <strong>{formatPrice(awardWithMilestone
+                    ? awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0)
+                    : Number(selectedQuoteForAward.price))}</strong>
                 </p>
               </div>
 
@@ -2827,10 +2829,10 @@ export default function JobDetailPage() {
             {/* Amount */}
             <div>
               <Label htmlFor="milestone-amount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Amount (£)
+                Amount ({symbol})
               </Label>
               <div className="flex items-center gap-2">
-                <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">£</span>
+                <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">{symbol}</span>
                 <Input
                   id="milestone-amount"
                   type="number"
@@ -2883,7 +2885,7 @@ export default function JobDetailPage() {
             </DialogTitle>
             <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
               {cancelRequestMilestone && (
-                <>Request cancellation for &quot;{cancelRequestMilestone.name || cancelRequestMilestone.description}&quot; (£{formatNumber(Number(cancelRequestMilestone.amount), 1)}). The other party can accept or reject.</>
+                <>Request cancellation for &quot;{cancelRequestMilestone.name || cancelRequestMilestone.description}&quot; ({formatPrice(Number(cancelRequestMilestone.amount))}). The other party can accept or reject.</>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -2934,7 +2936,7 @@ export default function JobDetailPage() {
               {disputeForm.selectedMilestones.length > 1
                 ? `Disputing ${disputeForm.selectedMilestones.length} milestones. Our support team will review and help resolve the issue.`
                 : disputeMilestone
-                  ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - £${formatNumber(Number(disputeMilestone.amount), 1)}`
+                  ? `Disputing: ${disputeMilestone.name || disputeMilestone.description} - ${formatPrice(Number(disputeMilestone.amount))}`
                   : "If there's an issue with the milestone(s), you can raise a dispute. Our support team will review and help resolve the issue."}
             </DialogDescription>
           </DialogHeader>
@@ -3027,7 +3029,7 @@ export default function JobDetailPage() {
                         handleMilestoneSelection(milestone.id, !isSelected);
                       }}
                     >
-                      {milestone.name || milestone.description} - £{formatNumber(Number(milestone.amount), 1)}
+                      {milestone.name || milestone.description} - {formatPrice(Number(milestone.amount))}
                     </label>
                   </div>
                 ))}

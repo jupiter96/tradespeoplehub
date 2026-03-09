@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -55,6 +56,7 @@ export default function AvailableJobsSection() {
   const { getAvailableJobs, addQuoteToJob } = useJobs();
   const { userInfo } = useAccount();
   const { sectors: sectorsList } = useSectors();
+  const { formatPrice, symbol } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -306,8 +308,8 @@ export default function AvailableJobsSection() {
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
                           {job.budgetMin != null && job.budgetMax != null
-                          ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)} budget`
-                          : `£${formatNumber(job.budgetAmount, 1)} budget`}
+                          ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)} budget`
+                          : `${formatPrice(job.budgetAmount ?? 0)} budget`}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4" />
@@ -391,8 +393,8 @@ export default function AvailableJobsSection() {
                   <div className="pt-3 border-t border-gray-100 space-y-2">
                     <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                       {currentJob.budgetMin != null && currentJob.budgetMax != null
-                      ? `£${formatNumber(currentJob.budgetMin, 1)} - £${formatNumber(currentJob.budgetMax, 1)}`
-                      : `£${formatNumber(currentJob.budgetAmount, 1)}`}
+                      ? `${formatPrice(currentJob.budgetMin)} - ${formatPrice(currentJob.budgetMax)}`
+                      : formatPrice(currentJob.budgetAmount ?? 0)}
                     </div>
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
@@ -411,7 +413,7 @@ export default function AvailableJobsSection() {
                 <div className="space-y-5">
                   <div className="bg-white rounded-lg p-4 border border-orange-100">
                     <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Your Price (£) <span className="text-red-500">*</span>
+                      Your Price ({symbol}) <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="number"
@@ -434,8 +436,8 @@ export default function AvailableJobsSection() {
                     />
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
                       💡 Client's budget: {currentJob.budgetMin != null && currentJob.budgetMax != null
-                      ? `£${formatNumber(currentJob.budgetMin, 1)} - £${formatNumber(currentJob.budgetMax, 1)}`
-                      : `£${formatNumber(currentJob.budgetAmount, 1)}`}
+                      ? `${formatPrice(currentJob.budgetMin)} - ${formatPrice(currentJob.budgetMax)}`
+                      : formatPrice(currentJob.budgetAmount ?? 0)}
                     </p>
                   </div>
 

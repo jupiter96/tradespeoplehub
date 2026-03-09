@@ -17,8 +17,9 @@ import {
 import { TimelineEvent, Order } from "./types";
 import { formatCurrency } from "../../utils/formatNumber";
 
-export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
+export function buildProfessionalTimeline(order: Order, formatPrice?: (n: number) => string): TimelineEvent[] {
   const events: TimelineEvent[] = [];
+  const fmt = formatPrice ?? ((n: number) => `£${formatCurrency(n)}`);
 
   const push = (event: Omit<TimelineEvent, "id">, id: string) => {
     events.push({ ...event, id });
@@ -915,7 +916,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       Boolean(professionalIdForRejection && rejectorId) &&
       String(professionalIdForRejection) === String(rejectorId);
 
-    const amountText = typeof rejectedAmount === "number" ? `£${formatCurrency(rejectedAmount)}` : "the latest settlement";
+    const amountText = typeof rejectedAmount === "number" ? fmt(rejectedAmount) : "the latest settlement";
 
     if (rejectedByProfessional) {
       push(
@@ -951,7 +952,7 @@ export function buildProfessionalTimeline(order: Order): TimelineEvent[] {
       typeof (disp as any)?.lastRejectedOfferAmount === "number"
         ? (disp as any).lastRejectedOfferAmount
         : undefined;
-    const amountText = typeof rejectedAmount === "number" ? `£${formatCurrency(rejectedAmount)}` : "the latest settlement";
+    const amountText = typeof rejectedAmount === "number" ? fmt(rejectedAmount) : "the latest settlement";
     const rejectedByProfessional = (disp as any)?.lastOfferRejectedByRole === "professional";
 
     push(

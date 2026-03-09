@@ -506,8 +506,8 @@ function ProfessionalOrdersSection() {
   }, [currentOrder?.id, (currentOrder?.items?.[0] as any)?.serviceId || currentOrder?.items?.[0]?.id]);
 
   const timelineEvents = useMemo(
-    () => (currentOrder ? buildProfessionalTimeline(currentOrder as any) : []),
-    [currentOrder]
+    () => (currentOrder ? buildProfessionalTimeline(currentOrder as any, formatPrice) : []),
+    [currentOrder, formatPrice]
   );
 
   // Effective expected delivery: use extended date when extension was approved

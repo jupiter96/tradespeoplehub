@@ -336,7 +336,7 @@ export default function ServiceCard({
                   </span>
                   {service.originalPrice && (
                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                      Was: {formatPrice(parseFloat(String(service.price).replace(/£|,/g, "")) || 0)}
+                      {formatPrice(parseFloat(String(service.price).replace(/£|,/g, "")) || 0)}
                     </span>
                   )}
                 </div>

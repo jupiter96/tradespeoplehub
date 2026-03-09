@@ -471,7 +471,7 @@ export default function CustomOfferModal({
                       </div>
                       <div className="text-right">
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                          £{service.basePrice}
+                          {formatPrice(service.basePrice)}
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                           Base price
@@ -508,7 +508,7 @@ export default function CustomOfferModal({
                         {selectedService.category}
                       </Badge>
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                        £{customPrice}
+                        {formatPrice(customPrice)}
                       </p>
                     </div>
                   </div>
@@ -692,7 +692,7 @@ export default function CustomOfferModal({
                                 />
                                 {selectedService && (
                                   <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
-                                    Base: £{selectedService.basePrice}
+                                    Base: {formatPrice(selectedService.basePrice)}
                                   </p>
                                 )}
                               </div>
@@ -940,7 +940,7 @@ export default function CustomOfferModal({
                         />
                         {selectedService && (
                           <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
-                            Base: £{selectedService.basePrice}
+                            Base: {formatPrice(selectedService.basePrice)}
                           </p>
                         )}
                       </div>
@@ -1158,7 +1158,7 @@ export default function CustomOfferModal({
                                 />
                                 {selectedService && (
                                   <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d] mt-1">
-                                    Base: £{selectedService.basePrice}
+                                    Base: {formatPrice(selectedService.basePrice)}
                                   </p>
                                 )}
                               </div>

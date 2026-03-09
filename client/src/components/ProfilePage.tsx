@@ -16,6 +16,7 @@ import "./ProfilePage.css";
 import serviceVector from "../assets/service_vector.jpg";
 import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
+import { useCurrency } from "./CurrencyContext";
 
 // SmartImageLayers component for blur background effect
 function SmartImageLayers({
@@ -127,6 +128,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { startConversation } = useMessenger();
+  const { formatPrice } = useCurrency();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -245,13 +247,13 @@ export default function ProfilePage() {
               rating: s.rating || 0,
               reviewCount: s.reviewCount || 0,
               completedTasks: s.completedTasks || 0,
-              price: `£${s.price?.toFixed(2) || "0.00"}`,
+              price: formatPrice(Number(s.price) || 0),
               // Only use originalPrice if discount is still valid (within date range)
-              originalPrice: (s.originalPrice && (
+              originalPrice: (s.originalPrice != null && (
                 (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
                 (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
               ))
-                ? `£${s.originalPrice.toFixed(2)}`
+                ? formatPrice(Number(s.originalPrice))
                 : undefined,
               originalPriceValidFrom: s.originalPriceValidFrom || null,
               originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -275,8 +277,8 @@ export default function ProfilePage() {
               packages: s.packages?.map((p: any) => ({
                 id: p.id || p._id,
                 name: p.name,
-                price: `£${p.price?.toFixed(2) || "0.00"}`,
-                originalPrice: p.originalPrice ? `£${p.originalPrice.toFixed(2)}` : undefined,
+                price: formatPrice(Number(p.price) || 0),
+                originalPrice: p.originalPrice != null ? formatPrice(Number(p.originalPrice)) : undefined,
                 originalPriceValidFrom: p.originalPriceValidFrom || null,
                 originalPriceValidUntil: p.originalPriceValidUntil || null,
                 priceUnit: "fixed",

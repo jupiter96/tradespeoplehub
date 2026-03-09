@@ -2747,7 +2747,7 @@ export default function SectorPage() {
                                         </span>
                                         {service.originalPrice && (
                                           <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                                            Was: {service.price}
+                                            {service.price}
                                           </span>
                                         )}
                                       </div>

@@ -224,7 +224,7 @@ interface Review {
 }
 
 // Generate mock review data function
-const generateReviews = (serviceId: number, reviewCount: number, providerName: string, providerImage: string): Review[] => {
+const generateReviews = (serviceId: number, reviewCount: number, providerName: string, providerImage: string, formatPrice: (n: number) => string): Review[] => {
   const userNames = [
     "David James", "Sarah Johnson", "Michael Chen", "Emma Williams", "David Anderson", 
     "Lisa Thompson", "James Brown", "Sophie Taylor", "Robert Wilson"
@@ -254,7 +254,11 @@ const generateReviews = (serviceId: number, reviewCount: number, providerName: s
   ];
   
   const dates = ["12 months ago", "1 week ago", "2 weeks ago", "3 weeks ago", "1 month ago", "2 months ago"];
-  const priceRanges = ["£20.00 - £40.00", "£30.00 - £50.00", "£50.00 - £80.00"];
+  const priceRanges = [
+    `${formatPrice(20)} - ${formatPrice(40)}`,
+    `${formatPrice(30)} - ${formatPrice(50)}`,
+    `${formatPrice(50)} - ${formatPrice(80)}`
+  ];
   const durations = ["Standard", "Express", "Premium"];
   
   const numReviews = Math.min(3, reviewCount); // Display maximum 3 reviews
@@ -624,7 +628,7 @@ export default function ServiceDetailPage() {
       }));
     }
     
-    return generateReviews(service.id, service.reviewCount, service.providerName, service.providerImage);
+    return generateReviews(service.id, service.reviewCount, service.providerName, service.providerImage, formatPrice);
   }, [service, realReviews]);
 
   const selectedPackage = useMemo(() => {

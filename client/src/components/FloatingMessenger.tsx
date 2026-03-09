@@ -35,8 +35,10 @@ import CustomOfferPaymentModal from "./CustomOfferPaymentModal";
 import { toast } from "sonner";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl } from "./orders/utils";
+import { useCurrency } from "./CurrencyContext";
 
 export default function FloatingMessenger() {
+  const { formatPrice } = useCurrency();
   const {
     contacts,
     isOpen,
@@ -652,7 +654,7 @@ export default function FloatingMessenger() {
                                           Amount:
                                         </span>
                                         <span className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]">
-                                          {message.orderDetails.amount || (message.orderDetails.price != null ? `£${Number(message.orderDetails.price).toFixed(2)}` : "—")}
+                                          {message.orderDetails.amount || (message.orderDetails.price != null ? formatPrice(Number(message.orderDetails.price)) : "—")}
                                         </span>
                                       </div>
                                       {message.type === "custom_offer" && message.orderDetails.deliveryDays && (

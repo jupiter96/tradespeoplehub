@@ -628,7 +628,7 @@ function ServiceGrid({ title, services, sectionId, initialCount = 8 }: ServiceGr
                               </span>
                               {service.originalPrice != null && (
                                 <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#999] line-through">
-                                  Was: {formatPrice(Number(service.price) || 0)}
+                                  {formatPrice(Number(service.price) || 0)}
                                 </span>
                               )}
                             </div>
@@ -1024,7 +1024,7 @@ function ServiceCarousel({ title, services, sectionId }: ServiceGridProps) {
                                   </span>
                                   {service.originalPrice != null && (
                                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                                      Was: {formatPrice(Number(service.price) || 0)}
+                                      {formatPrice(Number(service.price) || 0)}
                                     </span>
                                   )}
                         </div>
@@ -1326,6 +1326,18 @@ export default function FeaturedServices() {
             responseTime: s.responseTime || "",
             portfolioImages: s.portfolioImages || [],
             };
+          }).map((svc: any) => {
+            if (typeof svc.price === "number" && svc.price > 0) return svc;
+            if (svc.packages?.length) {
+              let minFromPackages = Infinity;
+              for (const p of svc.packages) {
+                const v = p.originalPrice ?? p.price;
+                const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[£$,]/g, "")) || 0;
+                if (n > 0 && n < minFromPackages) minFromPackages = n;
+              }
+              if (minFromPackages !== Infinity && isFinite(minFromPackages)) return { ...svc, price: minFromPackages };
+            }
+            return svc;
           });
           
           setAllServices(transformed);

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Calendar as CalendarIcon, MapPin, DollarSign, FileText, X, Upload } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { cn } from "./ui/utils";
+import { useCurrency } from "./CurrencyContext";
 
 interface InviteToQuoteModalProps {
   isOpen: boolean;
@@ -36,14 +37,14 @@ const categories = [
   { value: "other", label: "Other Services" }
 ];
 
-const budgetOptions = [
-  { value: "under-100", label: "Under £100" },
-  { value: "100-250", label: "£100 - £250" },
-  { value: "250-500", label: "£250 - £500" },
-  { value: "500-1000", label: "£500 - £1,000" },
-  { value: "1000-2500", label: "£1,000 - £2,500" },
-  { value: "2500-5000", label: "£2,500 - £5,000" },
-  { value: "over-5000", label: "Over £5,000" }
+const getBudgetOptions = (formatPrice: (n: number) => string) => [
+  { value: "under-100", label: `Under ${formatPrice(100)}` },
+  { value: "100-250", label: `${formatPrice(100)} - ${formatPrice(250)}` },
+  { value: "250-500", label: `${formatPrice(250)} - ${formatPrice(500)}` },
+  { value: "500-1000", label: `${formatPrice(500)} - ${formatPrice(1000)}` },
+  { value: "1000-2500", label: `${formatPrice(1000)} - ${formatPrice(2500)}` },
+  { value: "2500-5000", label: `${formatPrice(2500)} - ${formatPrice(5000)}` },
+  { value: "over-5000", label: `Over ${formatPrice(5000)}` }
 ];
 
 const urgencyOptions = [
@@ -60,6 +61,8 @@ export default function InviteToQuoteModal({
   professionalId,
   category
 }: InviteToQuoteModalProps) {
+  const { formatPrice } = useCurrency();
+  const budgetOptions = getBudgetOptions(formatPrice);
   const [formData, setFormData] = useState({
     category: category || "",
     title: "",

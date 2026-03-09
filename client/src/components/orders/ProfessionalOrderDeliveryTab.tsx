@@ -4,6 +4,7 @@ import { Order, TimelineEvent } from "./types";
 import { buildProfessionalTimeline } from "./buildProfessionalTimeline";
 import { formatDateTime, resolveFileUrl } from "./utils";
 import { toast } from "sonner";
+import { useCurrency } from "../CurrencyContext";
 
 interface ProfessionalOrderDeliveryTabProps {
   order: Order;
@@ -20,7 +21,8 @@ export default function ProfessionalOrderDeliveryTab({
   onOpenReviewModal,
   onStartConversation,
 }: ProfessionalOrderDeliveryTabProps) {
-  const timeline = buildProfessionalTimeline(order);
+  const { formatPrice } = useCurrency();
+  const timeline = buildProfessionalTimeline(order, formatPrice);
   const deliveryEvents = timeline.filter(event => event.label === "Work Delivered");
   
   // Sort chronologically (oldest first for proper #1, #2, #3 numbering)

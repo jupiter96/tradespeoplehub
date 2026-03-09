@@ -26,11 +26,13 @@ import {
   SelectValue,
 } from "./ui/select";
 import { formatNumber } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
   const { getProfessionalActiveJobs, getProfessionalQuotes, getAvailableJobs } = useJobs();
   const { userInfo } = useAccount();
+  const { formatPrice } = useCurrency();
 
   // Get counts for badges (Available Jobs: exclude jobs the pro already quoted)
   const availableJobsCount = getAvailableJobs().filter(
@@ -275,7 +277,7 @@ function ActiveJobsSection() {
                   <div className="flex flex-col items-start md:items-end gap-3">
                     <div className="text-right">
                       <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                        {acceptedQuote?.price != null ? `£${formatNumber(Number(acceptedQuote.price), 1)}` : (job.budgetMin != null && job.budgetMax != null ? `£${formatNumber(job.budgetMin, 1)} - £${formatNumber(job.budgetMax, 1)}` : `£${formatNumber(job.budgetAmount, 1)}`)}
+                        {acceptedQuote?.price != null ? formatPrice(Number(acceptedQuote.price)) : (job.budgetMin != null && job.budgetMax != null ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}` : formatPrice(job.budgetAmount ?? 0))}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                         Your Quote

@@ -9,8 +9,8 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Loader2, CreditCard, Building2, Plus, Trash2, Check, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
-import { formatCurrency } from "../utils/formatNumber";
 import PaymentMethodModal from "./PaymentMethodModal";
+import { useCurrency } from "./CurrencyContext";
 import { useAccount } from "./AccountContext";
 
 interface PaymentMethod {
@@ -68,6 +68,7 @@ const BankLogo = () => (
 
 export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFundModalProps) {
   const { userInfo } = useAccount();
+  const { formatPrice, symbol, currency } = useCurrency();
   const [selectedPaymentType, setSelectedPaymentType] = useState<"card" | "paypal" | "bank">("card");
   const [expandedPaymentType, setExpandedPaymentType] = useState<"card" | "paypal" | "bank" | null>("card");
   const [amount, setAmount] = useState("20");
@@ -304,7 +305,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       }
 
       if (data.status === 'succeeded') {
-        toast.success(`Wallet funded successfully! New balance: £${formatCurrency(data.balance)}`);
+        toast.success(`Wallet funded successfully! New balance: ${formatPrice(data.balance)}`);
         onSuccess();
         onClose();
       } else if (data.requiresAction) {
@@ -344,7 +345,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
         const data = await response.json();
         if (response.ok && data.transaction?.status === 'completed') {
           clearInterval(poll);
-          toast.success(`Wallet funded successfully! New balance: £${formatCurrency(data.balance)}`);
+          toast.success(`Wallet funded successfully! New balance: ${formatPrice(data.balance)}`);
           onSuccess();
           onClose();
         } else if (attempts >= maxAttempts) {
@@ -525,7 +526,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                           {getCardBrandLogo(paymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.brand || "visa")}
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                             {selectedPaymentMethod && paymentMethods.length > 0
-                              ? `•••• ${paymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.last4} (GBP)`
+                              ? `•••• ${paymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.last4} (${currency})`
                               : "Debit or credit card"}
                           </span>
                         </div>
@@ -795,7 +796,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
             {/* Right Section: Select Amount */}
             <div className="space-y-4">
               <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
-                Select amount (GBP)
+                Select amount ({currency})
               </h3>
 
               <div>
@@ -804,7 +805,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                 </Label>
                 <div className="relative mt-2">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[#2c353f] font-medium">
-                    £
+                    {symbol}
                   </span>
                   <Input
                     id="amount"
@@ -818,7 +819,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                  Minimum: £10.00
+                  Minimum: {formatPrice(10)}
                 </p>
               </div>
 
@@ -829,7 +830,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     Total due:
                   </span>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    £{formatCurrency(fees.total)}
+                    {formatPrice(fees.total)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -844,7 +845,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                       <TooltipContent className="bg-white border border-gray-200 text-gray-800 shadow-lg p-3 max-w-xs">
                         <p className="font-['Poppins',sans-serif] text-[13px]">
                           {selectedPaymentType === "card"
-                            ? `Card charges (${paymentSettings.stripeCommissionPercentage}%+£${paymentSettings.stripeCommissionFixed}) processing fee and processes your payment immediately.`
+                            ? `Card charges (${paymentSettings.stripeCommissionPercentage}%+${symbol}${paymentSettings.stripeCommissionFixed}) processing fee and processes your payment immediately.`
                             : selectedPaymentType === "bank"
                             ? `We charge ${paymentSettings.bankProcessingFeePercentage}% processing fee and process your payment within 1-2 working days.`
                             : "PayPal processing fee information"}
@@ -853,7 +854,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     </Tooltip>
                   </div>
                   <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    £{formatCurrency(fees.fee)}
+                    {formatPrice(fees.fee)}
                   </span>
                 </div>
                 <div className="border-t border-gray-300 pt-3">
@@ -862,7 +863,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                       Payment due:
                     </span>
                     <span className="font-['Poppins',sans-serif] text-[16px] font-bold text-[#2c353f]">
-                      £{formatCurrency(fees.paymentDue)}
+                      {formatPrice(fees.paymentDue)}
                     </span>
                   </div>
                 </div>
@@ -880,7 +881,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     Processing...
                   </>
                 ) : (
-                  `Confirm and pay £${formatCurrency(fees.paymentDue)} GBP`
+                  `Confirm and pay ${formatPrice(fees.paymentDue)} ${currency}`
                 )}
               </Button>
 

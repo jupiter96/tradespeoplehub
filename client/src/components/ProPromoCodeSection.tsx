@@ -42,6 +42,7 @@ import {
 } from "./ui/dropdown-menu";
 import { toast } from "sonner@2.0.3";
 import { resolveApiUrl } from "../config/api";
+import { useCurrency } from "./CurrencyContext";
 
 interface PromoCode {
   _id?: string;
@@ -70,6 +71,7 @@ export default function ProPromoCodeSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [entriesPerPage, setEntriesPerPage] = useState("25");
   const [currentPage, setCurrentPage] = useState(1);
+  const { formatPrice, symbol } = useCurrency();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -376,7 +378,7 @@ export default function ProPromoCodeSection() {
                     {promo.code}
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    {promo.discountType === "percentage" ? `${promo.discount}%` : `£${promo.discount.toFixed(2)}`}
+                    {promo.discountType === "percentage" ? `${promo.discount}%` : formatPrice(Number(promo.discount))}
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] capitalize">
                     {promo.discountType}
@@ -533,7 +535,7 @@ export default function ProPromoCodeSection() {
               <Input
                 value={formData.discount}
                 onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                placeholder={formData.discountType === "percentage" ? "e.g., 10 for 10%" : "e.g., 5 for £5"}
+                placeholder={formData.discountType === "percentage" ? "e.g., 10 for 10%" : `e.g., 5 for ${formatPrice(5)}`}
                 type="number"
                 step="0.01"
                 min="0"
@@ -550,7 +552,7 @@ export default function ProPromoCodeSection() {
                 <Input
                   value={formData.maxDiscountAmount}
                   onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
-                  placeholder="e.g., 50 for £50 max"
+                  placeholder={`e.g., 50 for ${formatPrice(50)} max`}
                   type="number"
                   step="0.01"
                   min="0"
@@ -567,7 +569,7 @@ export default function ProPromoCodeSection() {
               <Input
                 value={formData.minOrderAmount}
                 onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
-                placeholder="e.g., 20 for £20 minimum"
+                placeholder={`e.g., 20 for ${formatPrice(20)} minimum`}
                 type="number"
                 step="0.01"
                 min="0"
@@ -753,7 +755,7 @@ export default function ProPromoCodeSection() {
               <Input
                 value={formData.discount}
                 onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                placeholder={formData.discountType === "percentage" ? "e.g., 10 for 10%" : "e.g., 5 for £5"}
+                placeholder={formData.discountType === "percentage" ? "e.g., 10 for 10%" : `e.g., 5 for ${formatPrice(5)}`}
                 type="number"
                 step="0.01"
                 min="0"
@@ -770,7 +772,7 @@ export default function ProPromoCodeSection() {
                 <Input
                   value={formData.maxDiscountAmount}
                   onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
-                  placeholder="e.g., 50 for £50 max"
+                  placeholder={`e.g., 50 for ${formatPrice(50)} max`}
                   type="number"
                   step="0.01"
                   min="0"
@@ -787,7 +789,7 @@ export default function ProPromoCodeSection() {
               <Input
                 value={formData.minOrderAmount}
                 onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
-                placeholder="e.g., 20 for £20 minimum"
+                placeholder={`e.g., 20 for ${formatPrice(20)} minimum`}
                 type="number"
                 step="0.01"
                 min="0"

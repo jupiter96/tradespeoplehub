@@ -171,7 +171,7 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { userRole, userInfo, logout, isLoggedIn, authReady } = useAccount();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, symbol, currency } = useCurrency();
   const { contacts } = useMessenger();
   const [activeSection, setActiveSection] = useState<string>(() => {
     const params = new URLSearchParams(location.search);
@@ -659,7 +659,7 @@ export default function AccountPage() {
 
 // Overview Section - fetches real data from API
 function OverviewSection({ userRole }: { userRole: "client" | "professional" | null }) {
-  const { formatPrice } = useCurrency();
+  const { formatPrice, symbol } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<{
     totalOrders: number;
@@ -1722,7 +1722,7 @@ function JobsSection() {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-['Poppins',sans-serif] text-[15px] text-[#FE8A0F]">
-                    {job.amount}
+                    {formatPrice(job.amountValue ?? 0)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -1774,7 +1774,7 @@ function JobsSection() {
                 <div className="bg-gradient-to-br from-[#FFF5EB] to-white border border-[#FE8A0F]/30 rounded-xl p-6">
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Job Value</p>
                   <h3 className="font-['Poppins',sans-serif] text-[36px] text-[#FE8A0F]">
-                    {selectedJob.amount}
+                    {formatPrice(selectedJob.amountValue ?? 0)}
                   </h3>
                   <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mt-2">
                     Category: {selectedJob.category}
@@ -2855,7 +2855,7 @@ function DetailsSection() {
                           step="0.01"
                           value={formData.professionalIndemnityAmount}
                           onChange={(e) => setFormData({...formData, professionalIndemnityAmount: e.target.value})}
-                          placeholder="Enter amount in GBP"
+                          placeholder={`Enter amount in ${currency}`}
                           className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
                         />
                       </div>
@@ -2948,6 +2948,7 @@ const BankLogo = () => (
 // Billing Section
 function BillingSection() {
   const { userInfo, refreshUser } = useAccount();
+  const { formatPrice, symbol, currency } = useCurrency();
   const location = useLocation();
   const [billingTab, setBillingTab] = useState<"wallet" | "card" | "invoice" | "history">("wallet");
   
@@ -3639,7 +3640,7 @@ function BillingSection() {
               {loadingBalance ? (
                 <Loader2 className="w-10 h-10 animate-spin" />
               ) : (
-                `£${walletBalance.toFixed(2)}`
+                formatPrice(walletBalance)
               )}
             </h3>
             <div className="flex gap-3">
@@ -3708,7 +3709,7 @@ function BillingSection() {
                               {getCardBrandLogo(fundPaymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.brand || "visa")}
                               <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                                 {selectedPaymentMethod && fundPaymentMethods.length > 0
-                                  ? `•••• ${fundPaymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.last4} (GBP)`
+                                  ? `•••• ${fundPaymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.last4} (${currency})`
                                   : "Debit or credit card"}
                               </span>
                             </div>
@@ -3922,7 +3923,7 @@ function BillingSection() {
                 {/* Right Section: Select Amount */}
                 <div className="space-y-4">
                   <h4 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
-                    Select amount (GBP)
+                    Select amount ({currency})
                   </h4>
 
                   <div>
@@ -3931,7 +3932,7 @@ function BillingSection() {
                     </Label>
                     <div className="relative mt-2">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[#2c353f] font-medium">
-                        £
+                        {symbol}
                       </span>
                       <Input
                         id="amount"
@@ -5120,7 +5121,7 @@ function WithdrawSection() {
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount < 50) {
-      toast.error("Minimum withdrawal amount is £50");
+      toast.error(`Minimum withdrawal amount is ${formatPrice(50)}`);
       return;
     }
     if (amount > walletBalance) {
@@ -5134,7 +5135,7 @@ function WithdrawSection() {
     
     try {
       // TODO: Implement withdrawal API call
-      toast.success(`Withdrawal request for £${amount.toFixed(2)} submitted successfully!`);
+      toast.success(`Withdrawal request for ${formatPrice(amount)} submitted successfully!`);
     setShowWithdrawDialog(false);
     setWithdrawAmount("");
     setSelectedWithdrawMethod("");
@@ -5191,7 +5192,7 @@ function WithdrawSection() {
                 <p className="font-['Poppins',sans-serif] text-[12px] md:text-[13px] opacity-90">Available Balance</p>
               </div>
               <h3 className="font-['Poppins',sans-serif] text-[28px] md:text-[36px] mb-2">
-                {loadingBalance ? "Loading..." : `£${walletBalance.toFixed(2)}`}
+                {loadingBalance ? "Loading..." : formatPrice(walletBalance)}
               </h3>
               <Button
                 onClick={() => {
@@ -5242,11 +5243,11 @@ function WithdrawSection() {
                   Withdrawal Information
                 </h4>
                 <ul className="space-y-1 font-['Poppins',sans-serif] text-[13px] text-blue-700">
-                  <li>• Minimum withdrawal amount: £50</li>
+                  <li>• Minimum withdrawal amount: {formatPrice(50)}</li>
                   <li>• Bank transfers take 2-3 business days</li>
                   <li>• PayPal transfers are processed within 1 business day</li>
-                  <li>• No withdrawal fees for amounts over £100</li>
-                  <li>• £2.50 fee applies for withdrawals under £100</li>
+                  <li>• No withdrawal fees for amounts over {formatPrice(100)}</li>
+                  <li>• {formatPrice(2.50)} fee applies for withdrawals under {formatPrice(100)}</li>
                 </ul>
               </div>
             </div>
@@ -5257,22 +5258,22 @@ function WithdrawSection() {
             <div className="border border-gray-200 rounded-xl p-4">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">This Month</p>
               <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                {loadingTransactions ? "Loading..." : `£${transactions.filter(tx => {
+                {loadingTransactions ? "Loading..." : formatPrice(transactions.filter(tx => {
                   const txDate = new Date(tx.createdAt || tx.date);
                   const now = new Date();
                   return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear() && tx.type === 'withdrawal' && tx.status === 'completed';
-                }).reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}`}
+                }).reduce((sum, tx) => sum + (tx.amount || 0), 0))}
               </p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
               <p className="font-['Poppins',sans-serif] text-[13px] text-[#8d8d8d] mb-1">Last Month</p>
               <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                {loadingTransactions ? "Loading..." : `£${transactions.filter(tx => {
+                {loadingTransactions ? "Loading..." : formatPrice(transactions.filter(tx => {
                   const txDate = new Date(tx.createdAt || tx.date);
                   const now = new Date();
                   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
                   return txDate.getMonth() === lastMonth.getMonth() && txDate.getFullYear() === lastMonth.getFullYear() && tx.type === 'withdrawal' && tx.status === 'completed';
-                }).reduce((sum, tx) => sum + (tx.amount || 0), 0).toFixed(2)}`}
+                }).reduce((sum, tx) => sum + (tx.amount || 0), 0))}
               </p>
             </div>
             <div className="border border-gray-200 rounded-xl p-4">
@@ -5457,7 +5458,7 @@ function WithdrawSection() {
             <div className="bg-gradient-to-br from-[#10b981] to-[#059669] rounded-2xl p-6 text-white mb-6">
               <p className="font-['Poppins',sans-serif] text-[14px] opacity-90 mb-1">Available to Withdraw</p>
               <h3 className="font-['Poppins',sans-serif] text-[42px]">
-                {loadingBalance ? "Loading..." : `£${walletBalance.toFixed(2)}`}
+                {loadingBalance ? "Loading..." : formatPrice(walletBalance)}
               </h3>
             </div>
 
@@ -5469,7 +5470,7 @@ function WithdrawSection() {
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-['Poppins',sans-serif] text-[18px] text-[#6b6b6b]">
-                    £
+                    {symbol}
                   </span>
                   <input
                     type="number"
@@ -5497,7 +5498,7 @@ function WithdrawSection() {
                     onClick={() => setWithdrawAmount(amount.toString())}
                     className="font-['Poppins',sans-serif] text-[13px] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
                   >
-                    {amount === walletBalance ? "All" : `£${amount}`}
+                    {amount === walletBalance ? "All" : formatPrice(amount)}
                   </Button>
                 ))}
               </div>
@@ -5593,7 +5594,7 @@ function WithdrawSection() {
                     <div className="flex justify-between">
                       <span className="text-[#6b6b6b]">Processing Fee</span>
                       <span className="text-[#2c353f]">
-                        {parseFloat(withdrawAmount) >= 100 ? "£0.00" : "£2.50"}
+                        {parseFloat(withdrawAmount) >= 100 ? formatPrice(0) : formatPrice(2.50)}
                       </span>
                     </div>
                     <Separator />
@@ -6845,7 +6846,7 @@ function MessengerSection() {
                                 <div className="flex justify-between items-center">
                                   <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Amount:</span>
                                   <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                                    {message.orderDetails.amount}
+                                    {formatPrice(parseFloat(String(message.orderDetails?.amount ?? message.orderDetails?.price ?? "0").replace(/[£$,]/g, "")) || 0)}
                                   </span>
                                 </div>
                                 {message.type === "custom_offer" && message.orderDetails.deliveryDays && (
@@ -6958,7 +6959,7 @@ function MessengerSection() {
                                         onClick={() => {
                                           const offerId = message.orderDetails?.offerId;
                                           if (!offerId) { toast.error("Offer ID not found"); return; }
-                                          const price = message.orderDetails?.price || parseFloat(String(message.orderDetails?.amount || "0").replace(/£/g, "")) || 0;
+                                          const price = message.orderDetails?.price ?? (parseFloat(String(message.orderDetails?.amount ?? "0").replace(/[£$,]/g, "")) || 0);
                                           setSelectedOffer({ id: offerId, price, serviceFee: 0, total: price });
                                           setShowOfferPaymentModal(true);
                                         }}

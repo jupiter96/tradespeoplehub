@@ -289,7 +289,7 @@ const geocodePostcode = (postcode: string): { latitude: number; longitude: numbe
 export default function ServicesPage() {
   const { addToCart } = useCart();
   const { isLoggedIn, userRole } = useAccount();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, symbol } = useCurrency();
   const navigate = useNavigate();
   const { sectorSlug: sectorSlugFromPath, serviceCategorySlug: serviceCategorySlugFromPath, '*': serviceSubCategorySplat } =
     useParams<{
@@ -1022,13 +1022,13 @@ export default function ServicesPage() {
             rating: s.rating || 0,
             reviewCount: s.reviewCount || 0,
             completedTasks: s.completedTasks || 0,
-            price: formatPrice(s.price),
+            price: typeof s.price === 'number' ? s.price : Number(s.price) || 0,
             // Only use originalPrice if discount is still valid (within date range)
-            originalPrice: (s.originalPrice && (
+            originalPrice: (s.originalPrice != null && (
               (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
               (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
             ))
-              ? formatPrice(s.originalPrice)
+              ? (typeof s.originalPrice === 'number' ? s.originalPrice : Number(s.originalPrice) || 0)
               : undefined,
             originalPriceValidFrom: s.originalPriceValidFrom || null,
             originalPriceValidUntil: s.originalPriceValidUntil || null,
@@ -1062,8 +1062,8 @@ export default function ServicesPage() {
             packages: s.packages?.map((p: any) => ({
               id: p.id || p._id,
               name: p.name,
-price: formatPrice(p.price),
-                            originalPrice: p.originalPrice ? formatPrice(p.originalPrice) : undefined,
+              price: typeof p.price === 'number' ? p.price : Number(p.price) || 0,
+              originalPrice: p.originalPrice != null ? (typeof p.originalPrice === 'number' ? p.originalPrice : Number(p.originalPrice) || 0) : undefined,
               originalPriceValidFrom: p.originalPriceValidFrom || null,
               originalPriceValidUntil: p.originalPriceValidUntil || null,
               priceUnit: "fixed",
@@ -1081,6 +1081,23 @@ price: formatPrice(p.price),
             _serviceCategory: s.serviceCategory,
             _serviceSubCategory: s.serviceSubCategory,
           };
+          }).map((svc: any) => {
+            // If top-level price is 0 but we have packages with prices, use min package price for display
+            const basePrice = typeof svc.price === 'number' && svc.price > 0 ? svc.price : null;
+            if (basePrice != null) return svc;
+            if (svc.packages && svc.packages.length > 0) {
+              let minFromPackages = Infinity;
+              for (const p of svc.packages) {
+                const displayPrice = p.originalPrice ?? p.price;
+                if (typeof displayPrice === 'number' && displayPrice > 0 && displayPrice < minFromPackages) {
+                  minFromPackages = displayPrice;
+                }
+              }
+              if (minFromPackages !== Infinity && isFinite(minFromPackages)) {
+                return { ...svc, price: minFromPackages };
+              }
+            }
+            return svc;
           });
           setAllServices(transformedServices);
         } else {
@@ -1563,10 +1580,12 @@ price: formatPrice(p.price),
         }
       }
 
-      // 5. Price filter
-      const actualPrice = service.originalPrice || service.price;
-      const priceValue = parseFloat(String(actualPrice).replace(/[£,]/g, ''));
-      if (isNaN(priceValue) || priceValue < priceRange[0] || priceValue > priceRange[1]) {
+      // 5. Price filter (use numeric price; if unparseable, include service so we don't hide all)
+      const actualPrice = service.originalPrice ?? service.price;
+      const priceValue = typeof actualPrice === 'number' && !Number.isNaN(actualPrice)
+        ? actualPrice
+        : parseFloat(String(actualPrice).replace(/[£$,]/g, ''));
+      if (!Number.isNaN(priceValue) && (priceValue < priceRange[0] || priceValue > priceRange[1])) {
         return false;
       }
 
@@ -1574,20 +1593,17 @@ price: formatPrice(p.price),
     });
 
     // Sort services
+    const toNum = (v: unknown): number => {
+      if (typeof v === 'number' && !Number.isNaN(v)) return v;
+      const n = parseFloat(String(v).replace(/[£$,]/g, ''));
+      return Number.isNaN(n) ? 0 : n;
+    };
     switch (sortBy) {
       case "price-low":
-        filtered.sort((a, b) => {
-          const priceA = parseFloat(String(a.originalPrice || a.price).replace('£', ''));
-          const priceB = parseFloat(String(b.originalPrice || b.price).replace('£', ''));
-          return priceA - priceB;
-        });
+        filtered.sort((a, b) => toNum(a.originalPrice ?? a.price) - toNum(b.originalPrice ?? b.price));
         break;
       case "price-high":
-        filtered.sort((a, b) => {
-          const priceA = parseFloat(String(a.originalPrice || a.price).replace('£', ''));
-          const priceB = parseFloat(String(b.originalPrice || b.price).replace('£', ''));
-          return priceB - priceA;
-        });
+        filtered.sort((a, b) => toNum(b.originalPrice ?? b.price) - toNum(a.originalPrice ?? a.price));
         break;
       case "rating":
         filtered.sort((a, b) => b.rating - a.rating);
@@ -2303,7 +2319,7 @@ price: formatPrice(p.price),
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="min-price-filter" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
-              Min Price (£)
+              Min Price ({symbol})
             </Label>
             <Input
               id="min-price-filter"
@@ -2319,7 +2335,7 @@ price: formatPrice(p.price),
           </div>
           <div>
             <Label htmlFor="max-price-filter" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1.5 block">
-              Max Price (£)
+              Max Price ({symbol})
             </Label>
             <Input
               id="max-price-filter"
@@ -2858,23 +2874,25 @@ price: formatPrice(p.price),
                             if (!service.packages || service.packages.length === 0) {
                               return null;
                             }
-                            
-                            // For package services, find min and max package prices with their names
+                            const toNum = (v: unknown): number => {
+                              if (typeof v === 'number' && !Number.isNaN(v)) return v;
+                              const n = parseFloat(String(v).replace(/[£$,]/g, ''));
+                              return Number.isNaN(n) ? 0 : n;
+                            };
+                            // For package services, find min and max package prices (use display price: originalPrice ?? price)
                             let minPackagePrice = Infinity;
                             let maxPackagePrice = 0;
                             let minPackageName = '';
                             let maxPackageName = '';
-                            
                             service.packages.forEach((pkg: any) => {
-                              // Use originalPrice if available (discount price), otherwise use price (original price)
-                              const pkgPrice = parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                              const pkgPrice = toNum(pkg.originalPrice ?? pkg.price ?? 0);
                               if (pkgPrice > 0) {
                                 if (pkgPrice < minPackagePrice) {
                                   minPackagePrice = pkgPrice;
                                   minPackageName = pkg.name || '';
                                 }
-                              if (pkgPrice > maxPackagePrice) {
-                                maxPackagePrice = pkgPrice;
+                                if (pkgPrice > maxPackagePrice) {
+                                  maxPackagePrice = pkgPrice;
                                   maxPackageName = pkg.name || '';
                                 }
                               }
@@ -2969,21 +2987,34 @@ price: formatPrice(p.price),
                               </>
                             );
                           } else {
-                            // Show regular price when no packages
+                            // Show regular price when no packages (or fallback from packages if price is 0)
+                            const displayPrice = service.originalPrice ?? service.price;
+                            const priceNum = typeof displayPrice === 'number' ? displayPrice : parseFloat(String(displayPrice).replace(/[£$,]/g, '')) || 0;
+                            let fromPackages = 0;
+                            if (priceNum <= 0 && service.packages?.length) {
+                              for (const p of service.packages) {
+                                const pv = typeof p.price === 'number' ? p.price : parseFloat(String(p.price || 0).replace(/[£$,]/g, '')) || 0;
+                                const ov = p.originalPrice != null ? (typeof p.originalPrice === 'number' ? p.originalPrice : parseFloat(String(p.originalPrice).replace(/[£$,]/g, '')) || 0) : 0;
+                                const v = ov || pv;
+                                if (v > 0 && (fromPackages === 0 || v < fromPackages)) fromPackages = v;
+                              }
+                            }
+                            const showPrice = priceNum > 0 ? priceNum : fromPackages;
+                            const prefix = priceNum <= 0 && fromPackages > 0 ? 'From ' : '';
                             return (
                               <>
                                 <div className="flex items-baseline gap-2">
                                   <span className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-gray-900 font-normal">
-                                    {service.originalPrice || service.price}
+                                    {prefix}{formatPrice(showPrice)}
                                   </span>
-                                  {service.originalPrice && (
+                                  {service.originalPrice != null && service.price > 0 && (
                                     <span className="font-['Poppins',sans-serif] text-[12px] md:text-[14px] text-[#999] line-through">
-                                      Was: {service.price}
+                                      {formatPrice(service.price)}
                                     </span>
                                 )}
                                     </div>
                                 {/* Discount and Limited Time Offer - Below Price */}
-                                {service.originalPrice && (() => {
+                                {service.originalPrice != null && (() => {
                                   // Check if service has a valid time-limited discount
                                   // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
                                   // No end date means offer is valid indefinitely
@@ -2994,14 +3025,16 @@ price: formatPrice(p.price),
                                   const hasTimeLimitedDiscount = validUntil && 
                                                                  (!validFrom || validFrom <= now) && 
                                                                  validUntil >= now;
-                                  
+                                  const priceNum = typeof service.price === 'number' ? service.price : parseFloat(String(service.price).replace(/[£$,]/g, '')) || 0;
+                                  const origNum = typeof service.originalPrice === 'number' ? service.originalPrice : parseFloat(String(service.originalPrice).replace(/[£$,]/g, '')) || 0;
+                                  const pct = priceNum > 0 ? Math.round(((priceNum - origNum) / priceNum) * 100) : 0;
                                   return (
                                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5 md:gap-2">
                                       <span 
                                         className="inline-block text-white text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-md whitespace-nowrap"
                                         style={{ backgroundColor: '#CC0C39' }}
                                       >
-                                        {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                        {pct}% off
                                       </span>
                                       {hasTimeLimitedDiscount && (
                                         <span className="text-[10px] md:text-[11px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>
@@ -3218,20 +3251,18 @@ price: formatPrice(p.price),
                               if (!service.packages || service.packages.length === 0) {
                                 return null;
                               }
-                              
+                              const toNum = (v: unknown): number => {
+                                if (typeof v === 'number' && !Number.isNaN(v)) return v;
+                                const n = parseFloat(String(v).replace(/[£$,]/g, ''));
+                                return Number.isNaN(n) ? 0 : n;
+                              };
                               let minPackagePrice = Infinity;
                               let maxPackagePrice = 0;
-                              
                               service.packages.forEach((pkg: any) => {
-                                  // originalPrice = discount price, price = original price
-                                  const pkgPrice = typeof pkg.originalPrice === 'number' ? pkg.originalPrice : parseFloat(String(pkg.originalPrice || pkg.price || 0).replace('£', '').replace(/,/g, '')) || 0;
+                                const pkgPrice = toNum(pkg.originalPrice ?? pkg.price ?? 0);
                                 if (pkgPrice > 0) {
-                                  if (pkgPrice < minPackagePrice) {
-                                    minPackagePrice = pkgPrice;
-                                  }
-                                  if (pkgPrice > maxPackagePrice) {
-                                    maxPackagePrice = pkgPrice;
-                                  }
+                                  if (pkgPrice < minPackagePrice) minPackagePrice = pkgPrice;
+                                  if (pkgPrice > maxPackagePrice) maxPackagePrice = pkgPrice;
                                 }
                               });
                               
@@ -3321,21 +3352,34 @@ price: formatPrice(p.price),
                                 </>
                               );
                             } else {
-                              // Show regular price when no packages
+                              // Show regular price when no packages (or fallback from packages if price is 0)
+                              const displayPrice = service.originalPrice ?? service.price;
+                              const priceNum = typeof displayPrice === 'number' ? displayPrice : parseFloat(String(displayPrice).replace(/[£$,]/g, '')) || 0;
+                              let fromPackages = 0;
+                              if (priceNum <= 0 && service.packages?.length) {
+                                for (const p of service.packages) {
+                                  const pv = typeof p.price === 'number' ? p.price : parseFloat(String(p.price || 0).replace(/[£$,]/g, '')) || 0;
+                                  const ov = p.originalPrice != null ? (typeof p.originalPrice === 'number' ? p.originalPrice : parseFloat(String(p.originalPrice).replace(/[£$,]/g, '')) || 0) : 0;
+                                  const v = ov || pv;
+                                  if (v > 0 && (fromPackages === 0 || v < fromPackages)) fromPackages = v;
+                                }
+                              }
+                              const showPrice = priceNum > 0 ? priceNum : fromPackages;
+                              const prefix = priceNum <= 0 && fromPackages > 0 ? 'From ' : '';
                               return (
                                 <>
                                   <div className="flex items-baseline gap-2">
                                     <span className="font-['Poppins',sans-serif] text-[16px] md:text-[18px] text-gray-900 font-normal">
-                                      {service.originalPrice || service.price}
+                                      {prefix}{formatPrice(showPrice)}
                                     </span>
-                                    {service.originalPrice && (
+                                    {service.originalPrice != null && service.price > 0 && (
                                       <span className="font-['Poppins',sans-serif] text-[11px] md:text-[12px] text-[#999] line-through">
-                                        Was: {service.price}
+                                        {formatPrice(service.price)}
                                       </span>
                                     )}
                                   </div>
                                   {/* Discount Badge */}
-                                  {service.originalPrice && (() => {
+                                  {service.originalPrice != null && (() => {
                                     // Check if service has a valid time-limited discount
                                     // Only show "Limited Time Offer" if there's an end date (originalPriceValidUntil)
                                     // No end date means offer is valid indefinitely
@@ -3346,14 +3390,16 @@ price: formatPrice(p.price),
                                     const hasTimeLimitedDiscount = validUntil && 
                                                                    (!validFrom || validFrom <= now) && 
                                                                    validUntil >= now;
-                                    
+                                    const priceNum = typeof service.price === 'number' ? service.price : parseFloat(String(service.price).replace(/[£$,]/g, '')) || 0;
+                                    const origNum = typeof service.originalPrice === 'number' ? service.originalPrice : parseFloat(String(service.originalPrice).replace(/[£$,]/g, '')) || 0;
+                                    const pct = priceNum > 0 ? Math.round(((priceNum - origNum) / priceNum) * 100) : 0;
                                     return (
                                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                         <span 
                                           className="inline-block text-white text-[9px] md:text-[10px] font-semibold px-2 py-0.5 rounded-md whitespace-nowrap"
                                           style={{ backgroundColor: '#CC0C39' }}
                                         >
-                                          {Math.round(((parseFloat(String(service.price).replace('£', '')) - parseFloat(String(service.originalPrice).replace('£', ''))) / parseFloat(String(service.price).replace('£', ''))) * 100)}% off
+                                          {pct}% off
                                         </span>
                                         {hasTimeLimitedDiscount && (
                                           <span className="text-[9px] md:text-[10px] font-semibold whitespace-nowrap" style={{ color: '#CC0C39' }}>

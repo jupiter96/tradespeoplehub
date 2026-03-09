@@ -19,6 +19,7 @@ import SEOHead from "./SEOHead";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { formatCurrency } from "../utils/formatNumber";
+import { useCurrency } from "./CurrencyContext";
 import paypalLogo from "../assets/paypal-logo.png";
 import adminAvatar from "figma:asset/e0cd63eca847c922f306abffb67a5c6de3fd7001.png";
 
@@ -61,6 +62,7 @@ export default function DisputeDiscussionPage() {
   const { getDisputeById, getJobById, addDisputeMessage, makeDisputeOffer } = useJobs();
   const { getOrderDisputeById, addOrderDisputeMessage, makeOrderDisputeOffer, acceptDisputeOffer, rejectDisputeOffer, cancelDispute, refreshOrders, orders } = useOrders();
   const { currentUser } = useAccount();
+  const { formatPrice, currency } = useCurrency();
   
   // Try to get dispute from both contexts
   const [dispute, setDispute] = useState<any | null>(null);
@@ -1688,13 +1690,13 @@ export default function DisputeDiscussionPage() {
                 
                 {hasUserMadeOffer && (
                   <p className="font-['Poppins',sans-serif] text-[11px] text-green-600 mt-2 text-center">
-                    Your current offer: £{userOffer != null ? formatCurrency(userOffer) : "—"}
+                    Your current offer: {userOffer != null ? formatPrice(userOffer) : "—"}
                   </p>
                 )}
                 
                 {!hasUserMadeOffer && (
                   <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2 text-center">
-                    Enter an amount between £{formatCurrency(offerMin)} and £{formatCurrency(offerMax)} GBP
+                    Enter an amount between {formatPrice(offerMin)} and {formatPrice(offerMax)} {currency}
                   </p>
                 )}
 

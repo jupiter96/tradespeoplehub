@@ -4,6 +4,7 @@ import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown,
 import { Button } from "./ui/button";
 import { resolveApiUrl } from "../config/api";
 import { toast } from "sonner@2.0.3";
+import { useCurrency } from "./CurrencyContext";
 
 interface CreditPurchaseRecord {
   id: string;
@@ -48,6 +49,7 @@ const TABS: { id: CreditTab; label: string }[] = [
 ];
 
 export default function BidsAndMembershipSection() {
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CreditTab>("balance");
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -419,7 +421,7 @@ export default function BidsAndMembershipSection() {
                   </span>
                 </div>
                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  £{pricePerBid.toFixed(2)}/credit
+                  {formatPrice(pricePerBid)}/credit
                 </span>
               </label>
             </div>
@@ -447,7 +449,7 @@ export default function BidsAndMembershipSection() {
                       className="w-28 h-11 px-3 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] focus:outline-none"
                     />
                     <span className="font-['Poppins',sans-serif] text-[18px] font-semibold text-[#2c353f]">
-                      Total: £{customTotal}
+                      Total: {formatPrice(customQuantity * pricePerBid)}
                     </span>
                     <Button
                       onClick={handleBuyCredit}
@@ -489,7 +491,7 @@ export default function BidsAndMembershipSection() {
 
           {plans.length === 0 && (
             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mt-4">
-              No plans available at the moment. You can use Custom to buy credits at £{pricePerBid.toFixed(2)} per credit.
+              No plans available at the moment. You can use Custom to buy credits at {formatPrice(pricePerBid)} per credit.
             </p>
           )}
         </div>
@@ -595,7 +597,7 @@ export default function BidsAndMembershipSection() {
                         {formatDate(row.purchasedAt)}
                       </td>
                       <td className="py-3 px-4 text-[#2c353f]">{row.credits}</td>
-                      <td className="py-3 px-4 text-[#2c353f]">£{(row.amountPounds || 0).toFixed(2)}</td>
+                      <td className="py-3 px-4 text-[#2c353f]">{formatPrice(row.amountPounds || 0)}</td>
                       <td className="py-3 px-4 text-[#2c353f]">{row.planName}</td>
                       <td className="py-3 px-4 text-right">
                         <Button

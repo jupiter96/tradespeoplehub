@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, ShoppingCart, Bell, User, Search, Heart, ShoppingBag, Briefcase, CreditCard, Lock, Settings, MessageCircle, HelpCircle, Gift, FileText, Wallet, Shield, Ticket, LogOut } from "lucide-react";
 import { useCart } from "../components/CartContext";
 import { useAccount } from "../components/AccountContext";
+import { useCurrency } from "../components/CurrencyContext";
 import { useSectors, useServiceCategories, type Sector, type Category, type ServiceCategory, type ServiceSubCategory } from "../hooks/useSectorsAndCategories";
 import { useAllServiceCategories } from "../hooks/useAllServiceCategories";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
@@ -359,6 +360,7 @@ const getNotificationIconType = (type: string): string => {
 
 export default function Nav() {
   const { cartCount, cartTotal } = useCart();
+  const { formatPrice } = useCurrency();
   const location = useLocation();
   const navigate = useNavigate();
   const { isLoggedIn, userInfo, userRole, logout } = useAccount();
@@ -1339,7 +1341,7 @@ export default function Nav() {
                   My Cart
                 </span>
                 <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors leading-tight">
-                  £{cartTotal.toFixed(1)}
+                  {formatPrice(cartTotal)}
                 </span>
               </div>
             </Link>

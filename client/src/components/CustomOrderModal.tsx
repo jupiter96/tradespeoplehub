@@ -30,6 +30,7 @@ import { useMessenger } from "./MessengerContext";
 import { useAccount } from "./AccountContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner@2.0.3";
+import { useCurrency } from "./CurrencyContext";
 
 interface CustomOrderModalProps {
   isOpen: boolean;
@@ -101,6 +102,8 @@ export default function CustomOrderModal({
   const { addMessage } = useMessenger();
   const { userInfo } = useAccount();
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
+  const parsePrice = (p: string) => parseFloat(String(p).replace(/[£$,]/g, "")) || 0;
   
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [step, setStep] = useState<"select" | "payment" | "details">("select");
@@ -161,7 +164,7 @@ export default function CustomOrderModal({
       const servicePrice = parseFloat(selectedServiceData?.price.replace("£", "") || "0");
       
       if (totalMilestoneAmount !== servicePrice) {
-        toast.error(`Total milestone amount (£${totalMilestoneAmount}) must equal service price (${selectedServiceData?.price})`);
+        toast.error(`Total milestone amount (${formatPrice(totalMilestoneAmount)}) must equal service price (${formatPrice(parsePrice(selectedServiceData?.price || "0"))})`);
         return;
       }
     }
@@ -264,7 +267,7 @@ export default function CustomOrderModal({
                       </div>
                       <div className="text-right">
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                          {service.price}
+                          {formatPrice(parsePrice(service.price))}
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                           Starting from
@@ -301,7 +304,7 @@ export default function CustomOrderModal({
                         {selectedServiceData.category}
                       </Badge>
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                        {selectedServiceData.price}
+                        {formatPrice(parsePrice(selectedServiceData.price))}
                       </p>
                     </div>
                   </div>
@@ -474,7 +477,7 @@ export default function CustomOrderModal({
                               Service Price:
                             </span>
                             <span className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F]">
-                              {selectedServiceData.price}
+                              {formatPrice(parsePrice(selectedServiceData.price))}
                             </span>
                           </div>
                         </div>
@@ -534,7 +537,7 @@ export default function CustomOrderModal({
                         </Badge>
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#FE8A0F]">
-                        {selectedServiceData.price}
+                        {formatPrice(parsePrice(selectedServiceData.price))}
                       </p>
                     </div>
                   </div>
