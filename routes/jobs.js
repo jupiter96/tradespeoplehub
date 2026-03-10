@@ -1628,16 +1628,40 @@ router.post('/:id/milestones', authenticateToken, requireRole(['client']), async
       if (clientUser?.email || proUser?.email) {
         await ensureJobSlug(job);
         if (clientUser?.email) {
-          await sendTemplatedEmail(clientUser.email, 'job-milestone-created-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          await sendTemplatedEmail(
+            clientUser.email,
+            'job-milestone-created-client',
+            {
+              firstName: clientUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              milestoneName,
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job',
+          );
         }
         if (proUser?.email) {
-          await sendTemplatedEmail(proUser.email, 'job-milestone-created-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          await sendTemplatedEmail(
+            proUser.email,
+            'job-milestone-created-pro',
+            {
+              firstName: proUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              milestoneName,
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job',
+          );
         }
       }
     } catch (e) {
       console.error('[Jobs] job-milestone-created email error:', e);
     }
     res.status(201).json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Add milestone error:', err);
     res.status(500).json({ error: err.message || 'Failed to add milestone' });
   }
 });
@@ -1705,23 +1729,68 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
       const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
       const professionalName = proUser?.firstName || 'The professional';
       if (clientUser?.email) {
-        await sendTemplatedEmail(clientUser.email, 'job-milestone-released-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        await sendTemplatedEmail(
+          clientUser.email,
+          'job-milestone-released-client',
+          {
+            firstName: clientUser.firstName || 'There',
+            jobTitle: job.title || 'Job',
+            milestoneName: mName,
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job',
+        );
       }
       if (proUser?.email) {
-        await sendTemplatedEmail(proUser.email, 'job-milestone-released-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        await sendTemplatedEmail(
+          proUser.email,
+          'job-milestone-released-pro',
+          {
+            firstName: proUser.firstName || 'There',
+            jobTitle: job.title || 'Job',
+            milestoneName: mName,
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job',
+        );
       }
       if (job.status === 'completed') {
         if (clientUser?.email) {
-          await sendTemplatedEmail(clientUser.email, 'job-completed-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', professionalName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          await sendTemplatedEmail(
+            clientUser.email,
+            'job-completed-client',
+            {
+              firstName: clientUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              professionalName,
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job',
+          );
         }
         if (proUser?.email) {
-          await sendTemplatedEmail(proUser.email, 'job-completed-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          await sendTemplatedEmail(
+            proUser.email,
+            'job-completed-pro',
+            {
+              firstName: proUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job',
+          );
         }
       }
     } catch (e) {
       console.error('[Jobs] job-milestone-released/completed email error:', e);
     }
     res.json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Release milestone error:', err);
     res.status(500).json({ error: err.message || 'Failed to release milestone' });
   }
 });
