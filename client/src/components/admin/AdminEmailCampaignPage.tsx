@@ -38,7 +38,7 @@ const categories = [
   { value: "notification", label: "Notification", icon: "🔔", color: "bg-yellow-500" },
   { value: "support", label: "Support", icon: "💬", color: "bg-red-500" },
   { value: "no-reply", label: "No-Reply", icon: "📧", color: "bg-indigo-500" },
-  { value: "job", label: "Job (alert@sortars.com)", icon: "📌", color: "bg-amber-500" },
+  { value: "job", label: "Job", icon: "📌", color: "bg-amber-500" },
 ];
 
 const defaultLogoUrl = ""; // Set via EMAIL_LOGO_URL or upload logo to /uploads

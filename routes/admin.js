@@ -3152,7 +3152,7 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
   try {
     const { category } = req.params;
     
-    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply', 'job'];
     if (!validCategories.includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
     }
@@ -3204,6 +3204,14 @@ router.get('/email-category-smtp/:category', requireAdmin, async (req, res) => {
             // console.log(`Initialized ${category} SMTP user from default SMTP_USER (fallback)`);
           }
         }
+      } else if (category === 'job') {
+        envValue = process.env.SMTP_USER_ALERT;
+        if (envValue) {
+          smtpSettings = await EmailCategorySmtp.create({
+            category,
+            smtpUser: envValue,
+          });
+        }
       } else {
         // Other categories use SMTP_USER_{CATEGORY}
         const envVarName = `SMTP_USER_${category.toUpperCase()}`;
@@ -3241,7 +3249,7 @@ router.put('/email-category-smtp/:category', requireAdmin, async (req, res) => {
     const { category } = req.params;
     const { smtpUser } = req.body;
     
-    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+    const validCategories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply', 'job'];
     if (!validCategories.includes(category)) {
       return res.status(400).json({ error: 'Invalid category' });
     }

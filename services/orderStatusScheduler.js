@@ -555,15 +555,15 @@ export function startOrderStatusScheduler() {
     scheduled: true,
     timezone: 'UTC',
   });
-  // Run every hour to send delivery review reminders to clients
-  cron.schedule('0 * * * *', async () => {
+  // Run every 12 hours to send delivery review reminders to clients
+  cron.schedule('0 */12 * * *', async () => {
     await processDeliveryReminders();
   }, {
     scheduled: true,
     timezone: 'UTC',
   });
-  // Run every hour to send review/rating reminders to clients (after order completed)
-  cron.schedule('5 * * * *', async () => {
+  // Run every 12 hours to send review/rating reminders to clients (after order completed)
+  cron.schedule('5 */12 * * *', async () => {
     await processReviewReminders();
   }, {
     scheduled: true,
