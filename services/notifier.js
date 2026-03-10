@@ -26,7 +26,7 @@ function loadFromEnvFallback() {
   SMTP_PASS = process.env.SMTP_PASS;
 
   // Initialize category SMTP users from environment variables
-  const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+  const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply', 'job'];
   for (const category of categories) {
     let envValue = null;
 
@@ -34,6 +34,8 @@ function loadFromEnvFallback() {
       envValue = process.env.SMTP_USER;
     } else if (category === 'no-reply') {
       envValue = process.env.SMTP_USER_NO_REPLY || process.env.SMTP_USER;
+    } else if (category === 'job') {
+      envValue = process.env.SMTP_USER_ALERT || process.env.SMTP_USER;
     } else {
       const envVarName = `SMTP_USER_${category.toUpperCase()}`;
       envValue = process.env[envVarName] || process.env.SMTP_USER;
@@ -102,7 +104,7 @@ async function loadSmtpConfig() {
     }
 
     // Load category-specific SMTP users
-    const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply'];
+    const categories = ['verification', 'listing', 'orders', 'notification', 'support', 'no-reply', 'job'];
     for (const category of categories) {
       let categorySmtp = await EmailCategorySmtp.findOne({ category });
       
@@ -149,6 +151,22 @@ async function loadSmtpConfig() {
                 smtpUser: defaultUser,
               });
               // console.log(`[Notifier] Initialized ${category} SMTP user from default SMTP_USER`);
+            }
+          }
+        } else if (category === 'job') {
+          envValue = process.env.SMTP_USER_ALERT;
+          if (envValue) {
+            categorySmtp = await EmailCategorySmtp.create({
+              category,
+              smtpUser: envValue,
+            });
+          } else {
+            const defaultUser = process.env.SMTP_USER;
+            if (defaultUser) {
+              categorySmtp = await EmailCategorySmtp.create({
+                category,
+                smtpUser: defaultUser,
+              });
             }
           }
         } else {

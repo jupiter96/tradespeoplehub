@@ -2203,6 +2203,334 @@ const defaultTemplates = [
     `,
     variables: ['firstName', 'clientName', 'serviceName', 'offerLink', 'logoUrl'],
   },
+  // ----- Job (alert@sortars.com) - Client-facing -----
+  {
+    type: 'job-posted',
+    category: 'job',
+    subject: 'Your job "{{jobTitle}}" has been posted',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Job Posted</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your job <strong>{{jobTitle}}</strong> has been successfully posted. Professionals in your area can now view it and submit quotes.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-quote-received',
+    category: 'job',
+    subject: 'New quote received for your job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Quote Received</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{professionalName}}</strong> has submitted a quote for your job <strong>{{jobTitle}}</strong>.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Quote</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'professionalName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-awarded',
+    category: 'job',
+    subject: 'You awarded "{{jobTitle}}" to {{professionalName}}',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Job Awarded</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have awarded your job <strong>{{jobTitle}}</strong> to <strong>{{professionalName}}</strong>. They will be notified and can accept to start the work.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'professionalName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-milestone-created-client',
+    category: 'job',
+    subject: 'Milestone "{{milestoneName}}" created for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Milestone Created</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>A new milestone <strong>{{milestoneName}}</strong> has been created for your job <strong>{{jobTitle}}</strong>.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-milestone-released-client',
+    category: 'job',
+    subject: 'Milestone "{{milestoneName}}" released for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Milestone Released</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have released the milestone <strong>{{milestoneName}}</strong> for job <strong>{{jobTitle}}</strong>. Payment has been sent to the professional.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-milestone-release-request-received',
+    category: 'job',
+    subject: 'Release request for milestone "{{milestoneName}}" – job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Release Request</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{professionalName}}</strong> has requested to release the milestone <strong>{{milestoneName}}</strong> for your job <strong>{{jobTitle}}</strong>. Please review and approve or reject the request.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Respond to Request</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'professionalName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-dispute-opened-by-other',
+    category: 'job',
+    subject: 'Dispute opened for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dispute Opened</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #e74c3c; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{otherPartyName}}</strong> has opened a dispute for your job <strong>{{jobTitle}}</strong> (milestone: {{milestoneName}}).</p>
+    <p>Reason: {{reason}}</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Dispute</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'otherPartyName', 'reason', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-dispute-opened-by-me-client',
+    category: 'job',
+    subject: 'You opened a dispute for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dispute Opened</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have opened a dispute for your job <strong>{{jobTitle}}</strong> (milestone: {{milestoneName}}). Our team will review and assist in resolving it.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Dispute</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-completed-client',
+    category: 'job',
+    subject: 'Job "{{jobTitle}}" is completed',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Job Completed</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your job <strong>{{jobTitle}}</strong> has been completed. All milestones have been released to <strong>{{professionalName}}</strong>.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'professionalName', 'jobLink', 'logoUrl'],
+  },
+  // ----- Job (alert@sortars.com) - Professional-facing -----
+  {
+    type: 'job-invite-received',
+    category: 'job',
+    subject: 'You are invited to quote on "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Quote Invitation</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{clientName}}</strong> has invited you to submit a quote for the job <strong>{{jobTitle}}</strong>.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job & Submit Quote</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'clientName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-quote-sent',
+    category: 'job',
+    subject: 'Your quote for "{{jobTitle}}" was sent',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Quote Sent</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Your quote for <strong>{{jobTitle}}</strong> has been sent to the client. You will be notified if they award the job to you.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-award-received',
+    category: 'job',
+    subject: 'You have been awarded the job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Job Awarded</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>Congratulations! <strong>{{clientName}}</strong> has awarded you the job <strong>{{jobTitle}}</strong>. Please accept the award to start the work.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Accept Award</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'clientName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-milestone-created-pro',
+    category: 'job',
+    subject: 'Milestone "{{milestoneName}}" created for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Milestone Created</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>A new milestone <strong>{{milestoneName}}</strong> has been created for the job <strong>{{jobTitle}}</strong>. You can start working on it once the client confirms.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-milestone-cancel-request-received',
+    category: 'job',
+    subject: 'Cancel request for milestone "{{milestoneName}}" – job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Cancel Request</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{clientName}}</strong> has requested to cancel the milestone <strong>{{milestoneName}}</strong> for job <strong>{{jobTitle}}</strong>. Please review and accept or reject the request.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Respond to Request</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'clientName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-milestone-released-pro',
+    category: 'job',
+    subject: 'Milestone "{{milestoneName}}" released – job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Milestone Released</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The client has released the milestone <strong>{{milestoneName}}</strong> for job <strong>{{jobTitle}}</strong>. Payment has been added to your wallet.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-dispute-opened-by-client',
+    category: 'job',
+    subject: 'Dispute opened for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dispute Opened</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #e74c3c; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{clientName}}</strong> has opened a dispute for the job <strong>{{jobTitle}}</strong> (milestone: {{milestoneName}}).</p>
+    <p>Reason: {{reason}}</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Dispute</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'clientName', 'reason', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-dispute-opened-by-me-pro',
+    category: 'job',
+    subject: 'You opened a dispute for job "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dispute Opened</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>You have opened a dispute for the job <strong>{{jobTitle}}</strong> (milestone: {{milestoneName}}). Our team will review and assist in resolving it.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Dispute</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'milestoneName', 'jobLink', 'logoUrl'],
+  },
+  {
+    type: 'job-completed-pro',
+    category: 'job',
+    subject: 'Job "{{jobTitle}}" is completed',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Job Completed</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #27ae60; margin-top: 0;">Hi {{firstName}},</h1>
+    <p>The job <strong>{{jobTitle}}</strong> has been completed. All milestones have been released to you.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Job</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'jobLink', 'logoUrl'],
+  },
 ];
 
 async function createDefaultTemplates() {

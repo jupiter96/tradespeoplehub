@@ -12,6 +12,7 @@ const emailCategorySmtpSchema = new mongoose.Schema(
         'notification',
         'support',
         'no-reply',
+        'job',
       ],
     },
     smtpUser: {

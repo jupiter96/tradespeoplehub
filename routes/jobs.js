@@ -16,8 +16,13 @@ import Notification from '../models/Notification.js';
 import JobReport from '../models/JobReport.js';
 import { getIO } from '../services/socket.js';
 import { deductBid } from './bids.js';
+import { sendTemplatedEmail } from '../services/notifier.js';
 
 const router = express.Router();
+
+const clientOrigin = () => process.env.CLIENT_ORIGIN || 'http://localhost:5000';
+const jobLink = (job) => `${clientOrigin()}/job/${job.slug || job._id.toString()}`;
+const logoUrl = () => process.env.EMAIL_LOGO_URL || '';
 
 /** Emit job:updated to client and quoted professionals so they get real-time updates without polling */
 function emitJobUpdated(job) {
@@ -575,6 +580,25 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
 
     await job.save();
     emitJobUpdated(job);
+    try {
+      const client = await User.findById(req.user.id).select('email firstName').lean();
+      if (client?.email) {
+        await ensureJobSlug(job);
+        await sendTemplatedEmail(
+          client.email,
+          'job-posted',
+          {
+            firstName: client.firstName || 'There',
+            jobTitle: job.title || 'Your job',
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job'
+        );
+      }
+    } catch (e) {
+      console.error('[Jobs] job-posted email error:', e);
+    }
     res.status(201).json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Create error:', err);
@@ -829,6 +853,25 @@ router.post('/:id/invite-professional', authenticateToken, requireRole(['client'
       link: `/job/${jobSlug}`,
       metadata: { jobId: job._id.toString(), jobSlug, jobTitle, clientId: req.user.id },
     });
+    try {
+      const proUser = await User.findById(professionalId).select('email firstName').lean();
+      if (proUser?.email) {
+        await sendTemplatedEmail(
+          proUser.email,
+          'job-invite-received',
+          {
+            firstName: proUser.firstName || 'There',
+            jobTitle: jobTitle,
+            clientName: clientName,
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job'
+        );
+      }
+    } catch (e) {
+      console.error('[Jobs] job-invite-received email error:', e);
+    }
     return res.json({ success: true, message: 'Invitation sent' });
   } catch (err) {
     console.error('[Jobs] Invite professional error:', err);
@@ -999,6 +1042,41 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
     job.markModified('quotes');
     await job.save();
     emitJobUpdated(job);
+    try {
+      const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+      if (clientUser?.email) {
+        await ensureJobSlug(job);
+        await sendTemplatedEmail(
+          clientUser.email,
+          'job-quote-received',
+          {
+            firstName: clientUser.firstName || 'There',
+            jobTitle: job.title || 'Job',
+            professionalName: professionalName || 'A professional',
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job'
+        );
+      }
+      const proUser = await User.findById(req.user.id).select('email firstName').lean();
+      if (proUser?.email) {
+        await ensureJobSlug(job);
+        await sendTemplatedEmail(
+          proUser.email,
+          'job-quote-sent',
+          {
+            firstName: proUser.firstName || 'There',
+            jobTitle: job.title || 'Job',
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job'
+        );
+      }
+    } catch (e) {
+      console.error('[Jobs] job-quote email error:', e);
+    }
     res.status(201).json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Submit quote error:', err);
@@ -1168,6 +1246,78 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
     job.markModified('quotes');
     await job.save();
     emitJobUpdated(job);
+    if (status === 'awarded') {
+      try {
+        await ensureJobSlug(job);
+        const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+        const proId = quote.professionalId?.toString?.();
+        const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+        const professionalName = quote.professionalName || proUser?.firstName || 'A professional';
+        const clientName = clientUser?.firstName || 'The client';
+        if (clientUser?.email) {
+          await sendTemplatedEmail(
+            clientUser.email,
+            'job-awarded',
+            {
+              firstName: clientUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              professionalName,
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job'
+          );
+        }
+        if (proUser?.email) {
+          await sendTemplatedEmail(
+            proUser.email,
+            'job-award-received',
+            {
+              firstName: proUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              clientName,
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job'
+          );
+        }
+        const firstMilestone = (job.milestones || [])[0];
+        if (firstMilestone && (clientUser?.email || proUser?.email)) {
+          const mName = firstMilestone.name || firstMilestone.description || 'Milestone';
+          if (clientUser?.email) {
+            await sendTemplatedEmail(
+              clientUser.email,
+              'job-milestone-created-client',
+              {
+                firstName: clientUser.firstName || 'There',
+                jobTitle: job.title || 'Job',
+                milestoneName: mName,
+                jobLink: jobLink(job),
+                logoUrl: logoUrl(),
+              },
+              'job'
+            );
+          }
+          if (proUser?.email) {
+            await sendTemplatedEmail(
+              proUser.email,
+              'job-milestone-created-pro',
+              {
+                firstName: proUser.firstName || 'There',
+                jobTitle: job.title || 'Job',
+                milestoneName: mName,
+                jobLink: jobLink(job),
+                logoUrl: logoUrl(),
+              },
+              'job'
+            );
+          }
+        }
+      } catch (e) {
+        console.error('[Jobs] job-award/milestone email error:', e);
+      }
+    }
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Update quote error:', err);
@@ -1267,6 +1417,23 @@ router.post(
       job.markModified('quotes');
       await job.save();
       emitJobUpdated(job);
+      try {
+        const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+        const proId = job.awardedProfessionalId?.toString?.();
+        const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+        if (clientUser?.email || proUser?.email) {
+          await ensureJobSlug(job);
+          const mName = description;
+          if (clientUser?.email) {
+            await sendTemplatedEmail(clientUser.email, 'job-milestone-created-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          }
+          if (proUser?.email) {
+            await sendTemplatedEmail(proUser.email, 'job-milestone-created-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          }
+        }
+      } catch (e) {
+        console.error('[Jobs] job-milestone-created email error:', e);
+      }
       return res.json(toJobResponse(job));
     } catch (err) {
       console.error('[Jobs] Accept suggested milestone error:', err);
@@ -1454,9 +1621,23 @@ router.post('/:id/milestones', authenticateToken, requireRole(['client']), async
     job.markModified('milestones');
     await job.save();
     emitJobUpdated(job);
+    try {
+      const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+      const proId = job.awardedProfessionalId?.toString?.();
+      const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+      if (clientUser?.email || proUser?.email) {
+        await ensureJobSlug(job);
+        if (clientUser?.email) {
+          await sendTemplatedEmail(clientUser.email, 'job-milestone-created-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+        if (proUser?.email) {
+          await sendTemplatedEmail(proUser.email, 'job-milestone-created-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+      }
+    } catch (e) {
+      console.error('[Jobs] job-milestone-created email error:', e);
+    }
     res.status(201).json(toJobResponse(job));
-  } catch (err) {
-    console.error('[Jobs] Add milestone error:', err);
     res.status(500).json({ error: err.message || 'Failed to add milestone' });
   }
 });
@@ -1516,9 +1697,31 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
     }
     await job.save();
     emitJobUpdated(job);
+    try {
+      await ensureJobSlug(job);
+      const mName = milestone.name || milestone.description || 'Milestone';
+      const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+      const proId = job.awardedProfessionalId?.toString?.();
+      const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+      const professionalName = proUser?.firstName || 'The professional';
+      if (clientUser?.email) {
+        await sendTemplatedEmail(clientUser.email, 'job-milestone-released-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+      }
+      if (proUser?.email) {
+        await sendTemplatedEmail(proUser.email, 'job-milestone-released-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+      }
+      if (job.status === 'completed') {
+        if (clientUser?.email) {
+          await sendTemplatedEmail(clientUser.email, 'job-completed-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', professionalName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+        if (proUser?.email) {
+          await sendTemplatedEmail(proUser.email, 'job-completed-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+      }
+    } catch (e) {
+      console.error('[Jobs] job-milestone-released/completed email error:', e);
+    }
     res.json(toJobResponse(job));
-  } catch (err) {
-    console.error('[Jobs] Release milestone error:', err);
     res.status(500).json({ error: err.message || 'Failed to release milestone' });
   }
 });
@@ -1591,6 +1794,33 @@ router.post('/:id/milestones/:milestoneId/request-cancel', authenticateToken, as
     job.markModified('milestones');
     await job.save();
     emitJobUpdated(job);
+    try {
+      const isClientRequester = job.clientId.toString() === req.user.id;
+      if (isClientRequester) {
+        const proId = job.awardedProfessionalId?.toString?.();
+        const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+        const clientUser = await User.findById(job.clientId).select('firstName').lean();
+        if (proUser?.email) {
+          await ensureJobSlug(job);
+          const mName = milestone.name || milestone.description || 'Milestone';
+          await sendTemplatedEmail(
+            proUser.email,
+            'job-milestone-cancel-request-received',
+            {
+              firstName: proUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              milestoneName: mName,
+              clientName: clientUser?.firstName || 'The client',
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job'
+          );
+        }
+      }
+    } catch (e) {
+      console.error('[Jobs] job-milestone-cancel-request-received email error:', e);
+    }
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Request cancel error:', err);
@@ -1659,6 +1889,29 @@ router.post('/:id/milestones/:milestoneId/request-release', authenticateToken, r
     job.markModified('milestones');
     await job.save();
     emitJobUpdated(job);
+    try {
+      const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+      const proUser = await User.findById(req.user.id).select('firstName').lean();
+      if (clientUser?.email) {
+        await ensureJobSlug(job);
+        const mName = milestone.name || milestone.description || 'Milestone';
+        await sendTemplatedEmail(
+          clientUser.email,
+          'job-milestone-release-request-received',
+          {
+            firstName: clientUser.firstName || 'There',
+            jobTitle: job.title || 'Job',
+            milestoneName: mName,
+            professionalName: proUser?.firstName || 'The professional',
+            jobLink: jobLink(job),
+            logoUrl: logoUrl(),
+          },
+          'job'
+        );
+      }
+    } catch (e) {
+      console.error('[Jobs] job-milestone-release-request-received email error:', e);
+    }
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Request release error:', err);
@@ -1727,6 +1980,32 @@ router.patch('/:id/milestones/:milestoneId/respond-release', authenticateToken, 
     }
     await job.save();
     emitJobUpdated(job);
+    if (accept === true) {
+      try {
+        await ensureJobSlug(job);
+        const mName = milestone.name || milestone.description || 'Milestone';
+        const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+        const proId = job.awardedProfessionalId?.toString?.();
+        const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+        const professionalName = proUser?.firstName || 'The professional';
+        if (clientUser?.email) {
+          await sendTemplatedEmail(clientUser.email, 'job-milestone-released-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+        if (proUser?.email) {
+          await sendTemplatedEmail(proUser.email, 'job-milestone-released-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+        if (job.status === 'completed') {
+          if (clientUser?.email) {
+            await sendTemplatedEmail(clientUser.email, 'job-completed-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', professionalName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          }
+          if (proUser?.email) {
+            await sendTemplatedEmail(proUser.email, 'job-completed-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+          }
+        }
+      } catch (e) {
+        console.error('[Jobs] job-milestone-released/completed email error (respond-release):', e);
+      }
+    }
     res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Respond release error:', err);
@@ -1777,6 +2056,32 @@ router.post('/:id/disputes', authenticateToken, async (req, res) => {
     job.markModified('milestones');
     await job.save();
     emitJobUpdated(job);
+
+    try {
+      await ensureJobSlug(job);
+      const mName = milestone.name || milestone.description || 'Milestone';
+      const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+      const proId = job.awardedProfessionalId?.toString?.();
+      const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+      const reasonText = String(reason).trim();
+      if (isClient) {
+        if (clientUser?.email) {
+          await sendTemplatedEmail(clientUser.email, 'job-dispute-opened-by-me-client', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+        if (proUser?.email) {
+          await sendTemplatedEmail(proUser.email, 'job-dispute-opened-by-client', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, clientName: clientUser?.firstName || 'The client', reason: reasonText, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+      } else {
+        if (proUser?.email) {
+          await sendTemplatedEmail(proUser.email, 'job-dispute-opened-by-me-pro', { firstName: proUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+        if (clientUser?.email) {
+          await sendTemplatedEmail(clientUser.email, 'job-dispute-opened-by-other', { firstName: clientUser.firstName || 'There', jobTitle: job.title || 'Job', milestoneName: mName, otherPartyName: proUser?.firstName || 'The professional', reason: reasonText, jobLink: jobLink(job), logoUrl: logoUrl() }, 'job');
+        }
+      }
+    } catch (e) {
+      console.error('[Jobs] job-dispute email error:', e);
+    }
 
     const jobRes = toJobResponse(job);
     const disputeRes = {
