@@ -222,6 +222,28 @@ type BudgetRangeItem = { value: string; label: string; min: number | null; max: 
 
 const CUSTOM_BUDGET_ITEM: BudgetRangeItem = { value: "custom-budget", label: "Custom Budget", min: null, max: null };
 
+const DRAFT_STORAGE_KEY = "jobPostDraft";
+
+export type JobDraftPayload = {
+  currentStep?: number;
+  jobDescription?: string;
+  descriptionPreviousState?: string;
+  jobTitle?: string;
+  selectedSector?: string;
+  selectedMainCategories?: string[];
+  selectedSkills?: string[];
+  jobLocationType?: "in-person" | "online";
+  postcode?: string;
+  address?: string;
+  townCity?: string;
+  county?: string;
+  urgency?: string;
+  preferredStartDate?: string;
+  selectedBudget?: string;
+  customBudgetMin?: string;
+  customBudgetMax?: string;
+};
+
 export default function PostJobPage() {
   const { isLoggedIn, userInfo, register: initiateRegistration, verifyRegistrationEmail, completeRegistration } = useAccount();
   const { addJob } = useJobs();
@@ -235,6 +257,8 @@ export default function PostJobPage() {
   const [categoriesBySectorData, setCategoriesBySectorData] = useState<{ [key: string]: CategoryItem[] }>({});
   const [categoriesGroupedBySector, setCategoriesGroupedBySector] = useState<{ [key: string]: CategoryGroup[] }>({});
   const [currentStep, setCurrentStep] = useState(1);
+  const draftLoadedRef = useRef(false);
+  const isRestoringDraftRef = useRef(false);
   
   // Transform sectors data for dropdown
   const sectors = sectorsData.map((s) => ({
@@ -298,15 +322,61 @@ export default function PostJobPage() {
     : categoriesBySector as { [key: string]: CategoryItem[] };
   const effectiveGroupedBySector = categoriesGroupedBySector;
   
-  // Get categories for selected sector
-  const getCategoriesForSector = (sectorSlug: string) => {
-    return effectiveCategoriesBySector[sectorSlug] || [];
-  };
-  
-  // Step 1/3: Sector & Category selection state
+  // Step 1/3: Sector & Category & Skills selection state
   const [selectedSector, setSelectedSector] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [skillsPopoverOpen, setSkillsPopoverOpen] = useState(false);
+
+  // Main categories (parent only) for selected sector – for Category multi-select
+  const mainCategoriesForSector = (effectiveGroupedBySector[selectedSector] || []).map((g) => g.category);
+  // Skills = subcategories from selected main categories only
+  const skillsOptionsForSector = selectedMainCategories.length
+    ? (() => {
+        const groups = (effectiveGroupedBySector[selectedSector] || []).filter((g) =>
+          selectedMainCategories.includes(g.category.value)
+        );
+        const seen = new Set<string>();
+        const list: CategoryItem[] = [];
+        groups.forEach((g) => {
+          (g.subcategories || []).forEach((sub) => {
+            if (!seen.has(sub.value)) {
+              seen.add(sub.value);
+              list.push(sub);
+            }
+          });
+        });
+        return list;
+      })()
+    : [];
+  // Slug -> label for skills (for payload labels)
+  const skillLabelBySlug = (() => {
+    const map: Record<string, string> = {};
+    (effectiveGroupedBySector[selectedSector] || []).forEach((g) => {
+      (g.subcategories || []).forEach((sub) => {
+        map[sub.value] = sub.label;
+      });
+    });
+    return map;
+  })();
+
+  // When sector changes, clear category and skills selection (skip when restoring draft)
+  useEffect(() => {
+    if (isRestoringDraftRef.current) {
+      queueMicrotask(() => { isRestoringDraftRef.current = false; });
+      return;
+    }
+    setSelectedMainCategories([]);
+    setSelectedSkills([]);
+  }, [selectedSector]);
+
+  // When main categories change, keep only skills that still belong to selected categories (skip when restoring draft)
+  const skillsOptionSlugs = new Set(skillsOptionsForSector.map((s) => s.value));
+  useEffect(() => {
+    if (isRestoringDraftRef.current) return;
+    setSelectedSkills((prev) => prev.filter((slug) => skillsOptionSlugs.has(slug)));
+  }, [selectedMainCategories.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps -- run when main categories change; skillsOptionSlugs is derived from them
 
   // Step 2: Description & Images
   const [jobDescription, setJobDescription] = useState("");
@@ -322,7 +392,7 @@ export default function PostJobPage() {
   
   // Step 4: Location type (In-Person / Online) & Postcode & Timing
   const [jobLocationType, setJobLocationType] = useState<"in-person" | "online">("in-person");
-  const [postcode, setPostcode] = useState("SW1A 1AA");
+  const [postcode, setPostcode] = useState("");
   const [address, setAddress] = useState("");
   const [townCity, setTownCity] = useState("");
   const [county, setCounty] = useState("");
@@ -424,6 +494,144 @@ export default function PostJobPage() {
     if (showEmailVerification && verificationStep === 2 && phoneResendTimer === 0) setPhoneResendTimer(120);
   }, [showEmailVerification, verificationStep, phoneResendTimer]);
 
+  const getDraftPayload = (): JobDraftPayload => ({
+    currentStep,
+    jobDescription,
+    descriptionPreviousState,
+    jobTitle,
+    selectedSector,
+    selectedMainCategories,
+    selectedSkills,
+    jobLocationType,
+    postcode,
+    address,
+    townCity,
+    county,
+    urgency,
+    preferredStartDate,
+    selectedBudget,
+    customBudgetMin,
+    customBudgetMax,
+  });
+
+  const applyDraft = (d: JobDraftPayload) => {
+    if (!d || typeof d !== "object") return;
+    isRestoringDraftRef.current = true;
+    if (typeof d.currentStep === "number" && d.currentStep >= 1) setCurrentStep(d.currentStep);
+    if (typeof d.jobDescription === "string") setJobDescription(d.jobDescription);
+    if (typeof d.descriptionPreviousState === "string") setDescriptionPreviousState(d.descriptionPreviousState);
+    if (typeof d.jobTitle === "string") setJobTitle(d.jobTitle);
+    if (typeof d.selectedSector === "string") setSelectedSector(d.selectedSector);
+    if (Array.isArray(d.selectedMainCategories)) setSelectedMainCategories(d.selectedMainCategories);
+    if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
+    if (d.jobLocationType === "in-person" || d.jobLocationType === "online") setJobLocationType(d.jobLocationType);
+    if (typeof d.postcode === "string") setPostcode(d.postcode);
+    if (typeof d.address === "string") setAddress(d.address);
+    if (typeof d.townCity === "string") setTownCity(d.townCity);
+    if (typeof d.county === "string") setCounty(d.county);
+    if (typeof d.urgency === "string") setUrgency(d.urgency);
+    if (typeof d.preferredStartDate === "string") setPreferredStartDate(d.preferredStartDate);
+    if (typeof d.selectedBudget === "string") setSelectedBudget(d.selectedBudget);
+    if (typeof d.customBudgetMin === "string") setCustomBudgetMin(d.customBudgetMin);
+    if (typeof d.customBudgetMax === "string") setCustomBudgetMax(d.customBudgetMax);
+  };
+
+  // Load draft on mount: from API if logged in, else from localStorage (run once when isLoggedIn is known)
+  useEffect(() => {
+    if (draftLoadedRef.current) return;
+    if (isLoggedIn === undefined) return; // auth still loading
+    let cancelled = false;
+    if (isLoggedIn) {
+      fetch(resolveApiUrl("/api/jobs/draft"), { credentials: "include" })
+        .then((res) => {
+          if (cancelled) return null;
+          if (res.status === 404) return null;
+          if (!res.ok) return res.json().then((data) => { throw new Error(data?.error || "Failed to load draft"); });
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled) return;
+          draftLoadedRef.current = true;
+          if (data?.draft && typeof data.draft === "object") applyDraft(data.draft);
+        })
+        .catch(() => {
+          if (!cancelled) draftLoadedRef.current = true;
+        });
+    } else {
+      draftLoadedRef.current = true;
+      try {
+        const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as JobDraftPayload;
+          if (parsed && typeof parsed === "object") applyDraft(parsed);
+        }
+      } catch (_) {}
+    }
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
+
+  const saveDraftRef = useRef<(() => void) | null>(null);
+  const saveDraft = async () => {
+    const payload = getDraftPayload();
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      if (isLoggedIn) {
+        await fetch(resolveApiUrl("/api/jobs/draft"), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+      }
+    } catch (_) {}
+  };
+  saveDraftRef.current = saveDraft;
+
+  // Debounced save when form fields change
+  useEffect(() => {
+    const t = setTimeout(saveDraft, 1500);
+    return () => clearTimeout(t);
+  }, [
+    currentStep,
+    jobDescription,
+    jobTitle,
+    selectedSector,
+    selectedMainCategories.join(","),
+    selectedSkills.join(","),
+    jobLocationType,
+    postcode,
+    address,
+    townCity,
+    county,
+    urgency,
+    preferredStartDate,
+    selectedBudget,
+    customBudgetMin,
+    customBudgetMax,
+    isLoggedIn,
+  ]);
+
+  // Save draft when leaving page or tab
+  useEffect(() => {
+    const onBeforeUnload = () => { saveDraftRef.current?.(); };
+    const onVisibilityChange = () => { if (document.visibilityState === "hidden") saveDraftRef.current?.(); };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
+  const clearDraft = async () => {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      if (isLoggedIn) {
+        await fetch(resolveApiUrl("/api/jobs/draft"), { method: "DELETE", credentials: "include" });
+      }
+    } catch (_) {}
+  };
+
   const totalSteps = isLoggedIn ? steps.length : steps.length + 1;
 
   const handleNext = () => {
@@ -431,6 +639,7 @@ export default function PostJobPage() {
       if (currentStep === 1) setJobTitle("");
       setCurrentStep(currentStep + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      saveDraftRef.current?.();
     }
   };
 
@@ -438,6 +647,7 @@ export default function PostJobPage() {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      saveDraftRef.current?.();
     }
   };
 
@@ -543,8 +753,8 @@ export default function PostJobPage() {
         // Step 2: Title & Description – both required
         return jobTitle.trim() !== "" && jobDescription.trim() !== "";
       case 3:
-        // Step 3: Category – sector and at least 5 subcategories/skills
-        return selectedSector !== "" && selectedCategories.length >= 5;
+        // Step 3: Sector (single), at least one main category, and at least 5 skills (subcategories)
+        return selectedSector !== "" && selectedMainCategories.length >= 1 && selectedSkills.length >= 5;
       case 4:
         // Require urgency; postcode is optional
         return urgency !== "";
@@ -604,6 +814,7 @@ export default function PostJobPage() {
     const newJob = buildJobPayload(userInfo?.id || "");
     try {
       const createdJob = await addJob(newJob);
+      await clearDraft();
       toast.success("Job posted successfully! Professionals will start sending quotes soon.");
       navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
     } catch (err: any) {
@@ -630,10 +841,7 @@ export default function PostJobPage() {
       "specific-date": "specific",
     };
     const sectorEntry = sectors.find((s) => s.value === selectedSector);
-    const categoryLabels = selectedCategories.map((catValue) => {
-      const categories = effectiveCategoriesBySector[selectedSector] || [];
-      return categories.find((c) => c.value === catValue)?.label || catValue;
-    });
+    const categoryLabels = selectedSkills.map((slug) => skillLabelBySlug[slug] ?? slug);
     return {
       title: jobTitle,
       description: jobDescription,
@@ -641,7 +849,7 @@ export default function PostJobPage() {
       sectorId: sectorEntry?.id,
       sectorSlug: selectedSector,
       categories: categoryLabels,
-      categorySlugs: selectedCategories,
+      categorySlugs: selectedSkills,
       postcode: jobLocationType === "online" ? "Online" : postcode,
       address: jobLocationType === "online" ? "" : address,
       location: jobLocationType === "online" ? "Online" : (address || postcode),
@@ -750,6 +958,7 @@ export default function PostJobPage() {
       setPhoneVerificationCode("");
       const newJob = buildJobPayload(user?.id ?? "");
       const createdJob = await addJob(newJob);
+      await clearDraft();
       toast.success("Account created and job posted successfully!");
       navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
     } catch (err) {
@@ -1164,7 +1373,7 @@ export default function PostJobPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <div className="flex flex-col">
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
                         Sector
@@ -1173,7 +1382,6 @@ export default function PostJobPage() {
                         value={selectedSector} 
                         onValueChange={(value) => {
                           setSelectedSector(value);
-                          setSelectedCategories([]);
                         }}
                       >
                         <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
@@ -1191,34 +1399,35 @@ export default function PostJobPage() {
 
                     <div className="flex flex-col">
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Categories & skills
+                        Category
                       </Label>
                       <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
                         <PopoverTrigger asChild>
                           <button
+                            type="button"
                             disabled={!selectedSector}
                             className={cn(
                               "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                              !selectedSector 
-                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
+                              !selectedSector
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
                                 : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
                             )}
                           >
                             <div className="flex flex-wrap gap-2 items-center">
-                              {selectedCategories.length > 0 ? (
+                              {selectedMainCategories.length > 0 ? (
                                 <>
-                                  {selectedCategories.map((categoryValue) => {
-                                    const category = effectiveCategoriesBySector[selectedSector]?.find(c => c.value === categoryValue);
+                                  {selectedMainCategories.map((slug) => {
+                                    const cat = mainCategoriesForSector.find((c) => c.value === slug);
                                     return (
                                       <div
-                                        key={categoryValue}
+                                        key={slug}
                                         className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setSelectedCategories(selectedCategories.filter(c => c !== categoryValue));
+                                          setSelectedMainCategories(selectedMainCategories.filter((c) => c !== slug));
                                         }}
                                       >
-                                        <span className="text-[13px]">{category?.label}</span>
+                                        <span className="text-[13px]">{cat?.label ?? slug}</span>
                                         <X className="w-3 h-3 hover:text-red-200 transition-colors" />
                                       </div>
                                     );
@@ -1228,7 +1437,7 @@ export default function PostJobPage() {
                               ) : (
                                 <div className="flex items-center justify-between w-full">
                                   <span className="text-[#6b6b6b]">
-                                    {selectedSector ? "Search and select skills (subcategories)..." : "Select sector first"}
+                                    {selectedSector ? "Select main categories..." : "Select sector first"}
                                   </span>
                                   {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
                                 </div>
@@ -1237,74 +1446,125 @@ export default function PostJobPage() {
                           </button>
                         </PopoverTrigger>
                         {selectedSector && (
+                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[280px] flex flex-col" align="start">
+                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[260px]" shouldFilter={true}>
+                              <div className="p-2 border-b bg-muted/30">
+                                <CommandInput placeholder="Search main categories..." className="font-['Poppins',sans-serif] h-10" />
+                              </div>
+                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[220px] overscroll-contain">
+                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                  No category found.
+                                </CommandEmpty>
+                                {mainCategoriesForSector.map((cat) => {
+                                  const isSelected = selectedMainCategories.includes(cat.value);
+                                  return (
+                                    <CommandItem
+                                      key={cat.itemKey}
+                                      value={cat.label}
+                                      onSelect={() => {
+                                        if (isSelected) {
+                                          setSelectedMainCategories(selectedMainCategories.filter((c) => c !== cat.value));
+                                        } else {
+                                          setSelectedMainCategories([...selectedMainCategories, cat.value]);
+                                        }
+                                      }}
+                                      className="font-['Poppins',sans-serif] cursor-pointer"
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-[13px]">{cat.label}</span>
+                                        {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                      </div>
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        )}
+                      </Popover>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Skills
+                      </Label>
+                      <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={!selectedSector || selectedMainCategories.length === 0}
+                            className={cn(
+                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                              !selectedSector || selectedMainCategories.length === 0
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
+                            )}
+                          >
+                            <div className="flex flex-wrap gap-2 items-center">
+                              {selectedSkills.length > 0 ? (
+                                <>
+                                  {selectedSkills.map((slug) => (
+                                    <div
+                                      key={slug}
+                                      className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedSkills(selectedSkills.filter((s) => s !== slug));
+                                      }}
+                                    >
+                                      <span className="text-[13px]">{skillLabelBySlug[slug] ?? slug}</span>
+                                      <X className="w-3 h-3 hover:text-red-200 transition-colors" />
+                                    </div>
+                                  ))}
+                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                                </>
+                              ) : (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-[#6b6b6b]">
+                                    {!selectedSector
+                                      ? "Select sector first"
+                                      : selectedMainCategories.length === 0
+                                        ? "Select categories first"
+                                        : "Search and select skills (subcategories)..."}
+                                  </span>
+                                  {selectedSector && selectedMainCategories.length > 0 && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </PopoverTrigger>
+                        {selectedSector && selectedMainCategories.length > 0 && (
                           <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
                             <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
                               <div className="p-2 border-b bg-muted/30">
-                                <CommandInput 
-                                  placeholder="Search subcategories / skills..." 
-                                  className="font-['Poppins',sans-serif] h-10"
-                                />
+                                <CommandInput placeholder="Search skills / subcategories..." className="font-['Poppins',sans-serif] h-10" />
                               </div>
                               <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
                                 <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No subcategory or skill found.
+                                  No skill found.
                                 </CommandEmpty>
-                                {effectiveGroupedBySector[selectedSector]?.length ? (
-                                  effectiveGroupedBySector[selectedSector].map((group) => (
-                                    <CommandGroup key={group.category.itemKey} heading={group.category.label} className="p-1">
-                                      {group.subcategories.map((sub) => {
-                                        const isSelected = selectedCategories.includes(sub.value);
-                                        return (
-                                          <CommandItem
-                                            key={sub.itemKey}
-                                            value={`${sub.label} ${group.category.label}`}
-                                            onSelect={() => {
-                                              if (isSelected) {
-                                                setSelectedCategories(selectedCategories.filter(c => c !== sub.value));
-                                              } else {
-                                                setSelectedCategories([...selectedCategories, sub.value]);
-                                              }
-                                            }}
-                                            className="font-['Poppins',sans-serif] cursor-pointer pl-4"
-                                          >
-                                            <div className="flex items-center justify-between w-full">
-                                              <span className="text-[13px]">{sub.label}</span>
-                                              {isSelected && (
-                                                <Check className="w-4 h-4 text-[#FE8A0F]" />
-                                              )}
-                                            </div>
-                                          </CommandItem>
-                                        );
-                                      })}
-                                    </CommandGroup>
-                                  ))
-                                ) : (
-                                  <CommandGroup className="p-1">
-                                    {(effectiveCategoriesBySector[selectedSector] || []).map((category) => {
-                                      const isSelected = selectedCategories.includes(category.value);
-                                      const itemKey = 'itemKey' in category ? category.itemKey : category.value;
-                                      return (
-                                        <CommandItem
-                                          key={itemKey}
-                                          value={category.label}
-                                          onSelect={() => {
-                                            if (isSelected) {
-                                              setSelectedCategories(selectedCategories.filter(c => c !== category.value));
-                                            } else {
-                                              setSelectedCategories([...selectedCategories, category.value]);
-                                            }
-                                          }}
-                                          className="font-['Poppins',sans-serif] cursor-pointer"
-                                        >
-                                          <div className="flex items-center justify-between w-full">
-                                            <span>{category.label}</span>
-                                            {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
-                                          </div>
-                                        </CommandItem>
-                                      );
-                                    })}
-                                  </CommandGroup>
-                                )}
+                                {skillsOptionsForSector.map((skill) => {
+                                  const isSelected = selectedSkills.includes(skill.value);
+                                  return (
+                                    <CommandItem
+                                      key={skill.itemKey}
+                                      value={skill.label}
+                                      onSelect={() => {
+                                        if (isSelected) {
+                                          setSelectedSkills(selectedSkills.filter((s) => s !== skill.value));
+                                        } else {
+                                          setSelectedSkills([...selectedSkills, skill.value]);
+                                        }
+                                      }}
+                                      className="font-['Poppins',sans-serif] cursor-pointer pl-4"
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-[13px]">{skill.label}</span>
+                                        {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                      </div>
+                                    </CommandItem>
+                                  );
+                                })}
                               </CommandList>
                             </Command>
                           </PopoverContent>
@@ -1317,22 +1577,24 @@ export default function PostJobPage() {
                   <div className="mt-4">
                     <div className={cn(
                       "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
-                      selectedCategories.length >= 5 
-                        ? "bg-green-50 text-green-700" 
+                      selectedMainCategories.length >= 1 && selectedSkills.length >= 5
+                        ? "bg-green-50 text-green-700"
                         : "bg-orange-50 text-orange-700"
                     )}>
-                      {selectedCategories.length >= 5 ? (
+                      {selectedMainCategories.length >= 1 && selectedSkills.length >= 5 ? (
                         <>
                           <Check className="w-4 h-4 flex-shrink-0" />
                           <span>
-                            {selectedCategories.length} subcategories selected. Ready to continue!
+                            {selectedMainCategories.length} categor{(selectedMainCategories.length) === 1 ? 'y' : 'ies'} and {selectedSkills.length} skills selected. Ready to continue! Ready to continue!
                           </span>
                         </>
                       ) : (
                         <>
                           <Flame className="w-4 h-4 flex-shrink-0" />
                           <span>
-                            Please select at least {5 - selectedCategories.length} more subcategor{(5 - selectedCategories.length) === 1 ? 'y' : 'ies'} to continue
+                            {selectedMainCategories.length === 0
+                              ? "Select at least one category, then at least 5 skills."
+                              : `Please select at least ${5 - selectedSkills.length} more skill${(5 - selectedSkills.length) === 1 ? '' : 's'} to continue.`}
                           </span>
                         </>
                       )}

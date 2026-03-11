@@ -27,6 +27,7 @@ import {
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { formatNumber } from "../utils/formatNumber";
+import { formatJobLocationShort } from "../utils/formatJobLocation";
 import { useCurrency } from "./CurrencyContext";
 import {
   Dialog,
@@ -260,7 +261,7 @@ export default function MyJobsSection() {
                       <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-4 h-4" />
-                          {job.location}
+                          {formatJobLocationShort(job)}
                         </div>
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
@@ -359,7 +360,7 @@ export default function MyJobsSection() {
                         Location
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {currentJob.location} ({currentJob.postcode})
+                        {formatJobLocationShort(currentJob)}
                       </p>
                     </div>
                     <div>

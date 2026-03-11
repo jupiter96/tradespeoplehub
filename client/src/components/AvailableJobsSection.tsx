@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
+import { formatJobLocationShort } from "../utils/formatJobLocation";
 import { useCurrency } from "./CurrencyContext";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
@@ -304,7 +305,7 @@ export default function AvailableJobsSection() {
                       <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-4 h-4" />
-                          {job.location} • {getDistance(job.id)} miles
+                          {formatJobLocationShort(job)} • {getDistance(job.id)} miles
                         </div>
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />

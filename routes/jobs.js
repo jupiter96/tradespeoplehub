@@ -14,6 +14,7 @@ import JobDispute from '../models/JobDispute.js';
 import Wallet from '../models/Wallet.js';
 import Notification from '../models/Notification.js';
 import JobReport from '../models/JobReport.js';
+import JobDraft from '../models/JobDraft.js';
 import { getIO } from '../services/socket.js';
 import { deductBid } from './bids.js';
 import { sendTemplatedEmail } from '../services/notifier.js';
@@ -251,6 +252,52 @@ router.post('/generate-description', async (req, res) => {
       return res.status(503).json({ error: 'AI service configuration error' });
     }
     return res.status(500).json({ error: err.message || 'Failed to generate description' });
+  }
+});
+
+// --- Job draft (save/restore post-job form state; client only, auth required) ---
+// GET /api/jobs/draft – get current user's draft
+router.get('/draft', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const draft = await JobDraft.findOne({ userId }).lean();
+    if (!draft) return res.status(404).json({ error: 'No draft found' });
+    return res.json({ draft: draft.payload || {} });
+  } catch (err) {
+    console.error('[Jobs] GET draft:', err);
+    return res.status(500).json({ error: err.message || 'Failed to load draft' });
+  }
+});
+
+// PUT /api/jobs/draft – upsert current user's draft
+router.put('/draft', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
+    await JobDraft.findOneAndUpdate(
+      { userId },
+      { $set: { payload, updatedAt: new Date() } },
+      { upsert: true, new: true }
+    );
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[Jobs] PUT draft:', err);
+    return res.status(500).json({ error: err.message || 'Failed to save draft' });
+  }
+});
+
+// DELETE /api/jobs/draft – clear draft after successful post
+router.delete('/draft', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    await JobDraft.deleteOne({ userId });
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[Jobs] DELETE draft:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete draft' });
   }
 });
 
