@@ -88,6 +88,13 @@ export interface Job {
   sectorId?: string;
   categories: string[];
   postcode: string;
+  /** Street line only */
+  address?: string;
+  /** City or town */
+  city?: string;
+  /** State, county, or region */
+  state?: string;
+  /** Legacy combined display string */
   location: string;
   timing: "urgent" | "flexible" | "specific";
   specificDate?: string;
@@ -206,7 +213,12 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         categoryLabels: jobData.categories || [],
         postcode: jobData.postcode,
         address: jobData.address || '',
-        location: jobData.location || jobData.postcode,
+        city: (jobData as any).city || '',
+        state: (jobData as any).state || '',
+        location:
+          jobData.location != null && jobData.location !== ''
+            ? jobData.location
+            : jobData.postcode,
         timing: jobData.timing || 'flexible',
         specificDate: jobData.specificDate || null,
         budgetType: jobData.budgetType || 'fixed',

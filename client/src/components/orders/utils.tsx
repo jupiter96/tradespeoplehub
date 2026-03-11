@@ -50,6 +50,33 @@ export const formatDateTime = (isoString?: string): string => {
   });
 };
 
+/**
+ * Display job location with postcode first (postcode · rest).
+ * Used on job list cards so full address is not shown without postcode prefix when both exist.
+ */
+export function formatJobLocationWithPostcodeFirst(job: {
+  postcode?: string;
+  location?: string;
+}): string {
+  const pc = (job.postcode || "").trim();
+  const loc = (job.location || "").trim();
+  if (!pc && !loc) return "";
+  if (!pc) return loc;
+  if (!loc) return pc;
+  const locUpper = loc.toUpperCase();
+  const pcUpper = pc.toUpperCase();
+  // Already starts with postcode (avoid "SW1A · SW1A, London")
+  if (
+    locUpper === pcUpper ||
+    locUpper.startsWith(pcUpper + " ") ||
+    locUpper.startsWith(pcUpper + ",") ||
+    locUpper.startsWith(pcUpper + "·")
+  ) {
+    return loc;
+  }
+  return `${pc} · ${loc}`;
+}
+
 export const formatMoney = (amount: number | string | undefined): string => {
   if (amount === undefined || amount === null) return "0.00";
   const numAmount = typeof amount === "string" ? parseFloat(String(amount).replace(/,/g, "")) : amount;

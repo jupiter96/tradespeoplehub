@@ -84,8 +84,17 @@ const jobSchema = new mongoose.Schema(
     categorySlugs: { type: [String], default: [] },
     categoryLabels: { type: [String], default: [] },
     postcode: { type: String, required: true, trim: true },
+    /** Street or line address (no city/state combined here) */
     address: { type: String, trim: true },
-    location: { type: String, required: true, trim: true },
+    /** City or town */
+    city: { type: String, trim: true },
+    /** State, county, or region */
+    state: { type: String, trim: true },
+    /**
+     * Legacy display string (postcode + city etc.) – kept for backward compatibility.
+     * Prefer address + city + state + postcode when present.
+     */
+    location: { type: String, trim: true },
     timing: {
       type: String,
       enum: ['urgent', 'flexible', 'specific'],

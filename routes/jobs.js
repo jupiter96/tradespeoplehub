@@ -96,6 +96,8 @@ function toJobResponse(doc) {
     categorySlugs: job.categorySlugs || [],
     postcode: job.postcode,
     address: job.address,
+    city: job.city,
+    state: job.state,
     location: job.location,
     timing: job.timing,
     specificDate: job.specificDate ? new Date(job.specificDate).toISOString().split('T')[0] : undefined,
@@ -540,6 +542,10 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       categoryLabels,
       postcode,
       address,
+      city,
+      state,
+      townCity,
+      county,
       location,
       timing,
       specificDate,
@@ -552,8 +558,18 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     if (!title?.trim() || !description?.trim()) {
       return res.status(400).json({ error: 'Title and description are required' });
     }
-    if (!postcode?.trim() || !location?.trim()) {
-      return res.status(400).json({ error: 'Postcode and location are required' });
+    const postcodeTrim = postcode != null ? String(postcode).trim() : '';
+    const addressTrim = address != null ? String(address).trim() : '';
+    const cityTrim = (city != null ? String(city).trim() : '') || (townCity != null ? String(townCity).trim() : '');
+    const stateTrim = (state != null ? String(state).trim() : '') || (county != null ? String(county).trim() : '');
+    const locationTrim = location != null ? String(location).trim() : '';
+
+    // In-person: need postcode; location can be built from address/city/state
+    if (!postcodeTrim) {
+      return res.status(400).json({ error: 'Postcode is required' });
+    }
+    if (postcodeTrim.toLowerCase() !== 'online' && !locationTrim && !addressTrim && !cityTrim) {
+      return res.status(400).json({ error: 'Address or city/town is required with postcode' });
     }
 
     let resolvedBudgetAmount = budgetAmount != null && !isNaN(Number(budgetAmount)) ? Number(budgetAmount) : null;
@@ -602,6 +618,15 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       return res.status(400).json({ error: 'Sector information is required' });
     }
 
+    // Build legacy location string for backward compatibility (list/search still use it)
+    let resolvedLocation = locationTrim;
+    if (!resolvedLocation && postcodeTrim.toLowerCase() !== 'online') {
+      resolvedLocation = [addressTrim, cityTrim, stateTrim, postcodeTrim].filter(Boolean).join(', ');
+    }
+    if (!resolvedLocation) {
+      resolvedLocation = postcodeTrim;
+    }
+
     const jobPayload = {
       title: title.trim(),
       description: description.trim(),
@@ -610,9 +635,11 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       sectorName: sectorDoc.name,
       categorySlugs: Array.isArray(categorySlugs) ? categorySlugs : [],
       categoryLabels: Array.isArray(categoryLabels) ? categoryLabels : [],
-      postcode: postcode.trim(),
-      address: address ? String(address).trim() : '',
-      location: location.trim(),
+      postcode: postcodeTrim,
+      address: addressTrim,
+      city: cityTrim,
+      state: stateTrim,
+      location: resolvedLocation,
       timing: ['urgent', 'flexible', 'specific'].includes(timing) ? timing : 'flexible',
       specificDate: specificDate ? new Date(specificDate) : null,
       budgetType: budgetType === 'hourly' ? 'hourly' : 'fixed',
@@ -960,6 +987,8 @@ router.patch('/:id', authenticateToken, requireRole(['client']), async (req, res
       'description',
       'postcode',
       'address',
+      'city',
+      'state',
       'location',
       'timing',
       'specificDate',

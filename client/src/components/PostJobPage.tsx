@@ -852,7 +852,14 @@ export default function PostJobPage() {
       categorySlugs: selectedSkills,
       postcode: jobLocationType === "online" ? "Online" : postcode,
       address: jobLocationType === "online" ? "" : address,
-      location: jobLocationType === "online" ? "Online" : (address || postcode),
+      /** Stored separately – city/town and county/state */
+      city: jobLocationType === "online" ? "" : townCity,
+      state: jobLocationType === "online" ? "" : county,
+      /** Legacy combined line (server also persists address/city/state separately) */
+      location:
+        jobLocationType === "online"
+          ? "Online"
+          : [address, townCity, county, postcode].filter(Boolean).join(", ") || postcode,
       timing: timingMap[urgency] || "flexible",
       specificDate: urgency === "specific-date" ? preferredStartDate : undefined,
       budgetType: "fixed" as const,

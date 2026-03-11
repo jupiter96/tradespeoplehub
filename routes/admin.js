@@ -3579,6 +3579,8 @@ router.get('/jobs', requireAdmin, async (req, res) => {
         clientId: j.clientId?._id?.toString(),
         postcode: j.postcode,
         address: j.address,
+        city: j.city,
+        state: j.state,
         location: j.location,
         status: j.status,
         budgetAmount: j.budgetAmount,
@@ -3617,6 +3619,8 @@ router.get('/jobs/:id', requireAdmin, async (req, res) => {
       clientId: job.clientId?._id?.toString(),
       postcode: job.postcode,
       address: job.address,
+      city: job.city,
+      state: job.state,
       location: job.location,
       status: job.status,
       budgetAmount: job.budgetAmount,
@@ -3641,11 +3645,13 @@ router.put('/jobs/:id', requireAdmin, async (req, res) => {
   try {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
-    const { title, description, postcode, address, location, status, budgetAmount, budgetMin, budgetMax } = req.body;
+    const { title, description, postcode, address, city, state, location, status, budgetAmount, budgetMin, budgetMax } = req.body;
     if (title != null && typeof title === 'string') job.title = title.trim();
     if (description != null && typeof description === 'string') job.description = description.trim();
     if (postcode != null && typeof postcode === 'string') job.postcode = postcode.trim();
     if (address != null && typeof address === 'string') job.address = address.trim();
+    if (city != null && typeof city === 'string') job.city = city.trim();
+    if (state != null && typeof state === 'string') job.state = state.trim();
     if (location != null && typeof location === 'string') job.location = location.trim();
     if (status != null && ['open', 'awaiting-accept', 'in-progress', 'completed', 'cancelled'].includes(String(status))) {
       job.status = String(status);
