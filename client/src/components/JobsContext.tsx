@@ -114,6 +114,8 @@ export interface Job {
   clientMemberSince?: string;
   milestones?: Milestone[];
   awardedProfessionalId?: string;
+  /** Attachments from post-job (name, url, mimeType, size) */
+  attachments?: { name: string; url: string; mimeType?: string; size?: number }[];
 }
 
 interface JobsContextType {
@@ -211,6 +213,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         sectorName: jobData.sector,
         categorySlugs: jobData.categorySlugs || [],
         categoryLabels: jobData.categories || [],
+        attachments: (jobData as any).attachments || [],
         postcode: jobData.postcode,
         address: jobData.address || '',
         city: (jobData as any).city || '',

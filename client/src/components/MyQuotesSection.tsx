@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
-import { formatJobLocationWithPostcodeFirst } from "./orders/utils";
+import { formatJobLocationCityOnly } from "./orders/utils";
 import {
   Select,
   SelectContent,
@@ -425,7 +425,7 @@ export default function MyQuotesSection() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                     <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
                       <MapPin className="w-4 h-4" />
-                      {formatJobLocationWithPostcodeFirst(job)}
+                      {formatJobLocationCityOnly(job)}
                     </div>
                     <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
                       <Calendar className="w-4 h-4" />
@@ -534,7 +534,7 @@ export default function MyQuotesSection() {
                   <div className="pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
-                      {formatJobLocationWithPostcodeFirst(editingQuote.job)}
+                      {formatJobLocationCityOnly(editingQuote.job)}
                     </div>
                   </div>
                 </div>

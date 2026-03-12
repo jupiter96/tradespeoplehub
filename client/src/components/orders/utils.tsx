@@ -77,6 +77,24 @@ export function formatJobLocationWithPostcodeFirst(job: {
   return `${pc} · ${loc}`;
 }
 
+/**
+ * Display only postcode and city on job list cards (no full address).
+ * Falls back to postcode · location for jobs without city.
+ */
+export function formatJobLocationCityOnly(job: {
+  postcode?: string;
+  city?: string;
+  location?: string;
+}): string {
+  const pc = (job.postcode || "").trim();
+  const city = (job.city || "").trim();
+  if (city) {
+    if (!pc || pc.toLowerCase() === "online") return city;
+    return `${pc} · ${city}`;
+  }
+  return formatJobLocationWithPostcodeFirst(job);
+}
+
 export const formatMoney = (amount: number | string | undefined): string => {
   if (amount === undefined || amount === null) return "0.00";
   const numAmount = typeof amount === "string" ? parseFloat(String(amount).replace(/,/g, "")) : amount;

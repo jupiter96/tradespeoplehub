@@ -24,7 +24,7 @@ import {
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
-import { formatJobLocationWithPostcodeFirst } from "./orders/utils";
+import { formatJobLocationCityOnly } from "./orders/utils";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -305,7 +305,7 @@ export default function AvailableJobsSection() {
                       <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-4 h-4" />
-                          {formatJobLocationWithPostcodeFirst(job)} • {getDistance(job.id)} miles
+                          {formatJobLocationCityOnly(job)} • {getDistance(job.id)} miles
                         </div>
                         <div className="flex items-center gap-1.5">
                           <DollarSign className="w-4 h-4" />
@@ -400,7 +400,7 @@ export default function AvailableJobsSection() {
                     </div>
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
-                      {formatJobLocationWithPostcodeFirst(currentJob)} ({getDistance(currentJob.id)} miles)
+                      {formatJobLocationCityOnly(currentJob)} ({getDistance(currentJob.id)} miles)
                     </div>
                   </div>
                 </div>

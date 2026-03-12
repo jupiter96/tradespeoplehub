@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import BenefitsAutoScroll from "./BenefitsAutoScroll";
@@ -42,7 +42,7 @@ import { useJobs } from "./JobsContext";
 import { useSectors, useCategories } from "../hooks/useSectorsAndCategories";
 import { resolveApiUrl } from "../config/api";
 import { Checkbox } from "./ui/checkbox";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import FloatingToolsBackground from "./FloatingToolsBackground";
 import { toast } from "sonner@2.0.3";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -246,9 +246,14 @@ export type JobDraftPayload = {
 
 export default function PostJobPage() {
   const { isLoggedIn, userInfo, register: initiateRegistration, verifyRegistrationEmail, completeRegistration } = useAccount();
-  const { addJob } = useJobs();
-  const { formatPrice, symbol, toGBP } = useCurrency();
+  const { addJob, updateJob } = useJobs();
+  const { formatPrice, symbol, toGBP, fromGBP } = useCurrency();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editJobId = searchParams.get("edit") || null;
+  const isEditMode = !!editJobId;
+  const [editJobLoading, setEditJobLoading] = useState(!!editJobId);
+  const [existingAttachments, setExistingAttachments] = useState<{ name: string; url: string; mimeType: string; size: number }[]>([]);
   const thumbnailImage = "https://i.ibb.co/23knmvB9/thumbnail.jpg";
   const { sectors: sectorsData, loading: sectorsLoading } = useSectors();
   type CategoryItem = { value: string; label: string; itemKey: string };
@@ -257,8 +262,10 @@ export default function PostJobPage() {
   const [categoriesBySectorData, setCategoriesBySectorData] = useState<{ [key: string]: CategoryItem[] }>({});
   const [categoriesGroupedBySector, setCategoriesGroupedBySector] = useState<{ [key: string]: CategoryGroup[] }>({});
   const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = isLoggedIn ? steps.length : steps.length + 1;
   const draftLoadedRef = useRef(false);
   const isRestoringDraftRef = useRef(false);
+  const isEditPrefillRef = useRef(false);
   
   // Transform sectors data for dropdown
   const sectors = sectorsData.map((s) => ({
@@ -361,20 +368,21 @@ export default function PostJobPage() {
     return map;
   })();
 
-  // When sector changes, clear category and skills selection (skip when restoring draft)
+  // When sector changes, clear category and skills selection (skip when restoring draft or edit prefill)
   useEffect(() => {
-    if (isRestoringDraftRef.current) {
-      queueMicrotask(() => { isRestoringDraftRef.current = false; });
+    if (isRestoringDraftRef.current || isEditPrefillRef.current) {
+      if (isEditPrefillRef.current) queueMicrotask(() => { isEditPrefillRef.current = false; });
+      if (isRestoringDraftRef.current) queueMicrotask(() => { isRestoringDraftRef.current = false; });
       return;
     }
     setSelectedMainCategories([]);
     setSelectedSkills([]);
   }, [selectedSector]);
 
-  // When main categories change, keep only skills that still belong to selected categories (skip when restoring draft)
+  // When main categories change, keep only skills that still belong to selected categories (skip when restoring draft or edit prefill)
   const skillsOptionSlugs = new Set(skillsOptionsForSector.map((s) => s.value));
   useEffect(() => {
-    if (isRestoringDraftRef.current) return;
+    if (isRestoringDraftRef.current || isEditPrefillRef.current) return;
     setSelectedSkills((prev) => prev.filter((slug) => skillsOptionSlugs.has(slug)));
   }, [selectedMainCategories.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps -- run when main categories change; skillsOptionSlugs is derived from them
 
@@ -406,6 +414,27 @@ export default function PostJobPage() {
   const [customBudgetMin, setCustomBudgetMin] = useState("");
   const [customBudgetMax, setCustomBudgetMax] = useState("");
 
+  // Registration verification (must be before postFormContent which references these)
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [verificationStep, setVerificationStep] = useState(1);
+  const [emailVerificationCode, setEmailVerificationCode] = useState("");
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationPhone, setVerificationPhone] = useState("");
+  const [emailResendTimer, setEmailResendTimer] = useState(0);
+  const [phoneResendTimer, setPhoneResendTimer] = useState(0);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [isResendingPhone, setIsResendingPhone] = useState(false);
+
+  const formatTimer = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   // API ranges only + fixed Custom Budget (no static fallback blocks)
   const budgetRanges: BudgetRangeItem[] = [...budgetRangesFromApi, CUSTOM_BUDGET_ITEM];
 
@@ -432,207 +461,51 @@ export default function PostJobPage() {
         if (!cancelled) setBudgetRangesLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+  
+  return () => { cancelled = true; };
   }, []);
 
-  // Account Creation (if not logged in) – same fields as LoginPage client registration
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [registerPostcode, setRegisterPostcode] = useState("");
-  const [registerAddress, setRegisterAddress] = useState("");
-  const [registerTownCity, setRegisterTownCity] = useState("");
-  const [registerCounty, setRegisterCounty] = useState("");
-  // Registration verification (same flow as LoginPage)
-  const [showEmailVerification, setShowEmailVerification] = useState(false);
-  const [verificationStep, setVerificationStep] = useState(1);
-  const [emailVerificationCode, setEmailVerificationCode] = useState("");
-  const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
-  const [verificationEmail, setVerificationEmail] = useState("");
-  const [verificationPhone, setVerificationPhone] = useState("");
-  const [emailResendTimer, setEmailResendTimer] = useState(0);
-  const [phoneResendTimer, setPhoneResendTimer] = useState(0);
-  const [registerError, setRegisterError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isSendingRegistration, setIsSendingRegistration] = useState(false);
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [isResendingEmail, setIsResendingEmail] = useState(false);
-  const [isResendingPhone, setIsResendingPhone] = useState(false);
-
-  const formatTimer = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Resend timers for verification modals
-  useEffect(() => {
-    if (emailResendTimer > 0) {
-      const t = setInterval(() => setEmailResendTimer((prev) => (prev <= 1 ? 0 : prev - 1)), 1000);
-      return () => clearInterval(t);
+  const handleGenerateByAI = async () => {
+    const keyPoints = jobDescription.trim();
+    if (!keyPoints) {
+      toast.error("Enter some key points or keywords first");
+      return;
     }
-  }, [emailResendTimer]);
-  useEffect(() => {
-    if (phoneResendTimer > 0) {
-      const t = setInterval(() => setPhoneResendTimer((prev) => (prev <= 1 ? 0 : prev - 1)), 1000);
-      return () => clearInterval(t);
-    }
-  }, [phoneResendTimer]);
-  useEffect(() => {
-    if (showEmailVerification && verificationStep === 1 && emailResendTimer === 0) setEmailResendTimer(120);
-  }, [showEmailVerification, verificationStep, emailResendTimer]);
-  useEffect(() => {
-    if (showEmailVerification && verificationStep === 2 && phoneResendTimer === 0) setPhoneResendTimer(120);
-  }, [showEmailVerification, verificationStep, phoneResendTimer]);
-
-  const getDraftPayload = (): JobDraftPayload => ({
-    currentStep,
-    jobDescription,
-    descriptionPreviousState,
-    jobTitle,
-    selectedSector,
-    selectedMainCategories,
-    selectedSkills,
-    jobLocationType,
-    postcode,
-    address,
-    townCity,
-    county,
-    urgency,
-    preferredStartDate,
-    selectedBudget,
-    customBudgetMin,
-    customBudgetMax,
-  });
-
-  const applyDraft = (d: JobDraftPayload) => {
-    if (!d || typeof d !== "object") return;
-    isRestoringDraftRef.current = true;
-    if (typeof d.currentStep === "number" && d.currentStep >= 1) setCurrentStep(d.currentStep);
-    if (typeof d.jobDescription === "string") setJobDescription(d.jobDescription);
-    if (typeof d.descriptionPreviousState === "string") setDescriptionPreviousState(d.descriptionPreviousState);
-    if (typeof d.jobTitle === "string") setJobTitle(d.jobTitle);
-    if (typeof d.selectedSector === "string") setSelectedSector(d.selectedSector);
-    if (Array.isArray(d.selectedMainCategories)) setSelectedMainCategories(d.selectedMainCategories);
-    if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
-    if (d.jobLocationType === "in-person" || d.jobLocationType === "online") setJobLocationType(d.jobLocationType);
-    if (typeof d.postcode === "string") setPostcode(d.postcode);
-    if (typeof d.address === "string") setAddress(d.address);
-    if (typeof d.townCity === "string") setTownCity(d.townCity);
-    if (typeof d.county === "string") setCounty(d.county);
-    if (typeof d.urgency === "string") setUrgency(d.urgency);
-    if (typeof d.preferredStartDate === "string") setPreferredStartDate(d.preferredStartDate);
-    if (typeof d.selectedBudget === "string") setSelectedBudget(d.selectedBudget);
-    if (typeof d.customBudgetMin === "string") setCustomBudgetMin(d.customBudgetMin);
-    if (typeof d.customBudgetMax === "string") setCustomBudgetMax(d.customBudgetMax);
-  };
-
-  // Load draft on mount: from API if logged in, else from localStorage (run once when isLoggedIn is known)
-  useEffect(() => {
-    if (draftLoadedRef.current) return;
-    if (isLoggedIn === undefined) return; // auth still loading
-    let cancelled = false;
-    if (isLoggedIn) {
-      fetch(resolveApiUrl("/api/jobs/draft"), { credentials: "include" })
-        .then((res) => {
-          if (cancelled) return null;
-          if (res.status === 404) return null;
-          if (!res.ok) return res.json().then((data) => { throw new Error(data?.error || "Failed to load draft"); });
-          return res.json();
-        })
-        .then((data) => {
-          if (cancelled) return;
-          draftLoadedRef.current = true;
-          if (data?.draft && typeof data.draft === "object") applyDraft(data.draft);
-        })
-        .catch(() => {
-          if (!cancelled) draftLoadedRef.current = true;
-        });
-    } else {
-      draftLoadedRef.current = true;
-      try {
-        const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as JobDraftPayload;
-          if (parsed && typeof parsed === "object") applyDraft(parsed);
-        }
-      } catch (_) {}
-    }
-    return () => { cancelled = true; };
-  }, [isLoggedIn]);
-
-  const saveDraftRef = useRef<(() => void) | null>(null);
-  const saveDraft = async () => {
-    const payload = getDraftPayload();
+    setAiGenerating(true);
     try {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
-      if (isLoggedIn) {
-        await fetch(resolveApiUrl("/api/jobs/draft"), {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
+      const sectorEntry = sectors.find((s) => s.value === selectedSector);
+      const sectorLabel = sectorEntry?.label || selectedSector || "";
+      const res = await fetch(resolveApiUrl("/api/jobs/generate-description"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sectorName: sectorLabel || undefined,
+          sectorSlug: selectedSector || undefined,
+          keyPoints: keyPoints,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Failed to generate");
+        return;
       }
-    } catch (_) {}
-  };
-  saveDraftRef.current = saveDraft;
-
-  // Debounced save when form fields change
-  useEffect(() => {
-    const t = setTimeout(saveDraft, 1500);
-    return () => clearTimeout(t);
-  }, [
-    currentStep,
-    jobDescription,
-    jobTitle,
-    selectedSector,
-    selectedMainCategories.join(","),
-    selectedSkills.join(","),
-    jobLocationType,
-    postcode,
-    address,
-    townCity,
-    county,
-    urgency,
-    preferredStartDate,
-    selectedBudget,
-    customBudgetMin,
-    customBudgetMax,
-    isLoggedIn,
-  ]);
-
-  // Save draft when leaving page or tab
-  useEffect(() => {
-    const onBeforeUnload = () => { saveDraftRef.current?.(); };
-    const onVisibilityChange = () => { if (document.visibilityState === "hidden") saveDraftRef.current?.(); };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, []);
-
-  const clearDraft = async () => {
-    try {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-      if (isLoggedIn) {
-        await fetch(resolveApiUrl("/api/jobs/draft"), { method: "DELETE", credentials: "include" });
+      if (data.title) setJobTitle(data.title);
+      const newDescription = data.description ?? "";
+      if (newDescription) {
+        setDescriptionPreviousState(jobDescription.trim());
+        setJobDescription(newDescription);
       }
-    } catch (_) {}
+      toast.success("Title and description generated.");
+      setCurrentStep((prev) => (prev < 2 ? 2 : prev));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      console.warn("[PostJob] generate-description: error", e);
+      toast.error("Failed to generate. Please try again.");
+    } finally {
+      setAiGenerating(false);
+    }
   };
-
-  const totalSteps = isLoggedIn ? steps.length : steps.length + 1;
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -644,10 +517,56 @@ export default function PostJobPage() {
   };
 
   const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      saveDraftRef.current?.();
+    if (currentStep <= 1) return;
+    if (isEditMode && currentStep === 2) return; // Edit mode: don't go back to keyword step
+    setCurrentStep(currentStep - 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    saveDraftRef.current?.();
+  };
+
+  const isStepValid = () => {
+    switch (currentStep) {
+      case 1:
+        return jobDescription.trim() !== "";
+      case 2:
+        return jobTitle.trim() !== "" && jobDescription.trim() !== "";
+      case 3:
+        return selectedSector !== "" && selectedMainCategories.length >= 1 && selectedSkills.length >= 5;
+      case 4:
+        if (urgency === "") return false;
+        if (jobLocationType === "online") return true;
+        return postcode.trim() !== "" && townCity.trim() !== "";
+      case 5:
+        if (selectedBudget === "") return false;
+        if (selectedBudget === "custom-budget") {
+          const min = parseFloat(customBudgetMin);
+          const max = parseFloat(customBudgetMax);
+          return !isNaN(min) && !isNaN(max) && min >= 0 && max >= 0 && min <= max;
+        }
+        return true;
+      case 6:
+        if (
+          firstName.trim() === "" ||
+          lastName.trim() === "" ||
+          registerAddress.trim() === "" ||
+          registerTownCity.trim() === "" ||
+          email.trim() === "" ||
+          !agreeTerms
+        )
+          return false;
+        const phoneParts = phone.includes("|") ? phone.split("|") : ["+44", phone.replace(/\D/g, "")];
+        const pn = phoneParts[1] || "";
+        if (!pn.trim()) return false;
+        const pv = validatePhoneNumber(pn);
+        if (!pv.isValid) return false;
+        if (!password) return false;
+        const pwdVal = validatePassword(password);
+        if (!pwdVal.isValid) return false;
+        if (password !== confirmPassword) return false;
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+        return true;
+      default:
+        return true;
     }
   };
 
@@ -700,133 +619,18 @@ export default function PostJobPage() {
     });
   };
 
-  const handleGenerateByAI = async () => {
-    const keyPoints = jobDescription.trim();
-    if (!keyPoints) {
-      toast.error("Enter some key points or keywords first");
-      return;
-    }
-    setAiGenerating(true);
-    console.log("[PostJob] generate-description: start", { keyPointsPreview: keyPoints.slice(0, 80) });
+  const clearDraft = async () => {
     try {
-      const sectorEntry = sectors.find((s) => s.value === selectedSector);
-      const sectorLabel = sectorEntry?.label || selectedSector || "";
-      const res = await fetch(resolveApiUrl("/api/jobs/generate-description"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          sectorName: sectorLabel || undefined,
-          sectorSlug: selectedSector || undefined,
-          keyPoints: keyPoints,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      console.log("[PostJob] generate-description: response", { ok: res.ok, status: res.status, hasTitle: !!data.title, hasDescription: !!data.description, error: data.error });
-      if (!res.ok) {
-        toast.error(data.error || "Failed to generate");
-        return;
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      if (isLoggedIn) {
+        await fetch(resolveApiUrl("/api/jobs/draft"), { method: "DELETE", credentials: "include" });
       }
-      if (data.title) setJobTitle(data.title);
-      const newDescription = data.description ?? "";
-      if (newDescription) {
-        setDescriptionPreviousState(jobDescription.trim());
-        setJobDescription(newDescription);
-      }
-      toast.success("Title and description generated.");
-      setCurrentStep((prev) => (prev < 2 ? 2 : prev));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (e) {
-      console.warn("[PostJob] generate-description: error", e);
-      toast.error("Failed to generate. Please try again.");
-    } finally {
-      setAiGenerating(false);
-    }
+    } catch (_) {}
   };
 
-  const isStepValid = () => {
-    switch (currentStep) {
-      case 1:
-        // Step 1: Description (keywords) – require some content to proceed (user can generate or type)
-        return jobDescription.trim() !== "";
-      case 2:
-        // Step 2: Title & Description – both required
-        return jobTitle.trim() !== "" && jobDescription.trim() !== "";
-      case 3:
-        // Step 3: Sector (single), at least one main category, and at least 5 skills (subcategories)
-        return selectedSector !== "" && selectedMainCategories.length >= 1 && selectedSkills.length >= 5;
-      case 4:
-        // Require urgency; postcode is optional
-        return urgency !== "";
-      case 5:
-        // Require budget; if custom, require valid min/max and min <= max
-        if (selectedBudget === "") return false;
-        if (selectedBudget === "custom-budget") {
-          const min = parseFloat(customBudgetMin);
-          const max = parseFloat(customBudgetMax);
-          return !isNaN(min) && !isNaN(max) && min >= 0 && max >= 0 && min <= max;
-        }
-        return true;
-      case 6: // Account creation (if not logged in) – same validation as LoginPage client
-        if (
-          firstName.trim() === "" ||
-          lastName.trim() === "" ||
-          registerAddress.trim() === "" ||
-          registerTownCity.trim() === "" ||
-          email.trim() === "" ||
-          !agreeTerms
-        )
-          return false;
-        const phoneParts = phone.includes("|") ? phone.split("|") : ["+44", phone.replace(/\D/g, "")];
-        const pn = phoneParts[1] || "";
-        if (!pn.trim()) return false;
-        const pv = validatePhoneNumber(pn);
-        if (!pv.isValid) return false;
-        if (!password) return false;
-        const pwdVal = validatePassword(password);
-        if (!pwdVal.isValid) return false;
-        if (password !== confirmPassword) return false;
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
-        return true;
-      default:
-        return true;
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!isLoggedIn) return; // Step 6 uses handleStartRegistration instead
-
-    if (selectedBudget === "custom-budget") {
-      const min = parseFloat(customBudgetMin);
-      const max = parseFloat(customBudgetMax);
-      if (isNaN(min) || isNaN(max) || min < 0 || max < 0 || min > max) {
-        toast.error("Please enter a valid custom budget range (min ≤ max)");
-        return;
-      }
-    } else {
-      const preset = budgetRanges.find((r) => r.value === selectedBudget);
-      if (!preset || preset.min == null || preset.max == null) {
-        toast.error("Please select a budget range");
-        return;
-      }
-    }
-
-    const newJob = buildJobPayload(userInfo?.id || "");
-    try {
-      const createdJob = await addJob(newJob);
-      await clearDraft();
-      toast.success("Job posted successfully! Professionals will start sending quotes soon.");
-      navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to post job");
-    }
-  };
-
-  // Build job payload (for submit when logged in, or after registration when not)
   const buildJobPayload = (clientId: string) => {
     let budgetMin: number, budgetMax: number;
     if (selectedBudget === "custom-budget") {
-      // User enters in selected currency; convert to GBP for API
       budgetMin = toGBP(parseFloat(customBudgetMin));
       budgetMax = toGBP(parseFloat(customBudgetMax));
     } else {
@@ -851,15 +655,13 @@ export default function PostJobPage() {
       categories: categoryLabels,
       categorySlugs: selectedSkills,
       postcode: jobLocationType === "online" ? "Online" : postcode,
-      address: jobLocationType === "online" ? "" : address,
-      /** Stored separately – city/town and county/state */
+      address: jobLocationType === "online" ? "" : "",
       city: jobLocationType === "online" ? "" : townCity,
-      state: jobLocationType === "online" ? "" : county,
-      /** Legacy combined line (server also persists address/city/state separately) */
+      state: jobLocationType === "online" ? "" : "",
       location:
         jobLocationType === "online"
           ? "Online"
-          : [address, townCity, county, postcode].filter(Boolean).join(", ") || postcode,
+          : [townCity, postcode].filter(Boolean).join(", ") || postcode,
       timing: timingMap[urgency] || "flexible",
       specificDate: urgency === "specific-date" ? preferredStartDate : undefined,
       budgetType: "fixed" as const,
@@ -869,6 +671,115 @@ export default function PostJobPage() {
       status: "open" as const,
       clientId,
     };
+  };
+
+  const handleSubmit = async () => {
+    if (!isLoggedIn) return;
+    if (selectedBudget === "custom-budget") {
+      const min = parseFloat(customBudgetMin);
+      const max = parseFloat(customBudgetMax);
+      if (isNaN(min) || isNaN(max) || min < 0 || max < 0 || min > max) {
+        toast.error("Please enter a valid custom budget range (min ≤ max)");
+        return;
+      }
+    } else {
+      const preset = budgetRanges.find((r) => r.value === selectedBudget);
+      if (!preset || preset.min == null || preset.max == null) {
+        toast.error("Please select a budget range");
+        return;
+      }
+    }
+    const uploads: { name: string; url: string; mimeType: string; size: number }[] = [];
+    if (attachedFiles.length > 0) {
+      for (const item of attachedFiles) {
+        const form = new FormData();
+        form.append("file", item.file);
+        const res = await fetch(resolveApiUrl("/api/jobs/upload-attachment"), {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.error || "File upload failed");
+        }
+        const data = await res.json();
+        uploads.push({ name: data.name, url: data.url, mimeType: data.mimeType || "", size: data.size || 0 });
+      }
+    }
+    const newJob = { ...buildJobPayload(userInfo?.id || ""), attachments: uploads };
+    try {
+      const createdJob = await addJob(newJob);
+      await clearDraft();
+      toast.success("Job posted successfully! Professionals will start sending quotes soon.");
+      navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to post job");
+    }
+  };
+
+  const handleUpdateJob = async () => {
+    if (!editJobId || !userInfo?.id) return;
+    if (selectedBudget === "custom-budget") {
+      const min = parseFloat(customBudgetMin);
+      const max = parseFloat(customBudgetMax);
+      if (isNaN(min) || isNaN(max) || min < 0 || max < 0 || min > max) {
+        toast.error("Please enter a valid custom budget range (min ≤ max)");
+        return;
+      }
+    } else {
+      const preset = budgetRanges.find((r) => r.value === selectedBudget);
+      if (!preset || preset.min == null || preset.max == null) {
+        toast.error("Please select a budget range");
+        return;
+      }
+    }
+    const uploads: { name: string; url: string; mimeType: string; size: number }[] = [...existingAttachments];
+    for (const item of attachedFiles) {
+      const form = new FormData();
+      form.append("file", item.file);
+      const res = await fetch(resolveApiUrl("/api/jobs/upload-attachment"), {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || "File upload failed");
+      }
+      const data = await res.json();
+      uploads.push({ name: data.name, url: data.url, mimeType: data.mimeType || "", size: data.size || 0 });
+    }
+    const payload = buildJobPayload(userInfo.id);
+    const sectorEntry = sectors.find((s) => s.value === selectedSector);
+    const updates: Record<string, unknown> = {
+      title: payload.title,
+      description: payload.description,
+      postcode: payload.postcode,
+      address: payload.address,
+      city: payload.city,
+      state: payload.state,
+      location: payload.location,
+      timing: payload.timing,
+      specificDate: payload.specificDate || null,
+      budgetType: payload.budgetType,
+      budgetAmount: payload.budgetAmount,
+      budgetMin: payload.budgetMin,
+      budgetMax: payload.budgetMax,
+      sector: sectorEntry?.id,
+      sectorSlug: payload.sectorSlug,
+      sectorName: payload.sector,
+      categorySlugs: payload.categorySlugs,
+      categoryLabels: payload.categories,
+      attachments: uploads,
+    };
+    try {
+      await updateJob(editJobId, updates as any);
+      toast.success("Job updated successfully.");
+      navigate(`/job/${editJobId}?tab=details`);
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || "Failed to update job");
+    }
   };
 
   const handleStartRegistration = async () => {
@@ -930,1214 +841,8 @@ export default function PostJobPage() {
     }
   };
 
-  const handleVerifyEmailCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (emailVerificationCode.length !== 4) {
-      toast.error("Please enter a 4-digit code");
-      return;
-    }
-    setRegisterError(null);
-    setIsVerifyingEmail(true);
-    try {
-      await verifyRegistrationEmail(emailVerificationCode, verificationEmail);
-      setVerificationStep(2);
-      setEmailVerificationCode("");
-    } catch {
-      setRegisterError("Email verification failed");
-    } finally {
-      setIsVerifyingEmail(false);
-    }
-  };
-
-  const handleVerifyPhoneCodeAndPostJob = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phoneVerificationCode.length !== 4) {
-      toast.error("Please enter a 4-digit code");
-      return;
-    }
-    setRegisterError(null);
-    setIsRegistering(true);
-    try {
-      const user = await completeRegistration(phoneVerificationCode, verificationEmail);
-      setShowEmailVerification(false);
-      setVerificationStep(1);
-      setEmailVerificationCode("");
-      setPhoneVerificationCode("");
-      const newJob = buildJobPayload(user?.id ?? "");
-      const createdJob = await addJob(newJob);
-      await clearDraft();
-      toast.success("Account created and job posted successfully!");
-      navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
-    } catch (err) {
-      setRegisterError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
-      setIsRegistering(false);
-    }
-  };
-
-  const handleBackFromVerification = () => {
-    if (verificationStep > 1) {
-      setVerificationStep(verificationStep - 1);
-    } else {
-      setShowEmailVerification(false);
-      setVerificationStep(1);
-      setEmailVerificationCode("");
-      setPhoneVerificationCode("");
-      setRegisterError(null);
-    }
-  };
-
-  const handleResendEmailCode = async () => {
-    if (isResendingEmail || emailResendTimer > 0) return;
-    setIsResendingEmail(true);
-    setRegisterError(null);
-    try {
-      const res = await fetch(resolveApiUrl("/api/auth/register/resend-email"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: verificationEmail }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to resend verification code");
-      setEmailResendTimer(120);
-      toast.success("Verification code resent to your email");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to resend code";
-      toast.error(msg);
-      setRegisterError(msg);
-    } finally {
-      setIsResendingEmail(false);
-    }
-  };
-
-  const handleResendPhoneCode = async () => {
-    if (isResendingPhone || phoneResendTimer > 0) return;
-    setIsResendingPhone(true);
-    setRegisterError(null);
-    try {
-      const res = await fetch(resolveApiUrl("/api/auth/register/resend-phone"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: verificationEmail }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to resend verification code");
-      setPhoneResendTimer(120);
-      toast.success("Verification code resent to your phone");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to resend code";
-      toast.error(msg);
-      setRegisterError(msg);
-    } finally {
-      setIsResendingPhone(false);
-    }
-  };
-
-  return (
+  const postFormContent = () => (
     <>
-      <SEOHead
-        title="Post a Job - Get Quotes from Verified Professionals | Sortars"
-        description="Need a service? Post your job and receive quotes from qualified professionals. Free to post, compare offers, read reviews, and hire the best expert for your project."
-        ogTitle="Post Your Job & Get Instant Quotes - Sortars"
-        ogDescription="Describe your job, receive competitive quotes from trusted professionals, and hire with confidence. 1000+ vetted experts ready to help."
-        ogImage={`${window.location.origin}${thumbnailImage}`}
-        ogType="website"
-        robots="index,follow"
-      />
-      <div className="min-h-screen bg-[#f5f5f5] relative">
-        {/* Floating Tools Background Animation - page-wide background */}
-        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <FloatingToolsBackground />
-      </div>
-
-      {/* Content - relative z-index to appear above background */}
-      <div className="relative z-10">
-        {/* Navigation */}
-        <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
-          <Nav />
-        </header>
-
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 mt-[50px] md:mt-0">
-          {/* Step Indicator - Modern 3-Group Design */}
-          <div className="mb-6">
-            <div className="bg-transparent rounded-3xl p-6 md:p-8">
-              {/* Step Groups with Connected Progress Line */}
-              <div className="relative">
-                {/* Step Icons */}
-                <div className="relative grid grid-cols-3 gap-4">
-                  {/* Background Progress Line - positioned behind icons, connecting their centers */}
-                  <div className="absolute top-8 left-1/6 right-1/6 h-1 -translate-y-1/2" style={{ left: 'calc(100% / 6)', right: 'calc(100% / 6)' }}>
-                    {/* Full line background */}
-                    <div className="h-1 bg-[#E5E7EB] rounded-full" />
-                    
-                    {/* Animated progress line */}
-                    <div 
-                      className="absolute top-0 left-0 h-1 bg-[#FE8A0F] rounded-full transition-all duration-500"
-                      style={{ 
-                        width: currentStep <= 3 ? '0%' : 
-                               currentStep === 4 ? '50%' : 
-                               currentStep === 5 ? '75%' : '100%' 
-                      }}
-                    />
-                  </div>
-                  {stepGroups.map((group, index) => {
-                    const isCurrentGroup = group.steps.includes(currentStep) || 
-                      (!isLoggedIn && currentStep === 6 && group.id === 3);
-                    const isCompletedGroup = group.steps.length > 0 && group.steps.every(stepId => stepId < currentStep);
-                    const isPastGroup = isCompletedGroup;
-                    
-                    return (
-                      <div
-                        key={group.id}
-                        className={cn(
-                          "flex flex-col items-center text-center transition-all duration-300 z-10",
-                          isCurrentGroup && "scale-105"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-16 h-16 rounded-2xl flex items-center justify-center mb-3 transition-all duration-300 relative",
-                          isCurrentGroup 
-                            ? "bg-[#FE8A0F] shadow-[0_4px_20px_rgba(254,138,15,0.4)]" 
-                            : isPastGroup
-                            ? "bg-[#34D399]"
-                            : "bg-[#E5E7EB]"
-                        )}>
-                          {group.icon === "file" ? (
-                            <FileText className="w-8 h-8 text-white" />
-                          ) : group.icon === "location" ? (
-                            <MapPin className="w-8 h-8 text-white" />
-                          ) : group.icon === "user" ? (
-                            <User className="w-8 h-8 text-white" />
-                          ) : (
-                            <DollarSign className="w-8 h-8 text-white" />
-                          )}
-                        </div>
-                        <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#FE8A0F] mb-1">
-                          {group.title}
-                        </p>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#6B7280]">
-                          {group.description}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Progress Text */}
-                <div className="flex items-center justify-center gap-3 mt-6">
-                  <span className="font-['Poppins',sans-serif] text-[13px] text-[#6B7280]">
-                    Step {currentStep} of {totalSteps}
-                  </span>
-                  <span className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#FE8A0F]">
-                    {Math.round((currentStep / totalSteps) * 100)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Form Content */}
-        <div className="max-w-4xl mx-auto px-4 pb-8 -mt-4">
-          <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8">
-            {/* Step 1: Description – key points + Generate text by AI (no sector required) */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Describe your job
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Enter key points or keywords about what you need. Then click &quot;Generate text by AI&quot; to create a full job title and description. Click Next to review and edit them.
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                    Key points or keywords
-                  </Label>
-                  <Textarea
-                    placeholder="e.g., leaking tap, kitchen, need fix by weekend"
-                    value={jobDescription}
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    rows={6}
-                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
-                  />
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleGenerateByAI}
-                      disabled={!jobDescription.trim() || aiGenerating}
-                      className={cn(
-                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
-                        !jobDescription.trim() || aiGenerating
-                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
-                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
-                      )}
-                    >
-                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
-                      {aiGenerating ? "Generating…" : "Generate text by AI"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Title & Description – review and edit (pre-filled after AI generate) */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Job title and description
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Review and edit the job title and description below. You can change them before continuing.
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                    Job title
-                  </Label>
-                  <Input
-                    placeholder="e.g., Install new bathroom suite"
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] w-full"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      Description
-                    </Label>
-                    <div className="flex items-center gap-1">
-                      {descriptionPreviousState.trim() !== "" && (
-                        <button
-                          type="button"
-                          onClick={() => setShowRestoreDescriptionModal(true)}
-                          title={jobDescription.trim() === "" ? "Revert: restore deleted content" : "Restore to previous content"}
-                          className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
-                        >
-                          {jobDescription.trim() === "" ? (
-                            <Undo2 className="w-4 h-4" />
-                          ) : (
-                            <History className="w-4 h-4" />
-                          )}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setShowClearDescriptionModal(true)}
-                        title="Clear description"
-                        className="p-2 rounded-lg text-[#6b6b6b] hover:bg-gray-100 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <Textarea
-                    placeholder="Describe what you need..."
-                    value={jobDescription}vui 
-                    onChange={(e) => setJobDescription(e.target.value)}
-                    rows={10}
-                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none whitespace-pre-wrap"
-                  />
-                </div>
-
-                {/* Restore description confirmation */}
-                <AlertDialog open={showRestoreDescriptionModal} onOpenChange={setShowRestoreDescriptionModal}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="font-['Poppins',sans-serif]">
-                        Restore to previous content?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription className="font-['Poppins',sans-serif]">
-                        The description will be replaced with the previous content (before the last change).
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
-                        onClick={() => {
-                          setJobDescription(descriptionPreviousState);
-                          setShowRestoreDescriptionModal(false);
-                          toast.success("Restored to previous content.");
-                        }}
-                      >
-                        Restore
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-
-                {/* Clear description confirmation */}
-                <AlertDialog open={showClearDescriptionModal} onOpenChange={setShowClearDescriptionModal}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="font-['Poppins',sans-serif]">
-                        Clear description?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription className="font-['Poppins',sans-serif]">
-                        All text in the description field will be removed.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="font-['Poppins',sans-serif] bg-red-500 hover:bg-red-600"
-                        onClick={() => {
-                          setDescriptionPreviousState(jobDescription);
-                          setJobDescription("");
-                          setShowClearDescriptionModal(false);
-                          toast.success("Description cleared.");
-                        }}
-                      >
-                        Clear
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-
-                {/* Attach files */}
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    className={cn(
-                      "rounded-xl border-2 border-dashed transition-all cursor-pointer flex items-center justify-center min-h-[50px] py-4 px-4",
-                      isDraggingFiles
-                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                        : "border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50"
-                    )}
-                  >
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                      {isDraggingFiles ? "Drop files here" : "Attach files (images, videos, documents — drag and drop or click)"}
-                    </span>
-                  </div>
-                  {attachedFiles.length > 0 && (
-                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {attachedFiles.map((item, index) => {
-                        const isImage = item.file.type.startsWith("image/");
-                        const isVideo = item.file.type.startsWith("video/");
-                        return (
-                          <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 min-h-[80px]">
-                            {isImage && item.previewUrl ? (
-                              <img src={item.previewUrl} alt={item.file.name} className="w-full aspect-square object-cover" />
-                            ) : isVideo && item.previewUrl ? (
-                              <div className="relative w-full aspect-square overflow-hidden bg-black/5">
-                                <VideoThumbnail
-                                  videoUrl={item.previewUrl}
-                                  className="w-full h-full"
-                                  style={{ minWidth: "100%", minHeight: "100%", position: "absolute", inset: 0 }}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
-                                <FileText className="w-8 h-8 text-gray-400" />
-                                <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); removeAttachedFile(index); }}
-                              className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Select skills required – sector chosen manually, then skills by sector */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Select the skills required
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    Select your job sector first, then choose the skills (categories) required for your job.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                    <div className="flex flex-col">
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Sector
-                      </Label>
-                      <Select 
-                        value={selectedSector} 
-                        onValueChange={(value) => {
-                          setSelectedSector(value);
-                        }}
-                      >
-                        <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
-                          <SelectValue placeholder="Select sector..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sectors.map((sector) => (
-                            <SelectItem key={sector.value} value={sector.value}>
-                              {sector.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Category
-                      </Label>
-                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            disabled={!selectedSector}
-                            className={cn(
-                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                              !selectedSector
-                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
-                            )}
-                          >
-                            <div className="flex flex-wrap gap-2 items-center">
-                              {selectedMainCategories.length > 0 ? (
-                                <>
-                                  {selectedMainCategories.map((slug) => {
-                                    const cat = mainCategoriesForSector.find((c) => c.value === slug);
-                                    return (
-                                      <div
-                                        key={slug}
-                                        className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedMainCategories(selectedMainCategories.filter((c) => c !== slug));
-                                        }}
-                                      >
-                                        <span className="text-[13px]">{cat?.label ?? slug}</span>
-                                        <X className="w-3 h-3 hover:text-red-200 transition-colors" />
-                                      </div>
-                                    );
-                                  })}
-                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
-                                </>
-                              ) : (
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[#6b6b6b]">
-                                    {selectedSector ? "Select main categories..." : "Select sector first"}
-                                  </span>
-                                  {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        </PopoverTrigger>
-                        {selectedSector && (
-                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[280px] flex flex-col" align="start">
-                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[260px]" shouldFilter={true}>
-                              <div className="p-2 border-b bg-muted/30">
-                                <CommandInput placeholder="Search main categories..." className="font-['Poppins',sans-serif] h-10" />
-                              </div>
-                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[220px] overscroll-contain">
-                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No category found.
-                                </CommandEmpty>
-                                {mainCategoriesForSector.map((cat) => {
-                                  const isSelected = selectedMainCategories.includes(cat.value);
-                                  return (
-                                    <CommandItem
-                                      key={cat.itemKey}
-                                      value={cat.label}
-                                      onSelect={() => {
-                                        if (isSelected) {
-                                          setSelectedMainCategories(selectedMainCategories.filter((c) => c !== cat.value));
-                                        } else {
-                                          setSelectedMainCategories([...selectedMainCategories, cat.value]);
-                                        }
-                                      }}
-                                      className="font-['Poppins',sans-serif] cursor-pointer"
-                                    >
-                                      <div className="flex items-center justify-between w-full">
-                                        <span className="text-[13px]">{cat.label}</span>
-                                        {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
-                                      </div>
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        )}
-                      </Popover>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                        Skills
-                      </Label>
-                      <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            disabled={!selectedSector || selectedMainCategories.length === 0}
-                            className={cn(
-                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                              !selectedSector || selectedMainCategories.length === 0
-                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
-                            )}
-                          >
-                            <div className="flex flex-wrap gap-2 items-center">
-                              {selectedSkills.length > 0 ? (
-                                <>
-                                  {selectedSkills.map((slug) => (
-                                    <div
-                                      key={slug}
-                                      className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedSkills(selectedSkills.filter((s) => s !== slug));
-                                      }}
-                                    >
-                                      <span className="text-[13px]">{skillLabelBySlug[slug] ?? slug}</span>
-                                      <X className="w-3 h-3 hover:text-red-200 transition-colors" />
-                                    </div>
-                                  ))}
-                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
-                                </>
-                              ) : (
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[#6b6b6b]">
-                                    {!selectedSector
-                                      ? "Select sector first"
-                                      : selectedMainCategories.length === 0
-                                        ? "Select categories first"
-                                        : "Search and select skills (subcategories)..."}
-                                  </span>
-                                  {selectedSector && selectedMainCategories.length > 0 && <ChevronDown className="w-4 h-4 text-gray-400" />}
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        </PopoverTrigger>
-                        {selectedSector && selectedMainCategories.length > 0 && (
-                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
-                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
-                              <div className="p-2 border-b bg-muted/30">
-                                <CommandInput placeholder="Search skills / subcategories..." className="font-['Poppins',sans-serif] h-10" />
-                              </div>
-                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
-                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                  No skill found.
-                                </CommandEmpty>
-                                {skillsOptionsForSector.map((skill) => {
-                                  const isSelected = selectedSkills.includes(skill.value);
-                                  return (
-                                    <CommandItem
-                                      key={skill.itemKey}
-                                      value={skill.label}
-                                      onSelect={() => {
-                                        if (isSelected) {
-                                          setSelectedSkills(selectedSkills.filter((s) => s !== skill.value));
-                                        } else {
-                                          setSelectedSkills([...selectedSkills, skill.value]);
-                                        }
-                                      }}
-                                      className="font-['Poppins',sans-serif] cursor-pointer pl-4"
-                                    >
-                                      <div className="flex items-center justify-between w-full">
-                                        <span className="text-[13px]">{skill.label}</span>
-                                        {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
-                                      </div>
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        )}
-                      </Popover>
-                    </div>
-                </div>
-
-                {selectedSector && (
-                  <div className="mt-4">
-                    <div className={cn(
-                      "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
-                      selectedMainCategories.length >= 1 && selectedSkills.length >= 5
-                        ? "bg-green-50 text-green-700"
-                        : "bg-orange-50 text-orange-700"
-                    )}>
-                      {selectedMainCategories.length >= 1 && selectedSkills.length >= 5 ? (
-                        <>
-                          <Check className="w-4 h-4 flex-shrink-0" />
-                          <span>
-                            {selectedMainCategories.length} categor{(selectedMainCategories.length) === 1 ? 'y' : 'ies'} and {selectedSkills.length} skills selected. Ready to continue! Ready to continue!
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Flame className="w-4 h-4 flex-shrink-0" />
-                          <span>
-                            {selectedMainCategories.length === 0
-                              ? "Select at least one category, then at least 5 skills."
-                              : `Please select at least ${5 - selectedSkills.length} more skill${(5 - selectedSkills.length) === 1 ? '' : 's'} to continue.`}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 4: Location & Timing */}
-            {currentStep === 4 && (
-              <div className="space-y-6">
-                {/* In-Person vs Online */}
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    How will this be done?
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                    Choose In-Person if the work is at a physical location, or Online for remote services.
-                  </p>
-                  <div className="flex gap-3">
-                    <div
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                        jobLocationType === "in-person"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                      )}
-                      onClick={() => setJobLocationType("in-person")}
-                    >
-                      <MapPin className={cn("w-5 h-5", jobLocationType === "in-person" ? "text-[#FE8A0F]" : "text-gray-400")} />
-                      <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">In-Person</span>
-                      {jobLocationType === "in-person" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
-                    </div>
-                    <div
-                      className={cn(
-                        "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                        jobLocationType === "online"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                      )}
-                      onClick={() => setJobLocationType("online")}
-                    >
-                      <Laptop className={cn("w-5 h-5", jobLocationType === "online" ? "text-[#FE8A0F]" : "text-gray-400")} />
-                      <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">Online</span>
-                      {jobLocationType === "online" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Postcode Section - only when In-Person */}
-                {jobLocationType === "in-person" && (
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Where do you need this done?
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                    Enter the postcode and address where the work needs to be done.
-                  </p>
-                  <AddressAutocomplete
-                    postcode={postcode}
-                    onPostcodeChange={(value) => setPostcode(value)}
-                    address={address}
-                    onAddressChange={(value) => setAddress(value)}
-                    townCity={townCity}
-                    onTownCityChange={(value) => setTownCity(value)}
-                    county={county}
-                    onCountyChange={(value) => setCounty(value)}
-                    onAddressSelect={(addressData) => {
-                      setPostcode(addressData.postcode || "");
-                      setAddress(addressData.address || "");
-                      setTownCity(addressData.townCity || "");
-                      setCounty(addressData.county || "");
-                    }}
-                    label="Postcode"
-                    required={false}
-                    showAddressField={true}
-                    showTownCityField={true}
-                    showCountyField={true}
-                    addressLabel="Address"
-                    className="font-['Poppins',sans-serif]"
-                  />
-                </div>
-                )}
-
-                {/* Timing Section */}
-                <div className="border-t pt-6">
-                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
-                    When do you need this done? <span className="text-red-500">*</span>
-                  </h3>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                    Select your preferred timeframe
-                  </p>
-
-                  <div className="space-y-3">
-                    {/* Urgent Option */}
-                    <div
-                      className={cn(
-                        "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                        urgency === "urgent"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                      )}
-                      onClick={() => setUrgency("urgent")}
-                    >
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                        urgency === "urgent" ? "bg-[#FE8A0F]" : "bg-gray-100"
-                      )}>
-                        <Flame className={cn(
-                          "w-5 h-5",
-                          urgency === "urgent" ? "text-white" : "text-gray-400"
-                        )} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                          Urgent (Within 24 hours)
-                        </p>
-                      </div>
-                      {urgency === "urgent" && (
-                        <Check className="w-5 h-5 text-[#FE8A0F]" />
-                      )}
-                    </div>
-
-                    {/* Soon Option */}
-                    <div
-                      className={cn(
-                        "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                        urgency === "soon"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                      )}
-                      onClick={() => setUrgency("soon")}
-                    >
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                        urgency === "soon" ? "bg-[#FE8A0F]" : "bg-gray-100"
-                      )}>
-                        <Clock className={cn(
-                          "w-5 h-5",
-                          urgency === "soon" ? "text-white" : "text-gray-400"
-                        )} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                          Soon (Within a week)
-                        </p>
-                      </div>
-                      {urgency === "soon" && (
-                        <Check className="w-5 h-5 text-[#FE8A0F]" />
-                      )}
-                    </div>
-
-                    {/* Flexible Option */}
-                    <div
-                      className={cn(
-                        "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                        urgency === "flexible"
-                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                      )}
-                      onClick={() => setUrgency("flexible")}
-                    >
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                        urgency === "flexible" ? "bg-[#FE8A0F]" : "bg-gray-100"
-                      )}>
-                        <CalendarIcon className={cn(
-                          "w-5 h-5",
-                          urgency === "flexible" ? "text-white" : "text-gray-400"
-                        )} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                          Flexible (Within a month)
-                        </p>
-                      </div>
-                      {urgency === "flexible" && (
-                        <Check className="w-5 h-5 text-[#FE8A0F]" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Optional Preferred Start Date */}
-                  <div className="mt-6">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                      Preferred Start Date (Optional)
-                    </Label>
-                    <Input
-                      type="date"
-                      value={preferredStartDate}
-                      onChange={(e) => setPreferredStartDate(e.target.value)}
-                      className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Budget */}
-            {currentStep === 5 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    What's your estimated budget?
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Please let us know your estimated budget for this job. Don't worry, there's still opportunity to settle on a final price that suits you and your professional. Just give us a reasonable estimate and we'll go from there.
-                  </p>
-                </div>
-
-                {budgetRangesLoading && (
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Loading options...</p>
-                )}
-                <RadioGroup value={selectedBudget} onValueChange={setSelectedBudget}>
-                  <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
-                    {budgetRanges.map((budget) => (
-                      <div
-                        key={budget.value}
-                        className={cn(
-                          "flex items-center justify-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all",
-                          selectedBudget === budget.value
-                            ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                            : "border-gray-200 hover:border-[#FE8A0F]/50"
-                        )}
-                        onClick={() => setSelectedBudget(budget.value)}
-                      >
-                        <RadioGroupItem value={budget.value} id={budget.value} className="hidden md:flex" />
-                        <Label
-                          htmlFor={budget.value}
-                          className="md:ml-3 font-['Poppins',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
-                        >
-                          {budget.value === "custom-budget"
-                            ? budget.label
-                            : budget.max !== null && budget.max >= 500000
-                              ? `Over ${formatPrice(budget.min ?? 0)}`
-                              : budget.min === 0 || budget.min === null
-                                ? `Under ${formatPrice(budget.max ?? 0)}`
-                                : budget.min === budget.max
-                                  ? formatPrice(budget.min)
-                                  : `${formatPrice(budget.min ?? 0)} - ${formatPrice(budget.max ?? 0)}`}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </RadioGroup>
-
-                {selectedBudget === "custom-budget" && (
-                  <div className="mt-6 p-4 border-2 border-[#FE8A0F]/50 rounded-xl bg-[#FFF5EB]/30 space-y-4">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      Enter your budget range (min and max in {symbol})
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                          Minimum ({symbol}) <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                          <Input
-                            type="number"
-                            min={0}
-                            step={1}
-                            placeholder="e.g. 500"
-                            value={customBudgetMin}
-                            onChange={(e) => setCustomBudgetMin(e.target.value)}
-                            className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                          Maximum ({symbol}) <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                          <Input
-                            type="number"
-                            min={0}
-                            step={1}
-                            placeholder="e.g. 1000"
-                            value={customBudgetMax}
-                            onChange={(e) => setCustomBudgetMax(e.target.value)}
-                            className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    {customBudgetMin !== "" && customBudgetMax !== "" && parseFloat(customBudgetMin) > parseFloat(customBudgetMax) && (
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-red-600">
-                        Minimum must be less than or equal to maximum
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 6: Account Creation (if not logged in) – same workflow as LoginPage registration */}
-            {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                    Create a new account
-                  </h2>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                    Register to post your job and receive quotes
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        First name <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          type="text"
-                          placeholder="Jane"
-                          value={firstName}
-                          onChange={(e) => { setFirstName(e.target.value); if (fieldErrors.firstName) setFieldErrors((p) => ({ ...p, firstName: "" })); }}
-                          className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.firstName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                        />
-                      </div>
-                      {fieldErrors.firstName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.firstName}</p>}
-                    </div>
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Last name <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                        <Input
-                          type="text"
-                          placeholder="Smith"
-                          value={lastName}
-                          onChange={(e) => { setLastName(e.target.value); if (fieldErrors.lastName) setFieldErrors((p) => ({ ...p, lastName: "" })); }}
-                          className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.lastName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                        />
-                      </div>
-                      {fieldErrors.lastName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.lastName}</p>}
-                    </div>
-                  </div>
-
-                  <AddressAutocomplete
-                    postcode={registerPostcode}
-                    onPostcodeChange={(v) => { setRegisterPostcode(v); if (fieldErrors.postcode) setFieldErrors((p) => ({ ...p, postcode: "" })); }}
-                    address={registerAddress}
-                    onAddressChange={(v) => { setRegisterAddress(v); if (fieldErrors.address || fieldErrors.townCity) setFieldErrors((p) => ({ ...p, address: "", townCity: "" })); }}
-                    townCity={registerTownCity}
-                    onTownCityChange={(v) => { setRegisterTownCity(v); if (fieldErrors.townCity) setFieldErrors((p) => ({ ...p, townCity: "" })); }}
-                    county={registerCounty}
-                    onCountyChange={setRegisterCounty}
-                    onAddressSelect={(addr) => {
-                      setRegisterPostcode(addr.postcode || "");
-                      setRegisterAddress(addr.address || "");
-                      setRegisterTownCity(addr.townCity || "");
-                      setRegisterCounty(addr.county || "");
-                      setFieldErrors((p) => ({ ...p, postcode: "", address: "", townCity: "" }));
-                    }}
-                    label="Postcode"
-                    required={false}
-                    showAddressField
-                    showTownCityField
-                    showCountyField
-                    addressLabel="Address"
-                    className="font-['Poppins',sans-serif]"
-                  />
-                  {fieldErrors.postcode && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.postcode}</p>}
-                  {fieldErrors.address && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.address}</p>}
-                  {fieldErrors.townCity && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.townCity}</p>}
-
-                  <PhoneInput
-                    id="postjob-reg-phone"
-                    label="Phone number"
-                    value={phone}
-                    onChange={(v) => {
-                      setPhone(v);
-                      const parts = v.includes("|") ? v.split("|") : ["+44", v.replace(/\D/g, "")];
-                      const pn = parts[1] || "";
-                      if (pn && validatePhoneNumber(pn).isValid && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
-                      else if (!pn && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
-                    }}
-                    placeholder="7123 456789"
-                    error={fieldErrors.phone}
-                    required
-                  />
-
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                      Email <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                      <Input
-                        type="email"
-                        placeholder="jane@gmail.com"
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: "" })); }}
-                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.email ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                      />
-                    </div>
-                    {fieldErrors.email && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.email}</p>}
-                  </div>
-
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                      Password <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a strong password"
-                        value={password}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setPassword(v);
-                          if (v) {
-                            const pv = validatePassword(v);
-                            if (!pv.isValid) setFieldErrors((p) => ({ ...p, password: pv.errors[0] || "" }));
-                            else setFieldErrors((p) => ({ ...p, password: "" }));
-                          } else setFieldErrors((p) => ({ ...p, password: "" }));
-                          if (fieldErrors.confirmPassword && v === confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
-                        }}
-                        className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.password ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {fieldErrors.password && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.password}</p>}
-                  </div>
-
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                      Confirm password <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Re-enter your password"
-                        value={confirmPassword}
-                        onChange={(e) => { setConfirmPassword(e.target.value); if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }}
-                        className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.confirmPassword ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                      />
-                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {fieldErrors.confirmPassword && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.confirmPassword}</p>}
-                  </div>
-
-                  <div className="flex items-start space-x-2 pt-2">
-                    <Checkbox
-                      id="postjob-terms"
-                      checked={agreeTerms}
-                      onCheckedChange={(c) => { setAgreeTerms(c as boolean); if (fieldErrors.agreeTerms) setFieldErrors((p) => ({ ...p, agreeTerms: "" })); }}
-                      className="mt-0.5"
-                    />
-                    <Label htmlFor="postjob-terms" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed">
-                      I agree to the <Link to="/terms" className="text-[#3B82F6] hover:underline">Terms & Conditions</Link> and <Link to="/privacy" className="text-[#3B82F6] hover:underline">Privacy Policy</Link>
-                    </Label>
-                  </div>
-                  {fieldErrors.agreeTerms && <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.agreeTerms}</p>}
-
-                  {registerError && <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">{registerError}</p>}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex items-center justify-between gap-4">
-            <Button
-              onClick={handlePrevious}
-              disabled={currentStep === 1}
-              variant="outline"
-              className={cn(
-                "h-12 px-6 rounded-full font-['Poppins',sans-serif] text-[14px] border-2 transition-all duration-300",
-                currentStep === 1 
-                  ? "opacity-50 cursor-not-allowed" 
-                  : "hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
-              )}
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Previous
-            </Button>
-
-            {currentStep < totalSteps ? (
-              <Button
-                onClick={handleNext}
-                disabled={!isStepValid()}
-                className={cn(
-                  "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
-                  isStepValid()
-                    ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                )}
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
-            ) : (
-              <Button
-                onClick={!isLoggedIn ? handleStartRegistration : handleSubmit}
-                disabled={!isStepValid() || (!isLoggedIn && isSendingRegistration)}
-                className={cn(
-                  "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
-                  isStepValid() && !(!isLoggedIn && isSendingRegistration)
-                    ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                )}
-              >
-                {!isLoggedIn ? (isSendingRegistration ? "Creating account…" : "Create account & Post Job") : "Post Job"}
-                <Check className="w-4 h-4 ml-2" />
-              </Button>
-            )}
-          </div>
-
-          {/* Already have an account (only show on account step if not logged in) */}
-          {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
-            <div className="text-center mt-6">
-              <p className="font-['Poppins',sans-serif] text-[13px] text-gray-500">
-                Already have an account?{" "}
-                <Link to="/login" className="text-[#FE8A0F] hover:underline">
-                  Log in here
-                </Link>
-              </p>
-            </div>
-          )}
-        </div>
-
         {/* Email & Phone Verification Modal (same as LoginPage) */}
         {showEmailVerification && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
@@ -2285,8 +990,1487 @@ export default function PostJobPage() {
 
         {/* Footer */}
         <Footer />
-      </div>
-      </div>
     </>
+  );
+
+  const pageChildren = (
+    <>
+      <SEOHead
+        title="Post a Job - Get Quotes from Verified Professionals | Sortars"
+        description="Need a service? Post your job and receive quotes from qualified professionals. Free to post, compare offers, read reviews, and hire the best expert for your project."
+        ogTitle="Post Your Job & Get Instant Quotes - Sortars"
+        ogDescription="Describe your job, receive competitive quotes from trusted professionals, and hire with confidence. 1000+ vetted experts ready to help."
+        ogImage={`${window.location.origin}${thumbnailImage}`}
+        ogType="website"
+        robots="index,follow"
+      />
+      <section className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden>
+        <FloatingToolsBackground />
+      </section>
+      <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
+        <Nav />
+      </header>
+      <section className="max-w-4xl mx-auto px-4 py-8 md:py-12 mt-[50px] md:mt-0 md:bg-white md:rounded-3xl md:shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8" aria-label="Post job form">
+        {isEditMode && editJobLoading && (
+          <section className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-12 text-center mb-8" aria-label="Loading">
+            <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">Loading job...</p>
+          </section>
+        )}
+        {/* Step Indicator - Modern 3-Group Design */}
+        <section className="mb-6" aria-label="Progress">
+          <section className="bg-transparent rounded-3xl p-6 md:p-8">
+            {/* Step Groups with Connected Progress Line */}
+            <section className="relative">
+              {/* Step Icons */}
+              <div className="relative grid grid-cols-3 gap-4">
+                {/* Background Progress Line - positioned behind icons, connecting their centers */}
+                <div className="absolute top-8 left-1/6 right-1/6 h-1 -translate-y-1/2" style={{ left: 'calc(100% / 6)', right: 'calc(100% / 6)' }}>
+                  {/* Full line background */}
+                  <div className="h-1 bg-[#E5E7EB] rounded-full" />
+                  
+                  {/* Animated progress line */}
+                  <div 
+                    className="absolute top-0 left-0 h-1 bg-[#FE8A0F] rounded-full transition-all duration-500"
+                    style={{ 
+                      width: currentStep <= 3 ? '0%' : 
+                             currentStep === 4 ? '50%' : 
+                             currentStep === 5 ? '75%' : '100%' 
+                    }}
+                  />
+                </div>
+                {stepGroups.map((group, index) => {
+                  const isCurrentGroup = group.steps.includes(currentStep) || 
+                    (!isLoggedIn && currentStep === 6 && group.id === 3);
+                  const isCompletedGroup = group.steps.length > 0 && group.steps.every(stepId => stepId < currentStep);
+                  const isPastGroup = isCompletedGroup;
+                  
+                  return (
+                    <div
+                      key={group.id}
+                      className={cn(
+                        "flex flex-col items-center text-center transition-all duration-300 z-10",
+                        isCurrentGroup && "scale-105"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-16 h-16 rounded-2xl flex items-center justify-center mb-3 transition-all duration-300 relative",
+                        isCurrentGroup 
+                          ? "bg-[#FE8A0F] shadow-[0_4px_20px_rgba(254,138,15,0.4)]" 
+                          : isPastGroup
+                          ? "bg-[#34D399]"
+                          : "bg-[#E5E7EB]"
+                      )}>
+                        {group.icon === "file" ? (
+                          <FileText className="w-8 h-8 text-white" />
+                        ) : group.icon === "location" ? (
+                          <MapPin className="w-8 h-8 text-white" />
+                        ) : group.icon === "user" ? (
+                          <User className="w-8 h-8 text-white" />
+                        ) : (
+                          <DollarSign className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[16px] font-medium text-[#FE8A0F] mb-1">
+                        {group.title}
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6B7280]">
+                        {group.description}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Progress Text */}
+              <div className="flex items-center justify-center gap-3 mt-6">
+                <span className="font-['Poppins',sans-serif] text-[13px] text-[#6B7280]">
+                  Step {currentStep} of {totalSteps}
+                </span>
+                <span className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#FE8A0F]">
+                  {Math.round((currentStep / totalSteps) * 100)}%
+                </span>
+              </div>
+            </section>
+          </section>
+        </section>
+
+          {/* Step 1: Description – key points + Generate text by AI (no sector required) */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  Describe your job
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  Enter key points or keywords about what you need. Then click &quot;Generate text by AI&quot; to create a full job title and description. Click Next to review and edit them.
+                </p>
+              </div>
+
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                  Key points or keywords
+                </Label>
+                <Textarea
+                  placeholder="e.g., leaking tap, kitchen, need fix by weekend"
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  rows={6}
+                  className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                />
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateByAI}
+                    disabled={!jobDescription.trim() || aiGenerating}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
+                      !jobDescription.trim() || aiGenerating
+                        ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                        : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
+                    )}
+                  >
+                    <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
+                    {aiGenerating ? "Generating…" : "Generate text by AI"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Title & Description – review and edit (pre-filled after AI generate) */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  Job title and description
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  Review and edit the job title and description below. You can change them before continuing.
+                </p>
+              </div>
+
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                  Job title
+                </Label>
+                <Input
+                  placeholder="e.g., Install new bathroom suite"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] w-full"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    Description
+                  </Label>
+                  <div className="flex items-center gap-1">
+                    {descriptionPreviousState.trim() !== "" && (
+                      <button
+                        type="button"
+                        onClick={() => setShowRestoreDescriptionModal(true)}
+                        title={jobDescription.trim() === "" ? "Revert: restore deleted content" : "Restore to previous content"}
+                        className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
+                      >
+                        {jobDescription.trim() === "" ? (
+                          <Undo2 className="w-4 h-4" />
+                        ) : (
+                          <History className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowClearDescriptionModal(true)}
+                      title="Clear description"
+                      className="p-2 rounded-lg text-[#6b6b6b] hover:bg-gray-100 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="Describe what you need..."
+                  value={jobDescription} 
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  rows={10}
+                  className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none whitespace-pre-wrap"
+                />
+              </div>
+
+              {/* Restore description confirmation */}
+              <AlertDialog open={showRestoreDescriptionModal} onOpenChange={setShowRestoreDescriptionModal}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-['Poppins',sans-serif]">
+                      Restore to previous content?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="font-['Poppins',sans-serif]">
+                      The description will be replaced with the previous content (before the last change).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
+                      onClick={() => {
+                        setJobDescription(descriptionPreviousState);
+                        setShowRestoreDescriptionModal(false);
+                        toast.success("Restored to previous content.");
+                      }}
+                    >
+                      Restore
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* Clear description confirmation */}
+              <AlertDialog open={showClearDescriptionModal} onOpenChange={setShowClearDescriptionModal}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-['Poppins',sans-serif]">
+                      Clear description?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="font-['Poppins',sans-serif]">
+                      All text in the description field will be removed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="font-['Poppins',sans-serif] bg-red-500 hover:bg-red-600"
+                      onClick={() => {
+                        setDescriptionPreviousState(jobDescription);
+                        setJobDescription("");
+                        setShowClearDescriptionModal(false);
+                        toast.success("Description cleared.");
+                      }}
+                    >
+                      Clear
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              {/* Attach files */}
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  className={cn(
+                    "rounded-xl border-2 border-dashed transition-all cursor-pointer flex items-center justify-center min-h-[50px] py-4 px-4",
+                    isDraggingFiles
+                      ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                      : "border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50"
+                  )}
+                >
+                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    {isDraggingFiles ? "Drop files here" : "Attach files (images, videos, documents — drag and drop or click)"}
+                  </span>
+                </div>
+                {isEditMode && existingAttachments.length > 0 && (
+                  <div className="mt-3">
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">Current attachments</p>
+                    <ul className="flex flex-wrap gap-2">
+                      {existingAttachments.map((a, i) => (
+                        <li key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                          <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <span className="truncate max-w-[180px]">{a.name}</span>
+                          <button type="button" aria-label="Remove" onClick={() => setExistingAttachments((prev) => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 flex-shrink-0">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {attachedFiles.length > 0 && (
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {attachedFiles.map((item, index) => {
+                      const isImage = item.file.type.startsWith("image/");
+                      const isVideo = item.file.type.startsWith("video/");
+                      return (
+                        <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 min-h-[80px]">
+                          {isImage && item.previewUrl ? (
+                            <img src={item.previewUrl} alt={item.file.name} className="w-full aspect-square object-cover" />
+                          ) : isVideo && item.previewUrl ? (
+                            <div className="relative w-full aspect-square overflow-hidden bg-black/5">
+                              <VideoThumbnail
+                                videoUrl={item.previewUrl}
+                                className="w-full h-full"
+                                style={{ minWidth: "100%", minHeight: "100%", position: "absolute", inset: 0 }}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
+                              <FileText className="w-8 h-8 text-gray-400" />
+                              <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeAttachedFile(index); }}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Select skills required – sector chosen manually, then skills by sector */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  Select the skills required
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                  Select your job sector first, then choose the skills (categories) required for your job.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                  <div className="flex flex-col">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                      Sector
+                    </Label>
+                    <Select 
+                      value={selectedSector} 
+                      onValueChange={(value) => {
+                        setSelectedSector(value);
+                      }}
+                    >
+                      <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
+                        <SelectValue placeholder="Select sector..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sectors.map((sector) => (
+                          <SelectItem key={sector.value} value={sector.value}>
+                            {sector.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                      Category
+                    </Label>
+                    <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={!selectedSector}
+                          className={cn(
+                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                            !selectedSector
+                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                              : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
+                          )}
+                        >
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {selectedMainCategories.length > 0 ? (
+                              <>
+                                {selectedMainCategories.map((slug) => {
+                                  const cat = mainCategoriesForSector.find((c) => c.value === slug);
+                                  return (
+                                    <div
+                                      key={slug}
+                                      className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedMainCategories(selectedMainCategories.filter((c) => c !== slug));
+                                      }}
+                                    >
+                                      <span className="text-[13px]">{cat?.label ?? slug}</span>
+                                      <X className="w-3 h-3 hover:text-red-200 transition-colors" />
+                                    </div>
+                                  );
+                                })}
+                                <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-between w-full">
+                                <span className="text-[#6b6b6b]">
+                                  {selectedSector ? "Select main categories..." : "Select sector first"}
+                                </span>
+                                {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      {selectedSector && (
+                        <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[280px] flex flex-col" align="start">
+                          <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[260px]" shouldFilter={true}>
+                            <div className="p-2 border-b bg-muted/30">
+                              <CommandInput placeholder="Search main categories..." className="font-['Poppins',sans-serif] h-10" />
+                            </div>
+                            <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[220px] overscroll-contain">
+                              <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                No category found.
+                              </CommandEmpty>
+                              {mainCategoriesForSector.map((cat) => {
+                                const isSelected = selectedMainCategories.includes(cat.value);
+                                return (
+                                  <CommandItem
+                                    key={cat.itemKey}
+                                    value={cat.label}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        setSelectedMainCategories(selectedMainCategories.filter((c) => c !== cat.value));
+                                      } else {
+                                        setSelectedMainCategories([...selectedMainCategories, cat.value]);
+                                      }
+                                    }}
+                                    className="font-['Poppins',sans-serif] cursor-pointer"
+                                  >
+                                    <div className="flex items-center justify-between w-full">
+                                      <span className="text-[13px]">{cat.label}</span>
+                                      {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                    </div>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      )}
+                    </Popover>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                      Skills
+                    </Label>
+                    <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={!selectedSector || selectedMainCategories.length === 0}
+                          className={cn(
+                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                            !selectedSector || selectedMainCategories.length === 0
+                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                              : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
+                          )}
+                        >
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {selectedSkills.length > 0 ? (
+                              <>
+                                {selectedSkills.map((slug) => (
+                                  <div
+                                    key={slug}
+                                    className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSkills(selectedSkills.filter((s) => s !== slug));
+                                    }}
+                                  >
+                                    <span className="text-[13px]">{skillLabelBySlug[slug] ?? slug}</span>
+                                    <X className="w-3 h-3 hover:text-red-200 transition-colors" />
+                                  </div>
+                                ))}
+                                <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-between w-full">
+                                <span className="text-[#6b6b6b]">
+                                  {!selectedSector
+                                    ? "Select sector first"
+                                    : selectedMainCategories.length === 0
+                                      ? "Select categories first"
+                                      : "Search and select skills (subcategories)..."}
+                                </span>
+                                {selectedSector && selectedMainCategories.length > 0 && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      {selectedSector && selectedMainCategories.length > 0 && (
+                        <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
+                          <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
+                            <div className="p-2 border-b bg-muted/30">
+                              <CommandInput placeholder="Search skills / subcategories..." className="font-['Poppins',sans-serif] h-10" />
+                            </div>
+                            <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
+                              <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                No skill found.
+                              </CommandEmpty>
+                              {skillsOptionsForSector.map((skill) => {
+                                const isSelected = selectedSkills.includes(skill.value);
+                                return (
+                                  <CommandItem
+                                    key={skill.itemKey}
+                                    value={skill.label}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        setSelectedSkills(selectedSkills.filter((s) => s !== skill.value));
+                                      } else {
+                                        setSelectedSkills([...selectedSkills, skill.value]);
+                                      }
+                                    }}
+                                    className="font-['Poppins',sans-serif] cursor-pointer pl-4"
+                                  >
+                                    <div className="flex items-center justify-between w-full">
+                                      <span className="text-[13px]">{skill.label}</span>
+                                      {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                    </div>
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      )}
+                    </Popover>
+                  </div>
+              </div>
+
+              {selectedSector && (
+                <div className="mt-4">
+                  <div className={cn(
+                    "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
+                    selectedMainCategories.length >= 1 && selectedSkills.length >= 5
+                      ? "bg-green-50 text-green-700"
+                      : "bg-orange-50 text-orange-700"
+                  )}>
+                    {selectedMainCategories.length >= 1 && selectedSkills.length >= 5 ? (
+                      <>
+                        <Check className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          {selectedMainCategories.length} categor{(selectedMainCategories.length) === 1 ? 'y' : 'ies'} and {selectedSkills.length} skills selected. Ready to continue! Ready to continue!
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Flame className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          {selectedMainCategories.length === 0
+                            ? "Select at least one category, then at least 5 skills."
+                            : `Please select at least ${5 - selectedSkills.length} more skill${(5 - selectedSkills.length) === 1 ? '' : 's'} to continue.`}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Location & Timing */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              {/* In-Person vs Online */}
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  How will this be done?
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                  Choose In-Person if the work is at a physical location, or Online for remote services.
+                </p>
+                <div className="flex gap-3">
+                  <div
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                      jobLocationType === "in-person"
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                    )}
+                    onClick={() => setJobLocationType("in-person")}
+                  >
+                    <MapPin className={cn("w-5 h-5", jobLocationType === "in-person" ? "text-[#FE8A0F]" : "text-gray-400")} />
+                    <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">In-Person</span>
+                    {jobLocationType === "in-person" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
+                  </div>
+                  <div
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                      jobLocationType === "online"
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                    )}
+                    onClick={() => setJobLocationType("online")}
+                  >
+                    <Laptop className={cn("w-5 h-5", jobLocationType === "online" ? "text-[#FE8A0F]" : "text-gray-400")} />
+                    <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">Online</span>
+                    {jobLocationType === "online" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
+                  </div>
+                </div>
+              </div>
+
+              {/* Postcode Section - only when In-Person */}
+              {jobLocationType === "in-person" && (
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  Where do you need this done?
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                  Enter the postcode and town/city where the work needs to be done.
+                </p>
+                <AddressAutocomplete
+                  postcode={postcode}
+                  onPostcodeChange={(value) => setPostcode(value)}
+                  address={address}
+                  onAddressChange={(value) => setAddress(value)}
+                  townCity={townCity}
+                  onTownCityChange={(value) => setTownCity(value)}
+                  county={county}
+                  onCountyChange={(value) => setCounty(value)}
+                  onAddressSelect={(addressData) => {
+                    setPostcode(addressData.postcode || "");
+                    setTownCity(addressData.townCity || "");
+                    setAddress("");
+                    setCounty("");
+                  }}
+                  label="Postcode"
+                  required={true}
+                  showAddressField={false}
+                  showTownCityField={true}
+                  showCountyField={false}
+                  addressLabel="Address"
+                  className="font-['Poppins',sans-serif]"
+                />
+              </div>
+              )}
+
+              {/* Timing Section */}
+              <div className="border-t pt-6">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                  When do you need this done? <span className="text-red-500">*</span>
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                  Select your preferred timeframe
+                </p>
+
+                <div className="space-y-3">
+                  {/* Urgent Option */}
+                  <div
+                    className={cn(
+                      "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                      urgency === "urgent"
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                    )}
+                    onClick={() => setUrgency("urgent")}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                      urgency === "urgent" ? "bg-[#FE8A0F]" : "bg-gray-100"
+                    )}>
+                      <Flame className={cn(
+                        "w-5 h-5",
+                        urgency === "urgent" ? "text-white" : "text-gray-400"
+                      )} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        Urgent (Within 24 hours)
+                      </p>
+                    </div>
+                    {urgency === "urgent" && (
+                      <Check className="w-5 h-5 text-[#FE8A0F]" />
+                    )}
+                  </div>
+
+                  {/* Soon Option */}
+                  <div
+                    className={cn(
+                      "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                      urgency === "soon"
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                    )}
+                    onClick={() => setUrgency("soon")}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                      urgency === "soon" ? "bg-[#FE8A0F]" : "bg-gray-100"
+                    )}>
+                      <Clock className={cn(
+                        "w-5 h-5",
+                        urgency === "soon" ? "text-white" : "text-gray-400"
+                      )} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        Soon (Within a week)
+                      </p>
+                    </div>
+                    {urgency === "soon" && (
+                      <Check className="w-5 h-5 text-[#FE8A0F]" />
+                    )}
+                  </div>
+
+                  {/* Flexible Option */}
+                  <div
+                    className={cn(
+                      "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                      urgency === "flexible"
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                    )}
+                    onClick={() => setUrgency("flexible")}
+                  >
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                      urgency === "flexible" ? "bg-[#FE8A0F]" : "bg-gray-100"
+                    )}>
+                      <CalendarIcon className={cn(
+                        "w-5 h-5",
+                        urgency === "flexible" ? "text-white" : "text-gray-400"
+                      )} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                        Flexible (Within a month)
+                      </p>
+                    </div>
+                    {urgency === "flexible" && (
+                      <Check className="w-5 h-5 text-[#FE8A0F]" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Optional Preferred Start Date */}
+                <div className="mt-6">
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    Preferred Start Date (Optional)
+                  </Label>
+                  <Input
+                    type="date"
+                    value={preferredStartDate}
+                    onChange={(e) => setPreferredStartDate(e.target.value)}
+                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Budget */}
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  What's your estimated budget?
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  Please let us know your estimated budget for this job. Don't worry, there's still opportunity to settle on a final price that suits you and your professional. Just give us a reasonable estimate and we'll go from there.
+                </p>
+              </div>
+
+              {budgetRangesLoading && (
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Loading options...</p>
+              )}
+              <RadioGroup value={selectedBudget} onValueChange={setSelectedBudget}>
+                <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
+                  {budgetRanges.map((budget) => (
+                    <div
+                      key={budget.value}
+                      className={cn(
+                        "flex items-center justify-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        selectedBudget === budget.value
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50"
+                      )}
+                      onClick={() => setSelectedBudget(budget.value)}
+                    >
+                      <RadioGroupItem value={budget.value} id={budget.value} className="hidden md:flex" />
+                      <Label
+                        htmlFor={budget.value}
+                        className="md:ml-3 font-['Poppins',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
+                      >
+                        {budget.value === "custom-budget"
+                          ? budget.label
+                          : budget.max !== null && budget.max >= 500000
+                            ? `Over ${formatPrice(budget.min ?? 0)}`
+                            : budget.min === 0 || budget.min === null
+                              ? `Under ${formatPrice(budget.max ?? 0)}`
+                              : budget.min === budget.max
+                                ? formatPrice(budget.min)
+                                : `${formatPrice(budget.min ?? 0)} - ${formatPrice(budget.max ?? 0)}`}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+
+              {selectedBudget === "custom-budget" && (
+                <div className="mt-6 p-4 border-2 border-[#FE8A0F]/50 rounded-xl bg-[#FFF5EB]/30 space-y-4">
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    Enter your budget range (min and max in {symbol})
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                        Minimum ({symbol}) <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          placeholder="e.g. 500"
+                          value={customBudgetMin}
+                          onChange={(e) => setCustomBudgetMin(e.target.value)}
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                        Maximum ({symbol}) <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          placeholder="e.g. 1000"
+                          value={customBudgetMax}
+                          onChange={(e) => setCustomBudgetMax(e.target.value)}
+                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {customBudgetMin !== "" && customBudgetMax !== "" && parseFloat(customBudgetMin) > parseFloat(customBudgetMax) && (
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600">
+                      Minimum must be less than or equal to maximum
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 6: Account Creation (if not logged in) – same workflow as LoginPage registration */}
+          {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
+            <section className="space-y-6" aria-label="Account creation">
+              <section>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                  Create a new account
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  Register to post your job and receive quotes
+                </p>
+              </section>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      First name <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type="text"
+                        placeholder="Jane"
+                        value={firstName}
+                        onChange={(e) => { setFirstName(e.target.value); if (fieldErrors.firstName) setFieldErrors((p) => ({ ...p, firstName: "" })); }}
+                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.firstName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                    </div>
+                    {fieldErrors.firstName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.firstName}</p>}
+                  </div>
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Last name <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type="text"
+                        placeholder="Smith"
+                        value={lastName}
+                        onChange={(e) => { setLastName(e.target.value); if (fieldErrors.lastName) setFieldErrors((p) => ({ ...p, lastName: "" })); }}
+                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.lastName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                    </div>
+                    {fieldErrors.lastName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.lastName}</p>}
+                  </div>
+                </div>
+
+                <AddressAutocomplete
+                  postcode={registerPostcode}
+                  onPostcodeChange={(v) => { setRegisterPostcode(v); if (fieldErrors.postcode) setFieldErrors((p) => ({ ...p, postcode: "" })); }}
+                  address={registerAddress}
+                  onAddressChange={(v) => { setRegisterAddress(v); if (fieldErrors.address || fieldErrors.townCity) setFieldErrors((p) => ({ ...p, address: "", townCity: "" })); }}
+                  townCity={registerTownCity}
+                  onTownCityChange={(v) => { setRegisterTownCity(v); if (fieldErrors.townCity) setFieldErrors((p) => ({ ...p, townCity: "" })); }}
+                  county={registerCounty}
+                  onCountyChange={setRegisterCounty}
+                  onAddressSelect={(addr) => {
+                    setRegisterPostcode(addr.postcode || "");
+                    setRegisterAddress(addr.address || "");
+                    setRegisterTownCity(addr.townCity || "");
+                    setRegisterCounty(addr.county || "");
+                    setFieldErrors((p) => ({ ...p, postcode: "", address: "", townCity: "" }));
+                  }}
+                  label="Postcode"
+                  required={false}
+                  showAddressField
+                  showTownCityField
+                  showCountyField
+                  addressLabel="Address"
+                  className="font-['Poppins',sans-serif]"
+                />
+                {fieldErrors.postcode && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.postcode}</p>}
+                {fieldErrors.address && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.address}</p>}
+                {fieldErrors.townCity && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.townCity}</p>}
+
+                <PhoneInput
+                  id="postjob-reg-phone"
+                  label="Phone number"
+                  value={phone}
+                  onChange={(v) => {
+                    setPhone(v);
+                    const parts = v.includes("|") ? v.split("|") : ["+44", v.replace(/\D/g, "")];
+                    const pn = parts[1] || "";
+                    if (pn && validatePhoneNumber(pn).isValid && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                    else if (!pn && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                  }}
+                  placeholder="7123 456789"
+                  error={fieldErrors.phone}
+                  required
+                />
+
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                    Email <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                    <Input
+                      type="email"
+                      placeholder="jane@gmail.com"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: "" })); }}
+                      className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.email ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                    />
+                  </div>
+                  {fieldErrors.email && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.email}</p>}
+                </div>
+
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                    Password <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a strong password"
+                      value={password}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPassword(v);
+                        if (v) {
+                          const pv = validatePassword(v);
+                          if (!pv.isValid) setFieldErrors((p) => ({ ...p, password: pv.errors[0] || "" }));
+                          else setFieldErrors((p) => ({ ...p, password: "" }));
+                        } else setFieldErrors((p) => ({ ...p, password: "" }));
+                        if (fieldErrors.confirmPassword && v === confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
+                      }}
+                      className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.password ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.password && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.password}</p>}
+                </div>
+
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                    Confirm password <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Re-enter your password"
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }}
+                      className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.confirmPassword ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                    />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.confirmPassword}</p>}
+                </div>
+
+                <div className="flex items-start space-x-2 pt-2">
+                  <Checkbox
+                    id="postjob-terms"
+                    checked={agreeTerms}
+                    onCheckedChange={(c) => { setAgreeTerms(c as boolean); if (fieldErrors.agreeTerms) setFieldErrors((p) => ({ ...p, agreeTerms: "" })); }}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="postjob-terms" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed">
+                    I agree to the <Link to="/terms" className="text-[#3B82F6] hover:underline">Terms & Conditions</Link> and <Link to="/privacy" className="text-[#3B82F6] hover:underline">Privacy Policy</Link>
+                  </Label>
+                </div>
+                {fieldErrors.agreeTerms && <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.agreeTerms}</p>}
+
+                {registerError && <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">{registerError}</p>}
+              </div>
+            </section>
+          )}
+        </section>
+
+        {/* Navigation Buttons */}
+        <nav className="flex items-center justify-between gap-4" aria-label="Form navigation">
+          <Button
+            onClick={handlePrevious}
+            disabled={currentStep === 1 || (isEditMode && currentStep === 2)}
+            variant="outline"
+            className={cn(
+              "h-12 px-6 rounded-full font-['Poppins',sans-serif] text-[14px] border-2 transition-all duration-300",
+              currentStep === 1 
+                ? "opacity-50 cursor-not-allowed" 
+                : "hover:border-[#FE8A0F] hover:bg-[#FFF5EB]"
+            )}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Previous
+          </Button>
+
+          {currentStep < totalSteps ? (
+            <Button
+              onClick={handleNext}
+              disabled={!isStepValid()}
+              className={cn(
+                "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
+                isStepValid()
+                  ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              )}
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          ) : (
+            <Button
+              onClick={!isLoggedIn ? handleStartRegistration : isEditMode ? handleUpdateJob : handleSubmit}
+              disabled={!isStepValid() || (!isLoggedIn && isSendingRegistration)}
+              className={cn(
+                "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
+                isStepValid() && !(!isLoggedIn && isSendingRegistration)
+                  ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              )}
+            >
+              {!isLoggedIn ? (isSendingRegistration ? "Creating account…" : "Create account & Post Job") : isEditMode ? "Update Job" : "Post Job"}
+              <Check className="w-4 h-4 ml-2" />
+            </Button>
+          )}
+        </nav>
+
+        {/* Already have an account (only show on account step if not logged in) */}
+        {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
+          <p className="text-center mt-6 font-['Poppins',sans-serif] text-[13px] text-gray-500">
+            Already have an account?{" "}
+            <Link to="/login" className="text-[#FE8A0F] hover:underline">
+              Log in here
+            </Link>
+          </p>
+        )}
+      {postFormContent()}
+    </>
+  );
+
+  // Edit mode: fetch job and prefill form; skip keyword step (start at step 2)
+  useEffect(() => {
+    if (!editJobId || !isLoggedIn) {
+      if (!editJobId) setEditJobLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+    setEditJobLoading(true);
+    try {
+      const res = await fetch(resolveApiUrl(`/api/jobs/${editJobId}`), { credentials: "include" });
+      if (cancelled || !res.ok) {
+        if (!cancelled) setEditJobLoading(false);
+        return;
+      }
+      const job = await res.json();
+      if (cancelled) return;
+      isEditPrefillRef.current = true;
+      setJobTitle(job.title || "");
+      setJobDescription(job.description || "");
+      setSelectedSector(job.sectorSlug || "");
+      const slugs = job.categorySlugs || [];
+      setSelectedSkills(slugs);
+      const grouped = categoriesGroupedBySector[job.sectorSlug] || [];
+      const main: string[] = [];
+      grouped.forEach((g: CategoryGroup) => {
+        const hasAny = (g.subcategories || []).some((sub: CategoryItem) => slugs.includes(sub.value));
+        if (hasAny) main.push(g.category.value);
+      });
+      setSelectedMainCategories(main);
+      setPostcode(job.postcode === "Online" ? "" : job.postcode || "");
+      setTownCity(job.city || "");
+      setAddress(job.address || "");
+      setCounty(job.state || "");
+      setJobLocationType(job.postcode === "Online" ? "online" : "in-person");
+      const timingMap: Record<string, string> = { urgent: "urgent", specific: "specific-date", flexible: "flexible" };
+      setUrgency(timingMap[job.timing] || "flexible");
+      setPreferredStartDate(job.specificDate || "");
+      if (job.budgetMin != null && job.budgetMax != null) {
+        setSelectedBudget("custom-budget");
+        setCustomBudgetMin(fromGBP(job.budgetMin).toFixed(2));
+        setCustomBudgetMax(fromGBP(job.budgetMax).toFixed(2));
+      } else if (budgetRangesFromApi.length > 0) {
+        const match = budgetRangesFromApi.find((r) => r.min === job.budgetMin && r.max === job.budgetMax);
+        if (match) setSelectedBudget(match.value);
+      }
+      setExistingAttachments(job.attachments || []);
+      setCurrentStep(2);
+      draftLoadedRef.current = true;
+    } catch {
+      if (!cancelled) toast.error("Failed to load job");
+    } finally {
+      if (!cancelled) setEditJobLoading(false);
+    }
+  })();
+    return () => { cancelled = true; };
+  }, [editJobId, isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Edit mode: when categories load for job's sector, derive main categories from selected skills
+  const editMainCategoriesAppliedRef = useRef(false);
+  useEffect(() => {
+  if (!isEditMode || !selectedSector || selectedSkills.length === 0) return;
+  const grouped = categoriesGroupedBySector[selectedSector] || [];
+  if (grouped.length === 0) return;
+  if (editMainCategoriesAppliedRef.current) return;
+  editMainCategoriesAppliedRef.current = true;
+  const main: string[] = [];
+  grouped.forEach((g: CategoryGroup) => {
+    const hasAny = (g.subcategories || []).some((sub: CategoryItem) => selectedSkills.includes(sub.value));
+    if (hasAny) main.push(g.category.value);
+  });
+  setSelectedMainCategories(main);
+}, [isEditMode, selectedSector, selectedSkills, categoriesGroupedBySector]);
+
+// Account Creation (if not logged in) – same fields as LoginPage client registration
+const [firstName, setFirstName] = useState("");
+const [lastName, setLastName] = useState("");
+const [phone, setPhone] = useState("");
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [confirmPassword, setConfirmPassword] = useState("");
+const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+const [agreeTerms, setAgreeTerms] = useState(false);
+const [registerPostcode, setRegisterPostcode] = useState("");
+const [registerAddress, setRegisterAddress] = useState("");
+const [registerTownCity, setRegisterTownCity] = useState("");
+const [registerCounty, setRegisterCounty] = useState("");
+const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+const [isSendingRegistration, setIsSendingRegistration] = useState(false);
+
+// Resend timers for verification modals
+useEffect(() => {
+  if (emailResendTimer > 0) {
+    const t = setInterval(() => setEmailResendTimer((prev) => (prev <= 1 ? 0 : prev - 1)), 1000);
+    return () => clearInterval(t);
+  }
+}, [emailResendTimer]);
+useEffect(() => {
+  if (phoneResendTimer > 0) {
+    const t = setInterval(() => setPhoneResendTimer((prev) => (prev <= 1 ? 0 : prev - 1)), 1000);
+    return () => clearInterval(t);
+  }
+}, [phoneResendTimer]);
+useEffect(() => {
+  if (showEmailVerification && verificationStep === 1 && emailResendTimer === 0) setEmailResendTimer(120);
+}, [showEmailVerification, verificationStep, emailResendTimer]);
+useEffect(() => {
+  if (showEmailVerification && verificationStep === 2 && phoneResendTimer === 0) setPhoneResendTimer(120);
+}, [showEmailVerification, verificationStep, phoneResendTimer]);
+
+const getDraftPayload = (): JobDraftPayload => ({
+  currentStep,
+  jobDescription,
+  descriptionPreviousState,
+  jobTitle,
+  selectedSector,
+  selectedMainCategories,
+  selectedSkills,
+  jobLocationType,
+  postcode,
+  address,
+  townCity,
+  county,
+  urgency,
+  preferredStartDate,
+  selectedBudget,
+  customBudgetMin,
+  customBudgetMax,
+});
+
+const applyDraft = (d: JobDraftPayload) => {
+  if (!d || typeof d !== "object") return;
+  isRestoringDraftRef.current = true;
+  if (typeof d.currentStep === "number" && d.currentStep >= 1) setCurrentStep(d.currentStep);
+  if (typeof d.jobDescription === "string") setJobDescription(d.jobDescription);
+  if (typeof d.descriptionPreviousState === "string") setDescriptionPreviousState(d.descriptionPreviousState);
+  if (typeof d.jobTitle === "string") setJobTitle(d.jobTitle);
+  if (typeof d.selectedSector === "string") setSelectedSector(d.selectedSector);
+  if (Array.isArray(d.selectedMainCategories)) setSelectedMainCategories(d.selectedMainCategories);
+  if (Array.isArray(d.selectedSkills)) setSelectedSkills(d.selectedSkills);
+  if (d.jobLocationType === "in-person" || d.jobLocationType === "online") setJobLocationType(d.jobLocationType);
+  if (typeof d.postcode === "string") setPostcode(d.postcode);
+  if (typeof d.address === "string") setAddress(d.address);
+  if (typeof d.townCity === "string") setTownCity(d.townCity);
+  if (typeof d.county === "string") setCounty(d.county);
+  if (typeof d.urgency === "string") setUrgency(d.urgency);
+  if (typeof d.preferredStartDate === "string") setPreferredStartDate(d.preferredStartDate);
+  if (typeof d.selectedBudget === "string") setSelectedBudget(d.selectedBudget);
+  if (typeof d.customBudgetMin === "string") setCustomBudgetMin(d.customBudgetMin);
+  if (typeof d.customBudgetMax === "string") setCustomBudgetMax(d.customBudgetMax);
+};
+
+// Load draft on mount: from API if logged in, else from localStorage (run once when isLoggedIn is known)
+useEffect(() => {
+  if (draftLoadedRef.current) return;
+  if (editJobId) return; // Edit mode: job data is loaded in a separate effect
+  if (isLoggedIn === undefined) return; // auth still loading
+  let cancelled = false;
+  if (isLoggedIn) {
+    fetch(resolveApiUrl("/api/jobs/draft"), { credentials: "include" })
+      .then((res) => {
+        if (cancelled) return null;
+        if (res.status === 404) return null;
+        if (!res.ok) return res.json().then((data) => { throw new Error(data?.error || "Failed to load draft"); });
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        draftLoadedRef.current = true;
+        if (data?.draft && typeof data.draft === "object") applyDraft(data.draft);
+      })
+      .catch(() => {
+        if (!cancelled) draftLoadedRef.current = true;
+      });
+  } else {
+    draftLoadedRef.current = true;
+    try {
+      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as JobDraftPayload;
+        if (parsed && typeof parsed === "object") applyDraft(parsed);
+      }
+    } catch (_) {}
+  }
+  return () => { cancelled = true; };
+}, [isLoggedIn, editJobId]);
+
+const saveDraftRef = useRef<(() => void) | null>(null);
+const saveDraft = async () => {
+  const payload = getDraftPayload();
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    if (isLoggedIn) {
+      await fetch(resolveApiUrl("/api/jobs/draft"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+    }
+  } catch (_) {}
+};
+saveDraftRef.current = saveDraft;
+
+// Debounced save when form fields change
+useEffect(() => {
+  const t = setTimeout(saveDraft, 1500);
+  return () => clearTimeout(t);
+}, [
+  currentStep,
+  jobDescription,
+  jobTitle,
+  selectedSector,
+  selectedMainCategories.join(","),
+  selectedSkills.join(","),
+  jobLocationType,
+  postcode,
+  address,
+  townCity,
+  county,
+  urgency,
+  preferredStartDate,
+  selectedBudget,
+  customBudgetMin,
+  customBudgetMax,
+  isLoggedIn,
+]);
+
+// Save draft when leaving page or tab
+useEffect(() => {
+  const onBeforeUnload = () => { saveDraftRef.current?.(); };
+  const onVisibilityChange = () => { if (document.visibilityState === "hidden") saveDraftRef.current?.(); };
+  window.addEventListener("beforeunload", onBeforeUnload);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  return () => {
+    window.removeEventListener("beforeunload", onBeforeUnload);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+  };
+}, []);
+
+const handleVerifyEmailCode = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (emailVerificationCode.length !== 4) {
+    toast.error("Please enter a 4-digit code");
+    return;
+  }
+  setRegisterError(null);
+  setIsVerifyingEmail(true);
+  try {
+    await verifyRegistrationEmail(emailVerificationCode, verificationEmail);
+    setVerificationStep(2);
+    setEmailVerificationCode("");
+  } catch {
+    setRegisterError("Email verification failed");
+  } finally {
+    setIsVerifyingEmail(false);
+  }
+};
+
+const handleVerifyPhoneCodeAndPostJob = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (phoneVerificationCode.length !== 4) {
+    toast.error("Please enter a 4-digit code");
+    return;
+  }
+  setRegisterError(null);
+  setIsRegistering(true);
+  try {
+    const user = await completeRegistration(phoneVerificationCode, verificationEmail);
+    setShowEmailVerification(false);
+    setVerificationStep(1);
+    setEmailVerificationCode("");
+    setPhoneVerificationCode("");
+    const uploads: { name: string; url: string; mimeType: string; size: number }[] = [];
+    if (attachedFiles.length > 0) {
+      for (const item of attachedFiles) {
+        const form = new FormData();
+        form.append("file", item.file);
+        const res = await fetch(resolveApiUrl("/api/jobs/upload-attachment"), {
+          method: "POST",
+          credentials: "include",
+          body: form,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.error || "File upload failed");
+        }
+        const data = await res.json();
+        uploads.push({ name: data.name, url: data.url, mimeType: data.mimeType || "", size: data.size || 0 });
+      }
+    }
+    const newJob = { ...buildJobPayload(user?.id ?? ""), attachments: uploads };
+    const createdJob = await addJob(newJob);
+    await clearDraft();
+    toast.success("Account created and job posted successfully!");
+    navigate(`/job/${createdJob.slug || createdJob.id}?tab=quotes`);
+  } catch (err) {
+    setRegisterError(err instanceof Error ? err.message : "Registration failed");
+  } finally {
+    setIsRegistering(false);
+  }
+};
+
+const handleBackFromVerification = () => {
+  if (verificationStep > 1) {
+    setVerificationStep(verificationStep - 1);
+  } else {
+    setShowEmailVerification(false);
+    setVerificationStep(1);
+    setEmailVerificationCode("");
+    setPhoneVerificationCode("");
+    setRegisterError(null);
+  }
+};
+
+const handleResendEmailCode = async () => {
+  if (isResendingEmail || emailResendTimer > 0) return;
+  setIsResendingEmail(true);
+  setRegisterError(null);
+  try {
+    const res = await fetch(resolveApiUrl("/api/auth/register/resend-email"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email: verificationEmail }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Failed to resend verification code");
+    setEmailResendTimer(120);
+    toast.success("Verification code resent to your email");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to resend code";
+    toast.error(msg);
+    setRegisterError(msg);
+  } finally {
+    setIsResendingEmail(false);
+  }
+};
+
+const handleResendPhoneCode = async () => {
+  if (isResendingPhone || phoneResendTimer > 0) return;
+  setIsResendingPhone(true);
+  setRegisterError(null);
+  try {
+    const res = await fetch(resolveApiUrl("/api/auth/register/resend-phone"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email: verificationEmail }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Failed to resend verification code");
+    setPhoneResendTimer(120);
+    toast.success("Verification code resent to your phone");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to resend code";
+    toast.error(msg);
+    setRegisterError(msg);
+  } finally {
+    setIsResendingPhone(false);
+  }
+};
+  return React.createElement(
+    "section",
+    { className: "min-h-screen bg-[#f5f5f5] relative z-10", "aria-label": "Post a job page" },
+    pageChildren
   );
 }

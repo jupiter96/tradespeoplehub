@@ -88,6 +88,7 @@ const STATUS_OPTIONS = [
   { value: "in-progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
+  { value: "closed", label: "Closed" },
 ];
 
 const SORT_FIELDS: { value: string; label: string }[] = [
@@ -105,6 +106,7 @@ function getStatusBadgeClass(status: string): string {
     "in-progress": "bg-blue-100 text-blue-700 border-blue-200",
     completed: "bg-gray-100 text-gray-700 border-gray-200",
     cancelled: "bg-red-100 text-red-700 border-red-200",
+    closed: "bg-gray-100 text-gray-700 border-gray-300",
   };
   return map[status] || "bg-gray-100 text-gray-700 border-gray-200";
 }

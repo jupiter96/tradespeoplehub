@@ -27,7 +27,7 @@ import {
 } from "./ui/select";
 import { formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
-import { formatJobLocationWithPostcodeFirst } from "./orders/utils";
+import { formatJobLocationCityOnly } from "./orders/utils";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
@@ -266,7 +266,7 @@ function ActiveJobsSection() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
                         <MapPin className="w-4 h-4" />
-                        {formatJobLocationWithPostcodeFirst(job)}
+                        {formatJobLocationCityOnly(job)}
                       </div>
                       <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
                         <Calendar className="w-4 h-4" />

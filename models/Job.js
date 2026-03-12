@@ -107,7 +107,7 @@ const jobSchema = new mongoose.Schema(
     budgetMax: { type: Number, default: null },
     status: {
       type: String,
-      enum: ['open', 'awaiting-accept', 'in-progress', 'completed', 'cancelled'],
+      enum: ['open', 'awaiting-accept', 'in-progress', 'completed', 'cancelled', 'closed'],
       default: 'open',
     },
     clientId: {
@@ -120,6 +120,15 @@ const jobSchema = new mongoose.Schema(
     awardedProfessionalId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     milestones: { type: [milestoneSchema], default: [] },
     slug: { type: String, trim: true, unique: true, sparse: true },
+    /** Attachments added when posting (post-job page); stored as URLs under /uploads/job-attachments */
+    attachments: [
+      {
+        name: { type: String, required: true, trim: true },
+        url: { type: String, required: true, trim: true },
+        mimeType: { type: String, trim: true },
+        size: { type: Number, default: 0 },
+      },
+    ],
   },
   { timestamps: true }
 );

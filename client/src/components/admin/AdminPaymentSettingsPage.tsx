@@ -62,6 +62,7 @@ export default function AdminPaymentSettingsPage() {
     bankProcessingFeePercentage: 2.00,
     creditAmountForChatBid: 2.50,
     closedProjectDays: 7,
+    closedJobDays: 30,
     waitingTimeInDays: 1,
     feedbackReviewValidityDays: 90,
     inviteToReview: "Activated",
@@ -918,6 +919,27 @@ export default function AdminPaymentSettingsPage() {
                 <div className="grid grid-cols-2 gap-6">
                   {/* Left Column */}
                   <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="closedJobDays" className="font-['Poppins',sans-serif]">
+                        Closed Job Days:
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="closedJobDays"
+                          type="number"
+                          value={settings.closedJobDays === "" ? "" : settings.closedJobDays ?? 30}
+                          onChange={(e) => updateField("closedJobDays", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
+                          min="0"
+                          step="1"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? "Day" : "Days")(settings.closedJobDays === "" ? 0 : settings.closedJobDays ?? 0)}</span>
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        After this many days from posting, a job is automatically closed and no new quotes can be sent.
+                      </p>
+                    </div>
+
                     <div>
                       <Label htmlFor="feedbackReviewValidityDays" className="font-['Poppins',sans-serif]">
                         Feedback/Review validity:

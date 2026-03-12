@@ -1,7 +1,13 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import multer from 'multer';
 import { createRequire } from 'module';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const requirePdf = createRequire(import.meta.url);
 const PDFDocument = requirePdf('pdfkit');
@@ -15,6 +21,8 @@ import Wallet from '../models/Wallet.js';
 import Notification from '../models/Notification.js';
 import JobReport from '../models/JobReport.js';
 import JobDraft from '../models/JobDraft.js';
+import JobFile from '../models/JobFile.js';
+import PaymentSettings from '../models/PaymentSettings.js';
 import { getIO } from '../services/socket.js';
 import { deductBid } from './bids.js';
 import { sendTemplatedEmail } from '../services/notifier.js';
@@ -128,6 +136,12 @@ function toJobResponse(doc) {
       })),
     })),
     awardedProfessionalId: job.awardedProfessionalId?.toString?.() || job.awardedProfessionalId || undefined,
+    attachments: (job.attachments || []).map((a) => ({
+      name: a.name,
+      url: a.url,
+      mimeType: a.mimeType || '',
+      size: a.size != null ? a.size : 0,
+    })),
     milestones: (job.milestones || []).map((m) => ({
       id: m._id.toString(),
       name: m.name || m.description || 'Milestone',
@@ -175,16 +189,6 @@ router.post('/generate-description', async (req, res) => {
     const { sectorName, sectorSlug, keyPoints } = req.body;
     const sectorLabel = (sectorName || sectorSlug || '').trim();
     const points = typeof keyPoints === 'string' ? keyPoints.trim() : '';
-
-    console.log('[Jobs] generate-description request', {
-      userId: req.user?.id,
-      sectorName,
-      sectorSlug,
-      sectorLabel,
-      hasKeyPoints: !!points,
-      keyPointsPreview: points ? points.slice(0, 120) : '',
-    });
-    console.log('[Jobs] generate-description: trigger (keyPoints required, sector optional)');
 
     if (!points) {
       return res.status(400).json({ error: 'Please enter some key points or keywords about your job' });
@@ -238,14 +242,6 @@ router.post('/generate-description', async (req, res) => {
     if (!title || !description) {
       return res.status(502).json({ error: 'AI did not return title and description' });
     }
-
-    console.log('[Jobs] generate-description success', {
-      userId: req.user?.id,
-      sectorLabel,
-      titlePreview: title.slice(0, 80),
-      descriptionPreview: description.slice(0, 120),
-    });
-    console.log('[Jobs] generate-description: response sent { title, description }');
 
     return res.json({ title, description });
   } catch (err) {
@@ -318,13 +314,6 @@ router.post('/infer-sector', async (req, res) => {
       return res.status(500).json({ error: 'No sectors configured' });
     }
 
-    console.log('[Jobs] infer-sector request', {
-      userId: req.user?.id,
-      descriptionPreview: text.slice(0, 200),
-      sectorCount: sectors.length,
-    });
-    console.log('[Jobs] infer-sector: trigger (description required)');
-
     const apiKey = process.env.OPENAI_KEY;
     if (!apiKey) {
       return res.status(503).json({ error: 'AI generation is not configured' });
@@ -378,12 +367,6 @@ Rules:
     const sectorSlugStr = (parsed.sectorSlug || parsed.slug || '').toString().trim();
     const sectorNameStr = (parsed.sectorName || parsed.name || '').toString().trim();
 
-    console.log('[Jobs] infer-sector AI raw mapping', {
-      sectorIdStr,
-      sectorSlugStr,
-      sectorNameStr,
-    });
-
     const normalize = (val) =>
       (val || '')
         .toString()
@@ -419,13 +402,6 @@ Rules:
     }
 
     if (!chosen) {
-      console.warn('[Jobs] infer-sector: AI returned sector not directly in list; falling back to AI mapping', {
-        sectorIdStr,
-        sectorSlugStr,
-        sectorNameStr,
-      });
-      console.log('[Jobs] infer-sector: response sent (fallback) { sectorId, sectorSlug, sectorName }');
-
       // Fall back to AI-provided values so the frontend can still attempt to match
       return res.json({
         sectorId: sectorIdStr || undefined,
@@ -433,14 +409,6 @@ Rules:
         sectorName: sectorNameStr || undefined,
       });
     }
-
-    console.log('[Jobs] infer-sector success', {
-      userId: req.user?.id,
-      sectorId: chosen._id.toString(),
-      sectorSlug: chosen.slug,
-      sectorName: chosen.name,
-    });
-    console.log('[Jobs] infer-sector: response sent { sectorId, sectorSlug, sectorName }');
 
     return res.json({
       sectorId: chosen._id.toString(),
@@ -529,6 +497,42 @@ Do not generate generic or random text. Every sentence should relate to the job 
   }
 });
 
+// Multer for job post attachments (post-job page)
+const jobAttachmentsDir = path.join(__dirname, '..', 'uploads', 'job-attachments');
+const jobAttachmentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    try {
+      fs.mkdirSync(jobAttachmentsDir, { recursive: true });
+    } catch (e) {}
+    cb(null, jobAttachmentsDir);
+  },
+  filename: (req, file, cb) => {
+    const safe = (file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${safe}`);
+  },
+});
+const jobAttachmentUpload = multer({
+  storage: jobAttachmentStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
+// POST /api/jobs/upload-attachment – upload one file for job post (client only); returns { url, name, mimeType, size }
+router.post('/upload-attachment', authenticateToken, requireRole(['client']), jobAttachmentUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const url = `/uploads/job-attachments/${req.file.filename}`;
+    return res.status(201).json({
+      url,
+      name: req.file.originalname || req.file.filename,
+      mimeType: req.file.mimetype || '',
+      size: req.file.size || 0,
+    });
+  } catch (err) {
+    console.error('[Jobs] upload-attachment:', err);
+    return res.status(500).json({ error: err.message || 'Upload failed' });
+  }
+});
+
 // Create job (client only)
 router.post('/', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
@@ -540,6 +544,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       sectorName,
       categorySlugs,
       categoryLabels,
+      attachments,
       postcode,
       address,
       city,
@@ -627,6 +632,15 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       resolvedLocation = postcodeTrim;
     }
 
+    const attachmentsList = Array.isArray(attachments)
+      ? attachments.filter((a) => a && (a.url || a.name)).map((a) => ({
+          name: String(a.name || a.url || 'file').trim(),
+          url: String(a.url || '').trim(),
+          mimeType: a.mimeType ? String(a.mimeType).trim() : '',
+          size: typeof a.size === 'number' ? a.size : 0,
+        }))
+      : [];
+
     const jobPayload = {
       title: title.trim(),
       description: description.trim(),
@@ -635,6 +649,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       sectorName: sectorDoc.name,
       categorySlugs: Array.isArray(categorySlugs) ? categorySlugs : [],
       categoryLabels: Array.isArray(categoryLabels) ? categoryLabels : [],
+      attachments: attachmentsList,
       postcode: postcodeTrim,
       address: addressTrim,
       city: cityTrim,
@@ -655,10 +670,10 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
     await job.save();
     emitJobUpdated(job);
     try {
+      await ensureJobSlug(job);
       const client = await User.findById(req.user.id).select('email firstName').lean();
       if (client?.email) {
-        await ensureJobSlug(job);
-        await sendTemplatedEmail(
+        sendTemplatedEmail(
           client.email,
           'job-posted',
           {
@@ -668,7 +683,7 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
             logoUrl: logoUrl(),
           },
           'job'
-        );
+        ).catch((e) => console.error('[Jobs] job-posted email error:', e));
       }
     } catch (e) {
       console.error('[Jobs] job-posted email error:', e);
@@ -763,6 +778,95 @@ async function findJobByIdOrSlug(idOrSlug) {
   return Job.findOne({ slug: idOrSlug }).lean();
 }
 
+// Shared files (client + awarded pro only) – multer for job-files
+const jobFilesDir = path.join(__dirname, '..', 'uploads', 'job-files');
+const jobFilesStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    try {
+      fs.mkdirSync(jobFilesDir, { recursive: true });
+    } catch (e) {}
+    cb(null, jobFilesDir);
+  },
+  filename: (req, file, cb) => {
+    const safe = (file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${safe}`);
+  },
+});
+const jobFilesUpload = multer({
+  storage: jobFilesStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
+
+function canAccessJobFiles(job, userId, userRole) {
+  if (!job || !userId) return false;
+  const clientId = job.clientId?.toString?.();
+  const awardedId = job.awardedProfessionalId?.toString?.();
+  const statusOk = job.status === 'awaiting-accept' || job.status === 'in-progress';
+  if (userRole === 'client' && clientId === userId && statusOk) return true;
+  if (userRole === 'professional' && awardedId === userId && statusOk) return true;
+  return false;
+}
+
+// GET /api/jobs/:id/files – list shared files (client or awarded pro)
+router.get('/:id/files', authenticateToken, async (req, res) => {
+  try {
+    const job = await findJobByIdOrSlug(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!canAccessJobFiles(job, req.user.id, req.user.role)) {
+      return res.status(403).json({ error: 'Not allowed to access job files' });
+    }
+    const jobId = job._id;
+    const files = await JobFile.find({ jobId }).sort({ createdAt: -1 }).lean();
+    return res.json({
+      files: files.map((f) => ({
+        id: f._id.toString(),
+        name: f.name,
+        url: f.url,
+        mimeType: f.mimeType || '',
+        size: f.size || 0,
+        uploadedBy: f.uploadedBy?.toString?.() || f.uploadedBy,
+        createdAt: f.createdAt ? new Date(f.createdAt).toISOString() : undefined,
+      })),
+    });
+  } catch (err) {
+    console.error('[Jobs] GET files:', err);
+    return res.status(500).json({ error: err.message || 'Failed to list files' });
+  }
+});
+
+// POST /api/jobs/:id/files – upload shared file (client or awarded pro)
+router.post('/:id/files', authenticateToken, jobFilesUpload.single('file'), async (req, res) => {
+  try {
+    const job = await findJobByIdOrSlug(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (!canAccessJobFiles(job, req.user.id, req.user.role)) {
+      return res.status(403).json({ error: 'Not allowed to upload to this job' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const url = `/uploads/job-files/${req.file.filename}`;
+    const doc = await JobFile.create({
+      jobId: job._id,
+      uploadedBy: req.user.id,
+      name: req.file.originalname || req.file.filename,
+      url,
+      mimeType: req.file.mimetype || '',
+      size: req.file.size || 0,
+    });
+    return res.status(201).json({
+      id: doc._id.toString(),
+      name: doc.name,
+      url: doc.url,
+      mimeType: doc.mimeType || '',
+      size: doc.size || 0,
+      uploadedBy: doc.uploadedBy.toString(),
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+    });
+  } catch (err) {
+    console.error('[Jobs] POST file:', err);
+    return res.status(500).json({ error: err.message || 'Failed to upload file' });
+  }
+});
+
 // Get single job (by id or slug)
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -785,6 +889,16 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Not allowed to view this job' });
     }
     const response = toJobResponse(job);
+    if (job.status === 'open') {
+      try {
+        const settings = await PaymentSettings.getSettings();
+        const closedJobDays = settings.closedJobDays ?? 30;
+        const postedAt = job.postedAt ? new Date(job.postedAt) : new Date();
+        response.closesAt = new Date(postedAt.getTime() + closedJobDays * 24 * 60 * 60 * 1000).toISOString();
+      } catch (_) {
+        response.closesAt = undefined;
+      }
+    }
     const clientUser = await User.findById(job.clientId).select('firstName lastName tradingName avatar createdAt').lean();
     if (clientUser) {
       response.clientName = clientUser.tradingName || [clientUser.firstName, clientUser.lastName].filter(Boolean).join(' ') || 'Client';
@@ -997,6 +1111,12 @@ router.patch('/:id', authenticateToken, requireRole(['client']), async (req, res
       'budgetMin',
       'budgetMax',
       'status',
+      'sector',
+      'sectorSlug',
+      'sectorName',
+      'categorySlugs',
+      'categoryLabels',
+      'attachments',
     ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
@@ -1005,7 +1125,18 @@ router.patch('/:id', authenticateToken, requireRole(['client']), async (req, res
         else if (key === 'budgetMin') job.budgetMin = req.body[key] === null || req.body[key] === '' ? null : Number(req.body[key]);
         else if (key === 'budgetMax') job.budgetMax = req.body[key] === null || req.body[key] === '' ? null : Number(req.body[key]);
         else if (key === 'status' && ['open', 'cancelled'].includes(req.body[key])) job[key] = req.body[key];
-        else if (key !== 'status') job[key] = req.body[key];
+        else if (key === 'sector' && mongoose.Types.ObjectId.isValid(req.body[key])) job.sector = new mongoose.Types.ObjectId(req.body[key]);
+        else if (key === 'sectorSlug') job.sectorSlug = String(req.body[key]).trim().toLowerCase();
+        else if (key === 'sectorName') job.sectorName = String(req.body[key]).trim();
+        else if (key === 'categorySlugs') job.categorySlugs = Array.isArray(req.body[key]) ? req.body[key].map((s) => String(s).trim()) : [];
+        else if (key === 'categoryLabels') job.categoryLabels = Array.isArray(req.body[key]) ? req.body[key].map((s) => String(s).trim()) : [];
+        else if (key === 'attachments') {
+          job.attachments = Array.isArray(req.body[key])
+            ? req.body[key]
+                .filter((a) => a && typeof a.name === 'string' && typeof a.url === 'string')
+                .map((a) => ({ name: a.name, url: a.url, mimeType: a.mimeType || '', size: a.size || 0 }))
+            : [];
+        } else if (key !== 'status') job[key] = req.body[key];
       }
     }
     await job.save();
@@ -1038,6 +1169,9 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
   try {
     const job = await Job.findById(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.status === 'closed') {
+      return res.status(400).json({ error: 'This job is closed. No new quotes can be sent.' });
+    }
     if (job.status !== 'open') {
       return res.status(400).json({ error: 'Job is not accepting quotes' });
     }
@@ -1118,42 +1252,44 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
     job.markModified('quotes');
     await job.save();
     emitJobUpdated(job);
-    try {
-      const clientUser = await User.findById(job.clientId).select('email firstName').lean();
-      if (clientUser?.email) {
-        await ensureJobSlug(job);
-        await sendTemplatedEmail(
-          clientUser.email,
-          'job-quote-received',
-          {
-            firstName: clientUser.firstName || 'There',
-            jobTitle: job.title || 'Job',
-            professionalName: professionalName || 'A professional',
-            jobLink: jobLink(job),
-            logoUrl: logoUrl(),
-          },
-          'job'
-        );
-      }
-      const proUser = await User.findById(req.user.id).select('email firstName').lean();
-      if (proUser?.email) {
-        await ensureJobSlug(job);
-        await sendTemplatedEmail(
-          proUser.email,
-          'job-quote-sent',
-          {
-            firstName: proUser.firstName || 'There',
-            jobTitle: job.title || 'Job',
-            jobLink: jobLink(job),
-            logoUrl: logoUrl(),
-          },
-          'job'
-        );
-      }
-    } catch (e) {
-      console.error('[Jobs] job-quote email error:', e);
-    }
     res.status(201).json(toJobResponse(job));
+    // Send quote emails in background so response is immediate
+    (async () => {
+      try {
+        const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+        const proUser = await User.findById(req.user.id).select('email firstName').lean();
+        await ensureJobSlug(job);
+        if (clientUser?.email) {
+          await sendTemplatedEmail(
+            clientUser.email,
+            'job-quote-received',
+            {
+              firstName: clientUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              professionalName: professionalName || 'A professional',
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job'
+          );
+        }
+        if (proUser?.email) {
+          await sendTemplatedEmail(
+            proUser.email,
+            'job-quote-sent',
+            {
+              firstName: proUser.firstName || 'There',
+              jobTitle: job.title || 'Job',
+              jobLink: jobLink(job),
+              logoUrl: logoUrl(),
+            },
+            'job'
+          );
+        }
+      } catch (e) {
+        console.error('[Jobs] job-quote email error:', e);
+      }
+    })();
   } catch (err) {
     console.error('[Jobs] Submit quote error:', err);
     res.status(500).json({ error: err.message || 'Failed to submit quote' });
@@ -1322,53 +1458,24 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
     job.markModified('quotes');
     await job.save();
     emitJobUpdated(job);
+    res.json(toJobResponse(job));
     if (status === 'awarded') {
-      try {
-        await ensureJobSlug(job);
-        const clientUser = await User.findById(job.clientId).select('email firstName').lean();
-        const proId = quote.professionalId?.toString?.();
-        const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
-        const professionalName = quote.professionalName || proUser?.firstName || 'A professional';
-        const clientName = clientUser?.firstName || 'The client';
-        if (clientUser?.email) {
-          await sendTemplatedEmail(
-            clientUser.email,
-            'job-awarded',
-            {
-              firstName: clientUser.firstName || 'There',
-              jobTitle: job.title || 'Job',
-              professionalName,
-              jobLink: jobLink(job),
-              logoUrl: logoUrl(),
-            },
-            'job'
-          );
-        }
-        if (proUser?.email) {
-          await sendTemplatedEmail(
-            proUser.email,
-            'job-award-received',
-            {
-              firstName: proUser.firstName || 'There',
-              jobTitle: job.title || 'Job',
-              clientName,
-              jobLink: jobLink(job),
-              logoUrl: logoUrl(),
-            },
-            'job'
-          );
-        }
-        const firstMilestone = (job.milestones || [])[0];
-        if (firstMilestone && (clientUser?.email || proUser?.email)) {
-          const mName = firstMilestone.name || firstMilestone.description || 'Milestone';
+      (async () => {
+        try {
+          await ensureJobSlug(job);
+          const clientUser = await User.findById(job.clientId).select('email firstName').lean();
+          const proId = quote.professionalId?.toString?.();
+          const proUser = proId ? await User.findById(proId).select('email firstName').lean() : null;
+          const professionalName = quote.professionalName || proUser?.firstName || 'A professional';
+          const clientName = clientUser?.firstName || 'The client';
           if (clientUser?.email) {
             await sendTemplatedEmail(
               clientUser.email,
-              'job-milestone-created-client',
+              'job-awarded',
               {
                 firstName: clientUser.firstName || 'There',
                 jobTitle: job.title || 'Job',
-                milestoneName: mName,
+                professionalName,
                 jobLink: jobLink(job),
                 logoUrl: logoUrl(),
               },
@@ -1378,23 +1485,54 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
           if (proUser?.email) {
             await sendTemplatedEmail(
               proUser.email,
-              'job-milestone-created-pro',
+              'job-award-received',
               {
                 firstName: proUser.firstName || 'There',
                 jobTitle: job.title || 'Job',
-                milestoneName: mName,
+                clientName,
                 jobLink: jobLink(job),
                 logoUrl: logoUrl(),
               },
               'job'
             );
           }
+          const firstMilestone = (job.milestones || [])[0];
+          if (firstMilestone && (clientUser?.email || proUser?.email)) {
+            const mName = firstMilestone.name || firstMilestone.description || 'Milestone';
+            if (clientUser?.email) {
+              await sendTemplatedEmail(
+                clientUser.email,
+                'job-milestone-created-client',
+                {
+                  firstName: clientUser.firstName || 'There',
+                  jobTitle: job.title || 'Job',
+                  milestoneName: mName,
+                  jobLink: jobLink(job),
+                  logoUrl: logoUrl(),
+                },
+                'job'
+              );
+            }
+            if (proUser?.email) {
+              await sendTemplatedEmail(
+                proUser.email,
+                'job-milestone-created-pro',
+                {
+                  firstName: proUser.firstName || 'There',
+                  jobTitle: job.title || 'Job',
+                  milestoneName: mName,
+                  jobLink: jobLink(job),
+                  logoUrl: logoUrl(),
+                },
+                'job'
+              );
+            }
+          }
+        } catch (e) {
+          console.error('[Jobs] job-award/milestone email error:', e);
         }
-      } catch (e) {
-        console.error('[Jobs] job-award/milestone email error:', e);
-      }
+      })();
     }
-    res.json(toJobResponse(job));
   } catch (err) {
     console.error('[Jobs] Update quote error:', err);
     res.status(500).json({ error: err.message || 'Failed to update quote' });

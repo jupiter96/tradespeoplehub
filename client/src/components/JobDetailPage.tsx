@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs, JobQuote, Milestone } from "./JobsContext";
 import { useAccount } from "./AccountContext";
@@ -35,6 +35,7 @@ import {
   Sparkles,
   Pencil,
   Undo2,
+  Trash2,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
@@ -73,6 +74,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import {
@@ -95,10 +97,10 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute, deleteJob } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
-  const { formatPrice, symbol, toGBP, fromGBP } = useCurrency();
+  const { formatPrice, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
@@ -145,6 +147,12 @@ export default function JobDetailPage() {
   const [releaseRequestConfirm, setReleaseRequestConfirm] = useState<{ jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
   const [requestingRelease, setRequestingRelease] = useState(false);
 
+  // Shared files (File tab: client + awarded pro)
+  const [jobFiles, setJobFiles] = useState<{ id: string; name: string; url: string; mimeType: string; size: number; uploadedBy?: string; createdAt?: string }[]>([]);
+  const [jobFilesLoading, setJobFilesLoading] = useState(false);
+  const [jobFileUploading, setJobFileUploading] = useState(false);
+  const jobFileInputRef = useRef<HTMLInputElement>(null);
+
   // Client: accept/reject release request confirmation
   const [releaseResponseConfirm, setReleaseResponseConfirm] = useState<{ action: "accept" | "reject"; jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
   const [respondingRelease, setRespondingRelease] = useState(false);
@@ -171,6 +179,10 @@ export default function JobDetailPage() {
     selectedMilestones: [] as string[],
   });
 
+  // Delete job confirmation (client manage menu)
+  const [showDeleteJobConfirm, setShowDeleteJobConfirm] = useState(false);
+  const [deletingJob, setDeletingJob] = useState(false);
+
   // Invite to quote modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<{ id: string; name: string; category: string } | null>(null);
@@ -183,6 +195,7 @@ export default function JobDetailPage() {
 
   // Report job modal (message to admin)
   const [showReportJobModal, setShowReportJobModal] = useState(false);
+  const [attachmentPreview, setAttachmentPreview] = useState<{ name: string; url: string; mimeType: string } | null>(null);
   const [reportJobMessage, setReportJobMessage] = useState("");
   const [reportJobSubmitting, setReportJobSubmitting] = useState(false);
 
@@ -222,6 +235,86 @@ export default function JobDetailPage() {
       .catch(() => setRecommendedProfessionals([]))
       .finally(() => setRecommendedProfessionalsLoading(false));
   }, [jobSlug, job?.id]);
+
+  // File tab visibility (must be before early return so hook order is stable)
+  const showFileTab = !!(
+    job &&
+    (job.status === "awaiting-accept" || job.status === "in-progress") &&
+    (userInfo?.id === job.clientId || (userRole === "professional" && job.awardedProfessionalId === userInfo?.id))
+  );
+
+  const fetchJobFiles = async () => {
+    if (!job?.id || !showFileTab) return;
+    setJobFilesLoading(true);
+    try {
+      const res = await fetch(resolveApiUrl(`/api/jobs/${job.slug || job.id}/files`), { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setJobFiles(data.files || []);
+      else setJobFiles([]);
+    } catch {
+      setJobFiles([]);
+    } finally {
+      setJobFilesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "files" && showFileTab && job?.id) fetchJobFiles();
+  }, [activeTab, showFileTab, job?.id]);
+
+  const handleJobFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !job?.id) return;
+    e.target.value = "";
+    setJobFileUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(resolveApiUrl(`/api/jobs/${job.slug || job.id}/files`), {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setJobFiles((prev) => [{ id: data.id, name: data.name, url: data.url, mimeType: data.mimeType || "", size: data.size || 0, uploadedBy: data.uploadedBy, createdAt: data.createdAt }, ...prev]);
+      toast.success("File uploaded");
+    } catch (err: any) {
+      toast.error(err?.message || "Upload failed");
+    } finally {
+      setJobFileUploading(false);
+    }
+  };
+
+  // Real-time countdown to job close (must be before early return to keep hook order stable)
+  const [now, setNow] = useState(() => new Date());
+  const closesAt = job
+    ? (job as { closesAt?: string }).closesAt
+      ? new Date((job as { closesAt: string }).closesAt).getTime()
+      : job.status === "open" && job.postedAt
+        ? new Date(job.postedAt).getTime() + 30 * 24 * 60 * 60 * 1000
+        : null
+    : null;
+  useEffect(() => {
+    if (!job || job.status !== "open" || closesAt == null) return;
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, [job?.status, closesAt]);
+  const getJobEndsInText = (): string => {
+    if (!job || job.status !== "open" || closesAt == null) return "";
+    const diff = closesAt - now.getTime();
+    if (diff <= 0) return "Job ended";
+    const totalHours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+    const d = days === 1 ? "1 Day" : `${days} Days`;
+    const h = hours === 1 ? "1 Hour" : `${hours} Hours`;
+    if (days > 0 && hours > 0) return `Job ends in ${d} ${h}`;
+    if (days > 0) return `Job ends in ${d}`;
+    if (hours > 0) return `Job ends in ${h}`;
+    const mins = Math.floor(diff / (1000 * 60));
+    return mins > 0 ? `Job ends in ${mins} minute${mins === 1 ? "" : "s"}` : "Job ends in less than a minute";
+  };
 
   // Show loading while auth is resolving (e.g. on refresh) or job is fetching
   if (!authReady || (jobLoading && !job)) {
@@ -369,6 +462,37 @@ export default function JobDetailPage() {
     setSelectedQuoteForAward(quote);
     setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toString() }]);
     setShowAwardModal(true);
+  };
+
+  const handleEditJob = () => {
+    navigate(`/post-job?edit=${job.id}`);
+  };
+  const handleRepostJob = () => {
+    navigate(`/post-job?repost=${job.id}`);
+  };
+  const handleCloseQuotes = async () => {
+    try {
+      await updateJob(job.id, { status: "cancelled" });
+      await fetchJobById(job.slug || job.id);
+      toast.success("Job closed. No new quotes will be accepted.");
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message || "Failed to close job");
+    }
+  };
+  const handleDeleteJobClick = () => setShowDeleteJobConfirm(true);
+  const handleDeleteJobConfirm = async () => {
+    if (!job?.id) return;
+    setDeletingJob(true);
+    try {
+      await deleteJob(job.id);
+      toast.success("Job deleted.");
+      navigate("/account?tab=my-jobs");
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message || "Failed to delete job");
+    } finally {
+      setDeletingJob(false);
+      setShowDeleteJobConfirm(false);
+    }
   };
 
   const handleAwardJob = async () => {
@@ -818,6 +942,13 @@ export default function JobDetailPage() {
             Cancelled
           </Badge>
         );
+      case "closed":
+        return (
+          <Badge className={`bg-gray-100 text-gray-700 border-gray-300 font-['Poppins',sans-serif] ${sizeClasses}`}>
+            <XCircle className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
+            Closed
+          </Badge>
+        );
       default:
         return null;
     }
@@ -903,6 +1034,50 @@ export default function JobDetailPage() {
                     Payment
                   </TabsTrigger>
                 )}
+                {/* File tab: client + awarded pro only */}
+                {showFileTab && (
+                  <TabsTrigger
+                    value="files"
+                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                  >
+                    File
+                  </TabsTrigger>
+                )}
+                {isJobOwner && (
+                  <div className="ml-auto flex-shrink-0 pl-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f]"
+                          aria-label="Manage job"
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="font-['Poppins',sans-serif] min-w-[180px]">
+                        <DropdownMenuItem onClick={handleEditJob} className="cursor-pointer">
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit Job
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleRepostJob} className="cursor-pointer">
+                          <Undo2 className="h-4 w-4 mr-2" />
+                          Repost Job
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleCloseQuotes} className="cursor-pointer" disabled={job.status !== "open"}>
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Close Quotes
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleDeleteJobClick} variant="destructive" className="cursor-pointer">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Job
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
               </TabsList>
             </div>
           </Tabs>
@@ -927,9 +1102,11 @@ export default function JobDetailPage() {
                         ? `${formatPrice(job.budgetMin ?? 0)} - ${formatPrice(job.budgetMax ?? 0)}`
                         : `${formatPrice(job.budgetAmount ?? 0)} - ${formatPrice((job.budgetAmount ?? 0) * 1.2)}`}
                     </p>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                      Posted: {formatDate(job.postedAt)}
-                    </p>
+                    {getJobEndsInText() && (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        {getJobEndsInText()}
+                      </p>
+                    )}
                   </div>
                 </div>
                 
@@ -961,6 +1138,57 @@ export default function JobDetailPage() {
                     {getStatusBadge()}
                     {getTimingBadge()}
                   </div>
+
+                  {/* Attachments (post-job files): text list; click opens preview modal */}
+                  {job.attachments && job.attachments.length > 0 && (
+                    <div className="pt-4 border-t border-gray-100">
+                      <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
+                        Attachments
+                      </h3>
+                      <ul className="space-y-2">
+                        {job.attachments.map((att, idx) => {
+                          const isImage = (att.mimeType || "").startsWith("image/");
+                          const isVideo = (att.mimeType || "").startsWith("video/");
+                          const src = resolveApiUrl(att.url);
+                          const canPreview = isImage || isVideo;
+                          return (
+                            <li key={idx} className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" />
+                              {canPreview ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setAttachmentPreview({ name: att.name, url: att.url, mimeType: att.mimeType || "" })}
+                                  className="font-['Poppins',sans-serif] text-[14px] text-[#1976D2] hover:underline text-left truncate max-w-full"
+                                >
+                                  {att.name}
+                                </button>
+                              ) : (
+                                <a
+                                  href={src}
+                                  download={att.name}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-['Poppins',sans-serif] text-[14px] text-[#1976D2] hover:underline truncate max-w-full"
+                                >
+                                  {att.name}
+                                </a>
+                              )}
+                              <a
+                                href={src}
+                                download={att.name}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-shrink-0 text-[#6b6b6b] hover:text-[#1976D2]"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 {/* Project ID - Bottom Right */}
@@ -1946,6 +2174,80 @@ export default function JobDetailPage() {
               </div>
             )}
 
+            {/* File Tab – shared files (client + awarded pro) */}
+            {activeTab === "files" && showFileTab && (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-4">
+                  Shared files
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                  Upload and download files shared between you and the {isJobOwner ? "professional" : "client"}.
+                </p>
+                <input
+                  ref={jobFileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleJobFileUpload}
+                />
+                <Button
+                  onClick={() => jobFileInputRef.current?.click()}
+                  disabled={jobFileUploading}
+                  className="mb-6 font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
+                >
+                  <Paperclip className="w-4 h-4 mr-2" />
+                  {jobFileUploading ? "Uploading…" : "Upload file"}
+                </Button>
+                {jobFilesLoading ? (
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">Loading files…</p>
+                ) : jobFiles.length === 0 ? (
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">No files yet. Upload a file to get started.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-4">
+                    {jobFiles.map((f) => {
+                      const isImage = (f.mimeType || "").startsWith("image/");
+                      const isVideo = (f.mimeType || "").startsWith("video/");
+                      const src = resolveApiUrl(f.url);
+                      return (
+                        <div key={f.id} className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                          {isImage ? (
+                            <a href={src} target="_blank" rel="noopener noreferrer" className="block">
+                              <img src={src} alt={f.name} className="max-h-40 w-auto object-contain" />
+                            </a>
+                          ) : isVideo ? (
+                            <video src={src} controls className="max-h-40 max-w-full" title={f.name} />
+                          ) : (
+                            <a
+                              href={src}
+                              download={f.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-3 text-[#1976D2] hover:underline font-['Poppins',sans-serif] text-[14px]"
+                            >
+                              <FileText className="w-5 h-5 flex-shrink-0" />
+                              <span className="truncate max-w-[200px]">{f.name}</span>
+                              <Download className="w-4 h-4 flex-shrink-0" />
+                            </a>
+                          )}
+                          {(isImage || isVideo) && (
+                            <a
+                              href={src}
+                              download={f.name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif] hover:bg-gray-100"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Download
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* More Tab */}
             {activeTab === "more" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
@@ -2137,6 +2439,53 @@ export default function JobDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Attachment preview modal (job post attachments) */}
+      <Dialog open={!!attachmentPreview} onOpenChange={(open) => { if (!open) setAttachmentPreview(null); }}>
+        <DialogContent className="font-['Poppins',sans-serif] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-[#2c353f] truncate pr-8">{attachmentPreview?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 flex items-center justify-center bg-gray-100 rounded-lg p-4">
+            {attachmentPreview && (() => {
+              const isImage = (attachmentPreview.mimeType || "").startsWith("image/");
+              const isVideo = (attachmentPreview.mimeType || "").startsWith("video/");
+              const src = resolveApiUrl(attachmentPreview.url);
+              if (isImage) {
+                return <img src={src} alt={attachmentPreview.name} className="max-w-full max-h-[70vh] object-contain" />;
+              }
+              if (isVideo) {
+                return <video src={src} controls className="max-w-full max-h-[70vh]" title={attachmentPreview.name} />;
+              }
+              return (
+                <p className="text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
+                  Preview not available.{" "}
+                  <a href={src} download={attachmentPreview.name} target="_blank" rel="noopener noreferrer" className="text-[#1976D2] hover:underline">
+                    Download
+                  </a>
+                </p>
+              );
+            })()}
+          </div>
+          {attachmentPreview && (
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <a
+                href={resolveApiUrl(attachmentPreview.url)}
+                download={attachmentPreview.name}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-['Poppins',sans-serif] text-[14px] text-[#1976D2] hover:underline inline-flex items-center gap-1.5"
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </a>
+              <Button variant="outline" onClick={() => setAttachmentPreview(null)} className="font-['Poppins',sans-serif]">
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Withdraw quote confirmation */}
       <AlertDialog open={!!quoteToWithdraw} onOpenChange={(open) => !open && setQuoteToWithdraw(null)}>
         <AlertDialogContent>
@@ -2311,6 +2660,24 @@ export default function JobDetailPage() {
               className={clientCancelResponseConfirm?.action === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
             >
               {respondingCancelClient ? "..." : clientCancelResponseConfirm?.action === "accept" ? "Accept" : "Reject"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Job confirmation (client manage menu) */}
+      <AlertDialog open={showDeleteJobConfirm} onOpenChange={(open) => !open && !deletingJob && setShowDeleteJobConfirm(false)}>
+        <AlertDialogContent className="font-['Poppins',sans-serif]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the job &quot;{job?.title}&quot;. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingJob}>Cancel</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleDeleteJobConfirm} disabled={deletingJob}>
+              {deletingJob ? "Deleting..." : "Delete Job"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2713,9 +3080,9 @@ export default function JobDetailPage() {
               {/* Total */}
               <div className="border-t border-gray-200 pt-3 sm:pt-4">
                 <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
-                  Total: <strong>{formatPrice(awardWithMilestone
-                    ? awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0)
-                    : Number(selectedQuoteForAward.price))}</strong>
+                  Total: <strong>{awardWithMilestone
+                    ? formatAmountInSelectedCurrency(awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0))
+                    : formatPrice(Number(selectedQuoteForAward.price))}</strong>
                 </p>
               </div>
 

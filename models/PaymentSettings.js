@@ -192,6 +192,12 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 7,
       min: 0,
     },
+    // Days after job posting; after this, job status becomes 'closed' and no new quotes accepted
+    closedJobDays: {
+      type: Number,
+      default: 30,
+      min: 0,
+    },
     waitingTimeInDays: {
       type: Number,
       default: 1,
