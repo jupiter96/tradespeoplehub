@@ -997,19 +997,6 @@ export default function JobDetailPage() {
             </div>
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
               <div className="flex items-center gap-2 sm:gap-3">
-                {/* Professional: Submit Quote button */}
-                {!isJobOwner && job.status === "open" && !hasSubmittedQuote && (
-                  <Button
-                    onClick={() => {
-                      setEditingQuoteMeta(null);
-                      setQuoteForm({ price: "", deliveryTime: "", message: "" });
-                      setShowQuoteDialog(true);
-                    }}
-                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] h-9 sm:h-10 px-4 sm:px-6"
-                  >
-                    Submit Quote
-                  </Button>
-                )}
                 {/* Professional: Already submitted – hide from In Progress onwards */}
                 {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
                   <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
@@ -1420,6 +1407,20 @@ export default function JobDetailPage() {
                         ? "Thank you for posting your job, our vetted professionals will quote soon."
                         : "You haven't submitted a quote yet. Submit a quote to appear here."}
                     </p>
+                    {!isJobOwner && job.status === "open" && !hasSubmittedQuote && (
+                      <div className="mt-6 flex justify-center">
+                        <Button
+                          onClick={() => {
+                            setEditingQuoteMeta(null);
+                            setQuoteForm({ price: "", deliveryTime: "", message: "" });
+                            setShowQuoteDialog(true);
+                          }}
+                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                        >
+                          Submit Quote
+                        </Button>
+                      </div>
+                    )}
                     {isJobOwner && (
                       <p className="font-['Poppins',sans-serif] text-[13px] text-[#FE8A0F]/80 mt-2 inline-flex items-center gap-0.5">
                         <span className="inline-flex gap-0.5" aria-hidden>

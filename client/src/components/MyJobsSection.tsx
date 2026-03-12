@@ -8,7 +8,7 @@ import {
   FileText,
   MapPin,
   Calendar,
-  DollarSign,
+  Banknote,
   MessageCircle,
   Eye,
   Edit,
@@ -263,7 +263,7 @@ export default function MyJobsSection() {
                           {formatJobLocationCityOnly(job)}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4" />
+                          <Banknote className="w-4 h-4" />
                           {job.budgetMin != null && job.budgetMax != null
                           ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
                           : formatPrice(job.budgetAmount ?? 0)} ({job.budgetType})

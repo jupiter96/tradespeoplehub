@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
+import { useMessenger } from "./MessengerContext";
 import type { Job, JobQuote } from "./JobsContext";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -15,7 +16,7 @@ import {
   Eye,
   MessageCircle,
   Calendar,
-  DollarSign,
+  Banknote,
   MapPin,
   Clock,
   CheckCircle,
@@ -60,6 +61,7 @@ export default function MyQuotesSection() {
   const navigate = useNavigate();
   const { getProfessionalQuotes, withdrawQuote, updateQuoteByProfessional } = useJobs();
   const { userInfo } = useAccount();
+  const { startConversation } = useMessenger();
   const { formatPrice, toGBP, fromGBP } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -444,13 +446,21 @@ export default function MyQuotesSection() {
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate(`/job/${job.slug || job.id}`);
+                      startConversation({
+                        id: `client-${job.clientId}`,
+                        name: job.clientName || "Client",
+                        avatar: job.clientAvatar,
+                        online: true,
+                        jobId: job.id,
+                        jobTitle: job.title,
+                      });
+                      navigate(`/account?tab=messenger`);
                     }}
                     variant="outline"
                     className="w-full md:w-auto font-['Poppins',sans-serif]"
                   >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Job
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Chat
                   </Button>
 
                   {quote.status === "pending" && (
@@ -542,7 +552,7 @@ export default function MyQuotesSection() {
 
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-5 shadow-sm">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] mb-4 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
+                  <Banknote className="w-5 h-5" />
                   Quote Details
                 </h3>
                 <div className="space-y-5">

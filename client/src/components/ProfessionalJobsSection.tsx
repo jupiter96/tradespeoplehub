@@ -4,6 +4,7 @@ import AvailableJobsSection from "./AvailableJobsSection";
 import MyQuotesSection from "./MyQuotesSection";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
+import { useMessenger } from "./MessengerContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -121,6 +122,7 @@ function ActiveJobsSection() {
   const navigate = useNavigate();
   const { getProfessionalActiveJobs } = useJobs();
   const { userInfo } = useAccount();
+  const { startConversation } = useMessenger();
   const { formatPrice } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("date");
@@ -289,12 +291,20 @@ function ActiveJobsSection() {
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/job/${job.slug || job.id}`);
+                        startConversation({
+                          id: `client-${job.clientId}`,
+                          name: job.clientName || "Client",
+                          avatar: job.clientAvatar,
+                          online: true,
+                          jobId: job.id,
+                          jobTitle: job.title,
+                        });
+                        navigate(`/account?tab=messenger`);
                       }}
                       className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
                     >
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Details
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Chat
                     </Button>
                   </div>
                 </div>

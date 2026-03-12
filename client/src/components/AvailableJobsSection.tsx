@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
+import { useMessenger } from "./MessengerContext";
 import { useSectors } from "../hooks/useSectorsAndCategories";
 import { getMainCategoriesBySector } from "./categoriesHierarchy";
 import {
   FileText,
   MapPin,
   Calendar,
-  DollarSign,
+  Banknote,
   Send,
   Flame,
   Clock,
@@ -20,6 +21,7 @@ import {
   ChevronDown,
   CheckCircle2,
   Sparkles,
+  MessageCircle,
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
@@ -56,6 +58,7 @@ export default function AvailableJobsSection() {
   const navigate = useNavigate();
   const { getAvailableJobs, addQuoteToJob } = useJobs();
   const { userInfo } = useAccount();
+  const { startConversation } = useMessenger();
   const { sectors: sectorsList } = useSectors();
   const { formatPrice, symbol, toGBP } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
@@ -284,7 +287,8 @@ export default function AvailableJobsSection() {
           filteredJobs.map((job) => (
             <div
               key={job.id}
-              className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300"
+              className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
+              onClick={() => navigate(`/job/${job.slug || job.id}`)}
             >
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="flex-1">
@@ -308,7 +312,7 @@ export default function AvailableJobsSection() {
                           {formatJobLocationCityOnly(job)} • {getDistance(job.id)} miles
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <DollarSign className="w-4 h-4" />
+                          <Banknote className="w-4 h-4" />
                           {job.budgetMin != null && job.budgetMax != null
                           ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)} budget`
                           : `${formatPrice(job.budgetAmount ?? 0)} budget`}
@@ -337,11 +341,27 @@ export default function AvailableJobsSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/job/${job.slug || job.id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const hasSubmittedQuote = (job.quotes || []).some((q) => q.professionalId === userInfo?.id);
+                      if (!hasSubmittedQuote) {
+                        toast.info("Please send a quote first. You can chat after your quote is submitted.");
+                        return;
+                      }
+                      startConversation({
+                        id: `client-${job.clientId}`,
+                        name: job.clientName || "Client",
+                        avatar: job.clientAvatar,
+                        online: true,
+                        jobId: job.id,
+                        jobTitle: job.title,
+                      });
+                      navigate(`/account?tab=messenger`);
+                    }}
                     className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                   >
-                    <Eye className="w-4 h-4 mr-1.5" />
-                    View Details
+                    <MessageCircle className="w-4 h-4 mr-1.5" />
+                    Chat
                   </Button>
                   {(job.quotes || []).some((q) => q.professionalId === userInfo?.id) ? (
                     <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium inline-flex items-center gap-1.5">
@@ -351,7 +371,8 @@ export default function AvailableJobsSection() {
                   ) : (
                     <Button
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedJob(job.id);
                         setIsQuoteDialogOpen(true);
                       }}
@@ -409,7 +430,7 @@ export default function AvailableJobsSection() {
               {/* Quote Details Section */}
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-5 shadow-sm">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] mb-4 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
+                  <Banknote className="w-5 h-5" />
                   Quote Details
                 </h3>
                 <div className="space-y-5">
