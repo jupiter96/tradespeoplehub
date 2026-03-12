@@ -36,6 +36,8 @@ import {
   Pencil,
   Undo2,
   Trash2,
+  Share2,
+  Copy,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
@@ -89,6 +91,9 @@ import awardImage from "figma:asset/5c876de928ca711ee9770734c2254c71ec8d2988.png
 import milestoneStep1 from "figma:asset/a0de430b25f40690ee801be2a6d5041990689f12.png";
 import milestoneStep2 from "figma:asset/e1c037263ad447fb88ea0f991b3910b9cdd26dec.png";
 import milestoneStep3 from "figma:asset/27504741573e0946b791d837bb57de9ad9c0f981.png";
+import xIcon from "../assets/x.png";
+import facebookIcon from "../assets/facebook.png";
+import redditIcon from "../assets/reddit.png";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
@@ -195,6 +200,7 @@ export default function JobDetailPage() {
 
   // Report job modal (message to admin)
   const [showReportJobModal, setShowReportJobModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<{ name: string; url: string; mimeType: string } | null>(null);
   const [reportJobMessage, setReportJobMessage] = useState("");
   const [reportJobSubmitting, setReportJobSubmitting] = useState(false);
@@ -979,29 +985,42 @@ export default function JobDetailPage() {
                 {job.title}
               </h1>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* Professional: Submit Quote button */}
-              {!isJobOwner && job.status === "open" && !hasSubmittedQuote && (
-                <Button
-                  onClick={() => {
-                    setEditingQuoteMeta(null);
-                    setQuoteForm({ price: "", deliveryTime: "", message: "" });
-                    setShowQuoteDialog(true);
-                  }}
-                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] h-9 sm:h-10 px-4 sm:px-6"
-                >
-                  Submit Quote
-                </Button>
-              )}
-              {/* Professional: Already submitted – hide from In Progress onwards */}
-              {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
-                <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
-                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                  Quote Submitted
-                </Badge>
-              )}
-              {/* Job Status Badge */}
-              {getStatusBadge("large")}
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Professional: Submit Quote button */}
+                {!isJobOwner && job.status === "open" && !hasSubmittedQuote && (
+                  <Button
+                    onClick={() => {
+                      setEditingQuoteMeta(null);
+                      setQuoteForm({ price: "", deliveryTime: "", message: "" });
+                      setShowQuoteDialog(true);
+                    }}
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] h-9 sm:h-10 px-4 sm:px-6"
+                  >
+                    Submit Quote
+                  </Button>
+                )}
+                {/* Professional: Already submitted – hide from In Progress onwards */}
+                {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
+                  <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                    Quote Submitted
+                  </Badge>
+                )}
+                {/* Job Status Badge */}
+                {getStatusBadge("large")}
+              </div>
+              {/* Share button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F] border-0 shadow-none"
+                onClick={() => setShowShareModal(true)}
+                aria-label="Share this job"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -2434,6 +2453,140 @@ export default function JobDetailPage() {
               >
                 {reportJobSubmitting ? "Sending…" : "Send report"}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share this job modal */}
+      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+        <DialogContent className="font-['Poppins',sans-serif] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[20px] text-[#2c353f]">Share this project with others</DialogTitle>
+            <DialogDescription className="text-[#6b6b6b] text-[14px]">
+              Share this job via social media or copy the link below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 pt-2">
+            {/* Social share icons (icon-only buttons) */}
+            <div>
+              <div className="flex flex-wrap gap-8">
+                {[
+                  {
+                    name: "Facebook",
+                    url: (u: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
+                    color: "bg-[#1877F2] hover:bg-[#166FE5]",
+                    imgAlt: "Facebook",
+                    bgImageSrc: facebookIcon,
+                    imgSrc: facebookIcon,
+                  },
+                  {
+                    name: "Twitter",
+                    url: (u: string) =>
+                      `https://twitter.com/intent/tweet?url=${encodeURIComponent(u)}&text=${encodeURIComponent(job?.title || "Job")}`,
+                    color: "bg-black hover:bg-[#111]",
+                    bgImageSrc: xIcon,
+                    imgAlt: "X",
+                    imgSrc: xIcon,
+                  },
+                  {
+                    name: "LinkedIn",
+                    url: (u: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(u)}`,
+                    color: "bg-[#EFF6FF] hover:bg-[#DBEAFE]",
+                    imgAlt: "LinkedIn",
+                    imgSrc:
+                      "data:image/svg+xml;utf8," +
+                      encodeURIComponent(
+                        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`
+                      ),
+                  },
+                  {
+                    name: "Reddit",
+                    url: (u: string) =>
+                      `https://www.reddit.com/submit?url=${encodeURIComponent(u)}&title=${encodeURIComponent(job?.title || "Job")}`,
+                    color: "bg-[#FF4500] hover:bg-[#e03d00]",
+                    bgImageSrc: redditIcon,
+                    imgAlt: "Reddit",
+                    imgSrc: redditIcon,
+                  },
+                  {
+                    name: "Telegram",
+                    url: (u: string) =>
+                      `https://t.me/share/url?url=${encodeURIComponent(u)}&text=${encodeURIComponent(job?.title || "Job")}`,
+                    color: "bg-[#E3F7FE] hover:bg-[#B3E5FC]",
+                    imgAlt: "Telegram",
+                    imgSrc:
+                      "data:image/svg+xml;utf8," +
+                      encodeURIComponent(
+                        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`
+                      ),
+                  },
+                ].map((social) => {
+                  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/job/${job?.slug || job?.id}` : "";
+                  const href = social.url(shareUrl);
+                  return (
+                    <a
+                      key={social.name}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center justify-center w-[88px] h-[88px] rounded-xl ${social.color} transition-colors`}
+                      title={`Share on ${social.name}`}
+                      aria-label={`Share on ${social.name}`}
+                      style={
+                        "bgImageSrc" in social
+                          ? ({
+                              backgroundImage: `url(${social.bgImageSrc})`,
+                              backgroundSize: "72% 72%",
+                              backgroundPosition: "center",
+                              backgroundRepeat: "no-repeat",
+                            } as React.CSSProperties)
+                          : undefined
+                      }
+                    >
+                      {"imgSrc" in social ? (
+                        <img
+                          src={social.imgSrc}
+                          alt={social.imgAlt}
+                          className="w-10 h-10"
+                          draggable={false}
+                          style={social.name === "Twitter" ? ({ borderRadius: 12 } as React.CSSProperties) : undefined}
+                        />
+                      ) : (
+                        <span className="sr-only">{social.imgAlt}</span>
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Copy link */}
+            <div>
+              <p className="text-[13px] font-medium text-[#2c353f] mb-2">Copy link</p>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={typeof window !== "undefined" ? `${window.location.origin}/job/${job?.slug || job?.id}` : ""}
+                  className="flex-1 text-[13px] border-gray-200 bg-gray-50"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="font-['Poppins',sans-serif] shrink-0 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                  onClick={async () => {
+                    const url = typeof window !== "undefined" ? `${window.location.origin}/job/${job?.slug || job?.id}` : "";
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast.success("Link copied to clipboard");
+                    } catch {
+                      toast.error("Failed to copy");
+                    }
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-1.5" />
+                  Copy
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
