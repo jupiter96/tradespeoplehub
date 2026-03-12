@@ -70,7 +70,8 @@ import {
   ExternalLink,
   Landmark,
   Bell,
-  Target
+  Target,
+  Star
 } from "lucide-react";
 import { Switch } from "./ui/switch";
 import Nav from "../imports/Nav";
@@ -142,6 +143,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { COUNTRY_NAMES } from "../data/countries";
 import {
   Table,
@@ -1995,6 +1997,41 @@ function DetailsSection() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Client-only: About Me (publicProfile.bio) and preview modal
+  const [clientAboutMe, setClientAboutMe] = useState("");
+  const [isEditingAboutMe, setIsEditingAboutMe] = useState(false);
+  const [showClientPreviewModal, setShowClientPreviewModal] = useState(false);
+  const [clientPreviewTab, setClientPreviewTab] = useState("about");
+  const [myReviews, setMyReviews] = useState<{ id: string; rating: number; comment: string | null; createdAt: string | null; professionalName: string; professionalAvatar?: string; response?: string | null; responseAt?: string | null }[]>([]);
+  const [myReviewsLoading, setMyReviewsLoading] = useState(false);
+  useEffect(() => {
+    if (userRole === "client" && userInfo?.publicProfile?.bio !== undefined) {
+      setClientAboutMe(userInfo.publicProfile.bio || "");
+    }
+  }, [userRole, userInfo?.publicProfile?.bio]);
+  const handleSaveAboutMe = async () => {
+    try {
+      await updateProfile({ publicProfile: { bio: clientAboutMe.trim() || undefined } } as ProfileUpdatePayload);
+      setIsEditingAboutMe(false);
+      toast.success("About Me updated");
+    } catch (e) {
+      toast.error((e as Error)?.message || "Failed to update");
+    }
+  };
+  const fetchMyReviews = useCallback(async () => {
+    setMyReviewsLoading(true);
+    try {
+      const res = await fetch(resolveApiUrl("/api/auth/profile/my-reviews"), { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setMyReviews(data.reviews || []);
+      else setMyReviews([]);
+    } catch {
+      setMyReviews([]);
+    } finally {
+      setMyReviewsLoading(false);
+    }
+  }, []);
+
   // Get all subcategories from selected categories (calculated after formData is defined)
   // formData.categories now stores category IDs
   const allSubcategories: SubCategory[] = useMemo(() => {
@@ -2327,67 +2364,231 @@ function DetailsSection() {
         </div>
       </div>
 
-      {/* Profile Picture Section */}
-      <div className="mb-6 md:mb-8 p-4 sm:p-6 bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl">
-        <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
-          Profile Picture
-        </h3>
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
-          <Avatar className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-[#3B82F6]/20 flex-shrink-0 shadow-lg">
-            <AvatarImage 
-              src={avatarPreview || resolveAvatarUrl(userInfo?.avatar) || undefined} 
-              alt={userInfo?.name || 'User avatar'}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[28px] sm:text-[32px]">
-              {getTwoLetterInitials(userInfo?.name, "U")}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col gap-3 w-full sm:w-auto">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingAvatar}
-              className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-70 transition-colors"
-            >
-              {isUploadingAvatar ? (
-                <span className="flex items-center gap-2">
-                  <span className="animate-spin">⏳</span>
-                  Uploading...
-                </span>
-              ) : (
-                "Upload New Photo"
-              )}
-            </Button>
-            {userInfo?.avatar && (
-            <Button
-              type="button"
-              variant="outline"
+      {/* Profile Picture (and for client: About Me side by side) */}
+      <div className={userRole === "client" ? "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8" : "mb-6 md:mb-8"}>
+        <div className="p-4 sm:p-6 bg-gradient-to-br from-[#EFF6FF] to-white border border-[#3B82F6]/20 rounded-xl">
+          <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f] mb-4">
+            Profile Picture
+          </h3>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+            <Avatar className="w-24 h-24 sm:w-28 sm:h-28 border-4 border-[#3B82F6]/20 flex-shrink-0 shadow-lg">
+              <AvatarImage 
+                src={avatarPreview || resolveAvatarUrl(userInfo?.avatar) || undefined} 
+                alt={userInfo?.name || 'User avatar'}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-[#3B82F6] text-white font-['Poppins',sans-serif] text-[28px] sm:text-[32px]">
+                {getTwoLetterInitials(userInfo?.name, "U")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col gap-3 w-full sm:w-auto">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingAvatar}
-              onClick={handleRemoveAvatar}
-                className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-60 transition-colors"
-            >
-              Remove Photo
-            </Button>
-            )}
-            <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#8d8d8d] mt-1 text-center sm:text-left">
-              JPG, PNG, GIF, or WEBP. Max size 5MB
-            </p>
-            {avatarError && (
-              <p className="text-[12px] text-red-600 text-center sm:text-left font-['Poppins',sans-serif] mt-1">
-                {avatarError}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-70 transition-colors"
+              >
+                {isUploadingAvatar ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    Uploading...
+                  </span>
+                ) : (
+                  "Upload New Photo"
+                )}
+              </Button>
+              {userInfo?.avatar && (
+              <Button
+                type="button"
+                variant="outline"
+                  disabled={isUploadingAvatar}
+                onClick={handleRemoveAvatar}
+                  className="text-[#3B82F6] hover:bg-[#EFF6FF] border-[#3B82F6] font-['Poppins',sans-serif] w-full sm:w-auto disabled:opacity-60 transition-colors"
+              >
+                Remove Photo
+              </Button>
+              )}
+              <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#8d8d8d] mt-1 text-center sm:text-left">
+                JPG, PNG, GIF, or WEBP. Max size 5MB
               </p>
-            )}
+              {avatarError && (
+                <p className="text-[12px] text-red-600 text-center sm:text-left font-['Poppins',sans-serif] mt-1">
+                  {avatarError}
+                </p>
+              )}
+            </div>
           </div>
         </div>
+
+        {userRole === "client" && (
+          <div className="p-4 sm:p-6 bg-gradient-to-br from-[#FFF8F0] to-white border border-[#FE8A0F]/20 rounded-xl relative">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-['Poppins',sans-serif] text-[15px] sm:text-[16px] text-[#2c353f]">
+                About Me
+              </h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-[#FE8A0F]/10 hover:text-[#FE8A0F]"
+                onClick={() => setIsEditingAboutMe(!isEditingAboutMe)}
+                aria-label="Edit About Me"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
+            {isEditingAboutMe ? (
+              <div className="space-y-3">
+                <Textarea
+                  value={clientAboutMe}
+                  onChange={(e) => setClientAboutMe(e.target.value)}
+                  placeholder="Write a short bio about yourself..."
+                  className="min-h-[120px] border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F]"
+                  maxLength={1000}
+                />
+                <p className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">{clientAboutMe.length}/1000</p>
+                <div className="flex gap-2">
+                  <Button onClick={handleSaveAboutMe} className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]">
+                    Save
+                  </Button>
+                  <Button variant="outline" onClick={() => { setIsEditingAboutMe(false); setClientAboutMe(userInfo?.publicProfile?.bio || ""); }} className="font-['Poppins',sans-serif]">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-pre-wrap break-words min-h-[60px]">
+                  {clientAboutMe.trim() || "Add a short bio about yourself. Click the edit icon to update."}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3 w-full sm:w-auto border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] font-['Poppins',sans-serif]"
+                  onClick={() => { setShowClientPreviewModal(true); setClientPreviewTab("about"); fetchMyReviews(); }}
+                >
+                  View more
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Client profile preview modal (About Me + Reviews tabs) */}
+      {userRole === "client" && (
+        <Dialog open={showClientPreviewModal} onOpenChange={setShowClientPreviewModal}>
+          <DialogContent className="w-[90vw] max-w-[560px] max-h-[85vh] overflow-hidden flex flex-col bg-[#f0f0f0] p-0">
+            <DialogHeader className="p-4 pb-0">
+              <DialogTitle className="font-['Poppins',sans-serif] text-[#FE8A0F] text-xl">Profile Preview</DialogTitle>
+              <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                This is how your profile appears. About Me and reviews you&apos;ve left.
+              </DialogDescription>
+            </DialogHeader>
+            {/* Profile header: avatar, full name, member since, reviews count & average */}
+            <div className="px-4 pt-2 pb-4">
+              <div className="bg-white rounded-xl shadow-sm p-4 flex gap-4">
+                <Avatar className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-gray-100 flex-shrink-0">
+                  <AvatarImage
+                    src={avatarPreview || resolveAvatarUrl(userInfo?.avatar) || undefined}
+                    alt={userInfo?.name || "Profile"}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-xl sm:text-2xl rounded-xl">
+                    {getTwoLetterInitials(userInfo?.name, "U")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-lg font-semibold truncate">
+                    {[userInfo?.firstName, userInfo?.lastName].filter(Boolean).join(" ") || userInfo?.name || "Client"}
+                  </h2>
+                  {userInfo?.createdAt && (
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1 mt-0.5">
+                      <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                      Member since {new Date(userInfo.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F] flex-shrink-0" />
+                      <span className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                        {myReviews.length > 0
+                          ? (myReviews.reduce((s, r) => s + (r.rating || 0), 0) / myReviews.length).toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                          : "—"}
+                      </span>
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        average
+                      </span>
+                    </div>
+                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                      {myReviews.length} {myReviews.length === 1 ? "review" : "reviews"} left
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Tabs value={clientPreviewTab} onValueChange={setClientPreviewTab} className="flex-1 flex flex-col min-h-0 p-4 pt-2">
+              <TabsList className="grid w-full grid-cols-2 font-['Poppins',sans-serif] bg-white rounded-xl p-1 mb-4">
+                <TabsTrigger value="about" className="data-[state=active]:bg-[#003D82] data-[state=active]:text-white text-[13px]">About Me</TabsTrigger>
+                <TabsTrigger value="reviews" className="data-[state=active]:bg-[#003D82] data-[state=active]:text-white text-[13px]">Reviews</TabsTrigger>
+              </TabsList>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                <TabsContent value="about" className="mt-0 data-[state=inactive]:hidden">
+                  <div className="bg-white rounded-xl p-4 md:p-6">
+                    <h3 className="font-['Poppins',sans-serif] text-[#003D82] text-[16px] font-semibold mb-3">About Me</h3>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap break-words">
+                      {clientAboutMe.trim() || "No bio added yet."}
+                    </p>
+                  </div>
+                </TabsContent>
+                <TabsContent value="reviews" className="mt-0 data-[state=inactive]:hidden">
+                  <div className="bg-white rounded-xl p-4 md:p-6">
+                    <h3 className="font-['Poppins',sans-serif] text-[#003D82] text-[16px] font-semibold mb-3">Reviews you&apos;ve left</h3>
+                    {myReviewsLoading ? (
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] py-4">Loading...</p>
+                    ) : myReviews.length === 0 ? (
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] py-4">No reviews yet.</p>
+                    ) : (
+                      <ScrollArea className="h-[500px] w-full rounded-md border border-gray-200 pr-3">
+                        <div className="space-y-4 p-1">
+                          {myReviews.map((r) => (
+                            <div key={r.id} className="border border-gray-200 rounded-xl p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">{r.professionalName}</span>
+                                <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                  {r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                                </span>
+                              </div>
+                              <div className="flex gap-0.5 mb-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star key={star} className={`w-4 h-4 ${star <= (r.rating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "fill-[#E5E5E5] text-[#E5E5E5]"}`} />
+                                ))}
+                              </div>
+                              {r.comment && <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">{r.comment}</p>}
+                              {r.response && (
+                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">Response: {r.response}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </div>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Separator className="mb-4 md:mb-6" />
 

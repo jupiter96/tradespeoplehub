@@ -3232,6 +3232,13 @@ router.put('/profile', requireAuth, async (req, res) => {
       user.aboutService = undefined;
       user.hasTradeQualification = 'no';
       user.hasPublicLiability = 'no';
+      // Update public profile (About Me) for client
+      if (req.body.publicProfile) {
+        if (!user.publicProfile) user.publicProfile = {};
+        if (req.body.publicProfile.bio !== undefined) {
+          user.publicProfile.bio = req.body.publicProfile.bio?.trim() || undefined;
+        }
+      }
     }
 
     await user.save();
@@ -3971,6 +3978,31 @@ router.get('/session-debug', async (req, res) => {
     return res.json(sessionData);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch session debug info' });
+  }
+});
+
+// Reviews left by the current user (client) - for profile preview modal
+router.get('/profile/my-reviews', requireAuth, async (req, res) => {
+  try {
+    const reviews = await Review.find({ reviewer: req.session.userId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('professional', 'firstName lastName tradingName avatar')
+      .lean();
+    const list = (reviews || []).map((r) => ({
+      id: r._id.toString(),
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+      professionalName: r.professional?.tradingName || [r.professional?.firstName, r.professional?.lastName].filter(Boolean).join(' ') || 'Professional',
+      professionalAvatar: r.professional?.avatar,
+      response: r.response || null,
+      responseAt: r.responseAt ? new Date(r.responseAt).toISOString() : null,
+    }));
+    return res.json({ reviews: list });
+  } catch (error) {
+    console.error('Error fetching my reviews:', error);
+    return res.status(500).json({ error: 'Failed to fetch reviews' });
   }
 });
 
