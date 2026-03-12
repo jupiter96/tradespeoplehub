@@ -98,6 +98,15 @@ import InviteToQuoteModal from "./InviteToQuoteModal";
 import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
 
+type SocialShareLink = {
+  name: string;
+  url: (u: string) => string;
+  color: string;
+  imgAlt: string;
+  imgSrc?: string;
+  bgImageSrc?: string;
+};
+
 export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
@@ -202,6 +211,7 @@ export default function JobDetailPage() {
   const [showReportJobModal, setShowReportJobModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [attachmentPreview, setAttachmentPreview] = useState<{ name: string; url: string; mimeType: string } | null>(null);
+  const [reportJobReason, setReportJobReason] = useState("");
   const [reportJobMessage, setReportJobMessage] = useState("");
   const [reportJobSubmitting, setReportJobSubmitting] = useState(false);
 
@@ -2370,6 +2380,7 @@ export default function JobDetailPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    setReportJobReason("");
                     setReportJobMessage("");
                     setShowReportJobModal(true);
                   }}
@@ -2387,28 +2398,58 @@ export default function JobDetailPage() {
       <Footer />
 
       {/* Report job modal (message to admin) */}
-      <Dialog open={showReportJobModal} onOpenChange={(open) => { if (!open) setShowReportJobModal(false); }}>
+      <Dialog
+        open={showReportJobModal}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setShowReportJobModal(false);
+            setReportJobReason("");
+            setReportJobMessage("");
+          }
+        }}
+      >
         <DialogContent className="font-['Poppins',sans-serif] max-w-md">
           <DialogHeader>
             <DialogTitle className="text-[#2c353f]">Report this job</DialogTitle>
             <DialogDescription className="text-[#6b6b6b]">
-              Your message will be sent to our team for review. Please describe the issue.
+              Select a reason for reporting this job. If you choose “Other”, you can add details.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <label htmlFor="report-job-message" className="block text-[13px] font-medium text-[#2c353f] mb-1.5">
-                Message
+              <label htmlFor="report-job-reason" className="block text-[13px] font-medium text-[#2c353f] mb-1.5">
+                Reason
               </label>
-              <Textarea
-                id="report-job-message"
-                placeholder="Describe why you are reporting this job..."
-                value={reportJobMessage}
-                onChange={(e) => setReportJobMessage(e.target.value)}
-                className="min-h-[120px] resize-y text-[14px] border-gray-200"
+              <select
+                id="report-job-reason"
+                value={reportJobReason}
+                onChange={(e) => setReportJobReason(e.target.value)}
                 disabled={reportJobSubmitting}
-              />
+                className="w-full h-11 rounded-md border border-gray-200 bg-white px-3 text-[14px] text-[#2c353f] outline-none focus:ring-2 focus:ring-[#FE8A0F]/25"
+              >
+                <option value="">- Please Select -</option>
+                <option value="Doesn't make sense">Doesn't make sense</option>
+                <option value="Contains offensive language">Contains offensive language</option>
+                <option value="Incorrect category">Incorrect category</option>
+                <option value="Doesn't require gas or electric qualification">Doesn't require gas or electric qualification</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
+            {reportJobReason === "Other" && (
+              <div>
+                <label htmlFor="report-job-message" className="block text-[13px] font-medium text-[#2c353f] mb-1.5">
+                  Message
+                </label>
+                <Textarea
+                  id="report-job-message"
+                  placeholder="Describe why you are reporting this job..."
+                  value={reportJobMessage}
+                  onChange={(e) => setReportJobMessage(e.target.value)}
+                  className="min-h-[120px] resize-y text-[14px] border-gray-200"
+                  disabled={reportJobSubmitting}
+                />
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -2422,8 +2463,13 @@ export default function JobDetailPage() {
               <Button
                 type="button"
                 onClick={async () => {
+                  const reason = reportJobReason.trim();
                   const msg = reportJobMessage.trim();
-                  if (!msg) {
+                  if (!reason) {
+                    toast.error("Please select a reason");
+                    return;
+                  }
+                  if (reason === "Other" && !msg) {
                     toast.error("Please enter a message");
                     return;
                   }
@@ -2434,7 +2480,7 @@ export default function JobDetailPage() {
                       method: "POST",
                       credentials: "include",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ message: msg }),
+                      body: JSON.stringify({ reason, message: reason === "Other" ? msg : undefined }),
                     });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
@@ -2443,6 +2489,7 @@ export default function JobDetailPage() {
                     }
                     toast.success(data?.message || "Report submitted");
                     setShowReportJobModal(false);
+                    setReportJobReason("");
                     setReportJobMessage("");
                   } finally {
                     setReportJobSubmitting(false);
@@ -2471,57 +2518,60 @@ export default function JobDetailPage() {
             {/* Social share icons (icon-only buttons) */}
             <div>
               <div className="flex flex-wrap gap-8">
-                {[
-                  {
-                    name: "Facebook",
-                    url: (u: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
-                    color: "bg-[#1877F2] hover:bg-[#166FE5]",
-                    imgAlt: "Facebook",
-                    bgImageSrc: facebookIcon,
-                    imgSrc: facebookIcon,
-                  },
-                  {
-                    name: "Twitter",
-                    url: (u: string) =>
-                      `https://twitter.com/intent/tweet?url=${encodeURIComponent(u)}&text=${encodeURIComponent(job?.title || "Job")}`,
-                    color: "bg-black hover:bg-[#111]",
-                    bgImageSrc: xIcon,
-                    imgAlt: "X",
-                    imgSrc: xIcon,
-                  },
-                  {
-                    name: "LinkedIn",
-                    url: (u: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(u)}`,
-                    color: "bg-[#EFF6FF] hover:bg-[#DBEAFE]",
-                    imgAlt: "LinkedIn",
-                    imgSrc:
-                      "data:image/svg+xml;utf8," +
-                      encodeURIComponent(
-                        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`
-                      ),
-                  },
-                  {
-                    name: "Reddit",
-                    url: (u: string) =>
-                      `https://www.reddit.com/submit?url=${encodeURIComponent(u)}&title=${encodeURIComponent(job?.title || "Job")}`,
-                    color: "bg-[#FF4500] hover:bg-[#e03d00]",
-                    bgImageSrc: redditIcon,
-                    imgAlt: "Reddit",
-                    imgSrc: redditIcon,
-                  },
-                  {
-                    name: "Telegram",
-                    url: (u: string) =>
-                      `https://t.me/share/url?url=${encodeURIComponent(u)}&text=${encodeURIComponent(job?.title || "Job")}`,
-                    color: "bg-[#E3F7FE] hover:bg-[#B3E5FC]",
-                    imgAlt: "Telegram",
-                    imgSrc:
-                      "data:image/svg+xml;utf8," +
-                      encodeURIComponent(
-                        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`
-                      ),
-                  },
-                ].map((social) => {
+                {(() => {
+                  const socials: SocialShareLink[] = [
+                    {
+                      name: "Facebook",
+                      url: (u: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`,
+                      color: "bg-[#1877F2] hover:bg-[#166FE5]",
+                      imgAlt: "Facebook",
+                      bgImageSrc: facebookIcon,
+                      imgSrc: facebookIcon,
+                    },
+                    {
+                      name: "Twitter",
+                      url: (u: string) =>
+                        `https://twitter.com/intent/tweet?url=${encodeURIComponent(u)}&text=${encodeURIComponent(job?.title || "Job")}`,
+                      color: "bg-black hover:bg-[#111]",
+                      bgImageSrc: xIcon,
+                      imgAlt: "X",
+                      imgSrc: xIcon,
+                    },
+                    {
+                      name: "LinkedIn",
+                      url: (u: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(u)}`,
+                      color: "bg-[#EFF6FF] hover:bg-[#DBEAFE]",
+                      imgAlt: "LinkedIn",
+                      imgSrc:
+                        "data:image/svg+xml;utf8," +
+                        encodeURIComponent(
+                          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`
+                        ),
+                    },
+                    {
+                      name: "Reddit",
+                      url: (u: string) =>
+                        `https://www.reddit.com/submit?url=${encodeURIComponent(u)}&title=${encodeURIComponent(job?.title || "Job")}`,
+                      color: "bg-[#FF4500] hover:bg-[#e03d00]",
+                      bgImageSrc: redditIcon,
+                      imgAlt: "Reddit",
+                      imgSrc: redditIcon,
+                    },
+                    {
+                      name: "Telegram",
+                      url: (u: string) =>
+                        `https://t.me/share/url?url=${encodeURIComponent(u)}&text=${encodeURIComponent(job?.title || "Job")}`,
+                      color: "bg-[#E3F7FE] hover:bg-[#B3E5FC]",
+                      imgAlt: "Telegram",
+                      imgSrc:
+                        "data:image/svg+xml;utf8," +
+                        encodeURIComponent(
+                          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#26A5E4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`
+                        ),
+                    },
+                  ];
+
+                  return socials.map((social) => {
                   const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/job/${job?.slug || job?.id}` : "";
                   const href = social.url(shareUrl);
                   return (
@@ -2534,7 +2584,7 @@ export default function JobDetailPage() {
                       title={`Share on ${social.name}`}
                       aria-label={`Share on ${social.name}`}
                       style={
-                        "bgImageSrc" in social
+                        social.bgImageSrc
                           ? ({
                               backgroundImage: `url(${social.bgImageSrc})`,
                               backgroundSize: "72% 72%",
@@ -2544,7 +2594,7 @@ export default function JobDetailPage() {
                           : undefined
                       }
                     >
-                      {"imgSrc" in social ? (
+                      {social.imgSrc ? (
                         <img
                           src={social.imgSrc}
                           alt={social.imgAlt}
@@ -2557,7 +2607,8 @@ export default function JobDetailPage() {
                       )}
                     </a>
                   );
-                })}
+                  });
+                })()}
               </div>
             </div>
             {/* Copy link */}

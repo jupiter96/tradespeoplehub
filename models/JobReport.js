@@ -15,6 +15,7 @@ const jobReportSchema = new mongoose.Schema(
       index: true,
     },
     reporterRole: { type: String, enum: ['client', 'professional'], trim: true },
+    reason: { type: String, required: true, trim: true },
     message: { type: String, required: true, trim: true },
   },
   { timestamps: true }

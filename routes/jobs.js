@@ -1073,13 +1073,16 @@ router.post('/:id/report', authenticateToken, async (req, res) => {
     if (req.user.isAdmin) return res.status(403).json({ error: 'Not allowed' });
     const job = await findJobByIdOrSlug(req.params.id);
     if (!job) return res.status(404).json({ error: 'Job not found' });
+    const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
     const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
-    if (!message) return res.status(400).json({ error: 'Message is required' });
+    if (!reason) return res.status(400).json({ error: 'Reason is required' });
+    const finalMessage = message || reason;
     await JobReport.create({
       jobId: job._id,
       reporterId: new mongoose.Types.ObjectId(req.user.id),
       reporterRole: req.user.role === 'client' ? 'client' : req.user.role === 'professional' ? 'professional' : undefined,
-      message,
+      reason,
+      message: finalMessage,
     });
     return res.json({ success: true, message: 'Report submitted. Our team will review it.' });
   } catch (err) {
