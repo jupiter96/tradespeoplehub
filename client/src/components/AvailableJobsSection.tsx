@@ -118,7 +118,13 @@ export default function AvailableJobsSection() {
   };
 
   const getTimingIcon = (timing: string) => {
-    if (timing === "urgent") return <Flame className="w-4 h-4 text-red-500" />;
+    if (timing === "urgent") {
+      return (
+        <Badge className="bg-red-50 text-red-600 border-red-200 font-['Poppins',sans-serif] text-[11px]">
+          Urgent
+        </Badge>
+      );
+    }
     if (timing === "flexible") return <Clock className="w-4 h-4 text-blue-500" />;
     return <Calendar className="w-4 h-4 text-gray-500" />;
   };
@@ -353,7 +359,7 @@ export default function AvailableJobsSection() {
                       <Badge
                         key={idx}
                         variant="outline"
-                        className="bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]/30 font-['Poppins',sans-serif] text-[11px]"
+                        className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
                       >
                         {category}
                       </Badge>

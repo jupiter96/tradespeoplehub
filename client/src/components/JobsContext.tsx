@@ -405,7 +405,15 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     const result: { job: Job; quote: JobQuote }[] = [];
     jobs.forEach((job) => {
       (job.quotes || []).forEach((quote) => {
-        if (quote.professionalId === professionalId) result.push({ job, quote });
+        // Exclude any jobs that have been awarded to this professional;
+        // awarded jobs should appear only in Active Jobs, not in My Quotes.
+        if (
+          quote.professionalId === professionalId &&
+          job.awardedProfessionalId !== professionalId &&
+          quote.status !== "awarded"
+        ) {
+          result.push({ job, quote });
+        }
       });
     });
     return result;

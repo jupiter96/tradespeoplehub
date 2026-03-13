@@ -18,6 +18,7 @@ import {
   MapPin,
   CheckCircle,
   Briefcase,
+  Star,
 } from "lucide-react";
 import {
   Select,
@@ -29,6 +30,7 @@ import {
 import { formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
 import { formatJobLocationCityOnly } from "./orders/utils";
+import { cn } from "./ui/utils";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
@@ -40,8 +42,9 @@ export default function ProfessionalJobsSection() {
   const availableJobsCount = getAvailableJobs().filter(
     (job) => !(job.quotes || []).some((q) => q.professionalId === userInfo?.id)
   ).length;
-  const myQuotesCount = getProfessionalQuotes(userInfo?.id || "").length;
+  const myQuotesTotalCount = getProfessionalQuotes(userInfo?.id || "").length;
   const activeJobsCount = getProfessionalActiveJobs(userInfo?.id || "").length;
+  const [myQuotesVisibleCount, setMyQuotesVisibleCount] = useState(myQuotesTotalCount);
 
   return (
     <div>
@@ -77,9 +80,9 @@ export default function ProfessionalJobsSection() {
             >
               <MessageCircle className="w-4 h-4" />
               My Quotes
-              {myQuotesCount > 0 && (
+              {(activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount) > 0 && (
                 <Badge className="bg-[#FE8A0F] text-white ml-2">
-                  {myQuotesCount}
+                  {activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount}
                 </Badge>
               )}
             </TabsTrigger>
@@ -105,7 +108,7 @@ export default function ProfessionalJobsSection() {
 
         {/* My Quotes Tab */}
         <TabsContent value="quotes" className="mt-0">
-          <MyQuotesSection />
+          <MyQuotesSection onVisibleCountChange={setMyQuotesVisibleCount} />
         </TabsContent>
 
         {/* Active Jobs Tab */}
@@ -162,6 +165,34 @@ function ActiveJobsSection() {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return "just now";
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes === 1) return "a minute ago";
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours === 1) return "an hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "a day ago";
+    return `${diffDays} days ago`;
+  };
+
+  const getTruncatedDescription = (description: string, maxLength: number = 250) => {
+    if (!description) return "";
+    const singleLine = description.replace(/\s+/g, " ").trim();
+    if (singleLine.length <= maxLength) return singleLine;
+    return singleLine.slice(0, maxLength) + "...";
   };
 
   return (
@@ -240,69 +271,100 @@ function ActiveJobsSection() {
             return (
               <div
                 key={job.id}
-                className="border border-gray-200 rounded-xl p-6 hover:border-[#FE8A0F] transition-all cursor-pointer"
+                className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
                 onClick={() => navigate(`/job/${job.slug || job.id}`)}
               >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  {/* Left Side */}
-                  <div className="flex-1">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
-                          {job.title}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif]">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            In Progress
-                          </Badge>
-                        </div>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
-                          Budget{" "}
-                          {job.budgetMin != null && job.budgetMax != null
-                            ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
-                            : formatPrice(job.budgetAmount ?? 0)}
-                        </p>
-                      </div>
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                        {job.title}
+                      </h3>
+                      <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] whitespace-nowrap">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        In Progress
+                      </Badge>
                     </div>
-
-                    {/* Job Details */}
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
-                      {job.description}
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
+                      Budget{" "}
+                      {job.budgetMin != null && job.budgetMax != null
+                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
+                        : formatPrice(job.budgetAmount ?? 0)}
                     </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
-                        <MapPin className="w-4 h-4" />
-                        {formatJobLocationCityOnly(job)}
-                      </div>
-                      <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
-                        <Calendar className="w-4 h-4" />
-                        Started: {formatDate(job.postedAt)}
-                      </div>
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                      {getTruncatedDescription(job.description)}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {job.categories?.map((category, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
+                        >
+                          {category}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Right Side */}
-                  <div className="flex flex-col items-start md:items-end gap-3">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startConversation({
-                          id: `client-${job.clientId}`,
-                          name: job.clientName || "Client",
-                          avatar: job.clientAvatar,
-                          online: true,
-                          jobId: job.id,
-                          jobTitle: job.title,
-                        });
-                        navigate(`/account?tab=messenger`);
-                      }}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Chat
-                    </Button>
+                  <div className="pt-2 border-t border-gray-100 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                      <div className="flex items-center gap-1.5">
+                        {(() => {
+                          const count = job.clientReviewCount ?? 0;
+                          const hasReviews = count > 0 && job.clientRatingAverage != null;
+                          return (
+                            <>
+                              <Star
+                                className={cn(
+                                  "w-4 h-4",
+                                  hasReviews ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300"
+                                )}
+                              />
+                              {hasReviews ? (
+                                <span>
+                                  {formatNumber(job.clientRatingAverage as number, 1)} ({count}{" "}
+                                  {count === 1 ? "review" : "reviews"})
+                                </span>
+                              ) : (
+                                <span>0 review</span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4" />
+                        {formatJobLocationCityOnly(job)}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4" />
+                        <span>{getRelativeTime(job.postedAt)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startConversation({
+                            id: `client-${job.clientId}`,
+                            name: job.clientName || "Client",
+                            avatar: job.clientAvatar,
+                            online: true,
+                            jobId: job.id,
+                            jobTitle: job.title,
+                          });
+                          navigate(`/account?tab=messenger`);
+                        }}
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Chat
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
