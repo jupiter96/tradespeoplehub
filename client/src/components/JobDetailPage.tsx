@@ -214,6 +214,20 @@ export default function JobDetailPage() {
   const [reportJobReason, setReportJobReason] = useState("");
   const [reportJobMessage, setReportJobMessage] = useState("");
   const [reportJobSubmitting, setReportJobSubmitting] = useState(false);
+  const [showClientPreviewModal, setShowClientPreviewModal] = useState(false);
+  const [clientPreviewData, setClientPreviewData] = useState<{
+    name: string;
+    avatar?: string;
+    createdAt: string | null;
+    bio: string;
+    country: string | null;
+    townCity: string | null;
+    reviews: { id: string; rating: number; comment: string | null; createdAt: string | null; professionalName: string; professionalAvatar?: string; response: string | null; responseAt: string | null }[];
+    reviewCount: number;
+    ratingAverage: number;
+  } | null>(null);
+  const [clientPreviewTab, setClientPreviewTab] = useState("about");
+  const [clientPreviewLoading, setClientPreviewLoading] = useState(false);
 
   // Redirect to login only after auth state is resolved (avoid redirect on refresh before session check)
   useEffect(() => {
@@ -1020,6 +1034,67 @@ export default function JobDetailPage() {
               </Button>
             </div>
           </div>
+
+          {/* Client info – below job title */}
+          <div>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!job?.id) return;
+                setShowClientPreviewModal(true);
+                setClientPreviewData(null);
+                setClientPreviewTab("about");
+                setClientPreviewLoading(true);
+                try {
+                  const res = await fetch(resolveApiUrl(`/api/jobs/${job.slug || job.id}/client-profile`), { credentials: "include" });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setClientPreviewData({
+                      name: data.name || "Client",
+                      avatar: data.avatar,
+                      createdAt: data.createdAt || null,
+                      bio: data.bio || "",
+                      country: data.country || null,
+                      townCity: data.townCity || null,
+                      reviews: data.reviews || [],
+                      reviewCount: data.reviewCount ?? 0,
+                      ratingAverage: data.ratingAverage ?? 0,
+                    });
+                  }
+                } catch {
+                  toast.error("Failed to load client profile");
+                } finally {
+                  setClientPreviewLoading(false);
+                }
+              }}
+              className="flex items-center gap-3 text-left hover:opacity-90 transition-opacity rounded-lg p-1 -m-1"
+              aria-label="View client profile"
+            >
+              <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                {resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar) && (
+                  <AvatarImage src={resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar)!} />
+                )}
+                <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-sm">
+                  {getTwoLetterInitials(isJobOwner ? (userInfo?.name ?? "C") : (job.clientName ?? "C"), "C")}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-medium text-[#2c353f]">
+                  {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
+                </p>
+                <div className="flex items-center gap-2 flex-wrap text-[12px] sm:text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                  <span className="flex items-center gap-0.5">
+                    <Star className="w-3.5 h-3.5 text-[#FE8A0F] fill-[#FE8A0F]" />
+                    {(job.clientRatingAverage ?? 0).toFixed(1)}
+                  </span>
+                  <span>{(job.clientReviewCount ?? 0)} {(job.clientReviewCount === 1) ? "review" : "reviews"}</span>
+                  {(job.clientCountry || job.clientCity) && (
+                    <span>• {[job.clientCity, job.clientCountry].filter(Boolean).join(", ")}</span>
+                  )}
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1102,9 +1177,9 @@ export default function JobDetailPage() {
 
       {/* Main Content */}
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 gap-6">
+          {/* Main Content - full width */}
+          <div className="space-y-6">
             {/* Details Tab */}
             {activeTab === "details" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
@@ -1207,8 +1282,16 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {/* Project ID - Bottom Right */}
-                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+                {/* Footer: Report this job + Job ID */}
+                <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setReportJobReason(""); setReportJobMessage(""); setShowReportJobModal(true); }}
+                    className="text-[#1976D2] hover:text-[#1565C0] font-['Poppins',sans-serif] text-[13px] flex items-center gap-2"
+                  >
+                    <Flag className="w-4 h-4" />
+                    Report this job
+                  </button>
                   <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
                     {job.id.toUpperCase()}
                   </span>
@@ -2310,89 +2393,6 @@ export default function JobDetailPage() {
               </div>
             )}
           </div>
-
-          {/* Right Column - Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm p-6 sticky top-24">
-              <h2 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-4">
-                About the Client
-              </h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12">
-                    {resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar) && (
-                      <AvatarImage src={resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar)!} />
-                    )}
-                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
-                      {getTwoLetterInitials(isJobOwner ? (userInfo?.name ?? "C") : (job.clientName ?? "C"), "C")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className="w-4 h-4 text-[#FE8A0F] fill-[#FE8A0F]"
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[13px]">
-                  <Clock className="w-4 h-4" />
-                  Member Since {job.clientMemberSince
-                    ? new Date(job.clientMemberSince).toLocaleDateString("en-GB", { month: "short", year: "numeric" })
-                    : new Date(job.postedAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                    Location
-                  </h3>
-                  <div className="flex items-center gap-2 text-[#2c353f] font-['Poppins',sans-serif] text-[14px]">
-                    <MapPin className="w-4 h-4" />
-                    {job.location}
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
-                    Category
-                  </h3>
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                    {job.sector}
-                  </p>
-                </div>
-
-                <Separator />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReportJobReason("");
-                    setReportJobMessage("");
-                    setShowReportJobModal(true);
-                  }}
-                  className="text-[#1976D2] hover:text-[#1565C0] font-['Poppins',sans-serif] text-[14px] flex items-center gap-2 w-full"
-                >
-                  <Flag className="w-4 h-4" />
-                  Report this job
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -2641,6 +2641,118 @@ export default function JobDetailPage() {
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client profile preview modal (same as My Details preview) */}
+      <Dialog open={showClientPreviewModal} onOpenChange={(open) => { setShowClientPreviewModal(open); if (!open) setClientPreviewData(null); }}>
+        <DialogContent className="w-[90vw] max-w-[560px] max-h-[85vh] overflow-hidden flex flex-col bg-[#f0f0f0] p-0 font-['Poppins',sans-serif]">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle className="text-[#FE8A0F] text-xl">About the client</DialogTitle>
+            <DialogDescription className="text-[13px] text-[#6b6b6b]">
+              Client profile: About Me and reviews they&apos;ve left.
+            </DialogDescription>
+          </DialogHeader>
+          {clientPreviewLoading ? (
+            <div className="p-8 text-center text-[#6b6b6b]">Loading...</div>
+          ) : clientPreviewData ? (
+            <>
+              <div className="px-4 pt-2 pb-4">
+                <div className="bg-white rounded-xl shadow-sm p-4 flex gap-4">
+                  <Avatar className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-gray-100 flex-shrink-0">
+                    {resolveAvatarUrl(clientPreviewData.avatar) && (
+                      <AvatarImage src={resolveAvatarUrl(clientPreviewData.avatar)!} alt={clientPreviewData.name} className="object-cover" />
+                    )}
+                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-xl sm:text-2xl rounded-xl">
+                      {getTwoLetterInitials(clientPreviewData.name, "C")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <h2 className="font-['Poppins',sans-serif] text-[#2c353f] text-lg font-semibold truncate">
+                      {clientPreviewData.name}
+                    </h2>
+                    {clientPreviewData.createdAt && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex items-center gap-1 mt-0.5">
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        Member since {new Date(clientPreviewData.createdAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <Star className="w-4 h-4 fill-[#FE8A0F] text-[#FE8A0F] flex-shrink-0" />
+                        <span className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                          {clientPreviewData.reviewCount > 0
+                            ? clientPreviewData.ratingAverage.toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                            : "—"}
+                        </span>
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">average</span>
+                      </div>
+                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        {clientPreviewData.reviewCount} {clientPreviewData.reviewCount === 1 ? "review" : "reviews"} left
+                      </span>
+                      {(clientPreviewData.country || clientPreviewData.townCity) && (
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                          • {[clientPreviewData.townCity, clientPreviewData.country].filter(Boolean).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <Tabs value={clientPreviewTab} onValueChange={setClientPreviewTab} className="flex-1 flex flex-col min-h-0 p-4 pt-2">
+                <TabsList className="grid w-full grid-cols-2 font-['Poppins',sans-serif] bg-white rounded-xl p-1 mb-4">
+                  <TabsTrigger value="about" className="data-[state=active]:bg-[#003D82] data-[state=active]:text-white text-[13px]">About Me</TabsTrigger>
+                  <TabsTrigger value="reviews" className="data-[state=active]:bg-[#003D82] data-[state=active]:text-white text-[13px]">Reviews</TabsTrigger>
+                </TabsList>
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  <TabsContent value="about" className="mt-0 data-[state=inactive]:hidden">
+                    <div className="bg-white rounded-xl p-4 md:p-6">
+                      <h3 className="font-['Poppins',sans-serif] text-[#003D82] text-[16px] font-semibold mb-3">About Me</h3>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap break-words">
+                        {clientPreviewData.bio.trim() || "No bio added yet."}
+                      </p>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="reviews" className="mt-0 data-[state=inactive]:hidden">
+                    <div className="bg-white rounded-xl p-4 md:p-6">
+                      <h3 className="font-['Poppins',sans-serif] text-[#003D82] text-[16px] font-semibold mb-3">Reviews they&apos;ve left</h3>
+                      {clientPreviewData.reviews.length === 0 ? (
+                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] py-4">No reviews yet.</p>
+                      ) : (
+                        <ScrollArea className="h-[300px] w-full rounded-md border border-gray-200 pr-3">
+                          <div className="space-y-4 p-1">
+                            {clientPreviewData.reviews.map((r) => (
+                              <div key={r.id} className="border border-gray-200 rounded-xl p-3">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">{r.professionalName}</span>
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : ""}
+                                  </span>
+                                </div>
+                                <div className="flex gap-0.5 mb-2">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star key={star} className={`w-4 h-4 ${star <= (r.rating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "fill-[#E5E5E5] text-[#E5E5E5]"}`} />
+                                  ))}
+                                </div>
+                                {r.comment && <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">{r.comment}</p>}
+                                {r.response && (
+                                  <div className="mt-2 pt-2 border-t border-gray-100">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] italic">Response: {r.response}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </div>
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </>
+          ) : !clientPreviewLoading && (
+            <div className="p-8 text-center text-[#6b6b6b]">Could not load profile.</div>
+          )}
         </DialogContent>
       </Dialog>
 

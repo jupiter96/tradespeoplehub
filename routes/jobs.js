@@ -708,7 +708,39 @@ router.get('/', authenticateToken, async (req, res) => {
       for (const job of jobs) {
         await ensureJobSlug(job);
       }
-      return res.json(jobs.map((j) => toJobResponse(j)));
+
+      // Enrich with client profile + review stats (same client for all jobs)
+      const responses = jobs.map((j) => toJobResponse(j));
+      const clientUser = await User.findById(req.user.id).select('firstName lastName tradingName avatar createdAt country townCity').lean();
+      let clientReviewCount = 0;
+      let clientRatingAverage = 0;
+      if (clientUser) {
+        const clientReviews = await Review.find({ reviewer: req.user.id }).select('rating').lean();
+        const n = (clientReviews || []).length;
+        clientReviewCount = n;
+        clientRatingAverage = n === 0 ? 0 : clientReviews.reduce((s, r) => s + (r.rating || 0), 0) / n;
+      }
+      const clientName =
+        clientUser?.tradingName ||
+        [clientUser?.firstName, clientUser?.lastName].filter(Boolean).join(' ') ||
+        'Client';
+      const clientAvatar = clientUser?.avatar;
+      const clientMemberSince = clientUser?.createdAt ? new Date(clientUser.createdAt).toISOString() : undefined;
+      const clientCountry = clientUser?.country || undefined;
+      const clientCity = clientUser?.townCity || undefined;
+
+      return res.json(
+        responses.map((response) => ({
+          ...response,
+          clientName,
+          clientAvatar,
+          clientMemberSince,
+          clientCountry,
+          clientCity,
+          clientReviewCount,
+          clientRatingAverage,
+        }))
+      );
     }
 
     if (role === 'professional') {
@@ -741,7 +773,35 @@ router.get('/', authenticateToken, async (req, res) => {
       for (const job of jobs) {
         await ensureJobSlug(job);
       }
-      return res.json(jobs.map((j) => toJobResponse(j)));
+
+      // Enrich each job with client profile + review stats
+      const responses = [];
+      for (const job of jobs) {
+        const response = toJobResponse(job);
+        const clientId = job.clientId?._id || job.clientId;
+        if (clientId) {
+          const clientUser = await User.findById(clientId).select('firstName lastName tradingName avatar createdAt country townCity').lean();
+          if (clientUser) {
+            response.clientName =
+              clientUser.tradingName ||
+              [clientUser.firstName, clientUser.lastName].filter(Boolean).join(' ') ||
+              'Client';
+            response.clientAvatar = clientUser.avatar;
+            response.clientMemberSince = clientUser.createdAt ? new Date(clientUser.createdAt).toISOString() : undefined;
+            response.clientCountry = clientUser.country || undefined;
+            response.clientCity = clientUser.townCity || undefined;
+          }
+
+          const clientReviews = await Review.find({ reviewer: clientId }).select('rating').lean();
+          const n = (clientReviews || []).length;
+          response.clientReviewCount = n;
+          response.clientRatingAverage =
+            n === 0 ? 0 : clientReviews.reduce((s, r) => s + (r.rating || 0), 0) / n;
+        }
+        responses.push(response);
+      }
+
+      return res.json(responses);
     }
 
     return res.status(403).json({ error: 'Only client or professional can list jobs' });
@@ -899,11 +959,19 @@ router.get('/:id', authenticateToken, async (req, res) => {
         response.closesAt = undefined;
       }
     }
-    const clientUser = await User.findById(job.clientId).select('firstName lastName tradingName avatar createdAt').lean();
+    const clientUser = await User.findById(job.clientId).select('firstName lastName tradingName avatar createdAt country townCity').lean();
     if (clientUser) {
       response.clientName = clientUser.tradingName || [clientUser.firstName, clientUser.lastName].filter(Boolean).join(' ') || 'Client';
       response.clientAvatar = clientUser.avatar;
       response.clientMemberSince = clientUser.createdAt ? new Date(clientUser.createdAt).toISOString() : undefined;
+      response.clientCountry = clientUser.country || undefined;
+      response.clientCity = clientUser.townCity || undefined;
+    }
+    if (clientUser && job.clientId) {
+      const clientReviews = await Review.find({ reviewer: job.clientId }).select('rating').lean();
+      const n = (clientReviews || []).length;
+      response.clientReviewCount = n;
+      response.clientRatingAverage = n === 0 ? undefined : (clientReviews.reduce((s, r) => s + (r.rating || 0), 0) / n);
     }
     // Ensure each quote has the professional's current avatar (from User) so avatars always display
     const quoteProIds = [...new Set((response.quotes || []).map((q) => q.professionalId).filter(Boolean))];
@@ -919,6 +987,54 @@ router.get('/:id', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('[Jobs] Get error:', err);
     res.status(500).json({ error: err.message || 'Failed to get job' });
+  }
+});
+
+// GET /api/jobs/:id/client-profile – client public profile for preview modal (authenticated)
+router.get('/:id/client-profile', authenticateToken, async (req, res) => {
+  try {
+    const job = await findJobByIdOrSlug(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const clientId = job.clientId?._id || job.clientId;
+    if (!clientId) return res.status(404).json({ error: 'Client not found' });
+    const clientUser = await User.findById(clientId)
+      .select('firstName lastName tradingName avatar createdAt publicProfile country townCity')
+      .lean();
+    if (!clientUser) return res.status(404).json({ error: 'Client not found' });
+    const reviews = await Review.find({ reviewer: clientId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate('professional', 'firstName lastName tradingName avatar')
+      .lean();
+    const reviewList = (reviews || []).map((r) => ({
+      id: (r._id || r.id)?.toString?.(),
+      rating: r.rating,
+      comment: r.comment || null,
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+      professionalName: r.professional?.tradingName || [r.professional?.firstName, r.professional?.lastName].filter(Boolean).join(' ') || 'Professional',
+      professionalAvatar: r.professional?.avatar,
+      response: r.response || null,
+      responseAt: r.responseAt ? new Date(r.responseAt).toISOString() : null,
+    }));
+    const reviewCount = reviewList.length;
+    const ratingAverage = reviewCount === 0
+      ? 0
+      : reviewList.reduce((s, r) => s + (r.rating || 0), 0) / reviewCount;
+    const name = (clientUser.tradingName || [clientUser.firstName, clientUser.lastName].filter(Boolean).join(' ') || 'Client').trim();
+    return res.json({
+      name,
+      avatar: clientUser.avatar,
+      createdAt: clientUser.createdAt ? new Date(clientUser.createdAt).toISOString() : null,
+      bio: (clientUser.publicProfile && clientUser.publicProfile.bio) ? clientUser.publicProfile.bio.trim() : '',
+      country: clientUser.country || null,
+      townCity: clientUser.townCity || null,
+      reviews: reviewList,
+      reviewCount,
+      ratingAverage: Math.round(ratingAverage * 10) / 10,
+    });
+  } catch (err) {
+    console.error('[Jobs] Client profile error:', err);
+    res.status(500).json({ error: err.message || 'Failed to load client profile' });
   }
 });
 

@@ -11,7 +11,6 @@ import {
   Banknote,
   MessageCircle,
   Eye,
-  Edit,
   Trash2,
   Star,
   Clock,
@@ -294,17 +293,6 @@ export default function MyJobsSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setSelectedJob(job.id);
-                      setIsEditDialogOpen(true);
-                    }}
-                    className="font-['Poppins',sans-serif] hover:bg-[#FFF5EB] hover:text-[#FE8A0F] hover:border-[#FE8A0F]"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
                     onClick={() => handleDeleteJob(job.id)}
                     className="font-['Poppins',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
                   >
@@ -556,24 +544,6 @@ export default function MyJobsSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Job Dialog (Simplified) */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="w-[70vw]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px]">
-              Edit Job
-            </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px]">
-              Update your job details
-            </DialogDescription>
-          </DialogHeader>
-          <div className="text-center py-8">
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              Job editing functionality will be available soon.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

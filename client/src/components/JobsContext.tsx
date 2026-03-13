@@ -110,8 +110,16 @@ export interface Job {
   clientName?: string;
   /** Client avatar URL (for About the Client card) */
   clientAvatar?: string;
-  /** Client account creation date (for Member Since) */
+  /** Client account creation date (Member Since) */
   clientMemberSince?: string;
+  /** Client country (for display) */
+  clientCountry?: string;
+  /** Client city/town (for display) */
+  clientCity?: string;
+  /** Number of reviews the client has left */
+  clientReviewCount?: number;
+  /** Average rating of reviews the client has left */
+  clientRatingAverage?: number;
   milestones?: Milestone[];
   awardedProfessionalId?: string;
   /** Attachments from post-job (name, url, mimeType, size) */

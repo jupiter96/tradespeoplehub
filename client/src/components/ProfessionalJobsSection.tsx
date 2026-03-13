@@ -248,15 +248,21 @@ function ActiveJobsSection() {
                   <div className="flex-1">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="flex-1">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1">
                           {job.title}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 mb-3">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif]">
                             <CheckCircle className="w-3 h-3 mr-1" />
                             In Progress
                           </Badge>
                         </div>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-3">
+                          Budget{" "}
+                          {job.budgetMin != null && job.budgetMax != null
+                            ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
+                            : formatPrice(job.budgetAmount ?? 0)}
+                        </p>
                       </div>
                     </div>
 
@@ -279,15 +285,6 @@ function ActiveJobsSection() {
 
                   {/* Right Side */}
                   <div className="flex flex-col items-start md:items-end gap-3">
-                    <div className="text-right">
-                      <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-                        {acceptedQuote?.price != null ? formatPrice(Number(acceptedQuote.price)) : (job.budgetMin != null && job.budgetMax != null ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}` : formatPrice(job.budgetAmount ?? 0))}
-                      </p>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                        Your Quote
-                      </p>
-                    </div>
-
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();

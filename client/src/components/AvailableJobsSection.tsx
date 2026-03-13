@@ -9,7 +9,6 @@ import {
   FileText,
   MapPin,
   Calendar,
-  Banknote,
   Send,
   Flame,
   Clock,
@@ -22,6 +21,7 @@ import {
   CheckCircle2,
   Sparkles,
   MessageCircle,
+  Star,
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
@@ -121,6 +121,34 @@ export default function AvailableJobsSection() {
     if (timing === "urgent") return <Flame className="w-4 h-4 text-red-500" />;
     if (timing === "flexible") return <Clock className="w-4 h-4 text-blue-500" />;
     return <Calendar className="w-4 h-4 text-gray-500" />;
+  };
+
+  const getTruncatedDescription = (description: string, maxLength: number = 250) => {
+    if (!description) return "";
+    const singleLine = description.replace(/\s+/g, " ").trim();
+    if (singleLine.length <= maxLength) return singleLine;
+    return singleLine.slice(0, maxLength) + "...";
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return "just now";
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes === 1) return "a minute ago";
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours === 1) return "an hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "a day ago";
+    return `${diffDays} days ago`;
   };
 
   // Generate random distance between 0.5 and 25 miles
@@ -290,98 +318,133 @@ export default function AvailableJobsSection() {
               className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
               onClick={() => navigate(`/job/${job.slug || job.id}`)}
             >
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                          {job.title}
-                        </h3>
-                        {getTimingIcon(job.timing)}
-                        <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]">
-                          {job.sector}
-                        </Badge>
-                      </div>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
-                        {job.description}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-4 h-4" />
-                          {formatJobLocationCityOnly(job)} • {getDistance(job.id)} miles
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Banknote className="w-4 h-4" />
-                          {job.budgetMin != null && job.budgetMax != null
-                          ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)} budget`
-                          : `${formatPrice(job.budgetAmount ?? 0)} budget`}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4" />
-                          Posted {formatDate(job.postedAt)}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {job.categories.map((category, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="outline"
-                            className="bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]/30 font-['Poppins',sans-serif] text-[11px]"
-                          >
-                            {category}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      {job.title}
+                    </h3>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-nowrap">
+                      {(() => {
+                        const count = (job.quotes || []).length;
+                        const label = count === 1 ? "Quote" : "Quotes";
+                        return `${count} ${label}`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Budget{" "}
+                      {job.budgetMin != null && job.budgetMax != null
+                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)} ${symbol}`
+                        : `${formatPrice(job.budgetAmount ?? 0)} ${symbol}`}
+                    </p>
+                    {getTimingIcon(job.timing)}
+                    <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]">
+                      {job.sector}
+                    </Badge>
+                  </div>
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                    {getTruncatedDescription(job.description)}
+                  </p>
+                  {/* 위치/게시일 정보는 카드 하단(리뷰 옆)으로 이동 */}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {job.categories.map((category, idx) => (
+                      <Badge
+                        key={idx}
+                        variant="outline"
+                        className="bg-[#FFF5EB] text-[#FE8A0F] border-[#FE8A0F]/30 font-['Poppins',sans-serif] text-[11px]"
+                      >
+                        {category}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const hasSubmittedQuote = (job.quotes || []).some((q) => q.professionalId === userInfo?.id);
-                      if (!hasSubmittedQuote) {
-                        toast.info("Please send a quote first. You can chat after your quote is submitted.");
-                        return;
-                      }
-                      startConversation({
-                        id: `client-${job.clientId}`,
-                        name: job.clientName || "Client",
-                        avatar: job.clientAvatar,
-                        online: true,
-                        jobId: job.id,
-                        jobTitle: job.title,
-                      });
-                      navigate(`/account?tab=messenger`);
-                    }}
-                    className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-1.5" />
-                    Chat
-                  </Button>
-                  {(job.quotes || []).some((q) => q.professionalId === userInfo?.id) ? (
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium inline-flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-[#059669]" />
-                      Quote Submitted
-                    </span>
-                  ) : (
+                <div className="pt-2 border-t border-gray-100 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <div className="flex items-center gap-1.5">
+                      {(() => {
+                        const count = job.clientReviewCount ?? 0;
+                        const hasReviews = count > 0 && job.clientRatingAverage != null;
+                        return (
+                          <>
+                            <Star
+                              className={cn(
+                                "w-4 h-4",
+                                hasReviews ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300"
+                              )}
+                            />
+                            {hasReviews ? (
+                              <span>
+                                {formatNumber(job.clientRatingAverage as number, 1)} ({count}{" "}
+                                {count === 1 ? "review" : "reviews"})
+                              </span>
+                            ) : (
+                              <span>0 review</span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4" />
+                      {formatJobLocationCityOnly(job)} • {getDistance(job.id)} miles
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" />
+                      <span>{getRelativeTime(job.postedAt)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <Button
+                      variant="outline"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedJob(job.id);
-                        setIsQuoteDialogOpen(true);
+                        const hasSubmittedQuote = (job.quotes || []).some((q) => q.professionalId === userInfo?.id);
+                        if (!hasSubmittedQuote) {
+                          toast.info("Please send a quote first. You can chat after your quote is submitted.");
+                          return;
+                        }
+                        startConversation({
+                          id: `client-${job.clientId}`,
+                          name: job.clientName || "Client",
+                          avatar: job.clientAvatar,
+                          online: true,
+                          jobId: job.id,
+                          jobTitle: job.title,
+                        });
+                        navigate(`/account?tab=messenger`);
                       }}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                      className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                     >
-                      <Send className="w-4 h-4 mr-1.5" />
-                      Send Quote
+                      <MessageCircle className="w-4 h-4 mr-1.5" />
+                      Chat
                     </Button>
-                  )}
+                    {(job.quotes || []).some((q) => q.professionalId === userInfo?.id) ? (
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium inline-flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#059669]" />
+                        Quote Submitted
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedJob(job.id);
+                          setIsQuoteDialogOpen(true);
+                        }}
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                      >
+                        <Send className="w-4 h-4 mr-1.5" />
+                        Send Quote
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -430,7 +493,6 @@ export default function AvailableJobsSection() {
               {/* Quote Details Section */}
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl p-5 shadow-sm">
                 <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#FE8A0F] mb-4 flex items-center gap-2">
-                  <Banknote className="w-5 h-5" />
                   Quote Details
                 </h3>
                 <div className="space-y-5">
