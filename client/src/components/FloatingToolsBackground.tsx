@@ -126,11 +126,21 @@ const generateRandomPath = (): FloatingTool[] => {
   });
 };
 
-function FloatingToolsBackgroundInner() {
+interface FloatingToolsBackgroundInnerProps {
+  contained?: boolean;
+}
+
+function FloatingToolsBackgroundInner({ contained }: FloatingToolsBackgroundInnerProps) {
   const floatingTools = useMemo(() => generateRandomPath(), []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div
+      className={
+        contained
+          ? "absolute inset-0 overflow-hidden pointer-events-none"
+          : "fixed inset-0 overflow-hidden pointer-events-none z-0"
+      }
+    >
       {floatingTools.map((tool, index) => {
         const { Icon, color, delay, startX, startY, endX, endY, mid1X, mid1Y, mid2X, mid2Y, duration, size } = tool;
 
@@ -172,7 +182,11 @@ function FloatingToolsBackgroundInner() {
   );
 }
 
-const FloatingToolsBackground = memo(function FloatingToolsBackground() {
-  return <FloatingToolsBackgroundInner />;
+interface FloatingToolsBackgroundProps {
+  contained?: boolean;
+}
+
+const FloatingToolsBackground = memo(function FloatingToolsBackground({ contained }: FloatingToolsBackgroundProps) {
+  return <FloatingToolsBackgroundInner contained={contained} />;
 });
 export default FloatingToolsBackground;

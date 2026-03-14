@@ -97,6 +97,7 @@ import redditIcon from "../assets/reddit.png";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
+import FloatingToolsBackground from "./FloatingToolsBackground";
 
 type SocialShareLink = {
   name: string;
@@ -985,15 +986,18 @@ export default function JobDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f0f0]">
+    <div className="min-h-screen bg-[#f0f0f0] relative">
+      {/* Floating tools animation behind body layout */}
+      <FloatingToolsBackground contained />
+      <div className="relative z-10">
       {/* Navigation */}
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>
 
       {/* Header Section - White */}
-      <div className="bg-white py-4 md:py-8 mt-[50px] md:mt-0">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16">
+      <div className="bg-white py-1 md:py-2 mt-[50px] md:mt-0">
+        <div className="max-w-[1000px] mx-auto px-4 md:px-6 lg:px-16">
           <Button
             variant="ghost"
             onClick={() => navigate("/account?tab=my-jobs")}
@@ -1005,36 +1009,10 @@ export default function JobDetailPage() {
           
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
             <div className="flex-1 min-w-0">
-              <h1 className="font-['Poppins',sans-serif] text-[20px] sm:text-[28px] md:text-[40px] text-[#2c353f] leading-tight">
+              <h1 className="font-['Poppins',sans-serif] text-[14px] sm:text-[18px] md:text-[24px] text-[#2c353f] leading-tight">
                 {job.title}
               </h1>
-            </div>
-            <div className="flex flex-col items-end gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2 sm:gap-3">
-                {/* Professional: Already submitted – hide from In Progress onwards */}
-                {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
-                  <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
-                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                    Quote Submitted
-                  </Badge>
-                )}
-                {/* Job Status Badge */}
-                {getStatusBadge("large")}
-              </div>
-              {/* Share button */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F] border-0 shadow-none"
-                onClick={() => setShowShareModal(true)}
-                aria-label="Share this job"
-              >
-                <Share2 className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-
+              
           {/* Client info – below job title */}
           <div>
             <button
@@ -1070,14 +1048,6 @@ export default function JobDetailPage() {
               className="flex items-center gap-3 text-left hover:opacity-90 transition-opacity rounded-lg p-1 -m-1"
               aria-label="View client profile"
             >
-              <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
-                {resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar) && (
-                  <AvatarImage src={resolveAvatarUrl(isJobOwner ? userInfo?.avatar : job.clientAvatar)!} />
-                )}
-                <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-sm">
-                  {getTwoLetterInitials(isJobOwner ? (userInfo?.name ?? "C") : (job.clientName ?? "C"), "C")}
-                </AvatarFallback>
-              </Avatar>
               <div>
                 <p className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-medium text-[#2c353f]">
                   {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
@@ -1095,12 +1065,40 @@ export default function JobDetailPage() {
               </div>
             </button>
           </div>
+            </div>
+            <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Professional: Already submitted – hide from In Progress onwards */}
+                {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
+                  <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] px-3 sm:px-4 py-1.5 sm:py-2 text-[12px] sm:text-[14px]">
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                    Quote Submitted
+                  </Badge>
+                )}
+                {/* Job Status Badge */}
+                {getStatusBadge("large")}
+              </div>
+              {/* Share button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F] border-0 shadow-none"
+                onClick={() => setShowShareModal(true)}
+                aria-label="Share this job"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+
         </div>
       </div>
 
       {/* Tabs Navigation */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16">
+        <div className="max-w-[1000px] mx-auto px-4 md:px-6 lg:px-16">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="overflow-x-auto scrollbar-hide -mx-4 md:mx-0 px-4 md:px-0">
               <TabsList className="bg-transparent border-0 h-auto p-0 gap-2 flex-nowrap inline-flex min-w-full md:min-w-0">
@@ -1176,7 +1174,7 @@ export default function JobDetailPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-16 py-8">
+      <div className="max-w-[1000px] mx-auto px-4 md:px-6 lg:px-16 py-8">
         <div className="grid grid-cols-1 gap-6">
           {/* Main Content - full width */}
           <div className="space-y-6">
@@ -3755,6 +3753,7 @@ export default function JobDetailPage() {
           jobTitle={job.title}
         />
       )}
+      </div>
     </div>
   );
 }
