@@ -846,6 +846,17 @@ export default function JobDetailPage() {
     }
   };
 
+  const formatNameWithLastInitial = (raw?: string | null) => {
+    const name = (raw || "").toString().trim();
+    if (!name) return "Client";
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) return parts[0] || "Client";
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    const initial = last ? `${last.charAt(0)}.` : "";
+    return `${first} ${initial}`.trim();
+  };
+
   const handleWithdrawConfirm = async () => {
     if (!quoteToWithdraw) return;
     setWithdrawing(true);
@@ -1071,7 +1082,9 @@ export default function JobDetailPage() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap text-[12px] sm:text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                   <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                    {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
+                    {isJobOwner
+                      ? formatNameWithLastInitial(userInfo?.name || "Client")
+                      : formatNameWithLastInitial(job.clientName || "Client")}
                   </p>
                   <span className="flex items-center gap-0.5">
                     <Star className="w-3.5 h-3.5 text-[#2c353f] fill-[#2c353f]" />
