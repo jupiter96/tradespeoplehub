@@ -216,7 +216,7 @@ router.post('/generate-description', async (req, res) => {
     const openai = new OpenAI({ apiKey });
 
     const systemPrompt = `You are a helpful assistant that writes clear, professional job postings for a trades and services platform (UK). The posting is written by a single client (homeowner or business owner). Given a sector and optional key points or keywords from the client, you must respond in valid JSON only with exactly two keys: "title" and "description".
-1. title: A short job headline (one concise line, e.g. "Install new bathroom suite" or "Fix leaking kitchen tap").
+1. title: A clear, descriptive job headline that is at least 45 characters long. Expand the headline so it reaches 45 characters or more (e.g. "Install new bathroom suite including taps and toilet" or "Fix leaking kitchen tap and replace washers as needed"). IMPORTANT: The title must be at least 45 characters. Never return a title shorter than 45 characters.
 2. description: A full job description - well structured and easy to read. IMPORTANT: Use actual line breaks (newlines) for formatting:
    - Put each section on its own line or block (e.g. "Overview:", "What I need:", "Scope of work:", "Timing/Preferences:").
    - After each section label, start the content on the next line or after a colon and space.
@@ -226,8 +226,8 @@ router.post('/generate-description', async (req, res) => {
 
     const sectorPart = sectorLabel ? `Sector: ${sectorLabel}. ` : '';
     const userPrompt = sectorLabel
-      ? `${sectorPart}Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`
-      : `Key points or keywords from the client: ${points}. Generate a job title and a full, structured job description for a trades and services job. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`;
+      ? `${sectorPart}Key points or keywords from the client: ${points}. Generate a job title (at least 45 characters long) and a full, structured job description. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`
+      : `Key points or keywords from the client: ${points}. Generate a job title (at least 45 characters long) and a full, structured job description for a trades and services job. Use newlines in the description between sections and for bullet points so it displays with clear line breaks and structure. Return valid JSON with "title" and "description".`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -250,10 +250,16 @@ router.post('/generate-description', async (req, res) => {
       return res.status(502).json({ error: 'Invalid AI response format' });
     }
 
-    const title = (parsed.title || parsed.jobTitle || parsed.headline || '').trim();
+    const TITLE_MIN_LENGTH = 45;
+    let title = (parsed.title || parsed.jobTitle || parsed.headline || '').trim();
     const description = (parsed.description || parsed.jobDescription || parsed.body || '').trim();
     if (!title || !description) {
       return res.status(502).json({ error: 'AI did not return title and description' });
+    }
+    // Ensure title is at least 45 characters (append from description or key points if AI returned shorter)
+    if (title.length < TITLE_MIN_LENGTH) {
+      const extra = (description.trim().slice(0, 60) || points.trim().slice(0, 60)).replace(/\s+/g, ' ');
+      title = (title + (extra ? ' – ' + extra : ' – professional service required')).trim().slice(0, 200);
     }
 
     return res.json({ title, description });

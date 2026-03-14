@@ -394,7 +394,8 @@ export default function PostJobPage() {
   type AttachedFileItem = { file: File; previewUrl?: string };
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   
-  // Step 3: Headline (pre-filled when using Generate text by AI)
+  // Step 3: Headline (pre-filled when using Generate text by AI) – min 45 characters
+  const JOB_TITLE_MIN_LENGTH = 45;
   const [jobTitle, setJobTitle] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
   
@@ -529,7 +530,7 @@ export default function PostJobPage() {
       case 1:
         return jobDescription.trim() !== "";
       case 2:
-        return jobTitle.trim() !== "" && jobDescription.trim() !== "";
+        return jobTitle.trim().length >= JOB_TITLE_MIN_LENGTH && jobDescription.trim() !== "";
       case 3:
         return selectedSector !== "" && selectedMainCategories.length >= 1 && selectedSkills.length >= 5;
       case 4:
@@ -1010,7 +1011,7 @@ export default function PostJobPage() {
       <header className="sticky top-0 h-[100px] md:h-[122px] z-50 bg-white">
         <Nav />
       </header>
-      <section className="max-w-4xl mx-auto px-4 py-8 md:py-12 mt-[50px] md:mt-0 md:bg-white md:rounded-3xl md:shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8" aria-label="Post job form">
+      <section className="relative z-10 max-w-4xl mx-auto px-4 py-8 md:py-12 mt-[50px] md:mt-0 md:bg-white md:rounded-3xl md:shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8" aria-label="Post job form">
         {isEditMode && editJobLoading && (
           <section className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-12 text-center mb-8" aria-label="Loading">
             <p className="font-['Poppins',sans-serif] text-[16px] text-[#6b6b6b]">Loading job...</p>
@@ -1094,958 +1095,975 @@ export default function PostJobPage() {
           </section>
         </section>
 
-          {/* Step 1: Description – key points + Generate text by AI (no sector required) */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  Describe your job
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  Enter key points or keywords about what you need. Then click &quot;Generate text by AI&quot; to create a full job title and description. Click Next to review and edit them.
-                </p>
-              </div>
-
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                  Key points or keywords
-                </Label>
-                <Textarea
-                  placeholder="e.g., leaking tap, kitchen, need fix by weekend"
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  rows={6}
-                  className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
-                />
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGenerateByAI}
-                    disabled={!jobDescription.trim() || aiGenerating}
-                    className={cn(
-                      "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
-                      !jobDescription.trim() || aiGenerating
-                        ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
-                        : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
-                    )}
-                  >
-                    <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
-                    {aiGenerating ? "Generating…" : "Generate text by AI"}
-                  </button>
+        {/* Form Content */}
+        <div className="max-w-4xl mx-auto px-4 pb-8 -mt-4">
+          <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8">
+            {/* Step 1: Description – key points + Generate text by AI (no sector required) */}
+            {currentStep === 1 && (
+              <div className="space-y-6 bg-white p-8 rounded-lg">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Describe your job
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Enter key points or keywords about what you need. Then click &quot;Generate text by AI&quot; to create a full job title and description. Click Next to review and edit them.
+                  </p>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* Step 2: Title & Description – review and edit (pre-filled after AI generate) */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  Job title and description
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  Review and edit the job title and description below. You can change them before continuing.
-                </p>
-              </div>
-
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                  Job title
-                </Label>
-                <Input
-                  placeholder="e.g., Install new bathroom suite"
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                  className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] w-full"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    Description
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                    Key points or keywords
                   </Label>
-                  <div className="flex items-center gap-1">
-                    {descriptionPreviousState.trim() !== "" && (
-                      <button
-                        type="button"
-                        onClick={() => setShowRestoreDescriptionModal(true)}
-                        title={jobDescription.trim() === "" ? "Revert: restore deleted content" : "Restore to previous content"}
-                        className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
-                      >
-                        {jobDescription.trim() === "" ? (
-                          <Undo2 className="w-4 h-4" />
-                        ) : (
-                          <History className="w-4 h-4" />
-                        )}
-                      </button>
-                    )}
+                  <Textarea
+                    placeholder="e.g., leaking tap, kitchen, need fix by weekend"
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    rows={6}
+                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none"
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setShowClearDescriptionModal(true)}
-                      title="Clear description"
-                      className="p-2 rounded-lg text-[#6b6b6b] hover:bg-gray-100 hover:text-red-500 transition-colors"
+                      onClick={handleGenerateByAI}
+                      disabled={!jobDescription.trim() || aiGenerating}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-6 py-3 rounded-xl border-2 transition-all duration-200",
+                        !jobDescription.trim() || aiGenerating
+                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
+                      )}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiGenerating && "animate-pulse")} />
+                      {aiGenerating ? "Generating…" : "Generate text by AI"}
                     </button>
                   </div>
                 </div>
-                <Textarea
-                  placeholder="Describe what you need..."
-                  value={jobDescription} 
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  rows={10}
-                  className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none whitespace-pre-wrap"
-                />
               </div>
+            )}
 
-              {/* Restore description confirmation */}
-              <AlertDialog open={showRestoreDescriptionModal} onOpenChange={setShowRestoreDescriptionModal}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-['Poppins',sans-serif]">
-                      Restore to previous content?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="font-['Poppins',sans-serif]">
-                      The description will be replaced with the previous content (before the last change).
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
-                      onClick={() => {
-                        setJobDescription(descriptionPreviousState);
-                        setShowRestoreDescriptionModal(false);
-                        toast.success("Restored to previous content.");
-                      }}
-                    >
-                      Restore
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {/* Clear description confirmation */}
-              <AlertDialog open={showClearDescriptionModal} onOpenChange={setShowClearDescriptionModal}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-['Poppins',sans-serif]">
-                      Clear description?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="font-['Poppins',sans-serif]">
-                      All text in the description field will be removed.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="font-['Poppins',sans-serif] bg-red-500 hover:bg-red-600"
-                      onClick={() => {
-                        setDescriptionPreviousState(jobDescription);
-                        setJobDescription("");
-                        setShowClearDescriptionModal(false);
-                        toast.success("Description cleared.");
-                      }}
-                    >
-                      Clear
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {/* Attach files */}
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  className={cn(
-                    "rounded-xl border-2 border-dashed transition-all cursor-pointer flex items-center justify-center min-h-[50px] py-4 px-4",
-                    isDraggingFiles
-                      ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                      : "border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50"
-                  )}
-                >
-                  <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                    {isDraggingFiles ? "Drop files here" : "Attach files (images, videos, documents — drag and drop or click)"}
-                  </span>
+            {/* Step 2: Title & Description – review and edit (pre-filled after AI generate) */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Job title and description
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Review and edit the job title and description below. You can change them before continuing.
+                  </p>
                 </div>
-                {isEditMode && existingAttachments.length > 0 && (
-                  <div className="mt-3">
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">Current attachments</p>
-                    <ul className="flex flex-wrap gap-2">
-                      {existingAttachments.map((a, i) => (
-                        <li key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <span className="truncate max-w-[180px]">{a.name}</span>
-                          <button type="button" aria-label="Remove" onClick={() => setExistingAttachments((prev) => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 flex-shrink-0">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {attachedFiles.length > 0 && (
-                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {attachedFiles.map((item, index) => {
-                      const isImage = item.file.type.startsWith("image/");
-                      const isVideo = item.file.type.startsWith("video/");
-                      return (
-                        <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 min-h-[80px]">
-                          {isImage && item.previewUrl ? (
-                            <img src={item.previewUrl} alt={item.file.name} className="w-full aspect-square object-cover" />
-                          ) : isVideo && item.previewUrl ? (
-                            <div className="relative w-full aspect-square overflow-hidden bg-black/5">
-                              <VideoThumbnail
-                                videoUrl={item.previewUrl}
-                                className="w-full h-full"
-                                style={{ minWidth: "100%", minHeight: "100%", position: "absolute", inset: 0 }}
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
-                              <FileText className="w-8 h-8 text-gray-400" />
-                              <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); removeAttachedFile(index); }}
-                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* Step 3: Select skills required – sector chosen manually, then skills by sector */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  Select the skills required
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                  Select your job sector first, then choose the skills (categories) required for your job.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                  <div className="flex flex-col">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                      Sector
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Job title
                     </Label>
-                    <Select 
-                      value={selectedSector} 
-                      onValueChange={(value) => {
-                        setSelectedSector(value);
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
-                        <SelectValue placeholder="Select sector..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sectors.map((sector) => (
-                          <SelectItem key={sector.value} value={sector.value}>
-                            {sector.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <span className={`font-['Poppins',sans-serif] text-[12px] ${jobTitle.trim().length < JOB_TITLE_MIN_LENGTH ? "text-red-600" : "text-[#6b6b6b]"}`}>
+                      {jobTitle.length} characters (min {JOB_TITLE_MIN_LENGTH})
+                    </span>
                   </div>
+                  <Input
+                    placeholder="e.g., Install new bathroom suite (type at least 45 characters)"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    className={`h-12 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] w-full ${
+                      jobTitle.trim().length < JOB_TITLE_MIN_LENGTH
+                        ? "border-red-400 focus:border-red-500"
+                        : "border-gray-200 focus:border-[#FE8A0F]"
+                    }`}
+                  />
+                  {jobTitle.trim().length < JOB_TITLE_MIN_LENGTH && (
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mt-1.5">
+                      Please type 45 characters at least.
+                    </p>
+                  )}
+                </div>
 
-                  <div className="flex flex-col">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                      Category
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Description
                     </Label>
-                    <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                      <PopoverTrigger asChild>
+                    <div className="flex items-center gap-1">
+                      {descriptionPreviousState.trim() !== "" && (
                         <button
                           type="button"
-                          disabled={!selectedSector}
-                          className={cn(
-                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                            !selectedSector
-                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                              : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
-                          )}
+                          onClick={() => setShowRestoreDescriptionModal(true)}
+                          title={jobDescription.trim() === "" ? "Revert: restore deleted content" : "Restore to previous content"}
+                          className="p-2 rounded-lg transition-colors font-['Poppins',sans-serif] text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F]"
                         >
-                          <div className="flex flex-wrap gap-2 items-center">
-                            {selectedMainCategories.length > 0 ? (
-                              <>
-                                {selectedMainCategories.map((slug) => {
-                                  const cat = mainCategoriesForSector.find((c) => c.value === slug);
+                          {jobDescription.trim() === "" ? (
+                            <Undo2 className="w-4 h-4" />
+                          ) : (
+                            <History className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowClearDescriptionModal(true)}
+                        title="Clear description"
+                        className="p-2 rounded-lg text-[#6b6b6b] hover:bg-gray-100 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <Textarea
+                    placeholder="Describe what you need..."
+                    value={jobDescription} 
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    rows={10}
+                    className="w-full border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px] resize-none whitespace-pre-wrap"
+                  />
+                </div>
+
+                {/* Restore description confirmation */}
+                <AlertDialog open={showRestoreDescriptionModal} onOpenChange={setShowRestoreDescriptionModal}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-['Poppins',sans-serif]">
+                        Restore to previous content?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-['Poppins',sans-serif]">
+                        The description will be replaced with the previous content (before the last change).
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
+                        onClick={() => {
+                          setJobDescription(descriptionPreviousState);
+                          setShowRestoreDescriptionModal(false);
+                          toast.success("Restored to previous content.");
+                        }}
+                      >
+                        Restore
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Clear description confirmation */}
+                <AlertDialog open={showClearDescriptionModal} onOpenChange={setShowClearDescriptionModal}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-['Poppins',sans-serif]">
+                        Clear description?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="font-['Poppins',sans-serif]">
+                        All text in the description field will be removed.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="font-['Poppins',sans-serif] bg-red-500 hover:bg-red-600"
+                        onClick={() => {
+                          setDescriptionPreviousState(jobDescription);
+                          setJobDescription("");
+                          setShowClearDescriptionModal(false);
+                          toast.success("Description cleared.");
+                        }}
+                      >
+                        Clear
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Attach files */}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className={cn(
+                      "rounded-xl border-2 border-dashed transition-all cursor-pointer flex items-center justify-center min-h-[50px] py-4 px-4",
+                      isDraggingFiles
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 bg-gray-50/50 hover:border-gray-300 hover:bg-gray-50"
+                    )}
+                  >
+                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                      {isDraggingFiles ? "Drop files here" : "Attach files (images, videos, documents — drag and drop or click)"}
+                    </span>
+                  </div>
+                  {isEditMode && existingAttachments.length > 0 && (
+                    <div className="mt-3">
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-2">Current attachments</p>
+                      <ul className="flex flex-wrap gap-2">
+                        {existingAttachments.map((a, i) => (
+                          <li key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span className="truncate max-w-[180px]">{a.name}</span>
+                            <button type="button" aria-label="Remove" onClick={() => setExistingAttachments((prev) => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 flex-shrink-0">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {attachedFiles.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {attachedFiles.map((item, index) => {
+                        const isImage = item.file.type.startsWith("image/");
+                        const isVideo = item.file.type.startsWith("video/");
+                        return (
+                          <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 min-h-[80px]">
+                            {isImage && item.previewUrl ? (
+                              <img src={item.previewUrl} alt={item.file.name} className="w-full aspect-square object-cover" />
+                            ) : isVideo && item.previewUrl ? (
+                              <div className="relative w-full aspect-square overflow-hidden bg-black/5">
+                                <VideoThumbnail
+                                  videoUrl={item.previewUrl}
+                                  className="w-full h-full"
+                                  style={{ minWidth: "100%", minHeight: "100%", position: "absolute", inset: 0 }}
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-full aspect-square flex flex-col items-center justify-center gap-1 p-2">
+                                <FileText className="w-8 h-8 text-gray-400" />
+                                <span className="font-['Poppins',sans-serif] text-[11px] text-gray-600 truncate w-full text-center">{item.file.name}</span>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); removeAttachedFile(index); }}
+                              className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Select skills required – sector chosen manually, then skills by sector */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Select the skills required
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                    Select your job sector first, then choose the skills (categories) required for your job.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Sector
+                      </Label>
+                      <Select 
+                        value={selectedSector} 
+                        onValueChange={(value) => {
+                          setSelectedSector(value);
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-14 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]">
+                          <SelectValue placeholder="Select sector..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sectors.map((sector) => (
+                            <SelectItem key={sector.value} value={sector.value}>
+                              {sector.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Category
+                      </Label>
+                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={!selectedSector}
+                            className={cn(
+                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                              !selectedSector
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
+                            )}
+                          >
+                            <div className="flex flex-wrap gap-2 items-center">
+                              {selectedMainCategories.length > 0 ? (
+                                <>
+                                  {selectedMainCategories.map((slug) => {
+                                    const cat = mainCategoriesForSector.find((c) => c.value === slug);
+                                    return (
+                                      <div
+                                        key={slug}
+                                        className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedMainCategories(selectedMainCategories.filter((c) => c !== slug));
+                                        }}
+                                      >
+                                        <span className="text-[13px]">{cat?.label ?? slug}</span>
+                                        <X className="w-3 h-3 hover:text-red-200 transition-colors" />
+                                      </div>
+                                    );
+                                  })}
+                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                                </>
+                              ) : (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-[#6b6b6b]">
+                                    {selectedSector ? "Select main categories..." : "Select sector first"}
+                                  </span>
+                                  {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </PopoverTrigger>
+                        {selectedSector && (
+                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[280px] flex flex-col" align="start">
+                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[260px]" shouldFilter={true}>
+                              <div className="p-2 border-b bg-muted/30">
+                                <CommandInput placeholder="Search main categories..." className="font-['Poppins',sans-serif] h-10" />
+                              </div>
+                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[220px] overscroll-contain">
+                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                  No category found.
+                                </CommandEmpty>
+                                {mainCategoriesForSector.map((cat) => {
+                                  const isSelected = selectedMainCategories.includes(cat.value);
                                   return (
+                                    <CommandItem
+                                      key={cat.itemKey}
+                                      value={cat.label}
+                                      onSelect={() => {
+                                        if (isSelected) {
+                                          setSelectedMainCategories(selectedMainCategories.filter((c) => c !== cat.value));
+                                        } else {
+                                          setSelectedMainCategories([...selectedMainCategories, cat.value]);
+                                        }
+                                      }}
+                                      className="font-['Poppins',sans-serif] cursor-pointer"
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-[13px]">{cat.label}</span>
+                                        {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                      </div>
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        )}
+                      </Popover>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
+                        Skills
+                      </Label>
+                      <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            disabled={!selectedSector || selectedMainCategories.length === 0}
+                            className={cn(
+                              "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
+                              !selectedSector || selectedMainCategories.length === 0
+                                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
+                            )}
+                          >
+                            <div className="flex flex-wrap gap-2 items-center">
+                              {selectedSkills.length > 0 ? (
+                                <>
+                                  {selectedSkills.map((slug) => (
                                     <div
                                       key={slug}
                                       className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setSelectedMainCategories(selectedMainCategories.filter((c) => c !== slug));
+                                        setSelectedSkills(selectedSkills.filter((s) => s !== slug));
                                       }}
                                     >
-                                      <span className="text-[13px]">{cat?.label ?? slug}</span>
+                                      <span className="text-[13px]">{skillLabelBySlug[slug] ?? slug}</span>
                                       <X className="w-3 h-3 hover:text-red-200 transition-colors" />
                                     </div>
+                                  ))}
+                                  <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
+                                </>
+                              ) : (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-[#6b6b6b]">
+                                    {!selectedSector
+                                      ? "Select sector first"
+                                      : selectedMainCategories.length === 0
+                                        ? "Select categories first"
+                                        : "Search and select skills (subcategories)..."}
+                                  </span>
+                                  {selectedSector && selectedMainCategories.length > 0 && <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        </PopoverTrigger>
+                        {selectedSector && selectedMainCategories.length > 0 && (
+                          <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
+                            <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
+                              <div className="p-2 border-b bg-muted/30">
+                                <CommandInput placeholder="Search skills / subcategories..." className="font-['Poppins',sans-serif] h-10" />
+                              </div>
+                              <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
+                                <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
+                                  No skill found.
+                                </CommandEmpty>
+                                {skillsOptionsForSector.map((skill) => {
+                                  const isSelected = selectedSkills.includes(skill.value);
+                                  return (
+                                    <CommandItem
+                                      key={skill.itemKey}
+                                      value={skill.label}
+                                      onSelect={() => {
+                                        if (isSelected) {
+                                          setSelectedSkills(selectedSkills.filter((s) => s !== skill.value));
+                                        } else {
+                                          setSelectedSkills([...selectedSkills, skill.value]);
+                                        }
+                                      }}
+                                      className="font-['Poppins',sans-serif] cursor-pointer pl-4"
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <span className="text-[13px]">{skill.label}</span>
+                                        {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
+                                      </div>
+                                    </CommandItem>
                                   );
                                 })}
-                                <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
-                              </>
-                            ) : (
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-[#6b6b6b]">
-                                  {selectedSector ? "Select main categories..." : "Select sector first"}
-                                </span>
-                                {selectedSector && <ChevronDown className="w-4 h-4 text-gray-400" />}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      </PopoverTrigger>
-                      {selectedSector && (
-                        <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[280px] flex flex-col" align="start">
-                          <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[260px]" shouldFilter={true}>
-                            <div className="p-2 border-b bg-muted/30">
-                              <CommandInput placeholder="Search main categories..." className="font-['Poppins',sans-serif] h-10" />
-                            </div>
-                            <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[220px] overscroll-contain">
-                              <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                No category found.
-                              </CommandEmpty>
-                              {mainCategoriesForSector.map((cat) => {
-                                const isSelected = selectedMainCategories.includes(cat.value);
-                                return (
-                                  <CommandItem
-                                    key={cat.itemKey}
-                                    value={cat.label}
-                                    onSelect={() => {
-                                      if (isSelected) {
-                                        setSelectedMainCategories(selectedMainCategories.filter((c) => c !== cat.value));
-                                      } else {
-                                        setSelectedMainCategories([...selectedMainCategories, cat.value]);
-                                      }
-                                    }}
-                                    className="font-['Poppins',sans-serif] cursor-pointer"
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="text-[13px]">{cat.label}</span>
-                                      {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
-                                    </div>
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        )}
+                      </Popover>
+                    </div>
+                </div>
+
+                {selectedSector && (
+                  <div className="mt-4">
+                    <div className={cn(
+                      "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
+                      selectedMainCategories.length >= 1 && selectedSkills.length >= 5
+                        ? "bg-green-50 text-green-700"
+                        : "bg-orange-50 text-orange-700"
+                    )}>
+                      {selectedMainCategories.length >= 1 && selectedSkills.length >= 5 ? (
+                        <>
+                          <Check className="w-4 h-4 flex-shrink-0" />
+                          <span>
+                            {selectedMainCategories.length} categor{(selectedMainCategories.length) === 1 ? 'y' : 'ies'} and {selectedSkills.length} skills selected. Ready to continue! Ready to continue!
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Flame className="w-4 h-4 flex-shrink-0" />
+                          <span>
+                            {selectedMainCategories.length === 0
+                              ? "Select at least one category, then at least 5 skills."
+                              : `Please select at least ${5 - selectedSkills.length} more skill${(5 - selectedSkills.length) === 1 ? '' : 's'} to continue.`}
+                          </span>
+                        </>
                       )}
-                    </Popover>
+                    </div>
                   </div>
+                )}
+              </div>
+            )}
 
-                  <div className="flex flex-col">
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2">
-                      Skills
-                    </Label>
-                    <Popover open={skillsPopoverOpen} onOpenChange={setSkillsPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={!selectedSector || selectedMainCategories.length === 0}
-                          className={cn(
-                            "w-full min-h-[56px] border-2 rounded-xl px-3 py-2 font-['Poppins',sans-serif] text-[14px] text-left transition-all",
-                            !selectedSector || selectedMainCategories.length === 0
-                              ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                              : "border-gray-200 hover:border-[#FE8A0F] cursor-pointer"
-                          )}
-                        >
-                          <div className="flex flex-wrap gap-2 items-center">
-                            {selectedSkills.length > 0 ? (
-                              <>
-                                {selectedSkills.map((slug) => (
-                                  <div
-                                    key={slug}
-                                    className="inline-flex items-center gap-1 bg-[#FE8A0F] text-white px-3 py-1 rounded-lg"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedSkills(selectedSkills.filter((s) => s !== slug));
-                                    }}
-                                  >
-                                    <span className="text-[13px]">{skillLabelBySlug[slug] ?? slug}</span>
-                                    <X className="w-3 h-3 hover:text-red-200 transition-colors" />
-                                  </div>
-                                ))}
-                                <ChevronDown className="w-4 h-4 ml-auto text-gray-400 flex-shrink-0" />
-                              </>
-                            ) : (
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-[#6b6b6b]">
-                                  {!selectedSector
-                                    ? "Select sector first"
-                                    : selectedMainCategories.length === 0
-                                      ? "Select categories first"
-                                      : "Search and select skills (subcategories)..."}
-                                </span>
-                                {selectedSector && selectedMainCategories.length > 0 && <ChevronDown className="w-4 h-4 text-gray-400" />}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      </PopoverTrigger>
-                      {selectedSector && selectedMainCategories.length > 0 && (
-                        <PopoverContent className="w-[480px] max-w-[95vw] p-0 min-h-[380px] flex flex-col" align="start">
-                          <Command className="rounded-lg border-0 shadow-none flex flex-col overflow-hidden min-h-[360px]" shouldFilter={true}>
-                            <div className="p-2 border-b bg-muted/30">
-                              <CommandInput placeholder="Search skills / subcategories..." className="font-['Poppins',sans-serif] h-10" />
-                            </div>
-                            <CommandList className="flex-1 min-h-0 overflow-y-auto max-h-[300px] overscroll-contain">
-                              <CommandEmpty className="font-['Poppins',sans-serif] text-[13px] text-center py-4">
-                                No skill found.
-                              </CommandEmpty>
-                              {skillsOptionsForSector.map((skill) => {
-                                const isSelected = selectedSkills.includes(skill.value);
-                                return (
-                                  <CommandItem
-                                    key={skill.itemKey}
-                                    value={skill.label}
-                                    onSelect={() => {
-                                      if (isSelected) {
-                                        setSelectedSkills(selectedSkills.filter((s) => s !== skill.value));
-                                      } else {
-                                        setSelectedSkills([...selectedSkills, skill.value]);
-                                      }
-                                    }}
-                                    className="font-['Poppins',sans-serif] cursor-pointer pl-4"
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <span className="text-[13px]">{skill.label}</span>
-                                      {isSelected && <Check className="w-4 h-4 text-[#FE8A0F]" />}
-                                    </div>
-                                  </CommandItem>
-                                );
-                              })}
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
+            {/* Step 4: Location & Timing */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                {/* In-Person vs Online */}
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    How will this be done?
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                    Choose In-Person if the work is at a physical location, or Online for remote services.
+                  </p>
+                  <div className="flex gap-3">
+                    <div
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        jobLocationType === "in-person"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
                       )}
-                    </Popover>
-                  </div>
-              </div>
-
-              {selectedSector && (
-                <div className="mt-4">
-                  <div className={cn(
-                    "flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] px-4 py-3 rounded-lg",
-                    selectedMainCategories.length >= 1 && selectedSkills.length >= 5
-                      ? "bg-green-50 text-green-700"
-                      : "bg-orange-50 text-orange-700"
-                  )}>
-                    {selectedMainCategories.length >= 1 && selectedSkills.length >= 5 ? (
-                      <>
-                        <Check className="w-4 h-4 flex-shrink-0" />
-                        <span>
-                          {selectedMainCategories.length} categor{(selectedMainCategories.length) === 1 ? 'y' : 'ies'} and {selectedSkills.length} skills selected. Ready to continue! Ready to continue!
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Flame className="w-4 h-4 flex-shrink-0" />
-                        <span>
-                          {selectedMainCategories.length === 0
-                            ? "Select at least one category, then at least 5 skills."
-                            : `Please select at least ${5 - selectedSkills.length} more skill${(5 - selectedSkills.length) === 1 ? '' : 's'} to continue.`}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Location & Timing */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              {/* In-Person vs Online */}
-              <div>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  How will this be done?
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                  Choose In-Person if the work is at a physical location, or Online for remote services.
-                </p>
-                <div className="flex gap-3">
-                  <div
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                      jobLocationType === "in-person"
-                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                    )}
-                    onClick={() => setJobLocationType("in-person")}
-                  >
-                    <MapPin className={cn("w-5 h-5", jobLocationType === "in-person" ? "text-[#FE8A0F]" : "text-gray-400")} />
-                    <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">In-Person</span>
-                    {jobLocationType === "in-person" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
-                  </div>
-                  <div
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                      jobLocationType === "online"
-                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                    )}
-                    onClick={() => setJobLocationType("online")}
-                  >
-                    <Laptop className={cn("w-5 h-5", jobLocationType === "online" ? "text-[#FE8A0F]" : "text-gray-400")} />
-                    <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">Online</span>
-                    {jobLocationType === "online" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
-                  </div>
-                </div>
-              </div>
-
-              {/* Postcode Section - only when In-Person */}
-              {jobLocationType === "in-person" && (
-              <div>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  Where do you need this done?
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                  Enter the postcode and town/city where the work needs to be done.
-                </p>
-                <AddressAutocomplete
-                  postcode={postcode}
-                  onPostcodeChange={(value) => setPostcode(value)}
-                  address={address}
-                  onAddressChange={(value) => setAddress(value)}
-                  townCity={townCity}
-                  onTownCityChange={(value) => setTownCity(value)}
-                  county={county}
-                  onCountyChange={(value) => setCounty(value)}
-                  onAddressSelect={(addressData) => {
-                    setPostcode(addressData.postcode || "");
-                    setTownCity(addressData.townCity || "");
-                    setAddress("");
-                    setCounty("");
-                  }}
-                  label="Postcode"
-                  required={true}
-                  showAddressField={false}
-                  showTownCityField={true}
-                  showCountyField={false}
-                  addressLabel="Address"
-                  className="font-['Poppins',sans-serif]"
-                />
-              </div>
-              )}
-
-              {/* Timing Section */}
-              <div className="border-t pt-6">
-                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
-                  When do you need this done? <span className="text-red-500">*</span>
-                </h3>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
-                  Select your preferred timeframe
-                </p>
-
-                <div className="space-y-3">
-                  {/* Urgent Option */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                      urgency === "urgent"
-                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                    )}
-                    onClick={() => setUrgency("urgent")}
-                  >
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                      urgency === "urgent" ? "bg-[#FE8A0F]" : "bg-gray-100"
-                    )}>
-                      <Flame className={cn(
-                        "w-5 h-5",
-                        urgency === "urgent" ? "text-white" : "text-gray-400"
-                      )} />
+                      onClick={() => setJobLocationType("in-person")}
+                    >
+                      <MapPin className={cn("w-5 h-5", jobLocationType === "in-person" ? "text-[#FE8A0F]" : "text-gray-400")} />
+                      <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">In-Person</span>
+                      {jobLocationType === "in-person" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                        Urgent (Within 24 hours)
-                      </p>
+                    <div
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-2 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        jobLocationType === "online"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                      )}
+                      onClick={() => setJobLocationType("online")}
+                    >
+                      <Laptop className={cn("w-5 h-5", jobLocationType === "online" ? "text-[#FE8A0F]" : "text-gray-400")} />
+                      <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">Online</span>
+                      {jobLocationType === "online" && <Check className="w-5 h-5 text-[#FE8A0F]" />}
                     </div>
-                    {urgency === "urgent" && (
-                      <Check className="w-5 h-5 text-[#FE8A0F]" />
-                    )}
-                  </div>
-
-                  {/* Soon Option */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                      urgency === "soon"
-                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                    )}
-                    onClick={() => setUrgency("soon")}
-                  >
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                      urgency === "soon" ? "bg-[#FE8A0F]" : "bg-gray-100"
-                    )}>
-                      <Clock className={cn(
-                        "w-5 h-5",
-                        urgency === "soon" ? "text-white" : "text-gray-400"
-                      )} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                        Soon (Within a week)
-                      </p>
-                    </div>
-                    {urgency === "soon" && (
-                      <Check className="w-5 h-5 text-[#FE8A0F]" />
-                    )}
-                  </div>
-
-                  {/* Flexible Option */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
-                      urgency === "flexible"
-                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                        : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
-                    )}
-                    onClick={() => setUrgency("flexible")}
-                  >
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                      urgency === "flexible" ? "bg-[#FE8A0F]" : "bg-gray-100"
-                    )}>
-                      <CalendarIcon className={cn(
-                        "w-5 h-5",
-                        urgency === "flexible" ? "text-white" : "text-gray-400"
-                      )} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
-                        Flexible (Within a month)
-                      </p>
-                    </div>
-                    {urgency === "flexible" && (
-                      <Check className="w-5 h-5 text-[#FE8A0F]" />
-                    )}
                   </div>
                 </div>
 
-                {/* Optional Preferred Start Date */}
-                <div className="mt-6">
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                    Preferred Start Date (Optional)
-                  </Label>
-                  <Input
-                    type="date"
-                    value={preferredStartDate}
-                    onChange={(e) => setPreferredStartDate(e.target.value)}
-                    className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                {/* Postcode Section - only when In-Person */}
+                {jobLocationType === "in-person" && (
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Where do you need this done?
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                    Enter the postcode and town/city where the work needs to be done.
+                  </p>
+                  <AddressAutocomplete
+                    postcode={postcode}
+                    onPostcodeChange={(value) => setPostcode(value)}
+                    address={address}
+                    onAddressChange={(value) => setAddress(value)}
+                    townCity={townCity}
+                    onTownCityChange={(value) => setTownCity(value)}
+                    county={county}
+                    onCountyChange={(value) => setCounty(value)}
+                    onAddressSelect={(addressData) => {
+                      setPostcode(addressData.postcode || "");
+                      setTownCity(addressData.townCity || "");
+                      setAddress("");
+                      setCounty("");
+                    }}
+                    label="Postcode"
+                    required={true}
+                    showAddressField={false}
+                    showTownCityField={true}
+                    showCountyField={false}
+                    addressLabel="Address"
+                    className="font-['Poppins',sans-serif]"
                   />
                 </div>
-              </div>
-            </div>
-          )}
+                )}
 
-          {/* Step 5: Budget */}
-          {currentStep === 5 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  What's your estimated budget?
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  Please let us know your estimated budget for this job. Don't worry, there's still opportunity to settle on a final price that suits you and your professional. Just give us a reasonable estimate and we'll go from there.
-                </p>
-              </div>
-
-              {budgetRangesLoading && (
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Loading options...</p>
-              )}
-              <RadioGroup value={selectedBudget} onValueChange={setSelectedBudget}>
-                <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
-                  {budgetRanges.map((budget) => (
-                    <div
-                      key={budget.value}
-                      className={cn(
-                        "flex items-center justify-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all",
-                        selectedBudget === budget.value
-                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                          : "border-gray-200 hover:border-[#FE8A0F]/50"
-                      )}
-                      onClick={() => setSelectedBudget(budget.value)}
-                    >
-                      <RadioGroupItem value={budget.value} id={budget.value} className="hidden md:flex" />
-                      <Label
-                        htmlFor={budget.value}
-                        className="md:ml-3 font-['Poppins',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
-                      >
-                        {budget.value === "custom-budget"
-                          ? budget.label
-                          : budget.max !== null && budget.max >= 500000
-                            ? `Over ${formatPrice(budget.min ?? 0)}`
-                            : budget.min === 0 || budget.min === null
-                              ? `Under ${formatPrice(budget.max ?? 0)}`
-                              : budget.min === budget.max
-                                ? formatPrice(budget.min)
-                                : `${formatPrice(budget.min ?? 0)} - ${formatPrice(budget.max ?? 0)}`}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-
-              {selectedBudget === "custom-budget" && (
-                <div className="mt-6 p-4 border-2 border-[#FE8A0F]/50 rounded-xl bg-[#FFF5EB]/30 space-y-4">
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                    Enter your budget range (min and max in {symbol})
+                {/* Timing Section */}
+                <div className="border-t pt-6">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                    When do you need this done? <span className="text-red-500">*</span>
+                  </h3>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+                    Select your preferred timeframe
                   </p>
+
+                  <div className="space-y-3">
+                    {/* Urgent Option */}
+                    <div
+                      className={cn(
+                        "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        urgency === "urgent"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                      )}
+                      onClick={() => setUrgency("urgent")}
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                        urgency === "urgent" ? "bg-[#FE8A0F]" : "bg-gray-100"
+                      )}>
+                        <Flame className={cn(
+                          "w-5 h-5",
+                          urgency === "urgent" ? "text-white" : "text-gray-400"
+                        )} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                          Urgent (Within 24 hours)
+                        </p>
+                      </div>
+                      {urgency === "urgent" && (
+                        <Check className="w-5 h-5 text-[#FE8A0F]" />
+                      )}
+                    </div>
+
+                    {/* Soon Option */}
+                    <div
+                      className={cn(
+                        "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        urgency === "soon"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                      )}
+                      onClick={() => setUrgency("soon")}
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                        urgency === "soon" ? "bg-[#FE8A0F]" : "bg-gray-100"
+                      )}>
+                        <Clock className={cn(
+                          "w-5 h-5",
+                          urgency === "soon" ? "text-white" : "text-gray-400"
+                        )} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                          Soon (Within a week)
+                        </p>
+                      </div>
+                      {urgency === "soon" && (
+                        <Check className="w-5 h-5 text-[#FE8A0F]" />
+                      )}
+                    </div>
+
+                    {/* Flexible Option */}
+                    <div
+                      className={cn(
+                        "flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        urgency === "flexible"
+                          ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                          : "border-gray-200 hover:border-[#FE8A0F]/50 hover:bg-gray-50"
+                      )}
+                      onClick={() => setUrgency("flexible")}
+                    >
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                        urgency === "flexible" ? "bg-[#FE8A0F]" : "bg-gray-100"
+                      )}>
+                        <CalendarIcon className={cn(
+                          "w-5 h-5",
+                          urgency === "flexible" ? "text-white" : "text-gray-400"
+                        )} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                          Flexible (Within a month)
+                        </p>
+                      </div>
+                      {urgency === "flexible" && (
+                        <Check className="w-5 h-5 text-[#FE8A0F]" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Optional Preferred Start Date */}
+                  <div className="mt-6">
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                      Preferred Start Date (Optional)
+                    </Label>
+                    <Input
+                      type="date"
+                      value={preferredStartDate}
+                      onChange={(e) => setPreferredStartDate(e.target.value)}
+                      className="h-12 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Budget */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    What's your estimated budget?
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Please let us know your estimated budget for this job. Don't worry, there's still opportunity to settle on a final price that suits you and your professional. Just give us a reasonable estimate and we'll go from there.
+                  </p>
+                </div>
+
+                {budgetRangesLoading && (
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Loading options...</p>
+                )}
+                <RadioGroup value={selectedBudget} onValueChange={setSelectedBudget}>
+                  <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
+                    {budgetRanges.map((budget) => (
+                      <div
+                        key={budget.value}
+                        className={cn(
+                          "flex items-center justify-center p-3 md:p-4 border-2 rounded-xl cursor-pointer transition-all",
+                          selectedBudget === budget.value
+                            ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                            : "border-gray-200 hover:border-[#FE8A0F]/50"
+                        )}
+                        onClick={() => setSelectedBudget(budget.value)}
+                      >
+                        <RadioGroupItem value={budget.value} id={budget.value} className="hidden md:flex" />
+                        <Label
+                          htmlFor={budget.value}
+                          className="md:ml-3 font-['Poppins',sans-serif] text-[11px] md:text-[14px] cursor-pointer text-center leading-tight"
+                        >
+                          {budget.value === "custom-budget"
+                            ? budget.label
+                            : budget.max !== null && budget.max >= 500000
+                              ? `Over ${formatPrice(budget.min ?? 0)}`
+                              : budget.min === 0 || budget.min === null
+                                ? `Under ${formatPrice(budget.max ?? 0)}`
+                                : budget.min === budget.max
+                                  ? formatPrice(budget.min)
+                                  : `${formatPrice(budget.min ?? 0)} - ${formatPrice(budget.max ?? 0)}`}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </RadioGroup>
+
+                {selectedBudget === "custom-budget" && (
+                  <div className="mt-6 p-4 border-2 border-[#FE8A0F]/50 rounded-xl bg-[#FFF5EB]/30 space-y-4">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Enter your budget range (min and max in {symbol})
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                          Minimum ({symbol}) <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            placeholder="e.g. 500"
+                            value={customBudgetMin}
+                            onChange={(e) => setCustomBudgetMin(e.target.value)}
+                            className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                          Maximum ({symbol}) <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            placeholder="e.g. 1000"
+                            value={customBudgetMax}
+                            onChange={(e) => setCustomBudgetMax(e.target.value)}
+                            className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {customBudgetMin !== "" && customBudgetMax !== "" && parseFloat(customBudgetMin) > parseFloat(customBudgetMax) && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-red-600">
+                        Minimum must be less than or equal to maximum
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 6: Account Creation (if not logged in) – same workflow as LoginPage registration */}
+            {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
+              <section className="space-y-6" aria-label="Account creation">
+                <section>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
+                    Create a new account
+                  </h2>
+                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                    Register to post your job and receive quotes
+                  </p>
+                </section>
+
+                <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Minimum ({symbol}) <span className="text-red-500">*</span>
+                        First name <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
                         <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          placeholder="e.g. 500"
-                          value={customBudgetMin}
-                          onChange={(e) => setCustomBudgetMin(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          type="text"
+                          placeholder="Jane"
+                          value={firstName}
+                          onChange={(e) => { setFirstName(e.target.value); if (fieldErrors.firstName) setFieldErrors((p) => ({ ...p, firstName: "" })); }}
+                          className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.firstName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
                         />
                       </div>
+                      {fieldErrors.firstName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.firstName}</p>}
                     </div>
                     <div>
                       <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                        Maximum ({symbol}) <span className="text-red-500">*</span>
+                        Last name <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
                         <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          placeholder="e.g. 1000"
-                          value={customBudgetMax}
-                          onChange={(e) => setCustomBudgetMax(e.target.value)}
-                          className="pl-10 h-11 border-2 border-gray-200 focus:border-[#FE8A0F] rounded-xl font-['Poppins',sans-serif] text-[14px]"
+                          type="text"
+                          placeholder="Smith"
+                          value={lastName}
+                          onChange={(e) => { setLastName(e.target.value); if (fieldErrors.lastName) setFieldErrors((p) => ({ ...p, lastName: "" })); }}
+                          className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.lastName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
                         />
                       </div>
+                      {fieldErrors.lastName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.lastName}</p>}
                     </div>
                   </div>
-                  {customBudgetMin !== "" && customBudgetMax !== "" && parseFloat(customBudgetMin) > parseFloat(customBudgetMax) && (
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-red-600">
-                      Minimum must be less than or equal to maximum
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Step 6: Account Creation (if not logged in) – same workflow as LoginPage registration */}
-          {!isLoggedIn && currentStep === 6 && !showEmailVerification && (
-            <section className="space-y-6" aria-label="Account creation">
-              <section>
-                <h2 className="font-['Poppins',sans-serif] text-[20px] md:text-[24px] text-[#2c353f] mb-2">
-                  Create a new account
-                </h2>
-                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  Register to post your job and receive quotes
-                </p>
-              </section>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                      First name <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                      <Input
-                        type="text"
-                        placeholder="Jane"
-                        value={firstName}
-                        onChange={(e) => { setFirstName(e.target.value); if (fieldErrors.firstName) setFieldErrors((p) => ({ ...p, firstName: "" })); }}
-                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.firstName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                      />
-                    </div>
-                    {fieldErrors.firstName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.firstName}</p>}
-                  </div>
-                  <div>
-                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                      Last name <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                      <Input
-                        type="text"
-                        placeholder="Smith"
-                        value={lastName}
-                        onChange={(e) => { setLastName(e.target.value); if (fieldErrors.lastName) setFieldErrors((p) => ({ ...p, lastName: "" })); }}
-                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.lastName ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                      />
-                    </div>
-                    {fieldErrors.lastName && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.lastName}</p>}
-                  </div>
-                </div>
-
-                <AddressAutocomplete
-                  postcode={registerPostcode}
-                  onPostcodeChange={(v) => { setRegisterPostcode(v); if (fieldErrors.postcode) setFieldErrors((p) => ({ ...p, postcode: "" })); }}
-                  address={registerAddress}
-                  onAddressChange={(v) => { setRegisterAddress(v); if (fieldErrors.address || fieldErrors.townCity) setFieldErrors((p) => ({ ...p, address: "", townCity: "" })); }}
-                  townCity={registerTownCity}
-                  onTownCityChange={(v) => { setRegisterTownCity(v); if (fieldErrors.townCity) setFieldErrors((p) => ({ ...p, townCity: "" })); }}
-                  county={registerCounty}
-                  onCountyChange={setRegisterCounty}
-                  onAddressSelect={(addr) => {
-                    setRegisterPostcode(addr.postcode || "");
-                    setRegisterAddress(addr.address || "");
-                    setRegisterTownCity(addr.townCity || "");
-                    setRegisterCounty(addr.county || "");
-                    setFieldErrors((p) => ({ ...p, postcode: "", address: "", townCity: "" }));
-                  }}
-                  label="Postcode"
-                  required={false}
-                  showAddressField
-                  showTownCityField
-                  showCountyField
-                  addressLabel="Address"
-                  className="font-['Poppins',sans-serif]"
-                />
-                {fieldErrors.postcode && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.postcode}</p>}
-                {fieldErrors.address && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.address}</p>}
-                {fieldErrors.townCity && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.townCity}</p>}
-
-                <PhoneInput
-                  id="postjob-reg-phone"
-                  label="Phone number"
-                  value={phone}
-                  onChange={(v) => {
-                    setPhone(v);
-                    const parts = v.includes("|") ? v.split("|") : ["+44", v.replace(/\D/g, "")];
-                    const pn = parts[1] || "";
-                    if (pn && validatePhoneNumber(pn).isValid && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
-                    else if (!pn && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
-                  }}
-                  placeholder="7123 456789"
-                  error={fieldErrors.phone}
-                  required
-                />
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                    <Input
-                      type="email"
-                      placeholder="jane@gmail.com"
-                      value={email}
-                      onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: "" })); }}
-                      className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.email ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                    />
-                  </div>
-                  {fieldErrors.email && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.email}</p>}
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                    Password <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
-                      value={password}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setPassword(v);
-                        if (v) {
-                          const pv = validatePassword(v);
-                          if (!pv.isValid) setFieldErrors((p) => ({ ...p, password: pv.errors[0] || "" }));
-                          else setFieldErrors((p) => ({ ...p, password: "" }));
-                        } else setFieldErrors((p) => ({ ...p, password: "" }));
-                        if (fieldErrors.confirmPassword && v === confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
-                      }}
-                      className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.password ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                    />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {fieldErrors.password && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.password}</p>}
-                </div>
-
-                <div>
-                  <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
-                    Confirm password <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Re-enter your password"
-                      value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }}
-                      className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.confirmPassword ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
-                    />
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {fieldErrors.confirmPassword && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.confirmPassword}</p>}
-                </div>
-
-                <div className="flex items-start space-x-2 pt-2">
-                  <Checkbox
-                    id="postjob-terms"
-                    checked={agreeTerms}
-                    onCheckedChange={(c) => { setAgreeTerms(c as boolean); if (fieldErrors.agreeTerms) setFieldErrors((p) => ({ ...p, agreeTerms: "" })); }}
-                    className="mt-0.5"
+                  <AddressAutocomplete
+                    postcode={registerPostcode}
+                    onPostcodeChange={(v) => { setRegisterPostcode(v); if (fieldErrors.postcode) setFieldErrors((p) => ({ ...p, postcode: "" })); }}
+                    address={registerAddress}
+                    onAddressChange={(v) => { setRegisterAddress(v); if (fieldErrors.address || fieldErrors.townCity) setFieldErrors((p) => ({ ...p, address: "", townCity: "" })); }}
+                    townCity={registerTownCity}
+                    onTownCityChange={(v) => { setRegisterTownCity(v); if (fieldErrors.townCity) setFieldErrors((p) => ({ ...p, townCity: "" })); }}
+                    county={registerCounty}
+                    onCountyChange={setRegisterCounty}
+                    onAddressSelect={(addr) => {
+                      setRegisterPostcode(addr.postcode || "");
+                      setRegisterAddress(addr.address || "");
+                      setRegisterTownCity(addr.townCity || "");
+                      setRegisterCounty(addr.county || "");
+                      setFieldErrors((p) => ({ ...p, postcode: "", address: "", townCity: "" }));
+                    }}
+                    label="Postcode"
+                    required={false}
+                    showAddressField
+                    showTownCityField
+                    showCountyField
+                    addressLabel="Address"
+                    className="font-['Poppins',sans-serif]"
                   />
-                  <Label htmlFor="postjob-terms" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed">
-                    I agree to the <Link to="/terms" className="text-[#3B82F6] hover:underline">Terms & Conditions</Link> and <Link to="/privacy" className="text-[#3B82F6] hover:underline">Privacy Policy</Link>
-                  </Label>
+                  {fieldErrors.postcode && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.postcode}</p>}
+                  {fieldErrors.address && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.address}</p>}
+                  {fieldErrors.townCity && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.townCity}</p>}
+
+                  <PhoneInput
+                    id="postjob-reg-phone"
+                    label="Phone number"
+                    value={phone}
+                    onChange={(v) => {
+                      setPhone(v);
+                      const parts = v.includes("|") ? v.split("|") : ["+44", v.replace(/\D/g, "")];
+                      const pn = parts[1] || "";
+                      if (pn && validatePhoneNumber(pn).isValid && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                      else if (!pn && fieldErrors.phone) setFieldErrors((p) => ({ ...p, phone: "" }));
+                    }}
+                    placeholder="7123 456789"
+                    error={fieldErrors.phone}
+                    required
+                  />
+
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type="email"
+                        placeholder="jane@gmail.com"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: "" })); }}
+                        className={cn("pl-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.email ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                    </div>
+                    {fieldErrors.email && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.email}</p>}
+                  </div>
+
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a strong password"
+                        value={password}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPassword(v);
+                          if (v) {
+                            const pv = validatePassword(v);
+                            if (!pv.isValid) setFieldErrors((p) => ({ ...p, password: pv.errors[0] || "" }));
+                            else setFieldErrors((p) => ({ ...p, password: "" }));
+                          } else setFieldErrors((p) => ({ ...p, password: "" }));
+                          if (fieldErrors.confirmPassword && v === confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" }));
+                        }}
+                        className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.password ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {fieldErrors.password && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.password}</p>}
+                  </div>
+
+                  <div>
+                    <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1.5 block">
+                      Confirm password <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8d8d8d]" />
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Re-enter your password"
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); if (fieldErrors.confirmPassword) setFieldErrors((p) => ({ ...p, confirmPassword: "" })); }}
+                        className={cn("pl-10 pr-10 h-11 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px]", fieldErrors.confirmPassword ? "border-red-500" : "border-gray-200 focus:border-[#FE8A0F]")}
+                      />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8d8d8d] hover:text-[#FE8A0F]">
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {fieldErrors.confirmPassword && <p className="mt-1 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.confirmPassword}</p>}
+                  </div>
+
+                  <div className="flex items-start space-x-2 pt-2">
+                    <Checkbox
+                      id="postjob-terms"
+                      checked={agreeTerms}
+                      onCheckedChange={(c) => { setAgreeTerms(c as boolean); if (fieldErrors.agreeTerms) setFieldErrors((p) => ({ ...p, agreeTerms: "" })); }}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="postjob-terms" className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] cursor-pointer leading-relaxed">
+                      I agree to the <Link to="/terms" className="text-[#3B82F6] hover:underline">Terms & Conditions</Link> and <Link to="/privacy" className="text-[#3B82F6] hover:underline">Privacy Policy</Link>
+                    </Label>
+                  </div>
+                  {fieldErrors.agreeTerms && <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.agreeTerms}</p>}
+
+                  {registerError && <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">{registerError}</p>}
                 </div>
-                {fieldErrors.agreeTerms && <p className="mt-1 ml-7 text-[11px] text-red-600 font-['Poppins',sans-serif]">{fieldErrors.agreeTerms}</p>}
-
-                {registerError && <p className="text-[12px] text-red-600 font-['Poppins',sans-serif]">{registerError}</p>}
-              </div>
-            </section>
-          )}
-        </section>
-
+              </section>
+            )}
+            </div>
+          </div>
         {/* Navigation Buttons */}
-        <nav className="flex items-center justify-between gap-4" aria-label="Form navigation">
+        <div className="flex items-center justify-between gap-4">
           <Button
             onClick={handlePrevious}
             disabled={currentStep === 1 || (isEditMode && currentStep === 2)}
@@ -2090,7 +2108,8 @@ export default function PostJobPage() {
               <Check className="w-4 h-4 ml-2" />
             </Button>
           )}
-        </nav>
+        </div>
+        </section>
 
         {/* Already have an account (only show on account step if not logged in) */}
         {!isLoggedIn && currentStep === 6 && !showEmailVerification && (

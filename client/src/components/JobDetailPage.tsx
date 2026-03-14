@@ -1054,7 +1054,7 @@ export default function JobDetailPage() {
       </header>
 
       {/* Header Section - White */}
-      <div className="bg-white py-1 md:py-2 mt-[60px] md:mt-8">
+      <div className="bg-white py-1 md:py-2 mt-[50px] md:mt-0">
         <div className="max-w-[1000px] mx-auto px-4 md:px-6 lg:px-16">
           <Button
             variant="ghost"
@@ -1065,15 +1065,12 @@ export default function JobDetailPage() {
             {isJobOwner ? "Back to My Jobs" : "Back to Available Jobs"}
           </Button>
           
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 shadow-md p-4 rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 shadow-lg p-4 rounded-lg">
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <h1 className="font-['Poppins',sans-serif] text-[14px] sm:text-[18px] md:text-[24px] text-[#2c353f] leading-tight">
-                  {job.title}
-                </h1>
-                {getStatusBadge("large")}
-              </div>
-
+              <h1 className="font-['Poppins',sans-serif] text-[14px] sm:text-[18px] md:text-[24px] text-[#2c353f] leading-tight">
+                {job.title}
+              </h1>
+              
           {/* Client info – below job title */}
           <div className="flex items-center gap-1">
             <button
@@ -1114,6 +1111,7 @@ export default function JobDetailPage() {
           </div>
             </div>
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
+              
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* Professional: Already submitted – hide from In Progress onwards */}
                 {!isJobOwner && hasSubmittedQuote && job?.status === "open" && (
@@ -1122,7 +1120,20 @@ export default function JobDetailPage() {
                     Quote Submitted
                   </Badge>
                 )}
+                {/* Job Status Badge */}
+                {getStatusBadge("large")}
               </div>
+              {/* Share button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F] border-0 shadow-none"
+                onClick={() => setShowShareModal(true)}
+                aria-label="Share this job"
+              >
+                <Share2 className="w-5 h-5" />
+              </Button>
             </div>
           </div>
 
@@ -1213,23 +1224,11 @@ export default function JobDetailPage() {
           <div className="space-y-6">
             {/* Details Tab */}
             {activeTab === "details" && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                      Job Details
-                    </h2>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#FE8A0F] border-0 shadow-none flex-shrink-0"
-                      onClick={() => setShowShareModal(true)}
-                      aria-label="Share this job"
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </Button>
-                  </div>
+                  <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                    Job Details
+                  </h2>
                   <div className="text-right">
                     <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-1">
                       {job.budgetMin != null && job.budgetMax != null
