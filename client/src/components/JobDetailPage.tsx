@@ -1181,7 +1181,7 @@ export default function JobDetailPage() {
             {/* Details Tab */}
             {activeTab === "details" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <div className="flex items-start justify-between mb-6">
+                <div className="flex items-start justify-between">
                   <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                     Job Details
                   </h2>
