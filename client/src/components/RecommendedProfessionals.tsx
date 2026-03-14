@@ -3,6 +3,7 @@ import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Star, MapPin, CheckCircle2, Send, Info, MessageCircle, Briefcase } from "lucide-react";
+import VerificationBadge from "./VerificationBadge";
 
 interface Professional {
   id: string;
@@ -15,6 +16,7 @@ interface Professional {
   completedJobs: number;
   location: string;
   skills?: string[];
+  fullyVerified?: boolean;
 }
 
 interface RecommendedProfessionalsProps {
@@ -62,9 +64,12 @@ export default function RecommendedProfessionals({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-['Poppins',sans-serif] text-[17px] text-[#2c353f] mb-1 font-medium">
-                    {pro.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-['Poppins',sans-serif] text-[17px] text-[#2c353f] mb-1 font-medium">
+                      {pro.name}
+                    </h3>
+                    <VerificationBadge fullyVerified={pro.fullyVerified} size="md" />
+                  </div>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
                     {pro.title}
                   </p>

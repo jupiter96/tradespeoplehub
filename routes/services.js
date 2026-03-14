@@ -420,7 +420,7 @@ router.get('/:id', async (req, res) => {
         await doc.populate([
           { 
             path: 'professional', 
-            select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService',
+            select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService verification',
           },
           { 
             path: 'serviceCategory', 
@@ -453,7 +453,7 @@ router.get('/:id', async (req, res) => {
         .populate([
           { 
             path: 'professional', 
-            select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService',
+            select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService verification',
           },
           { 
             path: 'serviceCategory', 
@@ -495,7 +495,7 @@ router.get('/:id', async (req, res) => {
           }
           if (doc) {
             await doc.populate([
-              { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService' },
+              { path: 'professional', select: 'firstName lastName tradingName avatar email phone postcode townCity publicProfile aboutService verification' },
               { 
                 path: 'serviceCategory', 
                 select: 'name slug icon bannerImage sector',
@@ -530,6 +530,13 @@ router.get('/:id', async (req, res) => {
 
     if (!service) {
       return res.status(404).json({ error: 'Service not found' });
+    }
+
+    // Set professional.isVerified for client (all 6 verification steps passed)
+    if (service.professional && service.professional.verification) {
+      const v = service.professional.verification;
+      const steps = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
+      service.professional.isVerified = steps.every((key) => v[key] && v[key].status === 'verified');
     }
 
     return res.json({ service });

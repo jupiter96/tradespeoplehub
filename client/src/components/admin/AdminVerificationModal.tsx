@@ -7,13 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { toast } from "sonner";
@@ -389,15 +382,15 @@ export default function AdminVerificationModal({
                       </p>
                     )}
 
-                    {/* Status Changer Box - Aligned to each section */}
+                    {/* Status Changer Box - Native select so dropdown shows above modal without portal/z-index issues */}
                     <div className="border-0 shadow-sm pt-2 mt-2 space-y-2">
                       <div>
                         <Label className="text-black text-xs font-medium">Status</Label>
-                        <Select 
-                          value={currentStatus} 
-                          onValueChange={(value) => {
+                        <select
+                          value={currentStatus}
+                          onChange={(e) => {
+                            const value = e.target.value;
                             setNewStatus(prev => ({ ...prev, [type.id]: value }));
-                            // Clear rejection reason if status is changed from rejected
                             if (value !== "rejected") {
                               setRejectionReason(prev => {
                                 const updated = { ...prev };
@@ -406,25 +399,14 @@ export default function AdminVerificationModal({
                               });
                             }
                           }}
+                          className="mt-0.5 flex h-8 w-full items-center justify-between gap-2 rounded-md border border-input bg-white px-3 py-2 text-xs text-black shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]/50"
                         >
-                          <SelectTrigger className="bg-white text-black h-8 text-xs mt-0.5">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white">
-                            <SelectItem value="verified" className="text-black text-xs">
-                              Verified
-                            </SelectItem>
-                            <SelectItem value="pending" className="text-black text-xs">
-                              Pending
-                            </SelectItem>
-                            <SelectItem value="rejected" className="text-black text-xs">
-                              Rejected
-                            </SelectItem>
-                            <SelectItem value="not-started" className="text-black text-xs">
-                              Not Started
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <option value="">Select status</option>
+                          <option value="verified">Verified</option>
+                          <option value="pending">Pending</option>
+                          <option value="rejected">Rejected</option>
+                          <option value="not-started">Not Started</option>
+                        </select>
                       </div>
 
                       {currentStatus === "rejected" && (

@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Star, MapPin, Info, Check } from "lucide-react";
-import serviceVector from "../assets/service_vector.jpg";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
+import VerificationBadge from "./VerificationBadge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
 
 interface Professional {
   id: string;
@@ -23,11 +30,16 @@ interface Professional {
   relevanceScore?: number;
   /** Distance in miles from job location (from backend). */
   distanceMiles?: number | null;
+  /** Bio/About Me from professional profile (from backend). */
+  bio?: string | null;
+  /** True when all 6 verification steps are verified (from backend). */
+  fullyVerified?: boolean;
 }
 
 interface InviteProfessionalsListProps {
   professionals: Professional[];
-  onInvite: (professional: Professional) => void;
+  /** Called when user confirms invite in the modal. Optional message from the textarea. */
+  onInvite: (professional: Professional, message?: string) => void;
   invitedProfessionalIds: Set<string>;
 }
 
@@ -37,7 +49,23 @@ export default function InviteProfessionalsList({
   invitedProfessionalIds,
 }: InviteProfessionalsListProps) {
   const [showInvitedOnly, setShowInvitedOnly] = useState(false);
+  const [selectedProForInvite, setSelectedProForInvite] = useState<Professional | null>(null);
+  const [inviteMessage, setInviteMessage] = useState("");
   const navigate = useNavigate();
+
+  const openInviteModal = (pro: Professional) => {
+    setSelectedProForInvite(pro);
+    setInviteMessage("");
+  };
+  const closeInviteModal = () => {
+    setSelectedProForInvite(null);
+    setInviteMessage("");
+  };
+  const handleConfirmInvite = () => {
+    if (!selectedProForInvite) return;
+    onInvite(selectedProForInvite, inviteMessage.trim() || undefined);
+    closeInviteModal();
+  };
 
   if (professionals.length === 0) return null;
 
@@ -46,57 +74,10 @@ export default function InviteProfessionalsList({
     navigate(`/profile/${professionalId}`);
   };
 
-  // Get portfolio images - use professional's portfolio or default category images
-  const getPortfolioImages = (pro: Professional) => {
-    if (pro.portfolioImages && pro.portfolioImages.length > 0) {
-      return pro.portfolioImages.slice(0, 3);
-    }
-    // Default images based on category
-    return [
-      serviceVector,
-      serviceVector,
-      serviceVector,
-    ];
-  };
-
   // Filter professionals based on toggle
   const filteredProfessionals = showInvitedOnly
     ? professionals.filter(pro => invitedProfessionalIds.has(pro.id))
     : professionals;
-
-  // Generate professional summary based on skills and category
-  const generateProfessionalSummary = (pro: Professional) => {
-    const skills = pro.skills || [];
-    const category = pro.category.toLowerCase();
-    
-    // Create contextual summaries based on skills and category
-    if (skills.some(s => s.toLowerCase().includes('plumb'))) {
-      return "Specializing in residential and commercial plumbing services including emergency repairs, installations, and maintenance. Gas Safe registered with extensive experience in boiler servicing and central heating systems. Available for urgent callouts with same-day service in most cases.";
-    }
-    
-    if (skills.some(s => s.toLowerCase().includes('electric'))) {
-      return "Qualified electrician providing comprehensive electrical services for homes and businesses. Expert in rewiring, fault finding, consumer unit upgrades, and smart home installations. All work certified to current regulations with public liability insurance.";
-    }
-    
-    if (skills.some(s => s.toLowerCase().includes('carpet'))) {
-      return "Professional carpentry and joinery services with attention to detail and quality craftsmanship. Experienced in bespoke furniture, kitchen fitting, door hanging, and general woodwork repairs. Using premium materials with a focus on customer satisfaction.";
-    }
-    
-    if (skills.some(s => s.toLowerCase().includes('paint'))) {
-      return "Experienced decorator offering interior and exterior painting services with a flawless finish. Skilled in wallpapering, plastering preparation, and colour consultation. Committed to protecting your property and completing projects on time and within budget.";
-    }
-    
-    if (skills.some(s => s.toLowerCase().includes('garden'))) {
-      return "Professional gardening and landscaping services to transform your outdoor space. Expertise in garden design, maintenance, lawn care, and seasonal planting. Reliable service with eco-friendly practices and competitive pricing.";
-    }
-    
-    if (skills.some(s => s.toLowerCase().includes('clean'))) {
-      return "Thorough and reliable cleaning services for residential and commercial properties. Fully insured with eco-friendly products and attention to detail. Flexible scheduling including one-off deep cleans and regular maintenance contracts.";
-    }
-    
-    // Default summary based on category and experience
-    return `Experienced ${pro.title.toLowerCase()} with a proven track record of delivering quality work. Committed to professional service, clear communication, and customer satisfaction. Fully insured and available for consultations to discuss your specific requirements.`;
-  };
 
   return (
     <div className="mt-8">
@@ -143,206 +124,283 @@ export default function InviteProfessionalsList({
         </label>
       </div>
 
-      {/* Professionals List */}
+      {/* Professionals List - Card: rounded square avatar left of trading name */}
       <div className="space-y-4">
         {filteredProfessionals.map((pro) => {
           return (
             <div
               key={pro.id}
-              className="bg-white border border-gray-200 rounded-lg overflow-hidden hover:border-[#FE8A0F] hover:shadow-md transition-all duration-300"
+              className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-[#FE8A0F] hover:shadow-md transition-all duration-300"
             >
-              {/* Mobile Layout */}
-              <div className="block sm:hidden">
-                <div className="flex gap-3 p-4">
-                  {/* Image - Square: avatar or initials from trading name */}
-                  <div 
-                    className="w-24 h-24 flex-shrink-0 relative bg-gray-100 rounded-xl overflow-hidden cursor-pointer shadow-sm flex items-center justify-center"
+              {/* Mobile: avatar + (name + button same row), then rating under name */}
+              <div className="block sm:hidden p-4">
+                <div className="flex gap-3 items-start">
+                  <div
+                    className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 cursor-pointer shadow-sm flex items-center justify-center"
+                    onClick={() => handleNavigateToProfile(pro.id)}
+                  >
+                    {resolveAvatarUrl(pro.image) ? (
+                      <img src={resolveAvatarUrl(pro.image)!} alt={pro.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="font-['Poppins',sans-serif] text-lg font-semibold text-[#FE8A0F]">
+                        {getTwoLetterInitials(pro.name, "P")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <h3
+                          className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-bold truncate cursor-pointer hover:text-[#FE8A0F] transition-colors"
+                          onClick={() => handleNavigateToProfile(pro.id)}
+                        >
+                          {pro.name}
+                        </h3>
+                        <VerificationBadge fullyVerified={pro.fullyVerified} size="sm" />
+                      </div>
+                      {invitedProfessionalIds.has(pro.id) ? (
+                        <Button
+                          disabled
+                          className="flex-shrink-0 bg-green-50 text-green-700 border-2 border-green-300 font-['Poppins',sans-serif] text-[12px] font-semibold h-8 px-3 cursor-not-allowed"
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                          Invited
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => openInviteModal(pro)}
+                          className="flex-shrink-0 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[12px] font-semibold h-8 px-3"
+                        >
+                          Send invitation
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3.5 h-3.5 ${
+                              star <= Math.floor(pro.rating) ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300 fill-gray-300"
+                            }`}
+                          />
+                        ))}
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-semibold ml-0.5">
+                          {Number(pro.rating).toFixed(1)}
+                        </span>
+                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">({pro.reviewCount} {Number(pro.reviewCount) < 2 ? "review" : "reviews"})</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[#FE8A0F] flex-shrink-0" />
+                        <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-medium truncate">
+                          {pro.distanceMiles != null ? `${Number(pro.distanceMiles).toFixed(1)} miles away` : pro.location || "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop: avatar + name block in one row; rating under name; about me full width (under avatar too) */}
+              <div className="hidden sm:block p-5">
+                <div className="flex gap-4">
+                  {/* Avatar: rounded square, same row as trading name block */}
+                  <div
+                    className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 cursor-pointer shadow-sm flex items-center justify-center self-start"
                     onClick={() => handleNavigateToProfile(pro.id)}
                   >
                     {resolveAvatarUrl(pro.image) ? (
                       <img
                         src={resolveAvatarUrl(pro.image)!}
                         alt={pro.name}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="font-['Poppins',sans-serif] text-[28px] font-semibold text-[#FE8A0F] bg-[#FFF5EB] w-full h-full flex items-center justify-center">
+                      <span className="font-['Poppins',sans-serif] text-xl font-semibold text-[#FE8A0F]">
                         {getTwoLetterInitials(pro.name, "P")}
                       </span>
                     )}
                   </div>
-
-                  {/* Content */}
+                  {/* Trading name (same row as button, right) + rating under name + location + skills */}
                   <div className="flex-1 min-w-0">
-                    {/* Name - BOLD */}
-                    <h3 
-                      className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-bold truncate mb-1.5 cursor-pointer hover:text-[#FE8A0F] transition-colors"
-                      onClick={() => handleNavigateToProfile(pro.id)}
-                    >
-                      {pro.name}
-                    </h3>
-                    
-                    {/* Rating */}
-                    <div className="flex items-center gap-1 mb-1.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-3.5 h-3.5 ${
-                            star <= Math.floor(pro.rating)
-                              ? 'text-[#FE8A0F] fill-[#FE8A0F]'
-                              : 'text-gray-300 fill-gray-300'
-                          }`}
-                        />
-                      ))}
-                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-semibold ml-0.5">
-                        {Number(pro.rating).toFixed(1)}
-                      </span>
-                      <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
-                        ({pro.reviewCount})
-                      </span>
-                    </div>
-
-                    {/* Location - BOLD */}
-                    <div className="flex items-center gap-1 mb-2">
-                      <MapPin className="w-3.5 h-3.5 text-[#FE8A0F] flex-shrink-0" />
-                      <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-bold truncate">
-                        {pro.distanceMiles != null ? `${Number(pro.distanceMiles).toFixed(1)} miles away` : pro.location || '—'}
-                      </span>
-                    </div>
-
-                    {/* Button */}
-                    {invitedProfessionalIds.has(pro.id) ? (
-                      <Button
-                        disabled
-                        className="w-full bg-green-50 text-green-700 border-2 border-green-300 font-['Poppins',sans-serif] text-[12px] font-semibold h-8 px-3 cursor-not-allowed shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5 mr-1.5" />
-                        Invited
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => onInvite(pro)}
-                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Poppins',sans-serif] text-[12px] font-semibold h-8 px-3 transition-all duration-300"
-                      >
-                        Send invitation
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Desktop Layout - 2 Column Layout */}
-              <div className="hidden sm:flex h-[260px] hover:shadow-xl transition-all duration-300">
-                {/* Left Column - Image or letter avatar */}
-                <div 
-                  className="w-[200px] h-[260px] flex-shrink-0 relative bg-gray-100 cursor-pointer overflow-hidden group flex items-center justify-center"
-                  onClick={() => handleNavigateToProfile(pro.id)}
-                >
-                  {resolveAvatarUrl(pro.image) ? (
-                    <img
-                      src={resolveAvatarUrl(pro.image)!}
-                      alt={pro.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <span className="font-['Poppins',sans-serif] text-[48px] font-semibold text-[#FE8A0F] bg-[#FFF5EB] w-full h-full flex items-center justify-center">
-                      {getTwoLetterInitials(pro.name, "P")}
-                    </span>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-
-                {/* Right Column - Content */}
-                <div className="flex-1 p-5 flex flex-col">
-                  {/* Top Section */}
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1 min-w-0">
-                      {/* Name - BOLD */}
-                      <h3 
-                        className="font-['Poppins',sans-serif] text-[17px] text-[#2c353f] font-bold truncate mb-2 cursor-pointer hover:text-[#FE8A0F] transition-colors"
-                        onClick={() => handleNavigateToProfile(pro.id)}
-                      >
-                        {pro.name}
-                      </h3>
-                      
-                      {/* Location with Distance - BOLD (show location once: either "X miles away • City, Postcode" or just "City, Postcode") */}
-                      <div className="flex items-center gap-1.5 mb-3">
-                        <MapPin className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold truncate">
-                          {pro.distanceMiles != null
-                            ? `${Number(pro.distanceMiles).toFixed(1)} miles away${pro.location ? ` • ${pro.location}` : ''}`
-                            : (pro.location || '—')}
-                        </span>
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <h3
+                          className="font-['Poppins',sans-serif] text-[17px] text-[#2c353f] font-bold truncate cursor-pointer hover:text-[#FE8A0F] transition-colors"
+                          onClick={() => handleNavigateToProfile(pro.id)}
+                        >
+                          {pro.name}
+                        </h3>
+                        <VerificationBadge fullyVerified={pro.fullyVerified} size="md" />
                       </div>
-
-                      {/* Skills - Stronger borders */}
-                      {pro.skills && pro.skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {pro.skills.slice(0, 3).map((skill, index) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="bg-gradient-to-r from-blue-50 to-sky-50 border-2 border-blue-200 text-[#2c353f] font-['Poppins',sans-serif] text-[11px] font-semibold px-3 py-1 rounded-full hover:border-blue-300 hover:bg-blue-100 transition-all duration-200"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right Side: Rating and Button */}
-                    <div className="flex flex-col items-end gap-3 flex-shrink-0">
-                      {/* 5 Star Rating Display - Enhanced */}
-                      <div className="flex items-center gap-1 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-4 h-4 ${
-                              star <= Math.floor(pro.rating)
-                                ? 'text-[#FE8A0F] fill-[#FE8A0F]'
-                                : 'text-gray-300 fill-gray-300'
-                            }`}
-                          />
-                        ))}
-                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold ml-1">
-                          {Number(pro.rating).toFixed(1)}
-                        </span>
-                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
-                          ({pro.reviewCount})
-                        </span>
-                      </div>
-
-                      {/* Invitation Button - Enhanced */}
                       {invitedProfessionalIds.has(pro.id) ? (
                         <Button
                           disabled
-                          className="bg-green-50 text-green-700 border-2 border-green-300 font-['Poppins',sans-serif] text-[13px] font-semibold h-9 px-5 cursor-not-allowed shadow-sm"
+                          className="flex-shrink-0 bg-green-50 text-green-700 border-2 border-green-300 font-['Poppins',sans-serif] text-[13px] font-semibold h-9 px-5 cursor-not-allowed"
                         >
                           <Check className="w-4 h-4 mr-1.5" />
                           Invited
                         </Button>
                       ) : (
                         <Button
-                          onClick={() => onInvite(pro)}
-                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-lg text-white font-['Poppins',sans-serif] text-[13px] font-semibold h-9 px-5 transition-all duration-300"
+                          onClick={() => openInviteModal(pro)}
+                          className="flex-shrink-0 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px] font-semibold h-9 px-5"
                         >
                           Send invitation
                         </Button>
                       )}
                     </div>
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-4 h-4 ${
+                              star <= Math.floor(pro.rating) ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300 fill-gray-300"
+                            }`}
+                          />
+                        ))}
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold ml-0.5">
+                          {Number(pro.rating).toFixed(1)}
+                        </span>
+                        <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">({pro.reviewCount} {Number(pro.reviewCount) < 2 ? "review" : "reviews"})</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-[#FE8A0F] flex-shrink-0" />
+                        <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium truncate">
+                          {pro.distanceMiles != null
+                            ? `${Number(pro.distanceMiles).toFixed(1)} miles away${pro.location ? ` • ${pro.location}` : ""}`
+                            : pro.location || "—"}
+                        </span>
+                      </div>
+                    </div>
+                    {pro.skills && pro.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {pro.skills.slice(0, 3).map((skill, index) => (
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="bg-blue-50 border border-blue-200 text-[#2c353f] font-['Poppins',sans-serif] text-[11px] font-semibold px-3 py-0.5 rounded-full"
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
-
-                  {/* Description */}
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed line-clamp-4">
-                    {generateProfessionalSummary(pro)}
-                  </p>
                 </div>
+                {/* Bio from profile: full width, no label; 250 chars then "..." */}
+                {(pro.bio != null && pro.bio !== "") && (
+                  <div className="pt-4">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] leading-relaxed">
+                      {pro.bio.length > 250 ? `${pro.bio.slice(0, 250)}...` : pro.bio}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Confirm invite modal: pro info + message + Send invitation */}
+      <Dialog open={!!selectedProForInvite} onOpenChange={(open: boolean) => !open && closeInviteModal()}>
+        <DialogContent className="w-[90vw] max-w-md bg-white p-5">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+              Send invitation
+            </DialogTitle>
+          </DialogHeader>
+          {selectedProForInvite && (
+            <div className="space-y-4">
+              {/* Pro info section */}
+              <div className="flex gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                <div
+                  className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 cursor-pointer"
+                  onClick={() => { closeInviteModal(); handleNavigateToProfile(selectedProForInvite.id); }}
+                >
+                  {resolveAvatarUrl(selectedProForInvite.image) ? (
+                    <img
+                      src={resolveAvatarUrl(selectedProForInvite.image)!}
+                      alt={selectedProForInvite.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="w-full h-full flex items-center justify-center font-['Poppins',sans-serif] text-lg font-semibold text-[#FE8A0F]">
+                      {getTwoLetterInitials(selectedProForInvite.name, "P")}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-['Poppins',sans-serif] text-[15px] font-bold text-[#2c353f] truncate">
+                      {selectedProForInvite.name}
+                    </span>
+                    <VerificationBadge fullyVerified={selectedProForInvite.fullyVerified} size="sm" />
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`w-3.5 h-3.5 ${
+                          star <= Math.floor(selectedProForInvite.rating) ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300 fill-gray-300"
+                        }`}
+                      />
+                    ))}
+                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-semibold ml-0.5">
+                      {Number(selectedProForInvite.rating).toFixed(1)}
+                    </span>
+                    <span className="font-['Poppins',sans-serif] text-[11px] text-[#8d8d8d]">
+                      ({selectedProForInvite.reviewCount} {selectedProForInvite.reviewCount === 1 ? "review" : "reviews"})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#FE8A0F] flex-shrink-0" />
+                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] truncate">
+                      {selectedProForInvite.distanceMiles != null
+                        ? `${Number(selectedProForInvite.distanceMiles).toFixed(1)} miles away${selectedProForInvite.location ? ` • ${selectedProForInvite.location}` : ""}`
+                        : selectedProForInvite.location || "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message field */}
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-1.5 block">
+                  Message <span className="text-[#6b6b6b] font-normal">(optional)</span>
+                </Label>
+                <Textarea
+                  value={inviteMessage}
+                  onChange={(e) => setInviteMessage(e.target.value)}
+                  placeholder="Add a message to your invitation..."
+                  className="font-['Poppins',sans-serif] text-[13px] min-h-[80px] resize-y border-gray-200 focus:ring-[#FE8A0F] focus:border-[#FE8A0F]"
+                  rows={3}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeInviteModal}
+                  className="flex-1 font-['Poppins',sans-serif] border-gray-300 text-[#2c353f]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmInvite}
+                  className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] font-semibold"
+                >
+                  Send invitation
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

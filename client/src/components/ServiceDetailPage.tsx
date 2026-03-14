@@ -15,6 +15,7 @@ import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 import { resolveApiUrl } from "../config/api";
 import { resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
+import VerificationBadge from "./VerificationBadge";
 import { useCurrency } from "./CurrencyContext";
 
 // Helper function to resolve media URLs (images/videos)
@@ -390,6 +391,7 @@ export default function ServiceDetailPage() {
             aboutMe: s.aboutMe || (typeof s.professional === 'object'
               ? (s.professional.publicProfile?.bio || s.professional.aboutService || "")
               : ""),
+            providerIsVerified: typeof s.professional === 'object' && s.professional?.isVerified === true,
             description: s.title || "",
             title: s.title || "",
             about: s.aboutMe || s.description || "",
@@ -1764,9 +1766,12 @@ export default function ServiceDetailPage() {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1 group-hover:text-[#FE8A0F] transition-colors">
-                {service.tradingName}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-1 group-hover:text-[#FE8A0F] transition-colors">
+                  {service.tradingName}
+                </h3>
+                <VerificationBadge fullyVerified={service.providerIsVerified} size="md" />
+              </div>
               {providerBadge && (
                 <Badge className="bg-[#2c353f] text-white font-['Poppins',sans-serif] text-[11px] px-2 py-0.5 mb-2">
                   {providerBadge}
@@ -1988,6 +1993,7 @@ export default function ServiceDetailPage() {
                           <h3 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] group-hover:text-[#FE8A0F] transition-colors">
                             {service.tradingName}
                           </h3>
+                          <VerificationBadge fullyVerified={service.providerIsVerified} size="md" />
                         </div>
                         {providerBadge && (
                           <Badge className="bg-[#3D78CB] text-white font-['Poppins',sans-serif] text-[11px] px-2 py-0.5 mb-2">

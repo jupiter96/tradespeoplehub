@@ -449,13 +449,13 @@ export default function JobDetailPage() {
     return n === 1 ? "1 day" : `${n} days`;
   };
 
-  const handleInviteProfessional = async (pro: typeof recommendedProfessionals[0]) => {
+  const handleInviteProfessional = async (pro: typeof recommendedProfessionals[0], message?: string) => {
     try {
       const res = await fetch(resolveApiUrl(`/api/jobs/${job.id}/invite-professional`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ professionalId: pro.id }),
+        body: JSON.stringify({ professionalId: pro.id, message: message?.trim() || undefined }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

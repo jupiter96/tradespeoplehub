@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Star, Heart, MapPin, Medal, Play, Clock } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import VerificationBadge from "./VerificationBadge";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
 
@@ -435,17 +436,21 @@ export default function ServiceCard({
               {professionalId ? (
                 <Link
                   to={`/profile/${professionalId}`}
-                  className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none"
+                  className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none flex items-center gap-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
                     by <span className="inline">{displayTradingName}</span>
                   </p>
+                  <VerificationBadge fullyVerified={verified} size="sm" />
                 </Link>
               ) : (
-                <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
-                  by <span className="inline">{displayTradingName}</span>
-                </p>
+                <div className="flex items-center gap-1">
+                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
+                    by <span className="inline">{displayTradingName}</span>
+                  </p>
+                  <VerificationBadge fullyVerified={verified} size="sm" />
+                </div>
               )}
               {topRated && (
                 <div
@@ -455,19 +460,6 @@ export default function ServiceCard({
                   <Medal className="w-3 h-3 flex-shrink-0" style={{ color: "#2c353f" }} />
                   <span className="hidden md:inline font-['Poppins',sans-serif] text-[10px] font-semibold whitespace-nowrap">
                     Top Rated
-                  </span>
-                </div>
-              )}
-              {!topRated && verified && (
-                <div className="inline-flex items-center gap-0.5 flex-shrink-0">
-                  <div className="relative w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0">
-                    <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                      <circle cx="12" cy="12" r="10" fill="#1877F2" />
-                      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
-                    Verified
                   </span>
                 </div>
               )}

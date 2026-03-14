@@ -1332,7 +1332,7 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
       ...sectorFilter,
       ...(quotedObjectIds.length ? { _id: { $nin: quotedObjectIds } } : {}),
     })
-      .select('_id tradingName firstName lastName avatar postcode address townCity')
+      .select('_id tradingName firstName lastName avatar postcode address townCity publicProfile.bio verification')
       .lean();
 
     if (professionals.length === 0) return res.json({ professionals: [] });
@@ -1371,6 +1371,10 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
           jobCoords && proCoords
             ? Math.round(haversineMiles(jobCoords.latitude, jobCoords.longitude, proCoords.latitude, proCoords.longitude) * 10) / 10
             : null;
+        const bio = (pro.publicProfile && pro.publicProfile.bio) ? String(pro.publicProfile.bio).trim() : '';
+        const v = pro.verification || {};
+        const steps = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
+        const fullyVerified = steps.every((key) => v[key] && v[key].status === 'verified');
         return {
           id,
           name: pro.tradingName || [pro.firstName, pro.lastName].filter(Boolean).join(' ') || 'Professional',
@@ -1383,6 +1387,8 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
           location: [pro.townCity, pro.postcode].filter(Boolean).join(', ') || pro.postcode || '',
           skills: [],
           distanceMiles,
+          bio: bio || undefined,
+          fullyVerified: !!fullyVerified,
         };
       })
       .sort((a, b) => {
@@ -1406,18 +1412,22 @@ router.post('/:id/invite-professional', authenticateToken, requireRole(['client'
     if (job.clientId.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not allowed to invite for this job' });
     }
-    const { professionalId } = req.body;
+    const { professionalId, message: clientMessage } = req.body;
     if (!professionalId) return res.status(400).json({ error: 'professionalId is required' });
     const pro = await User.findById(professionalId).select('_id role tradingName firstName lastName').lean();
     if (!pro || pro.role !== 'professional') return res.status(404).json({ error: 'Professional not found' });
     const jobSlug = job.slug || job._id.toString();
     const jobTitle = job.title || 'Job';
     const clientName = req.user.name || req.user.firstName || 'A client';
+    const baseMessage = `${clientName} invited you to submit a quote for "${jobTitle}".`;
+    const notificationMessage = (clientMessage && String(clientMessage).trim())
+      ? `${baseMessage}\n\nMessage: ${String(clientMessage).trim()}`
+      : baseMessage;
     await Notification.createNotification({
       userId: pro._id,
       type: 'job_invitation',
       title: 'Job quote invitation',
-      message: `${clientName} invited you to submit a quote for "${jobTitle}".`,
+      message: notificationMessage,
       relatedId: job._id,
       relatedModel: 'Job',
       link: `/job/${jobSlug}`,

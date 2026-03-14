@@ -22,6 +22,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Star, Heart, MapPin, Medal, Play, Clock } from "lucide-react";
 import { formatCurrency, formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
+import VerificationBadge from "./VerificationBadge";
 
 // Video Thumbnail Component with Play Button
 function VideoThumbnail({
@@ -2848,10 +2849,11 @@ export default function SectorPage() {
                               <div className="flex flex-col gap-1 min-w-0 flex-1">
                                 {/* First Row: Trading name and badges */}
                                 <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                  <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none" onClick={(e) => e.stopPropagation()}>
+                                  <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                     <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
                                       by <span className="inline">{displayTradingName}</span>
                                     </p>
+                                    <VerificationBadge fullyVerified={verified} size="sm" />
                         </Link>
                                   {topRated && (
                                     <div 
@@ -2863,19 +2865,6 @@ export default function SectorPage() {
                                         Top Rated
                                       </span>
                       </div>
-                                  )}
-                                  {!topRated && verified && (
-                                    <div className="inline-flex items-center gap-0.5 flex-shrink-0">
-                                      <div className="relative w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0">
-                                        <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                                          <circle cx="12" cy="12" r="10" fill="#1877F2"/>
-                                          <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                        </svg>
-                    </div>
-                                      <span className="hidden md:inline font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#1877F2] font-medium">
-                                        Verified
-                                      </span>
-                  </div>
                                   )}
                                 </div>
                                 
@@ -2954,16 +2943,12 @@ export default function SectorPage() {
                                 </Avatar>
                                 </Link>
                                 <div className="flex items-center gap-1 flex-wrap">
-                                  <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                  <Link to={service.professionalId ? `/profile/${service.professionalId}` : '#'} className="hover:opacity-80 transition-opacity flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                                   <span className="font-['Poppins',sans-serif] text-[9px] text-[#2c353f]">
                                     {service.tradingName.length > 8 ? `${service.tradingName.slice(0, 8)}...` : service.tradingName}
                                   </span>
+                                  <VerificationBadge fullyVerified={service.providerIsVerified} size="sm" />
                                   </Link>
-                                  {service.providerIsVerified && (
-                                    <span className="inline-flex items-center px-1 py-0.5 bg-[#E6F0FF] text-[#3D78CB] rounded text-[7px] font-['Poppins',sans-serif] font-medium">
-                                      ✓ Verified
-                                    </span>
-                                  )}
                                   {service.providerRating && service.providerRating > 0 ? (
                                     <>
                                       <div className="flex items-center gap-0.5">

@@ -17,6 +17,7 @@ import serviceVector from "../assets/service_vector.jpg";
 import { SEOHead } from "./SEOHead";
 import PortfolioGalleryPreview from "./PortfolioGalleryPreview";
 import { useCurrency } from "./CurrencyContext";
+import VerificationBadge from "./VerificationBadge";
 
 // SmartImageLayers component for blur background effect
 function SmartImageLayers({
@@ -818,13 +819,9 @@ export default function ProfilePage() {
 
             {/* col 2: details */}
             <div className="profile-card-details min-w-0">
-              <div className="seller-name">
+              <div className="seller-name flex items-center gap-2">
                 {tradingName || displayName}
-                {isFullyVerified && (
-                  <span className="verified-dot" title="Verified" aria-label="Verified">
-                    <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                  </span>
-                )}
+                <VerificationBadge fullyVerified={isFullyVerified} size="md" />
                   </div>
 
               {/* One primary category under trading name (not a badge) */}
