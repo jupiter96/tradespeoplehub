@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs, JobQuote, Milestone } from "./JobsContext";
 import { useAccount } from "./AccountContext";
@@ -98,6 +99,7 @@ import InviteToQuoteModal from "./InviteToQuoteModal";
 import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
 import FloatingToolsBackground from "./FloatingToolsBackground";
+import JobDeliverWorkModal from "./JobDeliverWorkModal";
 
 type SocialShareLink = {
   name: string;
@@ -112,11 +114,15 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute, deleteJob } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
   const { formatPrice, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && tab !== activeTab) setActiveTab(tab);
+  }, [searchParams]);
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
     price: "",
@@ -229,6 +235,17 @@ export default function JobDetailPage() {
   } | null>(null);
   const [clientPreviewTab, setClientPreviewTab] = useState("about");
   const [clientPreviewLoading, setClientPreviewLoading] = useState(false);
+
+  const [showDeliverWorkModal, setShowDeliverWorkModal] = useState(false);
+  const [deliverWorkPreselectedMilestoneIndex, setDeliverWorkPreselectedMilestoneIndex] = useState<number | null>(null);
+  const [showViewWorkDeliveredModal, setShowViewWorkDeliveredModal] = useState(false);
+  const [viewWorkDeliveredData, setViewWorkDeliveredData] = useState<{ milestoneId: string; milestoneIndex: number; milestoneName: string; deliveryMessage: string; fileUrls: { url: string; name?: string }[] } | null>(null);
+  const [revisionMessage, setRevisionMessage] = useState("");
+  const [viewWorkFullscreenUrl, setViewWorkFullscreenUrl] = useState<string | null>(null);
+  const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
+  const [showViewRevisionModal, setShowViewRevisionModal] = useState(false);
+  const [viewRevisionData, setViewRevisionData] = useState<{ milestoneName: string; revisionMessage: string; revisionFileUrls: { url: string; name?: string }[] } | null>(null);
+  const [viewRevisionFullscreenUrl, setViewRevisionFullscreenUrl] = useState<string | null>(null);
 
   // Redirect to login only after auth state is resolved (avoid redirect on refresh before session check)
   useEffect(() => {
@@ -1756,8 +1773,8 @@ export default function JobDetailPage() {
                   ); })
                 ) )}
 
-                {/* Invite Professionals List - dynamic by job sector, sorted by rating/reviews */}
-                {isJobOwner && (
+                {/* Invite Professionals List - hidden when job is in-progress (already awarded) */}
+                {isJobOwner && job.status !== "in-progress" && (
                   <>
                     {recommendedProfessionalsLoading ? (
                       <div className="mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
@@ -1994,7 +2011,10 @@ export default function JobDetailPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {job.milestones.map((milestone) => (
+                          {job.milestones.map((milestone, milestoneIndex) => {
+                            const deliveryForMilestone = (job.milestoneDeliveries || []).find((d) => d.milestoneIndex === milestoneIndex);
+                            const hasDeliveryNotApproved = deliveryForMilestone && !deliveryForMilestone.approvedAt;
+                            return (
                             <tr key={milestone.id} className="border-b border-gray-100 hover:bg-gray-50/50">
                               <td className="py-3 px-4 text-[#2c353f]">{milestone.name || milestone.description || "Milestone"}</td>
                               <td className="py-3 px-4 text-[#6b6b6b]">{formatDate(milestone.createdAt)}</td>
@@ -2046,7 +2066,6 @@ export default function JobDetailPage() {
                                     </div>
                                     <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
                                       <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
-                                        <FileText className="w-4 h-4 mr-2" />
                                         View invoice
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -2082,7 +2101,6 @@ export default function JobDetailPage() {
                                             Reject
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
-                                            <FileText className="w-4 h-4 mr-2" />
                                             View invoice
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -2112,7 +2130,6 @@ export default function JobDetailPage() {
                                             Reject
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
-                                            <FileText className="w-4 h-4 mr-2" />
                                             View invoice
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -2137,6 +2154,24 @@ export default function JobDetailPage() {
                                           </DropdownMenuTrigger>
                                         </div>
                                         <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          {hasDeliveryNotApproved && deliveryForMilestone && (
+                                            <DropdownMenuItem
+                                              onClick={() => {
+                                                setViewWorkDeliveredData({
+                                                  milestoneId: milestone.id,
+                                                  milestoneIndex,
+                                                  milestoneName: milestone.name || milestone.description || "Milestone",
+                                                  deliveryMessage: deliveryForMilestone.deliveryMessage || "",
+                                                  fileUrls: deliveryForMilestone.fileUrls || [],
+                                                });
+                                                setRevisionMessage("");
+                                                setShowViewWorkDeliveredModal(true);
+                                              }}
+                                              className="cursor-pointer text-[#1976D2] focus:text-[#1976D2]"
+                                            >
+                                              View Work delivered
+                                            </DropdownMenuItem>
+                                          )}
                                           <DropdownMenuItem
                                             disabled={milestone.cancelRequestStatus === "pending"}
                                             onClick={() => {
@@ -2149,11 +2184,9 @@ export default function JobDetailPage() {
                                             Cancel request
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-red-600 focus:text-red-600">
-                                            <Flag className="w-4 h-4 mr-2" />
                                             Dispute
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
-                                            <FileText className="w-4 h-4 mr-2" />
                                             View invoice
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -2169,7 +2202,6 @@ export default function JobDetailPage() {
                                     onClick={() => handleViewInvoice(milestone.id)}
                                     className="h-8 px-3 text-[13px] border-gray-300 text-[#2c353f] hover:bg-gray-50"
                                   >
-                                    <FileText className="w-4 h-4 mr-1.5" />
                                     View invoice
                                   </Button>
                                 )}
@@ -2231,6 +2263,33 @@ export default function JobDetailPage() {
                                           </DropdownMenuTrigger>
                                         </div>
                                         <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          {deliveryForMilestone?.revisionRequestedAt && (
+                                            <DropdownMenuItem
+                                              onClick={() => {
+                                                setViewRevisionData({
+                                                  milestoneName: milestone.name || milestone.description || "Milestone",
+                                                  revisionMessage: deliveryForMilestone.revisionMessage || "",
+                                                  revisionFileUrls: deliveryForMilestone.revisionFileUrls || [],
+                                                });
+                                                setShowViewRevisionModal(true);
+                                              }}
+                                              className="cursor-pointer text-orange-600 focus:text-orange-600"
+                                            >
+                                              View Revision request
+                                            </DropdownMenuItem>
+                                          )}
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              const idx = (job.milestones || []).findIndex((m) => m.id === milestone.id);
+                                              if (idx >= 0) {
+                                                setDeliverWorkPreselectedMilestoneIndex(idx);
+                                                setShowDeliverWorkModal(true);
+                                              }
+                                            }}
+                                            className="cursor-pointer text-[#1976D2] focus:text-[#1976D2]"
+                                          >
+                                            Deliver Work
+                                          </DropdownMenuItem>
                                           <DropdownMenuItem
                                             disabled={milestone.releaseRequestStatus === "pending"}
                                             onClick={() => setReleaseRequestConfirm({ jobId: job.id, milestoneId: milestone.id, milestone })}
@@ -2239,7 +2298,6 @@ export default function JobDetailPage() {
                                             Request release
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
-                                            <Flag className="w-4 h-4 mr-2" />
                                             Open dispute
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -2255,13 +2313,12 @@ export default function JobDetailPage() {
                                     onClick={() => handleViewInvoice(milestone.id)}
                                     className="h-8 px-3 text-[13px] border-gray-300 text-[#2c353f] hover:bg-gray-50"
                                   >
-                                    <FileText className="w-4 h-4 mr-1.5" />
                                     View invoice
                                   </Button>
                                 )}
                               </td>
                             </tr>
-                          ))}
+                          ); })}
                         </tbody>
                       </table>
                     </div>
@@ -3741,6 +3798,307 @@ export default function JobDetailPage() {
       </Dialog>
 
       {/* Invite to Quote Modal */}
+      <JobDeliverWorkModal
+        open={showDeliverWorkModal}
+        onOpenChange={setShowDeliverWorkModal}
+        job={job}
+        preselectedMilestoneIndex={deliverWorkPreselectedMilestoneIndex}
+        onSuccess={() => {
+          setDeliverWorkPreselectedMilestoneIndex(null);
+          fetchJobById(job?.id || "");
+        }}
+      />
+
+      <Dialog open={showViewWorkDeliveredModal} onOpenChange={(open) => { setShowViewWorkDeliveredModal(open); if (!open) { setViewWorkDeliveredData(null); setRevisionMessage(""); setRevisionFiles([]); } }}>
+        <DialogContent className="w-[90vw] max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              View Work delivered
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+              {viewWorkDeliveredData ? `Milestone: ${viewWorkDeliveredData.milestoneName}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {viewWorkDeliveredData && (
+            <div className="space-y-4">
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1 block">Message</Label>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap bg-gray-50 p-3 rounded">
+                  {viewWorkDeliveredData.deliveryMessage || "(No message)"}
+                </p>
+              </div>
+              {viewWorkDeliveredData.fileUrls.length > 0 && (
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">Attachments</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {viewWorkDeliveredData.fileUrls.map((f, i) => {
+                      const fullUrl = resolveApiUrl(f.url);
+                      const name = (f.name || f.url.split("/").pop() || "").toLowerCase();
+                      const isImage = /\.(jpe?g|png|gif|webp|bmp)$/i.test(name) || name.includes("image");
+                      const isVideo = /\.(mp4|webm|mov|avi|mpeg|ogv)$/i.test(name) || name.includes("video");
+                      if (isImage) {
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setViewWorkFullscreenUrl(fullUrl); }}
+                            className="relative aspect-square rounded-lg border border-gray-200 overflow-hidden bg-gray-100 hover:ring-2 hover:ring-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]"
+                          >
+                            <img src={fullUrl} alt={f.name || "Attachment"} className="w-full h-full object-cover pointer-events-none" />
+                          </button>
+                        );
+                      }
+                      if (isVideo) {
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setViewWorkFullscreenUrl(fullUrl); }}
+                            className="relative aspect-square rounded-lg border border-gray-200 overflow-hidden bg-gray-900 hover:ring-2 hover:ring-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]"
+                          >
+                            <video src={fullUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                              <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-[#2c353f] ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      }
+                      return (
+                        <a
+                          key={i}
+                          href={fullUrl}
+                          download={f.name || f.url.split("/").pop() || undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 font-['Poppins',sans-serif] text-[13px] text-[#1976D2] col-span-2 sm:col-span-1"
+                        >
+                          <FileText className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{f.name || f.url.split("/").pop() || "File"}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">Revision feedback (if requesting revision)</Label>
+                <Textarea
+                  placeholder="Describe what changes you need..."
+                  value={revisionMessage}
+                  onChange={(e) => setRevisionMessage(e.target.value)}
+                  rows={3}
+                  className="font-['Poppins',sans-serif] text-[13px]"
+                />
+              </div>
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">Attach files (optional, for revision request)</Label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*,.pdf,.doc,.docx"
+                  onChange={(e) => {
+                    if (e.target.files) setRevisionFiles((prev) => [...prev, ...Array.from(e.target.files!)].slice(0, 10));
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                  id="revision-files-input"
+                />
+                <label
+                  htmlFor="revision-files-input"
+                  className="flex items-center gap-2 p-3 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#FE8A0F] font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  Add files (max 10)
+                </label>
+                {revisionFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {revisionFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-[13px]">
+                        <span className="truncate flex-1">{file.name}</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-red-600" onClick={() => setRevisionFiles((p) => p.filter((_, i) => i !== idx))}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button
+                  onClick={async () => {
+                    if (!job?.id || !viewWorkDeliveredData) return;
+                    try {
+                      await approveMilestoneDelivery(job.id, viewWorkDeliveredData.milestoneId);
+                      toast.success("Delivery approved.");
+                      setShowViewWorkDeliveredModal(false);
+                      setViewWorkDeliveredData(null);
+                      fetchJobById(job.id);
+                    } catch (e: any) {
+                      toast.error(e?.message || "Failed to approve");
+                    }
+                  }}
+                  className="flex-1 bg-green-600 hover:bg-green-700 font-['Poppins',sans-serif]"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Approve
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const msg = revisionMessage.trim();
+                    if (!msg) {
+                      toast.error("Please enter revision feedback.");
+                      return;
+                    }
+                    if (!job?.id || !viewWorkDeliveredData) return;
+                    requestMilestoneRevision(job.id, viewWorkDeliveredData.milestoneId, msg, revisionFiles.length > 0 ? revisionFiles : undefined).then(() => {
+                      toast.success("Revision requested.");
+                      setShowViewWorkDeliveredModal(false);
+                      setViewWorkDeliveredData(null);
+                      setRevisionMessage("");
+                      setRevisionFiles([]);
+                      fetchJobById(job.id);
+                    }).catch((e: any) => toast.error(e?.message || "Failed to request revision"));
+                  }}
+                  className="flex-1 font-['Poppins',sans-serif] border-orange-300 text-orange-600 hover:bg-orange-50"
+                >
+                  Request Revision
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Pro: View Revision request modal */}
+      <Dialog open={showViewRevisionModal} onOpenChange={(open) => { setShowViewRevisionModal(open); if (!open) setViewRevisionData(null); setViewRevisionFullscreenUrl(null); }}>
+        <DialogContent className="w-[90vw] max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              View Revision request
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+              {viewRevisionData ? `Milestone: ${viewRevisionData.milestoneName}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          {viewRevisionData && (
+            <div className="space-y-4">
+              <div>
+                <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-1 block">Client feedback</Label>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap bg-gray-50 p-3 rounded">
+                  {viewRevisionData.revisionMessage || "(No message)"}
+                </p>
+              </div>
+              {viewRevisionData.revisionFileUrls.length > 0 && (
+                <div>
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">Attachments</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {viewRevisionData.revisionFileUrls.map((f, i) => {
+                      const fullUrl = resolveApiUrl(f.url);
+                      const name = (f.name || f.url.split("/").pop() || "").toLowerCase();
+                      const isImage = /\.(jpe?g|png|gif|webp|bmp)$/i.test(name) || name.includes("image");
+                      const isVideo = /\.(mp4|webm|mov|avi|mpeg|ogv)$/i.test(name) || name.includes("video");
+                      if (isImage) {
+                        return (
+                          <button key={i} type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); setViewRevisionFullscreenUrl(fullUrl); }} className="relative aspect-square rounded-lg border border-gray-200 overflow-hidden bg-gray-100 hover:ring-2 hover:ring-[#FE8A0F]">
+                            <img src={fullUrl} alt={f.name || "Attachment"} className="w-full h-full object-cover pointer-events-none" />
+                          </button>
+                        );
+                      }
+                      if (isVideo) {
+                        return (
+                          <button key={i} type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); setViewRevisionFullscreenUrl(fullUrl); }} className="relative aspect-square rounded-lg border border-gray-200 overflow-hidden bg-gray-900 hover:ring-2 hover:ring-[#FE8A0F]">
+                            <video src={fullUrl} className="w-full h-full object-cover pointer-events-none" muted playsInline preload="metadata" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                              <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-[#2c353f] ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      }
+                      return (
+                        <a key={i} href={fullUrl} download={f.name || f.url.split("/").pop() || undefined} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 font-['Poppins',sans-serif] text-[13px] text-[#1976D2] col-span-2 sm:col-span-1">
+                          <FileText className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{f.name || f.url.split("/").pop() || "File"}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end pt-2">
+                <Button variant="outline" onClick={() => setShowViewRevisionModal(false)} className="font-['Poppins',sans-serif]">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Fullscreen viewer for image/video from View Revision request — portaled so it appears above the dialog */}
+      {viewRevisionFullscreenUrl && createPortal(
+        <div className="fixed inset-0 z-[100002] bg-black/95 flex items-center justify-center" onClick={() => setViewRevisionFullscreenUrl(null)} role="dialog" aria-modal="true">
+          <button type="button" onClick={() => setViewRevisionFullscreenUrl(null)} className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white" aria-label="Close">
+            <X className="w-6 h-6" />
+          </button>
+          {(() => {
+            const u = viewRevisionFullscreenUrl.toLowerCase();
+            const isVideo = /\.(mp4|webm|mov|avi|mpeg|ogv)(\?|$)/i.test(u);
+            return isVideo ? (
+              <video src={viewRevisionFullscreenUrl} controls autoPlay className="max-w-full max-h-[90vh] w-auto h-auto object-contain" onClick={(e) => e.stopPropagation()} />
+            ) : (
+              <img src={viewRevisionFullscreenUrl} alt="Fullscreen" className="max-w-full max-h-[90vh] w-auto h-auto object-contain" onClick={(e) => e.stopPropagation()} />
+            );
+          })()}
+        </div>,
+        document.body
+      )}
+
+      {/* Fullscreen viewer for image/video from View Work delivered — portaled so it appears above the dialog */}
+      {viewWorkFullscreenUrl && createPortal(
+        <div
+          className="fixed inset-0 z-[100002] bg-black/95 flex items-center justify-center"
+          onClick={() => setViewWorkFullscreenUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="View attachment fullscreen"
+        >
+          <button
+            type="button"
+            onClick={() => setViewWorkFullscreenUrl(null)}
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          {(() => {
+            const u = viewWorkFullscreenUrl.toLowerCase();
+            const isVideo = /\.(mp4|webm|mov|avi|mpeg|ogv)(\?|$)/i.test(u);
+            return isVideo ? (
+              <video
+                src={viewWorkFullscreenUrl}
+                controls
+                autoPlay
+                className="max-w-full max-h-[90vh] w-auto h-auto object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img
+                src={viewWorkFullscreenUrl}
+                alt="Fullscreen"
+                className="max-w-full max-h-[90vh] w-auto h-auto object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            );
+          })()}
+        </div>,
+        document.body
+      )}
+
       {selectedProfessional && (
         <InviteToQuoteModal
           isOpen={showInviteModal}

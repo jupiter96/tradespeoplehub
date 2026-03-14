@@ -517,15 +517,15 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        startConversation({
-                          id: `client-${job.clientId}`,
-                          name: job.clientName || "Client",
-                          avatar: job.clientAvatar,
-                          online: true,
-                          jobId: job.id,
-                          jobTitle: job.title,
-                        });
-                        navigate(`/account?tab=messenger`);
+                        if (job.clientId) {
+                          startConversation({
+                            id: job.clientId,
+                            name: job.clientName || "Client",
+                            avatar: job.clientAvatar,
+                            jobId: job.id,
+                            jobTitle: job.title,
+                          });
+                        }
                       }}
                       variant="outline"
                       className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"

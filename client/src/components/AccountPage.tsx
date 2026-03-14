@@ -6445,6 +6445,9 @@ function NotificationsSection({ onUnreadCountChange }: { onUnreadCountChange: (c
       'custom_offer_rejected_by_client': 'warning',
       'custom_offer_rejected_by_pro': 'warning',
       'job_invitation': 'message',
+      'job_milestone_delivered': 'info',
+      'job_delivery_approved': 'success',
+      'job_revision_requested': 'warning',
     };
     return typeMap[type] || 'info';
   };

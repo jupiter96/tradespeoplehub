@@ -79,6 +79,20 @@ export interface Milestone {
   releaseRequestStatus?: "pending" | "accepted" | "rejected";
 }
 
+export interface MilestoneDelivery {
+  milestoneIndex: number;
+  deliveryMessage: string;
+  fileUrls: { url: string; name?: string }[];
+  deliveredAt: string | null;
+  deliveredBy: string;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  revisionRequestedAt: string | null;
+  revisionMessage: string;
+  revisionRequestedBy: string | null;
+  revisionFileUrls?: { url: string; name?: string }[];
+}
+
 export interface Job {
   id: string;
   slug?: string;
@@ -124,6 +138,8 @@ export interface Job {
   awardedProfessionalId?: string;
   /** Attachments from post-job (name, url, mimeType, size) */
   attachments?: { name: string; url: string; mimeType?: string; size?: number }[];
+  /** Pro delivery per milestone; client can approve or request revision */
+  milestoneDeliveries?: MilestoneDelivery[];
 }
 
 interface JobsContextType {
@@ -165,6 +181,9 @@ interface JobsContextType {
   getDisputeById: (disputeId: string) => Dispute | undefined;
   addDisputeMessage: (disputeId: string, message: string) => void;
   makeDisputeOffer: (disputeId: string, amount: number) => void;
+  deliverJobMilestone: (jobId: string, milestoneIndex: number, deliveryMessage: string, files?: File[]) => Promise<void>;
+  approveMilestoneDelivery: (jobId: string, milestoneId: string) => Promise<void>;
+  requestMilestoneRevision: (jobId: string, milestoneId: string, revisionMessage: string, files?: File[]) => Promise<void>;
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
@@ -733,6 +752,75 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const deliverJobMilestone = async (
+    jobId: string,
+    milestoneIndex: number,
+    deliveryMessage: string,
+    files?: File[]
+  ): Promise<void> => {
+    const form = new FormData();
+    form.append('milestoneIndex', String(milestoneIndex));
+    form.append('deliveryMessage', deliveryMessage);
+    if (files?.length) {
+      files.forEach((f) => form.append('files', f));
+    }
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/deliver-milestone`), {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to deliver milestone');
+    }
+    const data = await res.json();
+    if (data.job) {
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? data.job : j)));
+    }
+  };
+
+  const approveMilestoneDelivery = async (jobId: string, milestoneId: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/milestones/${milestoneId}/delivery/approve`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to approve delivery');
+    }
+    const data = await res.json();
+    if (data.job) {
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? data.job : j)));
+    }
+  };
+
+  const requestMilestoneRevision = async (
+    jobId: string,
+    milestoneId: string,
+    revisionMessage: string,
+    files?: File[]
+  ): Promise<void> => {
+    const form = new FormData();
+    form.append('revisionMessage', revisionMessage);
+    if (files?.length) {
+      files.forEach((f) => form.append('files', f));
+    }
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/milestones/${milestoneId}/delivery/request-revision`), {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to request revision');
+    }
+    const data = await res.json();
+    if (data.job) {
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? data.job : j)));
+    }
+  };
+
   return (
     <JobsContext.Provider
       value={{
@@ -769,6 +857,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         getDisputeById,
         addDisputeMessage,
         makeDisputeOffer,
+        deliverJobMilestone,
+        approveMilestoneDelivery,
+        requestMilestoneRevision,
       }}
     >
       {children}

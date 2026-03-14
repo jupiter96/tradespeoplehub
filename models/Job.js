@@ -119,6 +119,26 @@ const jobSchema = new mongoose.Schema(
     quotes: { type: [jobQuoteSchema], default: [] },
     awardedProfessionalId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     milestones: { type: [milestoneSchema], default: [] },
+    /** Pro delivers work per milestone; client can approve or request revision */
+    milestoneDeliveries: [
+      {
+        milestoneIndex: { type: Number, required: true },
+        deliveryMessage: { type: String, trim: true, default: '' },
+        fileUrls: [
+          { url: { type: String, required: true }, name: { type: String, trim: true, default: '' } },
+        ],
+        deliveredAt: { type: Date, default: Date.now },
+        deliveredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+        approvedAt: { type: Date, default: null },
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        revisionRequestedAt: { type: Date, default: null },
+        revisionMessage: { type: String, trim: true, default: '' },
+        revisionRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        revisionFileUrls: [
+          { url: { type: String, required: true }, name: { type: String, trim: true, default: '' } },
+        ],
+      },
+    ],
     slug: { type: String, trim: true, unique: true, sparse: true },
     /** Attachments added when posting (post-job page); stored as URLs under /uploads/job-attachments */
     attachments: [

@@ -159,6 +159,19 @@ function toJobResponse(doc) {
       releaseRequestedBy: m.releaseRequestedBy?.toString?.() || m.releaseRequestedBy || undefined,
       releaseRequestStatus: m.releaseRequestStatus || undefined,
     })),
+    milestoneDeliveries: (job.milestoneDeliveries || []).map((d) => ({
+      milestoneIndex: d.milestoneIndex,
+      deliveryMessage: d.deliveryMessage || '',
+      fileUrls: d.fileUrls || [],
+      deliveredAt: d.deliveredAt ? new Date(d.deliveredAt).toISOString() : null,
+      deliveredBy: d.deliveredBy?.toString?.() || d.deliveredBy,
+      approvedAt: d.approvedAt ? new Date(d.approvedAt).toISOString() : null,
+      approvedBy: d.approvedBy?.toString?.() || d.approvedBy || null,
+      revisionRequestedAt: d.revisionRequestedAt ? new Date(d.revisionRequestedAt).toISOString() : null,
+      revisionMessage: d.revisionMessage || '',
+      revisionRequestedBy: d.revisionRequestedBy?.toString?.() || d.revisionRequestedBy || null,
+      revisionFileUrls: d.revisionFileUrls || [],
+    })),
   };
 }
 
@@ -857,6 +870,48 @@ const jobFilesUpload = multer({
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
+// Job milestone delivery uploads (pro delivers work per milestone)
+const jobDeliveriesDir = path.join(__dirname, '..', 'uploads', 'job-deliveries');
+fs.mkdirSync(jobDeliveriesDir, { recursive: true });
+const jobDeliveriesStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, jobDeliveriesDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '';
+    const base = (file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+    cb(null, `${Date.now()}-${base}${ext}`);
+  },
+});
+const jobDeliveriesUpload = multer({
+  storage: jobDeliveriesStorage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'application/pdf'];
+    if (allowed.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('File type not allowed'));
+  },
+});
+
+// Client revision request attachments (request-revision with files)
+const jobRevisionsDir = path.join(__dirname, '..', 'uploads', 'job-revisions');
+fs.mkdirSync(jobRevisionsDir, { recursive: true });
+const jobRevisionsStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, jobRevisionsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '';
+    const base = (file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+    cb(null, `${Date.now()}-${base}${ext}`);
+  },
+});
+const jobRevisionsUpload = multer({
+  storage: jobRevisionsStorage,
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp', 'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'application/pdf'];
+    if (allowed.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('File type not allowed'));
+  },
+});
+
 function canAccessJobFiles(job, userId, userRole) {
   if (!job || !userId) return false;
   const clientId = job.clientId?.toString?.();
@@ -924,6 +979,217 @@ router.post('/:id/files', authenticateToken, jobFilesUpload.single('file'), asyn
   } catch (err) {
     console.error('[Jobs] POST file:', err);
     return res.status(500).json({ error: err.message || 'Failed to upload file' });
+  }
+});
+
+// Professional: deliver work for a milestone (files + message)
+router.post('/:id/deliver-milestone', authenticateToken, requireRole(['professional']), jobDeliveriesUpload.array('files', 10), async (req, res) => {
+  const { unlinkSync } = await import('fs');
+  try {
+    const idOrSlug = req.params.id;
+    let job = await Job.findById(idOrSlug);
+    if (!job) job = await Job.findOne({ slug: idOrSlug });
+    if (!job) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    if (job.awardedProfessionalId?.toString() !== req.user.id) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(403).json({ error: 'Not allowed to deliver work for this job' });
+    }
+    if (job.status !== 'in-progress') {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(400).json({ error: 'Job must be in progress to deliver a milestone' });
+    }
+    const milestones = job.milestones || [];
+    const rawIdx = req.body.milestoneIndex;
+    const milestoneIndex = rawIdx !== undefined && rawIdx !== null ? parseInt(String(rawIdx), 10) : -1;
+    if (isNaN(milestoneIndex) || milestoneIndex < 0 || milestoneIndex >= milestones.length) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(400).json({ error: 'Invalid milestone index' });
+    }
+    const milestone = milestones[milestoneIndex];
+    if (milestone.status !== 'in-progress') {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(400).json({ error: 'Only in-progress milestones can be delivered' });
+    }
+    const deliveryMessage = (req.body.deliveryMessage && String(req.body.deliveryMessage).trim()) || '';
+    const milestoneDeliveries = job.milestoneDeliveries || [];
+    const existing = milestoneDeliveries.find((d) => d.milestoneIndex === milestoneIndex);
+    const isRevision = existing && existing.revisionRequestedAt;
+    const fileUrls = [];
+    if (req.files && req.files.length > 0) {
+      for (const f of req.files) {
+        fileUrls.push({ url: `/uploads/job-deliveries/${f.filename}`, name: f.originalname || f.filename });
+      }
+    }
+    if (!job.milestoneDeliveries) job.milestoneDeliveries = [];
+    if (isRevision && existing) {
+      existing.deliveredAt = new Date();
+      existing.deliveryMessage = deliveryMessage;
+      existing.fileUrls = fileUrls.length ? fileUrls : existing.fileUrls || [];
+      existing.revisionRequestedAt = null;
+      existing.revisionMessage = '';
+      existing.revisionRequestedBy = null;
+    } else if (!existing) {
+      job.milestoneDeliveries.push({
+        milestoneIndex,
+        deliveryMessage,
+        fileUrls,
+        deliveredAt: new Date(),
+        deliveredBy: req.user.id,
+        approvedAt: null,
+        approvedBy: null,
+        revisionRequestedAt: null,
+        revisionMessage: '',
+        revisionRequestedBy: null,
+      });
+    } else {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(400).json({ error: 'This milestone has already been delivered' });
+    }
+    job.markModified('milestoneDeliveries');
+    await job.save();
+    emitJobUpdated(job);
+    const jobSlug = job.slug || job._id.toString();
+    const jobTitle = job.title || 'Job';
+    const clientId = job.clientId?.toString?.();
+    const milestoneName = (milestones[milestoneIndex] && (milestones[milestoneIndex].name || milestones[milestoneIndex].description)) || 'Milestone';
+    if (clientId) {
+      await Notification.createNotification({
+        userId: clientId,
+        type: 'job_milestone_delivered',
+        title: 'Work delivered',
+        message: `Professional delivered work for "${milestoneName}" on "${jobTitle}".`,
+        relatedId: job._id,
+        relatedModel: 'Job',
+        link: `/job/${jobSlug}?tab=payment`,
+        metadata: { jobId: job._id.toString(), jobSlug, jobTitle, milestoneIndex },
+      });
+    }
+    const response = toJobResponse(job);
+    return res.json({ message: 'Milestone delivered successfully.', job: response });
+  } catch (err) {
+    if (req.files?.length) {
+      const { unlinkSync: unlink } = await import('fs');
+      req.files.forEach((f) => { try { if (f.path) unlink(f.path); } catch (_) {} });
+    }
+    console.error('[Jobs] deliver-milestone error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to deliver milestone' });
+  }
+});
+
+// Client: approve a milestone delivery (View Work delivered → Approve)
+router.patch('/:id/milestones/:milestoneId/delivery/approve', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) job = await Job.findOne({ slug: req.params.id });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.clientId?.toString() !== req.user.id) return res.status(403).json({ error: 'Not allowed to approve delivery for this job' });
+    const milestones = job.milestones || [];
+    const milestoneId = req.params.milestoneId;
+    const milestoneIndex = milestones.findIndex((m) => m._id.toString() === milestoneId);
+    if (milestoneIndex === -1) return res.status(404).json({ error: 'Milestone not found' });
+    const deliveries = job.milestoneDeliveries || [];
+    const delivery = deliveries.find((d) => d.milestoneIndex === milestoneIndex);
+    if (!delivery) return res.status(400).json({ error: 'No delivery found for this milestone' });
+    if (delivery.approvedAt) return res.status(400).json({ error: 'Delivery already approved' });
+    delivery.approvedAt = new Date();
+    delivery.approvedBy = req.user.id;
+    job.markModified('milestoneDeliveries');
+    await job.save();
+    emitJobUpdated(job);
+    const jobSlug = job.slug || job._id.toString();
+    const jobTitle = job.title || 'Job';
+    const proId = job.awardedProfessionalId?.toString?.();
+    const milestoneName = (milestones[milestoneIndex] && (milestones[milestoneIndex].name || milestones[milestoneIndex].description)) || 'Milestone';
+    if (proId) {
+      await Notification.createNotification({
+        userId: proId,
+        type: 'job_delivery_approved',
+        title: 'Delivery approved',
+        message: `Client approved your delivery for "${milestoneName}" on "${jobTitle}".`,
+        relatedId: job._id,
+        relatedModel: 'Job',
+        link: `/job/${jobSlug}?tab=payment`,
+        metadata: { jobId: job._id.toString(), jobSlug, jobTitle, milestoneIndex },
+      });
+    }
+    return res.json({ job: toJobResponse(job), message: 'Delivery approved.' });
+  } catch (err) {
+    console.error('[Jobs] delivery/approve error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to approve delivery' });
+  }
+});
+
+// Client: request revision for a milestone delivery (View Work delivered → Request Revision); supports optional files
+router.post('/:id/milestones/:milestoneId/delivery/request-revision', authenticateToken, requireRole(['client']), jobRevisionsUpload.array('files', 10), async (req, res) => {
+  const { unlinkSync } = await import('fs');
+  try {
+    let job = await Job.findById(req.params.id);
+    if (!job) job = await Job.findOne({ slug: req.params.id });
+    if (!job) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    if (job.clientId?.toString() !== req.user.id) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(403).json({ error: 'Not allowed to request revision for this job' });
+    }
+    const milestones = job.milestones || [];
+    const milestoneId = req.params.milestoneId;
+    const milestoneIndex = milestones.findIndex((m) => m._id.toString() === milestoneId);
+    if (milestoneIndex === -1) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    const deliveries = job.milestoneDeliveries || [];
+    const delivery = deliveries.find((d) => d.milestoneIndex === milestoneIndex);
+    if (!delivery) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(400).json({ error: 'No delivery found for this milestone' });
+    }
+    if (delivery.approvedAt) {
+      if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
+      return res.status(400).json({ error: 'Cannot request revision after approval' });
+    }
+    const revisionMessage = (req.body.revisionMessage && String(req.body.revisionMessage).trim()) || '';
+    const revisionFileUrls = [];
+    if (req.files && req.files.length > 0) {
+      for (const f of req.files) {
+        revisionFileUrls.push({ url: `/uploads/job-revisions/${f.filename}`, name: f.originalname || f.filename });
+      }
+    }
+    delivery.revisionRequestedAt = new Date();
+    delivery.revisionMessage = revisionMessage;
+    delivery.revisionRequestedBy = req.user.id;
+    delivery.revisionFileUrls = revisionFileUrls.length ? revisionFileUrls : [];
+    job.markModified('milestoneDeliveries');
+    await job.save();
+    emitJobUpdated(job);
+    const jobSlug = job.slug || job._id.toString();
+    const jobTitle = job.title || 'Job';
+    const proId = job.awardedProfessionalId?.toString?.();
+    if (proId) {
+      await Notification.createNotification({
+        userId: proId,
+        type: 'job_revision_requested',
+        title: 'Revision requested',
+        message: `Client requested revision for milestone delivery on "${jobTitle}".`,
+        relatedId: job._id,
+        relatedModel: 'Job',
+        link: `/job/${jobSlug}?tab=payment`,
+        metadata: { jobId: job._id.toString(), jobSlug, jobTitle, milestoneIndex },
+      });
+    }
+    return res.json({ job: toJobResponse(job), message: 'Revision requested.' });
+  } catch (err) {
+    if (req.files?.length) {
+      const { unlinkSync: unlink } = await import('fs');
+      req.files.forEach((f) => { try { if (f.path) unlink(f.path); } catch (_) {} });
+    }
+    console.error('[Jobs] delivery/request-revision error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to request revision' });
   }
 });
 
