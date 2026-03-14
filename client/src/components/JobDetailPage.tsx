@@ -32,6 +32,7 @@ import {
   Plus,
   ChevronDown,
   Info,
+  Eye,
   FileSearch,
   Sparkles,
   Pencil,
@@ -816,6 +817,35 @@ export default function JobDetailPage() {
     if (job?.clientId) startConversation(job.clientId);
   };
 
+  const openClientPreview = async () => {
+    if (!job?.id) return;
+    setShowClientPreviewModal(true);
+    setClientPreviewData(null);
+    setClientPreviewTab("about");
+    setClientPreviewLoading(true);
+    try {
+      const res = await fetch(resolveApiUrl(`/api/jobs/${job.slug || job.id}/client-profile`), { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setClientPreviewData({
+          name: data.name || "Client",
+          avatar: data.avatar,
+          createdAt: data.createdAt || null,
+          bio: data.bio || "",
+          country: data.country || null,
+          townCity: data.townCity || null,
+          reviews: data.reviews || [],
+          reviewCount: data.reviewCount ?? 0,
+          ratingAverage: data.ratingAverage ?? 0,
+        });
+      }
+    } catch {
+      toast.error("Failed to load client profile");
+    } finally {
+      setClientPreviewLoading(false);
+    }
+  };
+
   const handleWithdrawConfirm = async () => {
     if (!quoteToWithdraw) return;
     setWithdrawing(true);
@@ -1031,56 +1061,40 @@ export default function JobDetailPage() {
               </h1>
               
           {/* Client info – below job title */}
-          <div>
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={async () => {
-                if (!job?.id) return;
-                setShowClientPreviewModal(true);
-                setClientPreviewData(null);
-                setClientPreviewTab("about");
-                setClientPreviewLoading(true);
-                try {
-                  const res = await fetch(resolveApiUrl(`/api/jobs/${job.slug || job.id}/client-profile`), { credentials: "include" });
-                  if (res.ok) {
-                    const data = await res.json();
-                    setClientPreviewData({
-                      name: data.name || "Client",
-                      avatar: data.avatar,
-                      createdAt: data.createdAt || null,
-                      bio: data.bio || "",
-                      country: data.country || null,
-                      townCity: data.townCity || null,
-                      reviews: data.reviews || [],
-                      reviewCount: data.reviewCount ?? 0,
-                      ratingAverage: data.ratingAverage ?? 0,
-                    });
-                  }
-                } catch {
-                  toast.error("Failed to load client profile");
-                } finally {
-                  setClientPreviewLoading(false);
-                }
-              }}
+              onClick={openClientPreview}
               className="flex items-center gap-3 text-left hover:opacity-90 transition-opacity rounded-lg p-1 -m-1"
               aria-label="View client profile"
             >
               <div>
-                <p className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-medium text-[#2c353f]">
-                  {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
-                </p>
                 <div className="flex items-center gap-2 flex-wrap text-[12px] sm:text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                  <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                    {isJobOwner ? (userInfo?.name || "Client") : (job.clientName || "Client")}
+                  </p>
                   <span className="flex items-center gap-0.5">
-                    <Star className="w-3.5 h-3.5 text-[#FE8A0F] fill-[#FE8A0F]" />
+                    <Star className="w-3.5 h-3.5 text-[#2c353f] fill-[#2c353f]" />
                     {(job.clientRatingAverage ?? 0).toFixed(1)}
                   </span>
-                  <span>{(job.clientReviewCount ?? 0)} {(job.clientReviewCount === 1) ? "review" : "reviews"}</span>
                   {(job.clientCountry || job.clientCity) && (
                     <span>• {[job.clientCity, job.clientCountry].filter(Boolean).join(", ")}</span>
                   )}
                 </div>
               </div>
             </button>
+            {/* View icon button (right of address) */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={openClientPreview}
+              className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f]"
+              aria-label="View client profile"
+              title="View client profile"
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
           </div>
             </div>
             <div className="flex flex-col items-end gap-2 flex-shrink-0">
