@@ -1356,12 +1356,12 @@ export default function Nav() {
       {/* Category navigation items with scroll - Hidden on Services page */}
       {!isServicesPage && (
       <>
-        {/* Desktop Category Bar - Absolute Positioning */}
-        <div className="hidden md:flex absolute left-0 top-[82px] right-0 items-center justify-center z-[1] bg-white" style={{ backgroundColor: '#ffffff' }}>
-          {/* Left scroll button */}
+        {/* Desktop Category Bar - Flex layout so arrows take space and content never overlaps */}
+        <div className="hidden md:flex absolute left-0 top-[82px] right-0 items-center z-[1] bg-white border-b border-t border-grey-700 py-1 pl-[80px] pr-[80px]" style={{ backgroundColor: '#ffffff' }}>
+          {/* Left scroll button - takes fixed space, content does not scroll under it */}
           <button
             onClick={scrollLeft}
-            className="absolute left-4 lg:left-8 z-[2] cursor-pointer hover:opacity-70 transition-opacity translate-y-[3px] p-2"
+            className="flex-shrink-0 w-10 lg:w-14 h-9 flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity translate-y-[3px]"
             aria-label="Scroll left"
           >
             <svg 
@@ -1375,10 +1375,10 @@ export default function Nav() {
             </svg>
           </button>
 
-          {/* Scrollable container - centered with padding for arrows */}
+          {/* Scrollable container - only this area scrolls; content is clipped and never under arrows */}
           <div
             ref={scrollContainerRef}
-            className="flex items-center justify-start gap-[47px] overflow-x-auto scrollbar-hide scroll-smooth translate-y-[3px] pl-[80px] pr-[80px] mx-auto w-full max-w-[1400px]"
+            className="flex-1 min-w-0 flex items-center justify-start gap-[47px] overflow-x-auto scrollbar-hide scroll-smooth translate-y-[3px] px-[50px]"
             style={{
               scrollbarWidth: "none",
               msOverflowStyle: "none",
@@ -1468,10 +1468,10 @@ export default function Nav() {
             </div>
           )}
 
-          {/* Right scroll button */}
+          {/* Right scroll button - takes fixed space, content does not scroll under it */}
           <button
             onClick={scrollRight}
-            className="absolute right-4 lg:right-8 z-[2] cursor-pointer hover:opacity-70 transition-opacity translate-y-[3px] p-2"
+            className="flex-shrink-0 w-10 lg:w-14 h-9 flex items-center justify-center cursor-pointer hover:opacity-70 transition-opacity translate-y-[3px]"
             aria-label="Scroll right"
           >
             <svg 
