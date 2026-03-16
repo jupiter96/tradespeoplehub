@@ -243,6 +243,7 @@ const menuItems: MenuItem[] = [
     icon: Flag,
     path: "/admin/flagged",
     children: [],
+    badgeKey: "flaggedNew",
   },
   {
     key: "service",

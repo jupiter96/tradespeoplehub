@@ -23,6 +23,7 @@ import ResetPasswordPage from "./components/ResetPasswordPage";
 import AdminLoginPage from "./components/AdminLoginPage";
 import AdminDashboardPage from "./components/AdminDashboardPage";
 import AdminDisputeViewPage from "./components/admin/AdminDisputeViewPage";
+import AdminFlaggedJobsPage from "./components/admin/AdminFlaggedJobsPage";
 import SocialOnboardingPage from "./components/SocialOnboardingPage";
 import ThankYouPage from "./components/ThankYouPage";
 import { CartProvider } from "./components/CartContext";
@@ -76,6 +77,7 @@ function AppContent() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="dashboard" element={<AdminDashboardPage />} />
           <Route path="dispute/:disputeId" element={<AdminDisputeViewPage />} />
+          <Route path="flagged" element={<AdminFlaggedJobsPage />} />
           <Route path=":section" element={<AdminDashboardPage />} />
         </Route>
         <Route path="/preview_page.html" element={<HomePage />} />

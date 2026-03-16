@@ -33,7 +33,8 @@ import {
   ArrowLeft,
   History,
   Trash2,
-  Undo2
+  Undo2,
+  Info
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useAccount } from "./AccountContext";
@@ -225,6 +226,7 @@ const CUSTOM_BUDGET_ITEM: BudgetRangeItem = { value: "custom-budget", label: "Cu
 const DRAFT_STORAGE_KEY = "jobPostDraft";
 
 export type JobDraftPayload = {
+  savedAt?: number;
   currentStep?: number;
   jobDescription?: string;
   descriptionPreviousState?: string;
@@ -264,6 +266,8 @@ export default function PostJobPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = isLoggedIn ? steps.length : steps.length + 1;
   const draftLoadedRef = useRef(false);
+  const [draftApplied, setDraftApplied] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
   const isRestoringDraftRef = useRef(false);
   const isEditPrefillRef = useRef(false);
   
@@ -509,10 +513,12 @@ export default function PostJobPage() {
   };
 
   const handleNext = () => {
+    const isEditLockedStep = isEditMode && currentStep >= 3;
+    if (isEditLockedStep) return; // In edit mode, only allow steps 2 and 3
     if (currentStep < totalSteps) {
       if (currentStep === 1) setJobTitle("");
       setCurrentStep(currentStep + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       saveDraftRef.current?.();
     }
   };
@@ -611,6 +617,8 @@ export default function PostJobPage() {
     setIsDraggingFiles(false);
   };
 
+  const [isDiscardingDraft, setIsDiscardingDraft] = useState(false);
+
   const removeAttachedFile = (index: number) => {
     setAttachedFiles((prev) => {
       const next = prev.filter((_, i) => i !== index);
@@ -622,6 +630,7 @@ export default function PostJobPage() {
 
   const clearDraft = async () => {
     try {
+      setIsDiscardingDraft(true);
       localStorage.removeItem(DRAFT_STORAGE_KEY);
       if (isLoggedIn) {
         await fetch(resolveApiUrl("/api/jobs/draft"), { method: "DELETE", credentials: "include" });
@@ -1097,6 +1106,44 @@ export default function PostJobPage() {
 
         {/* Form Content */}
         <div className="max-w-4xl mx-auto px-4 pb-8 -mt-4">
+          {draftApplied && (
+            <div className="mb-4 rounded-2xl border-2 border-blue-500 bg-[#eef3ff] px-4 py-3 flex items-start gap-3">
+              <Info className="w-4 h-4 text-[#4f46e5] mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#374151]">
+                  {(() => {
+                    if (!draftSavedAt) {
+                      return "We have automatically loaded a project you were working on recently. You can continue working on it below. Pressing \"Discard\" will clear the form and remove the draft forever.";
+                    }
+                    const diffMs = Date.now() - draftSavedAt;
+                    const diffSec = Math.max(0, Math.floor(diffMs / 1000));
+                    const diffMin = Math.floor(diffSec / 60);
+                    const diffHour = Math.floor(diffMin / 60);
+                    const diffDay = Math.floor(diffHour / 24);
+                    let when = "just now";
+                    if (diffDay >= 1) {
+                      when = `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
+                    } else if (diffHour >= 1) {
+                      when = `${diffHour} hour${diffHour === 1 ? "" : "s"} ago`;
+                    } else if (diffMin >= 1) {
+                      when = `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
+                    }
+                    return `We have automatically loaded a project you were working on ${when}. You can continue working on it below. Pressing "Discard" will clear the form and remove the draft forever.`;
+                  })()}
+                </p>
+                <button
+                  type="button"
+                  className="mt-1 font-['Poppins',sans-serif] text-[14px] text-blue-500 underline hover:no-underline font-medium"
+                  onClick={async () => {
+                    await clearDraft();
+                    window.location.reload();
+                  }}
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] p-6 md:p-10 mb-8">
             {/* Step 1: Description – key points + Generate text by AI (no sector required) */}
             {currentStep === 1 && (
@@ -1459,6 +1506,7 @@ export default function PostJobPage() {
                                         } else {
                                           setSelectedMainCategories([...selectedMainCategories, cat.value]);
                                         }
+                                        setCategoryPopoverOpen(false);
                                       }}
                                       className="font-['Poppins',sans-serif] cursor-pointer"
                                     >
@@ -1547,6 +1595,7 @@ export default function PostJobPage() {
                                         } else {
                                           setSelectedSkills([...selectedSkills, skill.value]);
                                         }
+                                        setSkillsPopoverOpen(false);
                                       }}
                                       className="font-['Poppins',sans-serif] cursor-pointer pl-4"
                                     >
@@ -2079,7 +2128,37 @@ export default function PostJobPage() {
             Previous
           </Button>
 
-          {currentStep < totalSteps ? (
+          {isEditMode ? (
+            currentStep < 3 ? (
+              <Button
+                onClick={handleNext}
+                disabled={!isStepValid()}
+                className={cn(
+                  "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
+                  isStepValid()
+                    ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                )}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleUpdateJob}
+                disabled={!isStepValid()}
+                className={cn(
+                  "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
+                  isStepValid()
+                    ? "bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                )}
+              >
+                Update Job
+                <Check className="w-4 h-4 ml-2" />
+              </Button>
+            )
+          ) : currentStep < totalSteps ? (
             <Button
               onClick={handleNext}
               disabled={!isStepValid()}
@@ -2095,7 +2174,7 @@ export default function PostJobPage() {
             </Button>
           ) : (
             <Button
-              onClick={!isLoggedIn ? handleStartRegistration : isEditMode ? handleUpdateJob : handleSubmit}
+              onClick={!isLoggedIn ? handleStartRegistration : handleSubmit}
               disabled={!isStepValid() || (!isLoggedIn && isSendingRegistration)}
               className={cn(
                 "h-12 px-8 rounded-full font-['Poppins',sans-serif] text-[14px] transition-all duration-300",
@@ -2104,7 +2183,7 @@ export default function PostJobPage() {
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               )}
             >
-              {!isLoggedIn ? (isSendingRegistration ? "Creating account…" : "Create account & Post Job") : isEditMode ? "Update Job" : "Post Job"}
+              {!isLoggedIn ? (isSendingRegistration ? "Creating account…" : "Create account & Post Job") : "Post Job"}
               <Check className="w-4 h-4 ml-2" />
             </Button>
           )}
@@ -2236,6 +2315,7 @@ useEffect(() => {
 }, [showEmailVerification, verificationStep, phoneResendTimer]);
 
 const getDraftPayload = (): JobDraftPayload => ({
+  savedAt: Date.now(),
   currentStep,
   jobDescription,
   descriptionPreviousState,
@@ -2255,7 +2335,7 @@ const getDraftPayload = (): JobDraftPayload => ({
   customBudgetMax,
 });
 
-const applyDraft = (d: JobDraftPayload) => {
+const applyDraft = (d: JobDraftPayload, meta?: { updatedAt?: number }) => {
   if (!d || typeof d !== "object") return;
   isRestoringDraftRef.current = true;
   if (typeof d.currentStep === "number" && d.currentStep >= 1) setCurrentStep(d.currentStep);
@@ -2275,6 +2355,12 @@ const applyDraft = (d: JobDraftPayload) => {
   if (typeof d.selectedBudget === "string") setSelectedBudget(d.selectedBudget);
   if (typeof d.customBudgetMin === "string") setCustomBudgetMin(d.customBudgetMin);
   if (typeof d.customBudgetMax === "string") setCustomBudgetMax(d.customBudgetMax);
+  setDraftApplied(true);
+  if (meta?.updatedAt !== undefined) {
+    setDraftSavedAt(meta.updatedAt);
+  } else if (typeof d.savedAt === "number") {
+    setDraftSavedAt(d.savedAt);
+  }
 };
 
 // Load draft on mount: from API if logged in, else from localStorage (run once when isLoggedIn is known)
@@ -2294,7 +2380,15 @@ useEffect(() => {
       .then((data) => {
         if (cancelled) return;
         draftLoadedRef.current = true;
-        if (data?.draft && typeof data.draft === "object") applyDraft(data.draft);
+        if (data?.draft && typeof data.draft === "object") {
+          const updatedAt =
+            typeof data.draft.updatedAt === "number"
+              ? data.draft.updatedAt
+              : typeof data.updatedAt === "number"
+                ? data.updatedAt
+                : undefined;
+          applyDraft(data.draft, { updatedAt });
+        }
       })
       .catch(() => {
         if (!cancelled) draftLoadedRef.current = true;
@@ -2305,7 +2399,10 @@ useEffect(() => {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as JobDraftPayload;
-        if (parsed && typeof parsed === "object") applyDraft(parsed);
+        if (parsed && typeof parsed === "object") {
+          if (typeof parsed.savedAt === "number") setDraftSavedAt(parsed.savedAt);
+          applyDraft(parsed);
+        }
       }
     } catch (_) {}
   }
@@ -2314,6 +2411,7 @@ useEffect(() => {
 
 const saveDraftRef = useRef<(() => void) | null>(null);
 const saveDraft = async () => {
+  if (isDiscardingDraft) return;
   const payload = getDraftPayload();
   try {
     localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
@@ -2331,6 +2429,7 @@ saveDraftRef.current = saveDraft;
 
 // Debounced save when form fields change
 useEffect(() => {
+  if (isDiscardingDraft) return;
   const t = setTimeout(saveDraft, 1500);
   return () => clearTimeout(t);
 }, [
@@ -2355,8 +2454,14 @@ useEffect(() => {
 
 // Save draft when leaving page or tab
 useEffect(() => {
-  const onBeforeUnload = () => { saveDraftRef.current?.(); };
-  const onVisibilityChange = () => { if (document.visibilityState === "hidden") saveDraftRef.current?.(); };
+  const onBeforeUnload = () => {
+    if (isDiscardingDraft) return;
+    saveDraftRef.current?.();
+  };
+  const onVisibilityChange = () => {
+    if (isDiscardingDraft) return;
+    if (document.visibilityState === "hidden") saveDraftRef.current?.();
+  };
   window.addEventListener("beforeunload", onBeforeUnload);
   document.addEventListener("visibilitychange", onVisibilityChange);
   return () => {

@@ -32,6 +32,7 @@ import CustomOffer from '../models/CustomOffer.js';
 import Review from '../models/Review.js';
 import Job from '../models/Job.js';
 import JobBudgetRange from '../models/JobBudgetRange.js';
+import JobReport from '../models/JobReport.js';
 
 // Load environment variables
 dotenv.config();
@@ -1852,17 +1853,16 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       referralCode: { $exists: true, $ne: null },
     });
 
-    // Count flagged users
-    const flaggedCount = await User.countDocuments({
-      isBlocked: true,
+    // Count flagged jobs (job reports)
+    const flaggedCount = await JobReport.countDocuments({});
+    const flaggedToday = await JobReport.countDocuments({
+      createdAt: { $gte: today },
     });
-    const flaggedToday = await User.countDocuments({
-      isBlocked: true,
-      blockedAt: { $gte: today },
+    const flaggedYesterday = await JobReport.countDocuments({
+      createdAt: { $gte: yesterday, $lt: today },
     });
-    const flaggedYesterday = await User.countDocuments({
-      isBlocked: true,
-      blockedAt: { $gte: yesterday, $lt: today },
+    const flaggedNew = await JobReport.countDocuments({
+      createdAt: { $gte: last7Days },
     });
     const flaggedDailyChange = flaggedToday - flaggedYesterday;
 
@@ -2096,6 +2096,8 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
       professionalsReferralsDailyChange: professionalsReferralsDailyChange || 0,
       flagged: flaggedCount || 0,
       flaggedDailyChange: flaggedDailyChange || 0,
+      flaggedNew: flaggedNew || 0,
+      flaggedNew: flaggedNew || 0,
       // Services awaiting admin approval (status = 'pending')
       // Count all pending services regardless of isActive status (admin sees all)
       approvalPendingService: await Service.countDocuments({ status: 'pending' }),
@@ -2182,6 +2184,57 @@ router.get('/dashboard/statistics', requireAdmin, async (req, res) => {
   } catch (error) {
     // console.error('Get dashboard statistics error', error);
     return res.status(500).json({ error: 'Failed to get dashboard statistics' });
+  }
+});
+
+// List job reports for admin
+router.get('/job-reports', requireAdmin, async (req, res) => {
+  try {
+    const reports = await JobReport.find({})
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    const jobIds = [...new Set(reports.map((r) => String(r.jobId)))];
+    const reporterIds = [...new Set(reports.map((r) => String(r.reporterId)))];
+
+    const [jobs, users] = await Promise.all([
+      Job.find({ _id: { $in: jobIds } })
+        .select({ title: 1, slug: 1 })
+        .lean(),
+      User.find({ _id: { $in: reporterIds } })
+        .select({ firstName: 1, lastName: 1, name: 1, role: 1 })
+        .lean(),
+    ]);
+
+    const jobMap = new Map(jobs.map((j) => [String(j._id), j]));
+    const userMap = new Map(users.map((u) => [String(u._id), u]));
+
+    const items = reports.map((r) => {
+      const job = jobMap.get(String(r.jobId));
+      const user = userMap.get(String(r.reporterId));
+      const reporterName =
+        (user?.firstName || user?.lastName)
+          ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+          : user?.name || "Unknown";
+      return {
+        id: String(r._id),
+        jobId: String(r.jobId),
+        jobTitle: job?.title || "",
+        jobSlug: job?.slug || undefined,
+        reporterId: String(r.reporterId),
+        reporterName,
+        reporterRole: r.reporterRole || user?.role || "",
+        reason: r.reason,
+        message: r.message,
+        createdAt: r.createdAt,
+      };
+    });
+
+    return res.json({ items });
+  } catch (err) {
+    console.error("[Admin] Failed to list job reports:", err);
+    return res.status(500).json({ error: "Failed to load job reports" });
   }
 });
 
