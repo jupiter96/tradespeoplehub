@@ -4,6 +4,16 @@ import { resolveApiUrl } from "../../config/api";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Eye, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 
 type FlaggedJob = {
   id: string;
@@ -22,8 +32,30 @@ export default function AdminFlaggedJobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<FlaggedJob[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<FlaggedJob | null>(null);
   const navigate = useNavigate();
   const totalReported = useMemo(() => items.length, [items.length]);
+
+  const handleConfirmDelete = async () => {
+    if (!reportToDelete) return;
+    setDeletingId(reportToDelete.id);
+    try {
+      const res = await fetch(resolveApiUrl(`/api/admin/job-reports/${reportToDelete.id}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to delete report");
+      setItems((prev) => prev.filter((x) => x.id !== reportToDelete.id));
+      setDeleteDialogOpen(false);
+      setReportToDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete report");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -187,25 +219,11 @@ export default function AdminFlaggedJobsPage() {
                           variant="ghost"
                           disabled={deletingId === item.id}
                           className="h-9 w-9 p-0 text-red-700 hover:bg-red-50 hover:text-red-800 disabled:opacity-60"
-                          onClick={async () => {
-                            setDeletingId(item.id);
-                            try {
-                              const res = await fetch(resolveApiUrl(`/api/admin/job-reports/${item.id}`), {
-                                method: "DELETE",
-                                credentials: "include",
-                              });
-                              const data = await res.json().catch(() => ({}));
-                              if (!res.ok) {
-                                throw new Error(data?.error || "Failed to delete report");
-                              }
-                              setItems((prev) => prev.filter((x) => x.id !== item.id));
-                            } catch (err) {
-                              setError(err instanceof Error ? err.message : "Failed to delete report");
-                            } finally {
-                              setDeletingId(null);
-                            }
+                          onClick={() => {
+                            setReportToDelete(item);
+                            setDeleteDialogOpen(true);
                           }}
-                          title={deletingId === item.id ? "Deleting…" : "Delete report"}
+                          title="Delete report"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -217,6 +235,36 @@ export default function AdminFlaggedJobsPage() {
           </table>
         </div>
       </div>
+
+      {/* Delete confirm */}
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setReportToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-['Poppins',sans-serif]">Delete report?</AlertDialogTitle>
+            <AlertDialogDescription className="font-['Poppins',sans-serif]">
+              This will permanently delete this report. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]" disabled={!!deletingId}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
+              onClick={handleConfirmDelete}
+              disabled={!!deletingId}
+            >
+              {deletingId ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
