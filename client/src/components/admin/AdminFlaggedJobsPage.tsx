@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { resolveApiUrl } from "../../config/api";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { Eye, Trash2 } from "lucide-react";
 
 type FlaggedJob = {
   id: string;
@@ -20,7 +21,9 @@ export default function AdminFlaggedJobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<FlaggedJob[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const totalReported = useMemo(() => items.length, [items.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,7 +77,7 @@ export default function AdminFlaggedJobsPage() {
           </p>
         </div>
         <Badge className="bg-red-100 text-red-700 border border-red-200 rounded-full px-3 py-1 text-xs font-['Poppins',sans-serif]">
-          {items.length} reported
+          {totalReported} reported
         </Badge>
       </div>
 
@@ -163,19 +166,50 @@ export default function AdminFlaggedJobsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 align-top text-right">
-                      <Button
-                        size="sm"
-                        className="font-['Poppins',sans-serif] text-xs"
-                        onClick={() => {
-                          if (item.jobSlug) {
-                            navigate(`/job/${item.jobSlug}?tab=details`);
-                          } else {
-                            navigate(`/job/${item.jobId}?tab=details`);
-                          }
-                        }}
-                      >
-                        View job
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 p-0"
+                          onClick={() => {
+                            if (item.jobSlug) {
+                              navigate(`/job/${item.jobSlug}?tab=details`);
+                            } else {
+                              navigate(`/job/${item.jobId}?tab=details`);
+                            }
+                          }}
+                          title="View job"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={deletingId === item.id}
+                          className="h-9 w-9 p-0 text-red-700 hover:bg-red-50 hover:text-red-800 disabled:opacity-60"
+                          onClick={async () => {
+                            setDeletingId(item.id);
+                            try {
+                              const res = await fetch(resolveApiUrl(`/api/admin/job-reports/${item.id}`), {
+                                method: "DELETE",
+                                credentials: "include",
+                              });
+                              const data = await res.json().catch(() => ({}));
+                              if (!res.ok) {
+                                throw new Error(data?.error || "Failed to delete report");
+                              }
+                              setItems((prev) => prev.filter((x) => x.id !== item.id));
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Failed to delete report");
+                            } finally {
+                              setDeletingId(null);
+                            }
+                          }}
+                          title={deletingId === item.id ? "Deleting…" : "Delete report"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

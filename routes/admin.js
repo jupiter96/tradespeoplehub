@@ -2238,6 +2238,19 @@ router.get('/job-reports', requireAdmin, async (req, res) => {
   }
 });
 
+// Delete a job report (admin)
+router.delete('/job-reports/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await JobReport.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ error: 'Job report not found' });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin] Failed to delete job report:', err);
+    return res.status(500).json({ error: 'Failed to delete job report' });
+  }
+});
+
 // Mark dashboard card as viewed
 router.post('/dashboard/card-viewed', requireAdmin, async (req, res) => {
   try {
