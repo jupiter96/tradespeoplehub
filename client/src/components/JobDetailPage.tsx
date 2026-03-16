@@ -2199,20 +2199,24 @@ export default function JobDetailPage() {
                                               View Work delivered
                                             </DropdownMenuItem>
                                           )}
-                                          <DropdownMenuItem
-                                            disabled={milestone.cancelRequestStatus === "pending"}
-                                            onClick={() => {
-                                              setCancelRequestMilestone(milestone);
-                                              setCancelRequestReason("");
-                                              setShowCancelRequestModal(true);
-                                            }}
-                                            className="cursor-pointer text-orange-600 focus:text-orange-600"
-                                          >
-                                            Cancel request
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-red-600 focus:text-red-600">
-                                            Dispute
-                                          </DropdownMenuItem>
+                                          {!deliveryForMilestone && (
+                                            <DropdownMenuItem
+                                              disabled={milestone.cancelRequestStatus === "pending"}
+                                              onClick={() => {
+                                                setCancelRequestMilestone(milestone);
+                                                setCancelRequestReason("");
+                                                setShowCancelRequestModal(true);
+                                              }}
+                                              className="cursor-pointer text-orange-600 focus:text-orange-600"
+                                            >
+                                              Cancel request
+                                            </DropdownMenuItem>
+                                          )}
+                                          {deliveryForMilestone && (
+                                            <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-red-600 focus:text-red-600">
+                                              Dispute
+                                            </DropdownMenuItem>
+                                          )}
                                           <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
                                             View invoice
                                           </DropdownMenuItem>
@@ -2317,16 +2321,20 @@ export default function JobDetailPage() {
                                           >
                                             Deliver Work
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            disabled={milestone.releaseRequestStatus === "pending"}
-                                            onClick={() => setReleaseRequestConfirm({ jobId: job.id, milestoneId: milestone.id, milestone })}
-                                            className="cursor-pointer text-green-600 focus:text-green-600 disabled:opacity-50"
-                                          >
-                                            Request release
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
-                                            Open dispute
-                                          </DropdownMenuItem>
+                                          {deliveryForMilestone && (
+                                            <>
+                                              <DropdownMenuItem
+                                                disabled={milestone.releaseRequestStatus === "pending"}
+                                                onClick={() => setReleaseRequestConfirm({ jobId: job.id, milestoneId: milestone.id, milestone })}
+                                                className="cursor-pointer text-green-600 focus:text-green-600 disabled:opacity-50"
+                                              >
+                                                Request release
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
+                                                Open dispute
+                                              </DropdownMenuItem>
+                                            </>
+                                          )}
                                         </DropdownMenuContent>
                                       </DropdownMenu>
                                     )}
