@@ -8,6 +8,8 @@ export interface JobQuote {
   professionalId: string;
   professionalName: string;
   professionalAvatar?: string;
+  professionalFullyVerified?: boolean;
+  professionalCountry?: string;
   professionalRating: number;
   professionalReviews: number;
   price: number;

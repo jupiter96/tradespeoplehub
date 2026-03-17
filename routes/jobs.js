@@ -1306,14 +1306,29 @@ router.get('/:id', authenticateToken, async (req, res) => {
       response.clientReviewCount = n;
       response.clientRatingAverage = n === 0 ? undefined : (clientReviews.reduce((s, r) => s + (r.rating || 0), 0) / n);
     }
-    // Ensure each quote has the professional's current avatar (from User) so avatars always display
+    // Ensure each quote has the professional's current avatar + verification status (from User)
     const quoteProIds = [...new Set((response.quotes || []).map((q) => q.professionalId).filter(Boolean))];
     if (quoteProIds.length > 0) {
-      const proAvatars = await User.find({ _id: { $in: quoteProIds } }).select('avatar').lean();
-      const avatarByProId = Object.fromEntries(proAvatars.map((u) => [u._id.toString(), u.avatar]).filter(([, v]) => v != null));
+      const pros = await User.find({ _id: { $in: quoteProIds } }).select('avatar verification country').lean();
+      const avatarByProId = Object.fromEntries(pros.map((u) => [u._id.toString(), u.avatar]).filter(([, v]) => v != null));
+      const countryByProId = Object.fromEntries(
+        pros
+          .map((u) => [u._id.toString(), u.country])
+          .filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
+      );
+      const verifiedByProId = Object.fromEntries(
+        pros.map((u) => {
+          const v = u.verification || {};
+          const steps = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
+          const fullyVerified = steps.every((key) => v[key] && v[key].status === 'verified');
+          return [u._id.toString(), !!fullyVerified];
+        })
+      );
       response.quotes = response.quotes.map((q) => ({
         ...q,
         professionalAvatar: avatarByProId[q.professionalId] ?? q.professionalAvatar,
+        professionalFullyVerified: verifiedByProId[q.professionalId] ?? false,
+        professionalCountry: countryByProId[q.professionalId] ?? q.professionalCountry ?? undefined,
       }));
     }
     res.json(response);

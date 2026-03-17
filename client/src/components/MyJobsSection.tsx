@@ -141,19 +141,22 @@ export default function MyJobsSection() {
   const currentJob = selectedJob ? jobs.find(j => j.id === selectedJob) : null;
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    const s = String(status || "").toLowerCase();
+    switch (s) {
       case "open":
-        return "bg-green-600 text-white border-green-600";
+        return "bg-blue-500 text-white border-blue-500";
       case "awaiting-accept":
         return "bg-blue-600 text-white border-blue-600";
       case "in-progress":
         return "bg-blue-600 text-white border-blue-600";
       case "delivered":
-        return "bg-purple-600 text-white border-purple-600";
+        return "bg-green-500 text-white border-green-500";
       case "completed":
-        return "bg-gray-700 text-white border-gray-700";
+        return "bg-green-600 text-white border-green-600";
       case "cancelled":
         return "bg-red-600 text-white border-red-600";
+      case "closed":
+        return "!bg-gray-600 text-white !border-gray-600";
       default:
         return "bg-gray-700 text-white border-gray-700";
     }
@@ -381,17 +384,22 @@ export default function MyJobsSection() {
                       {job.budgetType ? ` (${job.budgetType})` : ""}
                     </p>
                     {getTimingIcon(job.timing)}
-                    <Badge className={`${getStatusBadge(job.status)} border font-['Poppins',sans-serif] text-[11px]`}>
-                      {job.status === "awaiting-accept"
+                    {(() => {
+                      const statusNorm = String((job as any).status || "").toLowerCase();
+                      return (
+                        <Badge className={`${getStatusBadge(statusNorm)} font-['Poppins',sans-serif] text-[11px]`}>
+                          {statusNorm === "awaiting-accept"
                         ? "Awaiting Accept"
-                        : job.status === "in-progress"
+                        : statusNorm === "in-progress"
                           ? "In Progress"
-                          : job.status === "delivered"
+                          : statusNorm === "delivered"
                             ? "Delivered"
-                            : job.status === "open"
+                            : statusNorm === "open"
                               ? "Open"
-                              : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                    </Badge>
+                              : statusNorm ? statusNorm.charAt(0).toUpperCase() + statusNorm.slice(1) : "—"}
+                        </Badge>
+                      );
+                    })()}
                     {(job as { sector?: string }).sector && (
                       <Badge className="bg-[#1976D2] text-white border-[#1976D2] font-['Poppins',sans-serif] text-[11px]">
                         {(job as { sector: string }).sector}
@@ -439,7 +447,7 @@ export default function MyJobsSection() {
                       onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         markJobQuotesSeen(job.id);
-                        navigate(`/job/${job.slug || job.id}`);
+                        navigate(`/job/${job.slug || job.id}?tab=quotes`);
                       }}
                       className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                     >
