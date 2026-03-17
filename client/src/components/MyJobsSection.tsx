@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs, JobQuote } from "./JobsContext";
 import { useAccount } from "./AccountContext";
@@ -63,9 +64,71 @@ export default function MyJobsSection() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<JobQuote | null>(null);
   const [chatMessage, setChatMessage] = useState("");
+  const [newQuoteJobIds, setNewQuoteJobIds] = useState<Set<string>>(new Set());
 
   // Get user's jobs (from API-backed list when client)
   const userJobs = getUserJobs(userInfo?.id ?? "");
+
+  const quoteCountStorageKey = useMemo(
+    () => `myJobsQuoteCounts:${userInfo?.id || "anon"}`,
+    [userInfo?.id]
+  );
+
+  // Detect "first quote arrived" (0 -> 1+) per job and show a flashy badge
+  useEffect(() => {
+    if (!userInfo?.id) return;
+    let prevCounts: Record<string, number> = {};
+    try {
+      prevCounts = JSON.parse(localStorage.getItem(quoteCountStorageKey) || "{}") || {};
+    } catch {
+      prevCounts = {};
+    }
+
+    const nextCounts: Record<string, number> = { ...prevCounts };
+    const newlyTriggered: string[] = [];
+
+    userJobs.forEach((j) => {
+      const prev = Number(prevCounts[j.id] ?? 0);
+      const curr = Number((j.quotes || []).length ?? 0);
+      nextCounts[j.id] = curr;
+      if (prev === 0 && curr > 0) {
+        newlyTriggered.push(j.id);
+      }
+    });
+
+    if (newlyTriggered.length > 0) {
+      setNewQuoteJobIds((prev) => {
+        const next = new Set(prev);
+        newlyTriggered.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+
+    try {
+      localStorage.setItem(quoteCountStorageKey, JSON.stringify(nextCounts));
+    } catch {
+      // ignore storage failures
+    }
+  }, [userInfo?.id, quoteCountStorageKey, userJobs]);
+
+  const markJobQuotesSeen = (jobId: string) => {
+    setNewQuoteJobIds((prev) => {
+      if (!prev.has(jobId)) return prev;
+      const next = new Set(prev);
+      next.delete(jobId);
+      return next;
+    });
+    // Persist current count as seen baseline
+    try {
+      const prevCounts = JSON.parse(localStorage.getItem(quoteCountStorageKey) || "{}") || {};
+      const job = userJobs.find((j) => j.id === jobId);
+      const curr = Number((job?.quotes || []).length ?? 0);
+      prevCounts[jobId] = curr;
+      localStorage.setItem(quoteCountStorageKey, JSON.stringify(prevCounts));
+    } catch {
+      // ignore
+    }
+  };
 
   // Filter jobs based on status and search
   const filteredJobs = userJobs.filter((job) => {
@@ -80,26 +143,26 @@ export default function MyJobsSection() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "open":
-        return "bg-green-50 text-green-700 border-green-200";
+        return "bg-green-600 text-white border-green-600";
       case "awaiting-accept":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "bg-blue-600 text-white border-blue-600";
       case "in-progress":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "bg-blue-600 text-white border-blue-600";
       case "delivered":
-        return "bg-purple-50 text-purple-700 border-purple-200";
+        return "bg-purple-600 text-white border-purple-600";
       case "completed":
-        return "bg-gray-100 text-gray-700 border-gray-200";
+        return "bg-gray-700 text-white border-gray-700";
       case "cancelled":
-        return "bg-red-50 text-red-700 border-red-200";
+        return "bg-red-600 text-white border-red-600";
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200";
+        return "bg-gray-700 text-white border-gray-700";
     }
   };
 
   const getTimingIcon = (timing: string) => {
     if (timing === "urgent") {
       return (
-        <Badge className="bg-red-50 text-red-600 border-red-200 font-['Poppins',sans-serif] text-[11px]">
+        <Badge className="bg-red-600 text-white border-red-600 font-['Poppins',sans-serif] text-[11px]">
           Urgent
         </Badge>
       );
@@ -198,6 +261,13 @@ export default function MyJobsSection() {
 
   return (
     <div>
+      <style>{`
+        @keyframes gotNewQuoteTextPulse {
+          0% { color: #ffffff; }
+          50% { color: #ef4444; }
+          100% { color: #ffffff; }
+        }
+      `}</style>
       <div className="flex flex-col gap-3 mb-4 md:mb-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
@@ -272,17 +342,35 @@ export default function MyJobsSection() {
             <div
               key={job.id}
               className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
-              onClick={() => navigate(`/job/${job.slug || job.id}`)}
+              onClick={() => {
+                markJobQuotesSeen(job.id);
+                navigate(`/job/${job.slug || job.id}`);
+              }}
             >
               <div className="flex flex-col gap-4">
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-1">
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                      {job.title}
-                    </h3>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-nowrap">
-                      {job.quotes.length} {job.quotes.length === 1 ? "Quote" : "Quotes"}
-                    </span>
+                    <div className="min-w-0">
+                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
+                        {job.title}
+                      </h3>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {newQuoteJobIds.has(job.id) && (
+                        <div className="relative">
+                          <span className="absolute -inset-1 rounded-full bg-[#FE8A0F]/30 animate-ping" />
+                          <span
+                            className="inline-flex items-center rounded-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] px-3 py-1 text-[11px] font-['Poppins',sans-serif] font-semibold shadow-md ring-2 ring-[#FE8A0F]/30"
+                            style={{ animation: "gotNewQuoteTextPulse 1.4s ease-in-out infinite" }}
+                          >
+                            Got New Quotes
+                          </span>
+                        </div>
+                      )}
+                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-nowrap">
+                        {job.quotes.length} {job.quotes.length === 1 ? "Quote" : "Quotes"}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
@@ -305,7 +393,7 @@ export default function MyJobsSection() {
                               : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                     </Badge>
                     {(job as { sector?: string }).sector && (
-                      <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]">
+                      <Badge className="bg-[#1976D2] text-white border-[#1976D2] font-['Poppins',sans-serif] text-[11px]">
                         {(job as { sector: string }).sector}
                       </Badge>
                     )}
@@ -348,19 +436,20 @@ export default function MyJobsSection() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={(e) => {
+                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
+                        markJobQuotesSeen(job.id);
                         navigate(`/job/${job.slug || job.id}`);
                       }}
                       className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                     >
                       <Eye className="w-4 h-4 mr-1.5" />
-                      View
+                      View Quotes
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={(e) => {
+                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         handleDeleteJob(job.id);
                       }}

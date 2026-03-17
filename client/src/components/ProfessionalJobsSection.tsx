@@ -288,8 +288,8 @@ function ActiveJobsSection() {
                       <Badge
                         className={`font-['Poppins',sans-serif] whitespace-nowrap ${
                           job.status === "delivered"
-                            ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : "bg-green-50 text-green-700 border-green-200"
+                            ? "bg-purple-600 text-white border-purple-600"
+                            : "bg-green-600 text-white border-green-600"
                         }`}
                       >
                         <CheckCircle className="w-3 h-3 mr-1" />

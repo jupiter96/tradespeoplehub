@@ -120,7 +120,7 @@ export default function AvailableJobsSection() {
   const getTimingIcon = (timing: string) => {
     if (timing === "urgent") {
       return (
-        <Badge className="bg-red-50 text-red-600 border-red-200 font-['Poppins',sans-serif] text-[11px]">
+        <Badge className="bg-red-600 text-white border-red-600 font-['Poppins',sans-serif] text-[11px]">
           Urgent
         </Badge>
       );
@@ -346,7 +346,7 @@ export default function AvailableJobsSection() {
                         : `${formatPrice(job.budgetAmount ?? 0)} ${symbol}`}
                     </p>
                     {getTimingIcon(job.timing)}
-                    <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]">
+                    <Badge className="bg-[#1976D2] text-white border-[#1976D2] font-['Poppins',sans-serif] text-[11px]">
                       {job.sector}
                     </Badge>
                   </div>
