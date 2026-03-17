@@ -24,7 +24,7 @@ export interface Message {
   text: string;
   timestamp: string | Date;
   read: boolean;
-  type: "text" | "image" | "file" | "order" | "custom_offer" | "system";
+  type: "text" | "image" | "file" | "order" | "custom_offer" | "system" | "job_invitation";
   fileUrl?: string;
   fileName?: string;
   orderId?: string;

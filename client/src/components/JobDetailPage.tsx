@@ -117,7 +117,7 @@ export default function JobDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
-  const { startConversation } = useMessenger();
+  const { startConversation, addMessage, getOrCreateContact } = useMessenger();
   const { formatPrice, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const validTabs = ["details", "quotes", "payment", "files", "more"] as const;
   const tabFromUrl = searchParams.get("tab") || "details";
@@ -250,6 +250,7 @@ export default function JobDetailPage() {
   const [revisionMessage, setRevisionMessage] = useState("");
   const [viewWorkFullscreenUrl, setViewWorkFullscreenUrl] = useState<string | null>(null);
   const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
+  const [showRevisionRequestModal, setShowRevisionRequestModal] = useState(false);
   const [showViewRevisionModal, setShowViewRevisionModal] = useState(false);
   const [viewRevisionData, setViewRevisionData] = useState<{ milestoneName: string; revisionMessage: string; revisionFileUrls: { url: string; name?: string }[] } | null>(null);
   const [viewRevisionFullscreenUrl, setViewRevisionFullscreenUrl] = useState<string | null>(null);
@@ -481,6 +482,31 @@ export default function JobDetailPage() {
       }
       setInvitedProfessionals((prev) => new Set(prev).add(pro.id));
       toast.success(`Sent invitation to ${pro.name} on project "${job.title}"`);
+
+      // Also send a styled invitation message into the professional's messenger
+      try {
+        const contact = getOrCreateContact({
+          id: pro.id,
+          name: pro.name,
+          avatar: pro.image,
+          conversationId: "", // will be established on first real chat
+          participantId: pro.id,
+          online: false,
+        });
+        const intro =
+          message && message.trim().length > 0
+            ? message.trim()
+            : `Hi ${pro.name}, I'd like to invite you to quote for my job "${job.title}".`;
+        addMessage(contact.id, {
+          senderId: userInfo?.id || "current-user",
+          text: intro,
+          read: false,
+          type: "job_invitation",
+        });
+      } catch (err) {
+        // Fail silently for messenger side; main invitation already sent
+        console.error("Failed to send messenger invitation message", err);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Failed to send invitation");
     }
@@ -2388,6 +2414,49 @@ export default function JobDetailPage() {
                                     )}
                                   </div>
                                 )}
+
+                                {/* Pro: delivered → View Delivery primary + Open dispute in dropdown */}
+                                {!isJobOwner && milestone.status === "delivered" && deliveryForMilestone && (
+                                  <div className="flex items-center justify-end">
+                                    <DropdownMenu>
+                                      <div className="inline-flex items-stretch rounded-md overflow-hidden border border-[#1976D2]/50 bg-white shadow-sm">
+                                        <button
+                                          type="button"
+                                          className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-[#1976D2] font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-[#E3F2FD] transition-colors cursor-pointer"
+                                          onClick={() => {
+                                            setViewWorkDeliveredData({
+                                              milestoneId: milestone.id,
+                                              milestoneIndex,
+                                              milestoneName: milestone.name || milestone.description || "Milestone",
+                                              deliveryMessage: deliveryForMilestone.deliveryMessage || "",
+                                              fileUrls: deliveryForMilestone.fileUrls || [],
+                                            });
+                                            setRevisionMessage("");
+                                            setShowViewWorkDeliveredModal(true);
+                                          }}
+                                        >
+                                          View Delivery
+                                        </button>
+                                        <DropdownMenuTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-[#1976D2]/40 bg-transparent text-[#1976D2] hover:bg-[#E3F2FD] transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                          >
+                                            <ChevronDown className="w-4 h-4" />
+                                          </button>
+                                        </DropdownMenuTrigger>
+                                      </div>
+                                      <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                        <DropdownMenuItem
+                                          onClick={() => handleOpenDisputeModal(milestone)}
+                                          className="cursor-pointer text-orange-600 focus:text-orange-600"
+                                        >
+                                          Open dispute
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                )}
                                 {/* Pro: released → View invoice only (after client has released) */}
                                 {!isJobOwner && milestone.status === "released" && (
                                   <Button
@@ -2638,6 +2707,125 @@ export default function JobDetailPage() {
                 className="font-['Poppins',sans-serif] bg-[#1976D2] hover:bg-[#1565C0]"
               >
                 {reportJobSubmitting ? "Sending…" : "Send report"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revision Request Modal */}
+      <Dialog
+        open={showRevisionRequestModal}
+        onOpenChange={(open) => {
+          setShowRevisionRequestModal(open);
+          if (!open) {
+            setRevisionMessage("");
+            setRevisionFiles([]);
+          }
+        }}
+      >
+        <DialogContent className="w-[90vw] max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+              Request Revision
+            </DialogTitle>
+            <DialogDescription className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+              Tell the professional what needs to be changed and optionally attach reference files.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
+                Revision feedback
+              </Label>
+              <Textarea
+                placeholder="Describe what changes you need..."
+                value={revisionMessage}
+                onChange={(e) => setRevisionMessage(e.target.value)}
+                rows={4}
+                className="font-['Poppins',sans-serif] text-[13px]"
+              />
+            </div>
+            <div>
+              <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-1 block">
+                Attach files (optional)
+              </Label>
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*,.pdf,.doc,.docx"
+                onChange={(e) => {
+                  if (e.target.files) setRevisionFiles((prev) => [...prev, ...Array.from(e.target.files!)].slice(0, 10));
+                  e.target.value = "";
+                }}
+                className="hidden"
+                id="revision-request-files-input"
+              />
+              <label
+                htmlFor="revision-request-files-input"
+                className="flex items-center gap-2 p-3 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#FE8A0F] font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"
+              >
+                <Paperclip className="w-4 h-4" />
+                Add files (max 10)
+              </label>
+              {revisionFiles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {revisionFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-[13px]">
+                      <span className="truncate flex-1">{file.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-red-600"
+                        onClick={() => setRevisionFiles((p) => p.filter((_, i) => i !== idx))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRevisionRequestModal(false);
+                }}
+                className="flex-1 font-['Poppins',sans-serif]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  const msg = revisionMessage.trim();
+                  if (!msg) {
+                    toast.error("Please enter revision feedback.");
+                    return;
+                  }
+                  if (!job?.id || !viewWorkDeliveredData) {
+                    toast.error("Something went wrong. Please reopen the delivery and try again.");
+                    return;
+                  }
+                  requestMilestoneRevision(
+                    job.id,
+                    viewWorkDeliveredData.milestoneId,
+                    msg,
+                    revisionFiles.length > 0 ? revisionFiles : undefined
+                  )
+                    .then(() => {
+                      toast.success("Revision requested.");
+                      setShowRevisionRequestModal(false);
+                      setRevisionMessage("");
+                      setRevisionFiles([]);
+                      fetchJobById(job.id);
+                    })
+                    .catch((e: any) => toast.error(e?.message || "Failed to request revision"));
+                }}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 font-['Poppins',sans-serif]"
+              >
+                Submit Request
               </Button>
             </div>
           </div>
@@ -3874,7 +4062,7 @@ export default function JobDetailPage() {
         }}
       />
 
-      <Dialog open={showViewWorkDeliveredModal} onOpenChange={(open) => { setShowViewWorkDeliveredModal(open); if (!open) { setViewWorkDeliveredData(null); setRevisionMessage(""); setRevisionFiles([]); } }}>
+      <Dialog open={showViewWorkDeliveredModal} onOpenChange={(open) => { setShowViewWorkDeliveredModal(open); if (!open) { setViewWorkDeliveredData(null); } }}>
         <DialogContent className="w-[90vw] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
@@ -3947,49 +4135,6 @@ export default function JobDetailPage() {
                   </div>
                 </div>
               )}
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">Revision feedback (if requesting revision)</Label>
-                <Textarea
-                  placeholder="Describe what changes you need..."
-                  value={revisionMessage}
-                  onChange={(e) => setRevisionMessage(e.target.value)}
-                  rows={3}
-                  className="font-['Poppins',sans-serif] text-[13px]"
-                />
-              </div>
-              <div>
-                <Label className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1 block">Attach files (optional, for revision request)</Label>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,video/*,.pdf,.doc,.docx"
-                  onChange={(e) => {
-                    if (e.target.files) setRevisionFiles((prev) => [...prev, ...Array.from(e.target.files!)].slice(0, 10));
-                    e.target.value = "";
-                  }}
-                  className="hidden"
-                  id="revision-files-input"
-                />
-                <label
-                  htmlFor="revision-files-input"
-                  className="flex items-center gap-2 p-3 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-[#FE8A0F] font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]"
-                >
-                  <Paperclip className="w-4 h-4" />
-                  Add files (max 10)
-                </label>
-                {revisionFiles.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {revisionFiles.map((file, idx) => (
-                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-[13px]">
-                        <span className="truncate flex-1">{file.name}</span>
-                        <Button type="button" variant="ghost" size="sm" className="h-7 text-red-600" onClick={() => setRevisionFiles((p) => p.filter((_, i) => i !== idx))}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button
                   onClick={async () => {
@@ -4012,20 +4157,9 @@ export default function JobDetailPage() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    const msg = revisionMessage.trim();
-                    if (!msg) {
-                      toast.error("Please enter revision feedback.");
-                      return;
-                    }
                     if (!job?.id || !viewWorkDeliveredData) return;
-                    requestMilestoneRevision(job.id, viewWorkDeliveredData.milestoneId, msg, revisionFiles.length > 0 ? revisionFiles : undefined).then(() => {
-                      toast.success("Revision requested.");
-                      setShowViewWorkDeliveredModal(false);
-                      setViewWorkDeliveredData(null);
-                      setRevisionMessage("");
-                      setRevisionFiles([]);
-                      fetchJobById(job.id);
-                    }).catch((e: any) => toast.error(e?.message || "Failed to request revision"));
+                    setShowViewWorkDeliveredModal(false);
+                    setShowRevisionRequestModal(true);
                   }}
                   className="flex-1 font-['Poppins',sans-serif] border-orange-300 text-orange-600 hover:bg-orange-50"
                 >

@@ -7258,6 +7258,52 @@ function MessengerSection() {
                           </div>
                         );
                       }
+                      if (message.type === "job_invitation") {
+                        return (
+                          <div key={message.id} className="flex justify-center">
+                            <div className="bg-white border border-[#3D78CB] rounded-lg p-4 max-w-sm w-full shadow-sm">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Briefcase className="w-5 h-5 text-[#3D78CB]" />
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                  Job Invitation
+                                </p>
+                              </div>
+                              <div className="space-y-2">
+                                <div>
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Job:</span>
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mt-0.5 line-clamp-2">
+                                    {message.orderDetails?.serviceName || message.orderDetails?.service || message.text.split('"')[1] || "New job invitation"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d]">Message:</span>
+                                  <p className="font-['Poppins',sans-serif] text-[12px] text-[#4b4b4b] mt-0.5 whitespace-pre-wrap">
+                                    {message.text}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <Button
+                                  onClick={() => {
+                                    const jobId = (message.orderDetails as any)?.jobId;
+                                    const jobSlug = (message.orderDetails as any)?.jobSlug || jobId;
+                                    if (jobSlug) {
+                                      navigate(`/job/${encodeURIComponent(jobSlug)}?tab=details`);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-[#3D78CB] border-[#3D78CB] hover:bg-[#3D78CB] hover:text-white font-['Poppins',sans-serif] text-[12px]"
+                                >
+                                  <ExternalLink className="w-3 h-3 mr-1" />
+                                  View Job
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       // Regular text message
                       const isOwnMessage = message.senderId === userInfo?.id;

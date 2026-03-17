@@ -285,9 +285,15 @@ function ActiveJobsSection() {
                       <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                         {job.title}
                       </h3>
-                      <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] whitespace-nowrap">
+                      <Badge
+                        className={`font-['Poppins',sans-serif] whitespace-nowrap ${
+                          job.status === "delivered"
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-green-50 text-green-700 border-green-200"
+                        }`}
+                      >
                         <CheckCircle className="w-3 h-3 mr-1" />
-                        In Progress
+                        {job.status === "delivered" ? "Delivered" : "In Progress"}
                       </Badge>
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
@@ -381,6 +387,19 @@ function ActiveJobsSection() {
                         >
                           <Send className="w-4 h-4 mr-2" />
                           Deliver Work
+                        </Button>
+                      )}
+                      {job.status === "delivered" && (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/job/${job.slug || job.id}?tab=payment`);
+                          }}
+                          variant="outline"
+                          className="font-['Poppins',sans-serif] border-[#1976D2] text-[#1976D2] hover:bg-[#E3F2FD] hover:text-[#1976D2]"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Delivery
                         </Button>
                       )}
                     </div>

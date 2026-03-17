@@ -18,6 +18,7 @@ import {
   Download,
   Reply,
   FileText,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -799,6 +800,42 @@ export default function FloatingMessenger() {
                                     View Order
                                   </Button>
                                 )}
+                              </div>
+                            ) : message.type === "job_invitation" ? (
+                              <div className="bg-white border-2 border-[#3D78CB] rounded-lg p-4 shadow-md max-w-sm">
+                                <div className="flex items-start gap-3 mb-3">
+                                  <div className="w-10 h-10 rounded-lg bg-[#3D78CB]/10 flex items-center justify-center flex-shrink-0">
+                                    <Briefcase className="w-5 h-5 text-[#3D78CB]" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#3D78CB] font-semibold uppercase tracking-wide mb-1">
+                                      Job Invitation
+                                    </p>
+                                    <h4 className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 line-clamp-2">
+                                      {message.orderDetails?.serviceName || message.orderDetails?.service || message.text.split('"')[1] || "New job invitation"}
+                                    </h4>
+                                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#4b4b4b] whitespace-pre-wrap">
+                                      {message.text}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    const jobId = (message.orderDetails as any)?.jobId;
+                                    const jobSlug = (message.orderDetails as any)?.jobSlug || jobId;
+                                    closeMessenger();
+                                    if (jobSlug) {
+                                      navigate(`/job/${encodeURIComponent(jobSlug)}?tab=details`);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
+                                  }}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-[#3D78CB] border-[#3D78CB] hover:bg-[#3D78CB] hover:text-white font-['Poppins',sans-serif] text-[12px] mt-1"
+                                >
+                                  <ExternalLink className="w-3 h-3 mr-1" />
+                                  View Job
+                                </Button>
                               </div>
                             ) : (
                               // Regular message with background
