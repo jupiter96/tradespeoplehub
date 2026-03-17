@@ -922,7 +922,7 @@ function canAccessJobFiles(job, userId, userRole) {
   if (!job || !userId) return false;
   const clientId = job.clientId?.toString?.();
   const awardedId = job.awardedProfessionalId?.toString?.();
-  const statusOk = job.status === 'awaiting-accept' || job.status === 'in-progress';
+  const statusOk = job.status === 'awaiting-accept' || job.status === 'in-progress' || job.status === 'delivered';
   if (userRole === 'client' && clientId === userId && statusOk) return true;
   if (userRole === 'professional' && awardedId === userId && statusOk) return true;
   return false;
@@ -1003,7 +1003,7 @@ router.post('/:id/deliver-milestone', authenticateToken, requireRole(['professio
       if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(403).json({ error: 'Not allowed to deliver work for this job' });
     }
-    if (job.status !== 'in-progress') {
+    if (job.status !== 'in-progress' && job.status !== 'delivered') {
       if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(400).json({ error: 'Job must be in progress to deliver a milestone' });
     }
@@ -1037,6 +1037,8 @@ router.post('/:id/deliver-milestone', authenticateToken, requireRole(['professio
       existing.revisionRequestedAt = null;
       existing.revisionMessage = '';
       existing.revisionRequestedBy = null;
+      // Mark milestone as delivered again after revision re-delivery
+      milestones[milestoneIndex].status = 'delivered';
     } else if (!existing) {
       job.milestoneDeliveries.push({
         milestoneIndex,
@@ -1050,10 +1052,16 @@ router.post('/:id/deliver-milestone', authenticateToken, requireRole(['professio
         revisionMessage: '',
         revisionRequestedBy: null,
       });
+      milestones[milestoneIndex].status = 'delivered';
     } else {
       if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(400).json({ error: 'This milestone has already been delivered' });
     }
+    // If all (non-cancelled) milestones are delivered (or already released), mark job as delivered
+    const relevantMilestones = (job.milestones || []).filter((m) => m && m.status !== 'cancelled');
+    const allDelivered = relevantMilestones.length > 0 && relevantMilestones.every((m) => m.status === 'delivered' || m.status === 'released');
+    job.status = allDelivered ? 'delivered' : 'in-progress';
+    job.markModified('milestones');
     job.markModified('milestoneDeliveries');
     await job.save();
     emitJobUpdated(job);
@@ -1088,7 +1096,7 @@ router.post('/:id/deliver-milestone', authenticateToken, requireRole(['professio
 // Client: approve a milestone delivery (View Work delivered → Approve)
 router.patch('/:id/milestones/:milestoneId/delivery/approve', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    let job = await Job.findById(req.params.id);
     if (!job) job = await Job.findOne({ slug: req.params.id });
     if (!job) return res.status(404).json({ error: 'Job not found' });
     if (job.clientId?.toString() !== req.user.id) return res.status(403).json({ error: 'Not allowed to approve delivery for this job' });
@@ -1096,12 +1104,57 @@ router.patch('/:id/milestones/:milestoneId/delivery/approve', authenticateToken,
     const milestoneId = req.params.milestoneId;
     const milestoneIndex = milestones.findIndex((m) => m._id.toString() === milestoneId);
     if (milestoneIndex === -1) return res.status(404).json({ error: 'Milestone not found' });
+    const milestone = milestones[milestoneIndex];
+    if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
     const deliveries = job.milestoneDeliveries || [];
     const delivery = deliveries.find((d) => d.milestoneIndex === milestoneIndex);
     if (!delivery) return res.status(400).json({ error: 'No delivery found for this milestone' });
     if (delivery.approvedAt) return res.status(400).json({ error: 'Delivery already approved' });
     delivery.approvedAt = new Date();
     delivery.approvedBy = req.user.id;
+
+    // Approving delivery should immediately release funds to the professional
+    if (milestone.status !== 'delivered') {
+      return res.status(400).json({ error: 'Only delivered milestones can be approved' });
+    }
+    const amount = Number(milestone.amount) || 0;
+    const professionalId = job.awardedProfessionalId;
+    if (amount > 0 && professionalId) {
+      const professional = await User.findById(professionalId).select('walletBalance');
+      if (professional) {
+        professional.walletBalance = (professional.walletBalance || 0) + amount;
+        await professional.save();
+        const milestoneName = milestone.name || milestone.description || 'Milestone';
+        await Wallet.create({
+          userId: professional._id,
+          type: 'deposit',
+          amount,
+          balance: professional.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          description: `Job milestone release - ${job.title || 'Job'} - ${milestoneName}`,
+          jobId: job._id,
+          milestoneId: milestone._id.toString(),
+          metadata: {
+            source: 'job_milestone_release',
+            jobSlug: job.slug || job._id.toString(),
+            jobTitle: job.title || 'Job',
+            milestoneName,
+            releasedBy: req.user.id,
+            via: 'delivery_approve',
+          },
+        });
+      }
+    }
+    milestone.status = 'released';
+    milestone.releasedAt = new Date();
+    // If all milestones are released, mark job as completed
+    const totalMilestones = (job.milestones || []).reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+    const totalReleased = (job.milestones || []).filter((m) => m.status === 'released').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+    if (totalMilestones > 0 && totalReleased >= totalMilestones) {
+      job.status = 'completed';
+    }
+    job.markModified('milestones');
     job.markModified('milestoneDeliveries');
     await job.save();
     emitJobUpdated(job);
@@ -1121,7 +1174,7 @@ router.patch('/:id/milestones/:milestoneId/delivery/approve', authenticateToken,
         metadata: { jobId: job._id.toString(), jobSlug, jobTitle, milestoneIndex },
       });
     }
-    return res.json({ job: toJobResponse(job), message: 'Delivery approved.' });
+    return res.json({ job: toJobResponse(job), message: 'Delivery approved and payment released.' });
   } catch (err) {
     console.error('[Jobs] delivery/approve error:', err);
     return res.status(500).json({ error: err.message || 'Failed to approve delivery' });
@@ -1170,6 +1223,14 @@ router.post('/:id/milestones/:milestoneId/delivery/request-revision', authentica
     delivery.revisionMessage = revisionMessage;
     delivery.revisionRequestedBy = req.user.id;
     delivery.revisionFileUrls = revisionFileUrls.length ? revisionFileUrls : [];
+    // Put milestone back in-progress so pro can re-deliver; also move job back to in-progress if it was delivered
+    if (milestones[milestoneIndex]) {
+      milestones[milestoneIndex].status = 'in-progress';
+      job.markModified('milestones');
+    }
+    if (job.status === 'delivered') {
+      job.status = 'in-progress';
+    }
     job.markModified('milestoneDeliveries');
     await job.save();
     emitJobUpdated(job);
@@ -2295,8 +2356,8 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
     }
     const milestone = (job.milestones || []).find((m) => m._id.toString() === req.params.milestoneId);
     if (!milestone) return res.status(404).json({ error: 'Milestone not found' });
-    if (milestone.status !== 'in-progress') {
-      return res.status(400).json({ error: 'Only in-progress milestones can be released' });
+    if (milestone.status !== 'in-progress' && milestone.status !== 'delivered') {
+      return res.status(400).json({ error: 'Only in-progress or delivered milestones can be released' });
     }
     const amount = Number(milestone.amount) || 0;
     const professionalId = job.awardedProfessionalId;

@@ -114,16 +114,24 @@ type SocialShareLink = {
 export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, requestMilestoneRelease, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation } = useMessenger();
   const { formatPrice, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "details");
+  const validTabs = ["details", "quotes", "payment", "files", "more"] as const;
+  const tabFromUrl = searchParams.get("tab") || "details";
+  const [activeTab, setActiveTab] = useState(validTabs.includes(tabFromUrl as any) ? tabFromUrl : "details");
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && tab !== activeTab) setActiveTab(tab);
+    if (tab && validTabs.includes(tab as any) && tab !== activeTab) setActiveTab(tab);
   }, [searchParams]);
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    setSearchParams(next, { replace: true });
+  };
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
     price: "",
@@ -166,8 +174,6 @@ export default function JobDetailPage() {
   const [respondingCancel, setRespondingCancel] = useState(false);
 
   // Pro: request release confirmation
-  const [releaseRequestConfirm, setReleaseRequestConfirm] = useState<{ jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
-  const [requestingRelease, setRequestingRelease] = useState(false);
 
   // Shared files (File tab: client + awarded pro)
   const [jobFiles, setJobFiles] = useState<{ id: string; name: string; url: string; mimeType: string; size: number; uploadedBy?: string; createdAt?: string }[]>([]);
@@ -288,7 +294,7 @@ export default function JobDetailPage() {
   // File tab visibility (must be before early return so hook order is stable)
   const showFileTab = !!(
     job &&
-    (job.status === "awaiting-accept" || job.status === "in-progress") &&
+    (job.status === "awaiting-accept" || job.status === "in-progress" || job.status === "delivered") &&
     (userInfo?.id === job.clientId || (userRole === "professional" && job.awardedProfessionalId === userInfo?.id))
   );
 
@@ -630,20 +636,6 @@ export default function JobDetailPage() {
       toast.error(e?.message || "Failed");
     } finally {
       setRespondingCancel(false);
-    }
-  };
-
-  const handleConfirmReleaseRequest = async () => {
-    if (!releaseRequestConfirm) return;
-    setRequestingRelease(true);
-    try {
-      await requestMilestoneRelease(releaseRequestConfirm.jobId, releaseRequestConfirm.milestoneId);
-      toast.success("Release request sent");
-      setReleaseRequestConfirm(null);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed");
-    } finally {
-      setRequestingRelease(false);
     }
   };
 
@@ -1017,6 +1009,13 @@ export default function JobDetailPage() {
             In Progress
           </Badge>
         );
+      case "delivered":
+        return (
+          <Badge className={`bg-purple-50 text-purple-700 border-purple-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
+            <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
+            Delivered
+          </Badge>
+        );
       case "completed":
         return (
           <Badge className={`bg-purple-50 text-purple-700 border-purple-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
@@ -1143,7 +1142,7 @@ export default function JobDetailPage() {
       {/* Tabs Navigation */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-[1000px] mx-auto px-4 md:px-6 lg:px-16">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="overflow-x-auto scrollbar-hide -mx-4 md:mx-0 px-4 md:px-0">
               <TabsList className="bg-transparent border-0 h-auto p-0 gap-2 flex-nowrap inline-flex min-w-full md:min-w-0">
                 <TabsTrigger
@@ -1158,8 +1157,8 @@ export default function JobDetailPage() {
                 >
                   Quotes ({isJobOwner ? job.quotes.length : myQuotes.length})
                 </TabsTrigger>
-                {/* Show Payment tab if job is awarded (awaiting-accept or in-progress) */}
-                {(job.status === "awaiting-accept" || job.status === "in-progress") && (
+                {/* Show Payment tab if job is awarded (awaiting-accept / in-progress / delivered) */}
+                {(job.status === "awaiting-accept" || job.status === "in-progress" || job.status === "delivered") && (
                   <TabsTrigger
                     value="payment"
                     className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
@@ -2052,6 +2051,9 @@ export default function JobDetailPage() {
                                 {milestone.status === "in-progress" && (
                                   <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-2 py-0">In Progress</Badge>
                                 )}
+                                {milestone.status === "delivered" && (
+                                  <Badge className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] px-2 py-0">Delivered</Badge>
+                                )}
                                 {milestone.status === "released" && (
                                   <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0">Released</Badge>
                                 )}
@@ -2098,8 +2100,8 @@ export default function JobDetailPage() {
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 )}
-                                {/* Client: in-progress → dropdown with Release as default; or Accept/Reject when cancel requested by pro; or Accept/Reject when release requested by pro */}
-                                {isJobOwner && milestone.status === "in-progress" && (
+                                {/* Client: in-progress/delivered → action area */}
+                                {isJobOwner && (milestone.status === "in-progress" || milestone.status === "delivered") && (
                                   <div className="flex items-center justify-end">
                                     {milestone.releaseRequestStatus === "pending" && milestone.releaseRequestedBy !== userInfo?.id ? (
                                       <DropdownMenu>
@@ -2157,6 +2159,50 @@ export default function JobDetailPage() {
                                             Reject
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
+                                            View invoice
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    ) : milestone.status === "delivered" && deliveryForMilestone ? (
+                                      <DropdownMenu>
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-[#1976D2]/50 bg-white shadow-sm">
+                                          <button
+                                            type="button"
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-[#1976D2] font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-[#E3F2FD] transition-colors cursor-pointer"
+                                            onClick={() => {
+                                              setViewWorkDeliveredData({
+                                                milestoneId: milestone.id,
+                                                milestoneIndex,
+                                                milestoneName: milestone.name || milestone.description || "Milestone",
+                                                deliveryMessage: deliveryForMilestone.deliveryMessage || "",
+                                                fileUrls: deliveryForMilestone.fileUrls || [],
+                                              });
+                                              setRevisionMessage("");
+                                              setShowViewWorkDeliveredModal(true);
+                                            }}
+                                          >
+                                            View Work delivered
+                                          </button>
+                                          <DropdownMenuTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-[#1976D2]/40 bg-transparent text-[#1976D2] hover:bg-[#E3F2FD] transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                            >
+                                              <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                          </DropdownMenuTrigger>
+                                        </div>
+                                        <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
+                                          <DropdownMenuItem
+                                            onClick={() => handleOpenDisputeModal(milestone)}
+                                            className="cursor-pointer text-orange-600 focus:text-orange-600"
+                                          >
+                                            Open dispute
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => handleViewInvoice(milestone.id)}
+                                            className="cursor-pointer"
+                                          >
                                             View invoice
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
@@ -2322,18 +2368,9 @@ export default function JobDetailPage() {
                                             Deliver Work
                                           </DropdownMenuItem>
                                           {deliveryForMilestone && (
-                                            <>
-                                              <DropdownMenuItem
-                                                disabled={milestone.releaseRequestStatus === "pending"}
-                                                onClick={() => setReleaseRequestConfirm({ jobId: job.id, milestoneId: milestone.id, milestone })}
-                                                className="cursor-pointer text-green-600 focus:text-green-600 disabled:opacity-50"
-                                              >
-                                                Request release
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
-                                                Open dispute
-                                              </DropdownMenuItem>
-                                            </>
+                                            <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
+                                              Open dispute
+                                            </DropdownMenuItem>
                                           )}
                                         </DropdownMenuContent>
                                       </DropdownMenu>
@@ -2997,24 +3034,6 @@ export default function JobDetailPage() {
               className={cancelResponseConfirm?.action === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
             >
               {respondingCancel ? "..." : cancelResponseConfirm?.action === "accept" ? "Accept" : "Reject"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Pro: Request release confirmation */}
-      <AlertDialog open={!!releaseRequestConfirm} onOpenChange={(open) => !open && setReleaseRequestConfirm(null)}>
-        <AlertDialogContent className="font-['Poppins',sans-serif]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Request release?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The client will receive a release request for this milestone and can accept or reject. You cannot undo this request.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={requestingRelease}>Cancel</AlertDialogCancel>
-            <Button onClick={handleConfirmReleaseRequest} disabled={requestingRelease} className="bg-green-600 hover:bg-green-700">
-              {requestingRelease ? "..." : "Request release"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3966,7 +3985,7 @@ export default function JobDetailPage() {
                     if (!job?.id || !viewWorkDeliveredData) return;
                     try {
                       await approveMilestoneDelivery(job.id, viewWorkDeliveredData.milestoneId);
-                      toast.success("Delivery approved.");
+                      toast.success("Approved and released.");
                       setShowViewWorkDeliveredModal(false);
                       setViewWorkDeliveredData(null);
                       fetchJobById(job.id);

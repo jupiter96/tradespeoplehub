@@ -277,7 +277,7 @@ function ActiveJobsSection() {
               <div
                 key={job.id}
                 className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
-                onClick={() => navigate(`/job/${job.slug || job.id}`)}
+                onClick={() => navigate(`/job/${job.slug || job.id}?tab=payment`)}
               >
                 <div className="flex flex-col gap-4">
                   <div>

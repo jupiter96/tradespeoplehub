@@ -43,7 +43,7 @@ const milestoneSchema = new mongoose.Schema(
     amount: { type: Number, required: true },
     status: {
       type: String,
-      enum: ['awaiting-accept', 'in-progress', 'released', 'disputed', 'cancelled'],
+      enum: ['awaiting-accept', 'in-progress', 'delivered', 'released', 'disputed', 'cancelled'],
       default: 'awaiting-accept',
     },
     releasedAt: { type: Date, default: null },
@@ -107,7 +107,7 @@ const jobSchema = new mongoose.Schema(
     budgetMax: { type: Number, default: null },
     status: {
       type: String,
-      enum: ['open', 'awaiting-accept', 'in-progress', 'completed', 'cancelled', 'closed'],
+      enum: ['open', 'awaiting-accept', 'in-progress', 'delivered', 'completed', 'cancelled', 'closed'],
       default: 'open',
     },
     clientId: {

@@ -85,6 +85,8 @@ export default function MyJobsSection() {
         return "bg-blue-50 text-blue-700 border-blue-200";
       case "in-progress":
         return "bg-blue-50 text-blue-700 border-blue-200";
+      case "delivered":
+        return "bg-purple-50 text-purple-700 border-purple-200";
       case "completed":
         return "bg-gray-100 text-gray-700 border-gray-200";
       case "cancelled":
@@ -95,7 +97,13 @@ export default function MyJobsSection() {
   };
 
   const getTimingIcon = (timing: string) => {
-    if (timing === "urgent") return <Flame className="w-4 h-4 text-red-500" />;
+    if (timing === "urgent") {
+      return (
+        <Badge className="bg-red-50 text-red-600 border-red-200 font-['Poppins',sans-serif] text-[11px]">
+          Urgent
+        </Badge>
+      );
+    }
     if (timing === "flexible") return <Clock className="w-4 h-4 text-blue-500" />;
     return <Calendar className="w-4 h-4 text-gray-500" />;
   };
@@ -155,6 +163,31 @@ export default function MyJobsSection() {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const getTruncatedDescription = (description: string, maxLength: number = 250) => {
+    if (!description) return "";
+    const singleLine = description.replace(/\s+/g, " ").trim();
+    if (singleLine.length <= maxLength) return singleLine;
+    return singleLine.slice(0, maxLength) + "...";
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return "just now";
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes === 1) return "a minute ago";
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours === 1) return "an hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "a day ago";
+    return `${diffDays} days ago`;
   };
 
   const formatDeliveryDisplay = (v: string) => {
@@ -238,66 +271,104 @@ export default function MyJobsSection() {
           filteredJobs.map((job) => (
             <div
               key={job.id}
-              className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300"
+              className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
+              onClick={() => navigate(`/job/${job.slug || job.id}`)}
             >
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                          {job.title}
-                        </h3>
-                        {getTimingIcon(job.timing)}
-                        <Badge className={`${getStatusBadge(job.status)} border font-['Poppins',sans-serif] text-[11px]`}>
-                          {job.status === "awaiting-accept" ? "Awaiting Accept" : job.status === "in-progress" ? "In Progress" : job.status === "open" ? "Open" : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </Badge>
-                      </div>
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 line-clamp-2 whitespace-pre-wrap">
-                        {job.description}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-4 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-4 h-4" />
-                          {formatJobLocationCityOnly(job)}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Banknote className="w-4 h-4" />
-                          {job.budgetMin != null && job.budgetMax != null
-                          ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
-                          : formatPrice(job.budgetAmount ?? 0)} ({job.budgetType})
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4" />
-                          Posted {formatDate(job.postedAt)}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <MessageCircle className="w-4 h-4" />
-                          {job.quotes.length} Quote{job.quotes.length !== 1 ? "s" : ""}
-                        </div>
-                      </div>
-                    </div>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      {job.title}
+                    </h3>
+                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-nowrap">
+                      {job.quotes.length} {job.quotes.length === 1 ? "Quote" : "Quotes"}
+                    </span>
                   </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                      Budget{" "}
+                      {job.budgetMin != null && job.budgetMax != null
+                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
+                        : formatPrice(job.budgetAmount ?? 0)}
+                      {job.budgetType ? ` (${job.budgetType})` : ""}
+                    </p>
+                    {getTimingIcon(job.timing)}
+                    <Badge className={`${getStatusBadge(job.status)} border font-['Poppins',sans-serif] text-[11px]`}>
+                      {job.status === "awaiting-accept"
+                        ? "Awaiting Accept"
+                        : job.status === "in-progress"
+                          ? "In Progress"
+                          : job.status === "delivered"
+                            ? "Delivered"
+                            : job.status === "open"
+                              ? "Open"
+                              : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                    </Badge>
+                    {(job as { sector?: string }).sector && (
+                      <Badge className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]">
+                        {(job as { sector: string }).sector}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                    {getTruncatedDescription(job.description)}
+                  </p>
+                  {(job as { categories?: string[] }).categories && (job as { categories: string[] }).categories.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {(job as { categories: string[] }).categories.map((category, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="outline"
+                          className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
+                        >
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/job/${job.slug || job.id}`)}
-                    className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
-                  >
-                    <Eye className="w-4 h-4 mr-1.5" />
-                    View ({job.quotes.length})
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteJob(job.id)}
-                    className="font-['Poppins',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div className="pt-2 border-t border-gray-100 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4" />
+                      {formatJobLocationCityOnly(job)}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4" />
+                      <span>Posted {getRelativeTime(job.postedAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MessageCircle className="w-4 h-4" />
+                      {job.quotes.length} {job.quotes.length === 1 ? "Quote" : "Quotes"}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/job/${job.slug || job.id}`);
+                      }}
+                      className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
+                    >
+                      <Eye className="w-4 h-4 mr-1.5" />
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteJob(job.id);
+                      }}
+                      className="font-['Poppins',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

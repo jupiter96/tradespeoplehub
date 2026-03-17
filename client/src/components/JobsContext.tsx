@@ -66,7 +66,7 @@ export interface Milestone {
   name: string;
   description: string;
   amount: number;
-  status: "awaiting-accept" | "in-progress" | "released" | "disputed" | "cancelled";
+  status: "awaiting-accept" | "in-progress" | "delivered" | "released" | "disputed" | "cancelled";
   createdAt: string;
   releasedAt?: string;
   disputeId?: string;
@@ -116,7 +116,7 @@ export interface Job {
   budgetAmount: number;
   budgetMin?: number;
   budgetMax?: number;
-  status: "open" | "awaiting-accept" | "in-progress" | "completed" | "cancelled";
+  status: "open" | "awaiting-accept" | "in-progress" | "delivered" | "completed" | "cancelled" | "closed";
   postedAt: string;
   quotes: JobQuote[];
   clientId: string;
@@ -443,7 +443,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       if (job.status === 'awaiting-accept' || job.status === 'completed') {
         return job.awardedProfessionalId === professionalId;
       }
-      if (job.status === 'in-progress') {
+      if (job.status === 'in-progress' || job.status === 'delivered') {
         return (job.quotes || []).some(
           (q) => q.professionalId === professionalId && (q.status === 'accepted' || q.status === 'awarded')
         );
