@@ -254,6 +254,17 @@ export default function JobDetailPage() {
   const [viewRevisionData, setViewRevisionData] = useState<{ milestoneName: string; revisionMessage: string; revisionFileUrls: { url: string; name?: string }[] } | null>(null);
   const [viewRevisionFullscreenUrl, setViewRevisionFullscreenUrl] = useState<string | null>(null);
 
+  // Prevent background scroll when fullscreen viewer is open
+  useEffect(() => {
+    const isOpen = !!(viewWorkFullscreenUrl || viewRevisionFullscreenUrl);
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [viewWorkFullscreenUrl, viewRevisionFullscreenUrl]);
+
   // Redirect to login only after auth state is resolved (avoid redirect on refresh before session check)
   useEffect(() => {
     if (authReady && !isLoggedIn) {
@@ -3895,7 +3906,7 @@ export default function JobDetailPage() {
                           <button
                             key={i}
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setViewWorkFullscreenUrl(fullUrl); }}
+                            onClick={(e) => {e.stopPropagation(); e.preventDefault(); setViewWorkFullscreenUrl(fullUrl); }}
                             className="relative aspect-square rounded-lg border border-gray-200 overflow-hidden bg-gray-100 hover:ring-2 hover:ring-[#FE8A0F] focus:outline-none focus:ring-2 focus:ring-[#FE8A0F]"
                           >
                             <img src={fullUrl} alt={f.name || "Attachment"} className="w-full h-full object-cover pointer-events-none" />
@@ -4115,7 +4126,8 @@ export default function JobDetailPage() {
       {/* Fullscreen viewer for image/video from View Work delivered — portaled so it appears above the dialog */}
       {viewWorkFullscreenUrl && createPortal(
         <div
-          className="fixed inset-0 z-[100002] bg-black/95 flex items-center justify-center"
+          className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-8"
+          style={{ zIndex: 100002 }}
           onClick={() => setViewWorkFullscreenUrl(null)}
           role="dialog"
           aria-modal="true"
@@ -4124,7 +4136,7 @@ export default function JobDetailPage() {
           <button
             type="button"
             onClick={() => setViewWorkFullscreenUrl(null)}
-            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+            className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 ring-1 ring-white/30 shadow-lg flex items-center justify-center text-white"
             aria-label="Close"
           >
             <X className="w-6 h-6" />
@@ -4137,14 +4149,14 @@ export default function JobDetailPage() {
                 src={viewWorkFullscreenUrl}
                 controls
                 autoPlay
-                className="max-w-full max-h-[90vh] w-auto h-auto object-contain"
+                className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl ring-1 ring-white/15 bg-black"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <img
                 src={viewWorkFullscreenUrl}
                 alt="Fullscreen"
-                className="max-w-full max-h-[90vh] w-auto h-auto object-contain"
+                className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-xl shadow-2xl ring-1 ring-white/15 bg-black"
                 onClick={(e) => e.stopPropagation()}
               />
             );
