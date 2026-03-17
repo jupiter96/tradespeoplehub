@@ -342,15 +342,17 @@ export default function PostJobPage() {
 
   // Main categories (parent only) for selected sector – for Category multi-select
   const mainCategoriesForSector = (effectiveGroupedBySector[selectedSector] || []).map((g) => g.category);
-  // Skills = subcategories from selected main categories only
+  // Skills = subcategories from selected main categories only, ordered by category selection order
   const skillsOptionsForSector = selectedMainCategories.length
     ? (() => {
-        const groups = (effectiveGroupedBySector[selectedSector] || []).filter((g) =>
-          selectedMainCategories.includes(g.category.value)
-        );
+        const grouped = effectiveGroupedBySector[selectedSector] || [];
+        const groupByValue = new Map<string, CategoryGroup>();
+        grouped.forEach((g) => groupByValue.set(g.category.value, g));
         const seen = new Set<string>();
         const list: CategoryItem[] = [];
-        groups.forEach((g) => {
+        selectedMainCategories.forEach((catValue) => {
+          const g = groupByValue.get(catValue);
+          if (!g) return;
           (g.subcategories || []).forEach((sub) => {
             if (!seen.has(sub.value)) {
               seen.add(sub.value);

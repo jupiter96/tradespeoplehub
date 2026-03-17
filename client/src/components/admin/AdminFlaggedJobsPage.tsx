@@ -39,19 +39,19 @@ export default function AdminFlaggedJobsPage() {
 
   const handleConfirmDelete = async () => {
     if (!reportToDelete) return;
-    setDeletingId(reportToDelete.id);
+    setDeletingId(reportToDelete.jobId);
     try {
-      const res = await fetch(resolveApiUrl(`/api/admin/job-reports/${reportToDelete.id}`), {
+      const res = await fetch(resolveApiUrl(`/api/admin/jobs/${reportToDelete.jobId}`), {
         method: "DELETE",
         credentials: "include",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Failed to delete report");
-      setItems((prev) => prev.filter((x) => x.id !== reportToDelete.id));
+      if (!res.ok) throw new Error(data?.error || "Failed to delete job");
+      setItems((prev) => prev.filter((x) => x.jobId !== reportToDelete.jobId));
       setDeleteDialogOpen(false);
       setReportToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete report");
+      setError(err instanceof Error ? err.message : "Failed to delete job");
     } finally {
       setDeletingId(null);
     }
@@ -217,13 +217,13 @@ export default function AdminFlaggedJobsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          disabled={deletingId === item.id}
+                          disabled={deletingId === item.jobId}
                           className="h-9 w-9 p-0 text-red-700 hover:bg-red-50 hover:text-red-800 disabled:opacity-60"
                           onClick={() => {
                             setReportToDelete(item);
                             setDeleteDialogOpen(true);
                           }}
-                          title="Delete report"
+                          title="Delete reported job"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -246,9 +246,9 @@ export default function AdminFlaggedJobsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-['Poppins',sans-serif]">Delete report?</AlertDialogTitle>
+            <AlertDialogTitle className="font-['Poppins',sans-serif]">Delete reported job?</AlertDialogTitle>
             <AlertDialogDescription className="font-['Poppins',sans-serif]">
-              This will permanently delete this report. This action cannot be undone.
+              This will permanently delete the reported job. All reports for this job will be removed. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -260,7 +260,7 @@ export default function AdminFlaggedJobsPage() {
               onClick={handleConfirmDelete}
               disabled={!!deletingId}
             >
-              {deletingId ? "Deleting…" : "Delete"}
+              {deletingId ? "Deleting…" : "Delete job"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

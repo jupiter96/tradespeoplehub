@@ -3736,8 +3736,10 @@ router.put('/jobs/:id', requireAdmin, async (req, res) => {
 // DELETE /api/admin/jobs/:id
 router.delete('/jobs/:id', requireAdmin, async (req, res) => {
   try {
-    const job = await Job.findByIdAndDelete(req.params.id);
+    const jobId = req.params.id;
+    const job = await Job.findByIdAndDelete(jobId);
     if (!job) return res.status(404).json({ error: 'Job not found' });
+    await JobReport.deleteMany({ jobId: new mongoose.Types.ObjectId(jobId) });
     return res.json({ message: 'Job deleted' });
   } catch (err) {
     console.error('[Admin] Job delete:', err);
