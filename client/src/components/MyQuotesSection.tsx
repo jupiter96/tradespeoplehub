@@ -509,6 +509,11 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
               >
                 {/* Mobile — same structure as JobDetailPage Quotes */}
                 <div className="block sm:hidden p-4">
+                  {!!job?.title && (
+                    <p className="font-['Poppins',sans-serif] text-[13px] font-bold text-[#1976D2] truncate mb-3">
+                      {job.title}
+                    </p>
+                  )}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -718,6 +723,11 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                   <div className="flex gap-5">
                     {/* Left column (70%) */}
                     <div className="w-[70%] min-w-0">
+                      {!!job?.title && (
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-bold text-[#1976D2] truncate mb-3">
+                          {job.title}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="flex-shrink-0">
                           <a
