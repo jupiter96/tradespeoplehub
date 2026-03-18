@@ -281,6 +281,16 @@ export default function JobDetailPage() {
   const [showRejectAwardConfirm, setShowRejectAwardConfirm] = useState(false);
   const [rejectingAward, setRejectingAward] = useState(false);
   const [expandedQuoteMessages, setExpandedQuoteMessages] = useState<Set<string>>(new Set());
+  const [expandedQuoteMilestones, setExpandedQuoteMilestones] = useState<Set<string>>(new Set());
+
+  const toggleQuoteMilestonesExpanded = (quoteId: string) => {
+    setExpandedQuoteMilestones((prev) => {
+      const next = new Set(prev);
+      if (next.has(quoteId)) next.delete(quoteId);
+      else next.add(quoteId);
+      return next;
+    });
+  };
 
   // Milestone state for sending quote
   const [milestones, setMilestones] = useState<Array<{ description: string; amount: string }>>([
@@ -2127,6 +2137,9 @@ export default function JobDetailPage() {
                     const showMsg = msgExpanded ? msg : (isLongMsg ? msg.slice(0, 400) + "..." : msg);
                     const isAwarded = quote.status === "awarded";
                     const quoteAvatarSrc = resolveAvatarUrl(quote.professionalAvatar);
+                    const suggestedMilestones = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
+                    const hasSuggestedMilestones = suggestedMilestones.length > 0;
+                    const milestonesExpanded = expandedQuoteMilestones.has(quote.id);
                     return (
                     <div
                       key={quote.id}
@@ -2226,6 +2239,62 @@ export default function JobDetailPage() {
                             </button>
                           )}
                         </div>
+
+                        {hasSuggestedMilestones && (
+                          <div className="mb-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleQuoteMilestonesExpanded(quote.id)}
+                              className="inline-flex items-center gap-2 text-[12px] font-['Poppins',sans-serif] text-[#1976D2] hover:text-[#1565C0] hover:underline"
+                            >
+                              {milestonesExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                              View Milestones
+                            </button>
+
+                            {milestonesExpanded && (
+                              <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                  <thead>
+                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                      <th className="text-left py-2 px-3 font-medium text-[#2c353f]">Description</th>
+                                      <th className="text-right py-2 px-3 font-medium text-[#2c353f]">Amount</th>
+                                      <th className="text-center py-2 px-3 font-medium text-[#2c353f]">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {suggestedMilestones.map((m) => (
+                                      <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                        <td className="py-2 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                        <td className="py-2 px-3 text-right text-[#2c353f]">{formatPrice(Number(m.amount || 0))}</td>
+                                        <td className="py-2 px-3 text-center">
+                                          {m.status === "pending" && (
+                                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                              Pending
+                                            </Badge>
+                                          )}
+                                          {m.status === "accepted" && (
+                                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                              Accepted
+                                            </Badge>
+                                          )}
+                                          {m.status === "rejected" && (
+                                            <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                              rejected
+                                            </span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {quote.status === "pending" && (
                           <div className="flex gap-2 justify-end">
@@ -2368,60 +2437,122 @@ export default function JobDetailPage() {
                           )}
                         </div>
 
-                        <div>
-                          {quote.status === "pending" && (
-                            <div className="flex items-center gap-2 justify-end">
-                              {isJobOwner && (
-                                <Button
-                                  onClick={() => handleOpenAwardModal(quote)}
-                                  className="flex-none bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-[180px]">
+                              {hasSuggestedMilestones && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleQuoteMilestonesExpanded(quote.id)}
+                                  className="inline-flex items-center gap-2 text-[13px] font-['Poppins',sans-serif] text-[#1976D2] hover:text-[#1565C0] hover:underline"
                                 >
-                                  Award
-                                </Button>
+                                  {milestonesExpanded ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                  View Milestones
+                                </button>
                               )}
-                              {userRole === "professional" && quote.professionalId === userInfo?.id ? (
+                            </div>
+
+                            <div className="flex items-center gap-2 justify-end flex-wrap">
+                              {quote.status === "pending" && (
                                 <>
-                                  <Button
-                                    onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
-                                    variant="outline"
-                                    className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-red-200 text-red-600 hover:bg-red-50"
-                                  >
-                                    <Undo2 className="w-4 h-4 mr-2" />
-                                    Withdraw
-                                  </Button>
-                                  <Button
-                                    onClick={() => openEditQuoteModal(quote)}
-                                    variant="outline"
-                                    className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
-                                  >
-                                    <Pencil className="w-4 h-4 mr-2" />
-                                    Edit
-                                  </Button>
+                                  {isJobOwner && (
+                                    <Button
+                                      onClick={() => handleOpenAwardModal(quote)}
+                                      className="flex-none bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                    >
+                                      Award
+                                    </Button>
+                                  )}
+                                  {userRole === "professional" && quote.professionalId === userInfo?.id ? (
+                                    <>
+                                      <Button
+                                        onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
+                                        variant="outline"
+                                        className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-red-200 text-red-600 hover:bg-red-50"
+                                      >
+                                        <Undo2 className="w-4 h-4 mr-2" />
+                                        Withdraw
+                                      </Button>
+                                      <Button
+                                        onClick={() => openEditQuoteModal(quote)}
+                                        variant="outline"
+                                        className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                                      >
+                                        <Pencil className="w-4 h-4 mr-2" />
+                                        Edit
+                                      </Button>
+                                    </>
+                                  ) : isJobOwner && (
+                                    <Button
+                                      onClick={() => handleStartChat(quote)}
+                                      variant="outline"
+                                      className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                    >
+                                      Message
+                                    </Button>
+                                  )}
                                 </>
-                              ) : isJobOwner && (
+                              )}
+
+                              {quote.status === "awarded" && (
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 text-[13px] text-[#6b6b6b]">
+                                  Awaiting professional&apos;s response
+                                </div>
+                              )}
+
+                              {quote.status === "accepted" && (
                                 <Button
                                   onClick={() => handleStartChat(quote)}
-                                  variant="outline"
-                                  className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                  className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
                                 >
-                                  Message
+                                  <MessageCircle className="w-4 h-4 mr-2" />
+                                  Chat
                                 </Button>
                               )}
                             </div>
-                          )}
-                          {quote.status === "awarded" && (
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 text-[13px] text-[#6b6b6b]">
-                              Awaiting professional's response
+                          </div>
+
+                          {hasSuggestedMilestones && milestonesExpanded && (
+                            <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                              <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                                <thead>
+                                  <tr className="bg-gray-50 border-b border-gray-200">
+                                    <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
+                                    <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
+                                    <th className="text-center py-2.5 px-3 font-medium text-[#2c353f]">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {suggestedMilestones.map((m) => (
+                                    <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                      <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                      <td className="py-2.5 px-3 text-right text-[#2c353f]">{formatPrice(Number(m.amount || 0))}</td>
+                                      <td className="py-2.5 px-3 text-center">
+                                        {m.status === "pending" && (
+                                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] px-2 py-0">
+                                            Pending
+                                          </Badge>
+                                        )}
+                                        {m.status === "accepted" && (
+                                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0">
+                                            Accepted
+                                          </Badge>
+                                        )}
+                                        {m.status === "rejected" && (
+                                          <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                            rejected
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                          )}
-                          {quote.status === "accepted" && (
-                            <Button
-                              onClick={() => handleStartChat(quote)}
-                              className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
-                            >
-                              <MessageCircle className="w-4 h-4 mr-2" />
-                              Chat
-                            </Button>
                           )}
                         </div>
                       </div>
