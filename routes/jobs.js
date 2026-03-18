@@ -1670,7 +1670,7 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
     const deducted = await deductBid(req.user.id);
     if (!deducted) {
       return res.status(403).json({
-        error: 'Insufficient bids. Use your free monthly bids or buy a bid plan from Account → Bids & Membership.',
+        error: 'Insufficient credits.',
       });
     }
 

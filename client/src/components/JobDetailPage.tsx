@@ -106,6 +106,8 @@ import FloatingToolsBackground from "./FloatingToolsBackground";
 import JobDeliverWorkModal from "./JobDeliverWorkModal";
 import ServiceCard from "./ServiceCard";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import BidsAndMembershipSection from "./BidsAndMembershipSection";
+import WalletFundModal from "./WalletFundModal";
 
 type SocialShareLink = {
   name: string;
@@ -270,6 +272,8 @@ export default function JobDetailPage() {
     message: "",
   });
   const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
+  const [quoteMessageBeforeAi, setQuoteMessageBeforeAi] = useState<string | null>(null);
+  const [isQuoteMessageAiGenerated, setIsQuoteMessageAiGenerated] = useState(false);
   const [quoteToWithdraw, setQuoteToWithdraw] = useState<{ jobId: string; quoteId: string } | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const [editingQuoteMeta, setEditingQuoteMeta] = useState<{ jobId: string; quoteId: string } | null>(null);
@@ -395,6 +399,10 @@ export default function JobDetailPage() {
   const [proProfileServices, setProProfileServices] = useState<any[]>([]);
   const [proProfileServicesLoading, setProProfileServicesLoading] = useState(false);
   const [proProfileExpandedReviewResponses, setProProfileExpandedReviewResponses] = useState<Set<string>>(new Set());
+
+  // Quote credits purchase slider (shown when pro has no credits)
+  const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
+  const [showFundWalletModal, setShowFundWalletModal] = useState(false);
 
   // Prevent background scroll when fullscreen viewer is open
   useEffect(() => {
@@ -603,8 +611,8 @@ export default function JobDetailPage() {
       const bReviews = Number((b as any).professionalReviews ?? 0) || 0;
       if (bReviews !== aReviews) return bReviews - aReviews;
 
-      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const aCreated = (a as any).submittedAt ? new Date((a as any).submittedAt).getTime() : 0;
+      const bCreated = (b as any).submittedAt ? new Date((b as any).submittedAt).getTime() : 0;
       return bCreated - aCreated;
     });
   };
@@ -653,6 +661,14 @@ export default function JobDetailPage() {
     if (Number.isNaN(n)) return v;
     return n === 1 ? "1 day" : `${n} days`;
   };
+
+  // Quote price validation range:
+  // - Job budgets are stored in GBP
+  // - UI input is in selected currency, so min/max and clamping must use selected-currency values.
+  const quoteBudgetMinGBP = job.budgetMin ?? job.budgetAmount ?? 0;
+  const quoteBudgetMaxGBP = job.budgetMax ?? (job.budgetAmount ?? 0) * 1.2;
+  const quoteBudgetMinSelected = fromGBP(quoteBudgetMinGBP);
+  const quoteBudgetMaxSelected = fromGBP(quoteBudgetMaxGBP);
 
   const handleInviteProfessional = async (pro: typeof recommendedProfessionals[0], message?: string) => {
     try {
@@ -710,6 +726,7 @@ export default function JobDetailPage() {
     if (!job) return;
     setAiQuoteMessageGenerating(true);
     try {
+      setQuoteMessageBeforeAi(quoteForm.message);
       const res = await fetch(resolveApiUrl("/api/jobs/generate-quote-message"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -727,7 +744,10 @@ export default function JobDetailPage() {
         toast.error(data.error || "Failed to generate message");
         return;
       }
-      if (data.message) setQuoteForm((f) => ({ ...f, message: data.message }));
+      if (data.message) {
+        setQuoteForm((f) => ({ ...f, message: data.message }));
+        setIsQuoteMessageAiGenerated(true);
+      }
       toast.success("Message generated. You can edit it before sending.");
     } catch {
       toast.error("Failed to generate message. Please try again.");
@@ -738,7 +758,7 @@ export default function JobDetailPage() {
 
   const handleOpenAwardModal = (quote: JobQuote) => {
     setSelectedQuoteForAward(quote);
-    setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toString() }]);
+    setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toFixed(2) }]);
     setShowAwardModal(true);
   };
 
@@ -1197,6 +1217,14 @@ export default function JobDetailPage() {
     setProProfileServices([]);
   };
 
+  const openQuoteCreditsSlider = () => {
+    setShowQuoteCreditsSlider(true);
+  };
+
+  const closeQuoteCreditsSlider = () => {
+    setShowQuoteCreditsSlider(false);
+  };
+
   /** Pro: open chat with the job client (when job is in progress). */
   const handleStartChatWithClient = () => {
     if (job?.clientId) startConversation(job.clientId);
@@ -1260,7 +1288,7 @@ export default function JobDetailPage() {
     if (!job) return;
     setEditingQuoteMeta({ jobId: job.id, quoteId: quote.id });
     setQuoteForm({
-      price: String(fromGBP(quote.price)),
+      price: fromGBP(quote.price).toFixed(2),
       deliveryTime: quote.deliveryTime || "",
       message: quote.message || "",
     });
@@ -1325,11 +1353,25 @@ export default function JobDetailPage() {
         suggestedMilestones: cleanedSuggestedMilestones,
       });
       toast.success("Quote submitted successfully!");
+      // Notify credit UI to refresh (free credits are consumed first, then purchased)
+      try {
+        window.dispatchEvent(new Event("bids:changed"));
+      } catch {}
       setShowQuoteDialog(false);
       setQuoteForm({ price: "", deliveryTime: "", message: "" });
       setMilestones([{ description: "", amount: "" }]);
     } catch (e: any) {
-      toast.error(e?.message || "Failed to submit quote");
+      const msg = String(e?.message || "");
+      const isCreditError =
+        /credit|credits|bid|bids|insufficient/i.test(msg) &&
+        /credit|bid/i.test(msg); // keep narrow to avoid hijacking unrelated errors
+      if (isCreditError) {
+        toast.error(msg || "You don't have enough quote credits.");
+        setShowQuoteDialog(false);
+        openQuoteCreditsSlider();
+      } else {
+        toast.error(msg || "Failed to submit quote");
+      }
     }
   };
 
@@ -4046,6 +4088,75 @@ export default function JobDetailPage() {
         </div>
       )}
 
+      {/* Quote credits purchase slider (top-most) */}
+      {showQuoteCreditsSlider && (
+        <div className="fixed inset-0 z-[30000] flex">
+          <button
+            type="button"
+            className="flex-1 bg-black/40 backdrop-blur-sm"
+            onClick={closeQuoteCreditsSlider}
+            aria-label="Close quote credits"
+          />
+          <div className="w-1/2 max-w-[980px] bg-white h-full shadow-2xl relative flex flex-col">
+            <button
+              type="button"
+              onClick={closeQuoteCreditsSlider}
+              className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
+              <div className="p-5 pb-4 border-b border-gray-100">
+                <h2 className="text-[#FE8A0F] text-xl font-semibold">Quote credits</h2>
+                <p className="text-[13px] text-[#6b6b6b] mt-1">
+                  You need credits to submit a quote. Purchase credits or fund your wallet here.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      // Show wallet funding modal above everything (close slider to avoid z-index conflicts)
+                      setShowQuoteCreditsSlider(false);
+                      setShowFundWalletModal(true);
+                    }}
+                    className="bg-[#003D82] hover:bg-[#002a59] text-white font-['Poppins',sans-serif]"
+                  >
+                    Add funds (card / PayPal / bank)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/account?tab=quote-credits")}
+                    className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                  >
+                    Open in account page
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 md:p-6">
+                {/* Same UI as Account → Quote credits */}
+                <BidsAndMembershipSection />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet funding modal (card / paypal / bank) */}
+      <WalletFundModal
+        isOpen={showFundWalletModal}
+        onClose={() => {
+          setShowFundWalletModal(false);
+          setShowQuoteCreditsSlider(true);
+        }}
+        onSuccess={() => {
+          // After funding, reopen credits slider so user can buy credits immediately.
+          setShowFundWalletModal(false);
+          setShowQuoteCreditsSlider(true);
+        }}
+      />
+
       {/* Attachment preview modal (job post attachments) */}
       <Dialog open={!!attachmentPreview} onOpenChange={(open) => { if (!open) setAttachmentPreview(null); }}>
         <DialogContent className="font-['Poppins',sans-serif] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -4277,7 +4388,11 @@ export default function JobDetailPage() {
         open={showQuoteDialog}
         onOpenChange={(open) => {
           setShowQuoteDialog(open);
-          if (!open) setEditingQuoteMeta(null);
+          if (!open) {
+            setEditingQuoteMeta(null);
+            setQuoteMessageBeforeAi(null);
+            setIsQuoteMessageAiGenerated(false);
+          }
         }}
       >
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
@@ -4332,24 +4447,23 @@ export default function JobDetailPage() {
                   <Input
                     type="number"
                     placeholder="Enter your price"
-                    min={job.budgetMin ?? job.budgetAmount}
-                    max={job.budgetMax ?? job.budgetAmount * 1.2}
+                    min={quoteBudgetMinSelected}
+                    max={quoteBudgetMaxSelected}
                     step="0.01"
                     value={quoteForm.price}
                     onChange={(e) => setQuoteForm({ ...quoteForm, price: e.target.value })}
                     onBlur={() => {
                       const v = parseFloat(quoteForm.price);
                       if (quoteForm.price !== "" && !isNaN(v)) {
-                        const maxB = job.budgetMax ?? job.budgetAmount * 1.2;
-                        const minB = job.budgetMin ?? job.budgetAmount;
-                        const clamped = Math.min(maxB, Math.max(minB, v));
-                        if (clamped !== v) setQuoteForm((f) => ({ ...f, price: String(clamped) }));
+                        const clamped = Math.min(quoteBudgetMaxSelected, Math.max(quoteBudgetMinSelected, v));
+                        const rounded = Math.round(clamped * 100) / 100;
+                        if (rounded !== v) setQuoteForm((f) => ({ ...f, price: rounded.toFixed(2) }));
                       }
                     }}
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: {formatPrice(job.budgetMin ?? job.budgetAmount ?? 0)} - {formatPrice(job.budgetMax ?? (job.budgetAmount ?? 0) * 1.2)} (price must be within this range)
+                    💡 Client's budget: {formatAmountInSelectedCurrency(quoteBudgetMinGBP)} - {formatAmountInSelectedCurrency(quoteBudgetMaxGBP)} (price must be within this range)
                   </p>
                 </div>
 
@@ -4374,9 +4488,45 @@ export default function JobDetailPage() {
                 </div>
 
                 <div className="bg-white rounded-lg p-4 border border-orange-100">
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                    Message to Client <span className="text-red-500">*</span>
-                  </Label>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] block">
+                      Message to Client <span className="text-red-500">*</span>
+                    </Label>
+                    {isQuoteMessageAiGenerated && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (quoteMessageBeforeAi != null) {
+                              setQuoteForm((f) => ({ ...f, message: quoteMessageBeforeAi }));
+                            }
+                            setIsQuoteMessageAiGenerated(false);
+                          }}
+                          className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f]"
+                          aria-label="Restore previous message"
+                          title="Restore"
+                        >
+                          <Undo2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setQuoteForm((f) => ({ ...f, message: "" }));
+                            setIsQuoteMessageAiGenerated(false);
+                          }}
+                          className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#DC3545]"
+                          aria-label="Clear message"
+                          title="Clear"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   <Textarea
                     placeholder="Enter key points or a few words, then use Generate text by AI to write a full message..."
                     value={quoteForm.message}
@@ -4384,20 +4534,22 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                   />
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleGenerateQuoteMessage}
-                      disabled={aiQuoteMessageGenerating}
-                      className={cn(
-                        "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-5 py-2.5 rounded-xl border-2 transition-all duration-200",
-                        aiQuoteMessageGenerating
-                          ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
-                          : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
-                      )}
-                    >
-                      <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiQuoteMessageGenerating && "animate-pulse")} />
-                      {aiQuoteMessageGenerating ? "Generating…" : "Generate text by AI"}
-                    </button>
+                    {!isQuoteMessageAiGenerated && (
+                      <button
+                        type="button"
+                        onClick={handleGenerateQuoteMessage}
+                        disabled={aiQuoteMessageGenerating}
+                        className={cn(
+                          "inline-flex items-center justify-center gap-2 font-['Poppins',sans-serif] font-semibold text-[15px] px-5 py-2.5 rounded-xl border-2 transition-all duration-200",
+                          aiQuoteMessageGenerating
+                            ? "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                            : "bg-white border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] active:scale-[0.98]"
+                        )}
+                      >
+                        <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiQuoteMessageGenerating && "animate-pulse")} />
+                        {aiQuoteMessageGenerating ? "Generating…" : "Generate text by AI"}
+                      </button>
+                    )}
                   </div>
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
                     💡 Tip: Mention your relevant experience and availability

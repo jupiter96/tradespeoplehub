@@ -110,6 +110,17 @@ export default function BidsAndMembershipSection() {
     return () => { cancelled = true; };
   }, []);
 
+  // Refresh balance when quotes consume credits (JobDetailPage dispatches "bids:changed")
+  useEffect(() => {
+    const onChanged = () => {
+      fetchBalance();
+    };
+    window.addEventListener("bids:changed", onChanged);
+    return () => {
+      window.removeEventListener("bids:changed", onChanged);
+    };
+  }, []);
+
   const fetchHistory = async () => {
     setHistoryLoading(true);
     try {
