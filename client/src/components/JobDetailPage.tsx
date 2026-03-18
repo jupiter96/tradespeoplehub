@@ -1842,131 +1842,139 @@ export default function JobDetailPage() {
                           Accepted
                         </div>
                       )}
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4 flex-1 min-w-0">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3">
-                              <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <div className="relative">
-                                  <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
-                                  {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
-                                    <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
-                                  )}
-                                  <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
-                                    {getTwoLetterInitials(myAwardedQuote.professionalName, "P")}
-                                  </AvatarFallback>
-                                  </Avatar>
-                                  <span
-                                    className={cn(
-                                      "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
-                                      isUserOnline(myAwardedQuote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                      <div className="flex flex-col sm:flex-row gap-5">
+                        {/* Left column (70%) */}
+                        <div className="sm:w-[70%] min-w-0">
+                          <div className="flex items-start gap-4 flex-1 min-w-0">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3">
+                                <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <div className="relative">
+                                    <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                    {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
+                                      <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
                                     )}
-                                    aria-label={isUserOnline(myAwardedQuote.professionalId) ? "Online" : "Offline"}
-                                  />
-                                </div>
-                              </a>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
-                                    <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1 truncate">
-                                      {myAwardedQuote.professionalName}
-                                    </h3>
-                                  </a>
-                                  <VerificationBadge fullyVerified={myAwardedQuote.professionalFullyVerified} size="sm" />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openProfessionalProfileSlider(myAwardedQuote)}
-                                    className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
-                                    aria-label="View professional profile"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                  <div className="flex items-center gap-2 px-2 py-1 rounded">
-                                    <StarRating rating={Number(myAwardedQuote.professionalRating)} size="md" />
-                                    <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px]">
-                                      {formatNumber(Number(myAwardedQuote.professionalRating), 1)}
-                                    </span>
+                                    <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
+                                      {getTwoLetterInitials(myAwardedQuote.professionalName, "P")}
+                                    </AvatarFallback>
+                                    </Avatar>
+                                    <span
+                                      className={cn(
+                                        "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                        isUserOnline(myAwardedQuote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                                      )}
+                                      aria-label={isUserOnline(myAwardedQuote.professionalId) ? "Online" : "Offline"}
+                                    />
                                   </div>
-                                  <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
-                                    ({myAwardedQuote.professionalReviews} {myAwardedQuote.professionalReviews === 1 ? 'review' : 'reviews'})
-                                  </span>
-                                  {!!myAwardedQuote.professionalCountry && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] sm:text-[12px] text-[#6b6b6b]">
-                                      <span className="truncate max-w-[160px]">{(myAwardedQuote as any).professionalTownCity || myAwardedQuote.professionalCountry}</span>
-                                      {(() => {
-                                        const iso = iso2FromCountry(myAwardedQuote.professionalCountry);
-                                        return iso ? (
-                                          <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={myAwardedQuote.professionalCountry} />
-                                        ) : null;
-                                      })()}
+                                </a>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
+                                      <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1 truncate">
+                                        {myAwardedQuote.professionalName}
+                                      </h3>
+                                    </a>
+                                    <VerificationBadge fullyVerified={myAwardedQuote.professionalFullyVerified} size="sm" />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openProfessionalProfileSlider(myAwardedQuote)}
+                                      className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                      aria-label="View professional profile"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                    <div className="flex items-center gap-2 px-2 py-1 rounded">
+                                      <StarRating rating={Number(myAwardedQuote.professionalRating)} size="md" />
+                                      <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px]">
+                                        {formatNumber(Number(myAwardedQuote.professionalRating), 1)}
+                                      </span>
+                                    </div>
+                                    <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                                      ({myAwardedQuote.professionalReviews} {myAwardedQuote.professionalReviews === 1 ? 'review' : 'reviews'})
                                     </span>
+                                    {!!myAwardedQuote.professionalCountry && (
+                                      <span className="inline-flex items-center gap-1 text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                                        <span className="truncate max-w-[160px]">{(myAwardedQuote as any).professionalTownCity || myAwardedQuote.professionalCountry}</span>
+                                        {(() => {
+                                          const iso = iso2FromCountry(myAwardedQuote.professionalCountry);
+                                          return iso ? (
+                                            <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={myAwardedQuote.professionalCountry} />
+                                          ) : null;
+                                        })()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!!(myAwardedQuote as any).professionalProfileTitle && (
+                                    <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] font-bold -mt-1 mb-2">
+                                      {(myAwardedQuote as any).professionalProfileTitle}
+                                    </p>
                                   )}
                                 </div>
-                                {!!(myAwardedQuote as any).professionalProfileTitle && (
-                                  <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] font-bold -mt-1 mb-2">
-                                    {(myAwardedQuote as any).professionalProfileTitle}
-                                  </p>
-                                )}
                               </div>
                             </div>
                           </div>
+
+                          <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] mt-3">
+                            {(() => {
+                              const m = myAwardedQuote.message || "will do";
+                              const long = m.length > 400;
+                              const open = expandedQuoteMessages.has(myAwardedQuote.id);
+                              const text = open ? m : (long ? m.slice(0, 400) + "..." : m);
+                              return (
+                                <>
+                                  {open ? <p className="whitespace-pre-wrap">{text}</p> : <span>{text}</span>}
+                                  {long && (
+                                    <button type="button" onClick={() => toggleQuoteMessageExpanded(myAwardedQuote.id)} className="text-[#3B82F6] hover:underline ml-1 text-[12px]">
+                                      {open ? "Read less" : "Read more"}
+                                    </button>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
-                        <div className="text-right flex-shrink-0 whitespace-nowrap">
-                          <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
-                            {formatPrice(Number(myAwardedQuote.price))}
-                          </p>
-                          <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
-                            {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
-                          </p>
+
+                        {/* Right column (30%) */}
+                        <div className="sm:w-[30%] flex flex-col gap-3 sm:items-end">
+                          <div className="text-right flex-shrink-0 whitespace-nowrap">
+                            <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
+                              {formatPrice(Number(myAwardedQuote.price))}
+                            </p>
+                            <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
+                              {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
+                            </p>
+                          </div>
+                          <div className="flex justify-end gap-2 flex-wrap pt-2 mt-auto">
+                            {job?.status === "in-progress" && (
+                              <Button
+                                onClick={handleStartChatWithClient}
+                                className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                              >
+                                Chat
+                              </Button>
+                            )}
+                            {job?.status === "awaiting-accept" && (
+                              <>
+                                <Button
+                                  onClick={handleAcceptAward}
+                                  className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  onClick={() => setShowRejectAwardConfirm(true)}
+                                  className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
+                                >
+                                  Reject &nbsp; 
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                        {(() => {
-                          const m = myAwardedQuote.message || "will do";
-                          const long = m.length > 400;
-                          const open = expandedQuoteMessages.has(myAwardedQuote.id);
-                          const text = open ? m : (long ? m.slice(0, 400) + "..." : m);
-                          return (
-                            <>
-                              {open ? <p className="whitespace-pre-wrap">{text}</p> : <span>{text}</span>}
-                              {long && (
-                                <button type="button" onClick={() => toggleQuoteMessageExpanded(myAwardedQuote.id)} className="text-[#3B82F6] hover:underline ml-1 text-[12px]">
-                                  {open ? "Read less" : "Read more"}
-                                </button>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                      <div className="flex justify-end gap-2 flex-wrap pt-2">
-                        {job?.status === "in-progress" && (
-                          <Button
-                            onClick={handleStartChatWithClient}
-                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
-                          >
-                            Chat
-                          </Button>
-                        )}
-                        {job?.status === "awaiting-accept" && (
-                          <>
-                            <Button
-                              onClick={handleAcceptAward}
-                              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2 transition-all duration-300"
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              onClick={() => setShowRejectAwardConfirm(true)}
-                              className="bg-[#DC3545] hover:bg-[#C82333] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2"
-                            >
-                              Reject
-                            </Button>
-                          </>
-                        )}
                       </div>
                     </div>
                     ) : null}
@@ -1988,102 +1996,110 @@ export default function JobDetailPage() {
                               Accepted
                             </div>
                           )}
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-4 flex-1 min-w-0">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3">
-                                  <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                    <div className="relative">
-                                      <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
-                                      {quoteAvatarSrc && <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />}
-                                      <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
-                                        {getTwoLetterInitials(quote.professionalName, "P")}
-                                      </AvatarFallback>
-                                      </Avatar>
-                                      <span
-                                        className={cn(
-                                          "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
-                                          isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
-                                        )}
-                                        aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
-                                      />
-                                    </div>
-                                  </a>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
-                                        <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1 truncate">{quote.professionalName}</h3>
-                                      </a>
-                                      <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => openProfessionalProfileSlider(quote)}
-                                        className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
-                                        aria-label="View professional profile"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                      <div className="flex items-center gap-2 px-2 py-1 rounded">
-                                        <StarRating rating={Number(quote.professionalRating)} size="md" />
-                                        <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px]">
-                                          {formatNumber(Number(quote.professionalRating), 1)}
-                                        </span>
+                          <div className="flex flex-col sm:flex-row gap-5">
+                            {/* Left column (70%) */}
+                            <div className="sm:w-[70%] min-w-0">
+                              <div className="flex items-start gap-4 flex-1 min-w-0">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-3">
+                                    <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <div className="relative">
+                                        <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                        {quoteAvatarSrc && <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />}
+                                        <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
+                                          {getTwoLetterInitials(quote.professionalName, "P")}
+                                        </AvatarFallback>
+                                        </Avatar>
+                                        <span
+                                          className={cn(
+                                            "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                            isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                                          )}
+                                          aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
+                                        />
                                       </div>
-                                      <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
-                                      {!!quote.professionalCountry && (
-                                        <span className="inline-flex items-center gap-1 text-[11px] sm:text-[12px] text-[#6b6b6b]">
-                                          <span className="truncate max-w-[160px]">{(quote as any).professionalTownCity || quote.professionalCountry}</span>
-                                          {(() => {
-                                            const iso = iso2FromCountry(quote.professionalCountry);
-                                            return iso ? (
-                                              <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={quote.professionalCountry} />
-                                            ) : null;
-                                          })()}
-                                        </span>
+                                    </a>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
+                                          <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1 truncate">{quote.professionalName}</h3>
+                                        </a>
+                                        <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => openProfessionalProfileSlider(quote)}
+                                          className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                          aria-label="View professional profile"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                        <div className="flex items-center gap-2 px-2 py-1 rounded">
+                                          <StarRating rating={Number(quote.professionalRating)} size="md" />
+                                          <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px]">
+                                            {formatNumber(Number(quote.professionalRating), 1)}
+                                          </span>
+                                        </div>
+                                        <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
+                                        {!!quote.professionalCountry && (
+                                          <span className="inline-flex items-center gap-1 text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                                            <span className="truncate max-w-[160px]">{(quote as any).professionalTownCity || quote.professionalCountry}</span>
+                                            {(() => {
+                                              const iso = iso2FromCountry(quote.professionalCountry);
+                                              return iso ? (
+                                                <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={quote.professionalCountry} />
+                                              ) : null;
+                                            })()}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {!!profileTitle && (
+                                        <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] font-bold -mt-1 mb-2">
+                                          {profileTitle}
+                                        </p>
                                       )}
                                     </div>
-                                    {!!profileTitle && (
-                                      <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] font-bold -mt-1 mb-2">
-                                        {profileTitle}
-                                      </p>
-                                    )}
                                   </div>
                                 </div>
                               </div>
+
+                              <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f] mt-3">
+                                {expanded ? (
+                                  <p className="whitespace-pre-wrap">{displayMsg}</p>
+                                ) : (
+                                  <span>{displayMsg}</span>
+                                )}
+                                {isLong && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleQuoteMessageExpanded(quote.id)}
+                                    className="text-[#3B82F6] hover:underline ml-1 text-[12px]"
+                                  >
+                                    {expanded ? "Read less" : "Read more"}
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right flex-shrink-0 whitespace-nowrap">
-                              <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
-                                {formatPrice(Number(quote.price))}
-                              </p>
-                              <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
-                                {formatDeliveryDisplay(quote.deliveryTime || "")}
-                              </p>
+
+                            {/* Right column (30%) */}
+                            <div className="sm:w-[30%] flex flex-col gap-3 sm:items-end">
+                              <div className="text-right flex-shrink-0 whitespace-nowrap">
+                                <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
+                                  {formatPrice(Number(quote.price))}
+                                </p>
+                                <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
+                                  {formatDeliveryDisplay(quote.deliveryTime || "")}
+                                </p>
+                              </div>
+                              <div className="flex justify-end gap-2 pt-2">
+                                <Button onClick={() => handleStartChat(quote)} className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2">
+                                  Chat
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                          <div className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                            {expanded ? (
-                              <p className="whitespace-pre-wrap">{displayMsg}</p>
-                            ) : (
-                              <span>{displayMsg}</span>
-                            )}
-                            {isLong && (
-                              <button
-                                type="button"
-                                onClick={() => toggleQuoteMessageExpanded(quote.id)}
-                                className="text-[#3B82F6] hover:underline ml-1 text-[12px]"
-                              >
-                                {expanded ? "Read less" : "Read more"}
-                              </button>
-                            )}
-                          </div>
-                          <div className="flex justify-end gap-2 pt-2">
-                            <Button onClick={() => handleStartChat(quote)} className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2">
-                              Chat
-                            </Button>
                           </div>
                         </div>
                       );
@@ -2377,7 +2393,7 @@ export default function JobDetailPage() {
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <div className="relative">
-                                  <Avatar className="w-14 h-14 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                                  <Avatar className="w-16 h-16 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                                     {quoteAvatarSrc && (
                                       <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
                                     )}

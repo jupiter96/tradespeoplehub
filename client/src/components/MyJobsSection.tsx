@@ -49,6 +49,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { toast } from "sonner@2.0.3";
 import { resolveAvatarUrl, formatJobLocationCityOnly } from "./orders/utils";
+import JobSkillBadges from "./JobSkillBadges";
 
 export default function MyJobsSection() {
   const navigate = useNavigate();
@@ -362,20 +363,13 @@ export default function MyJobsSection() {
                     {getTruncatedDescription(job.description)}
                   </p>
 
-                  {(job as { categories?: string[] }).categories &&
-                    (job as { categories: string[] }).categories.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {(job as { categories: string[] }).categories.map((category, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="outline"
-                            className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
-                          >
-                            {category}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                  <div className="mb-4">
+                    <JobSkillBadges
+                      categories={(job as { categories?: string[] }).categories}
+                      jobSlug={job.slug}
+                      jobId={job.id}
+                    />
+                  </div>
 
                   <div className="pt-3 flex flex-wrap items-center text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
                     <div className="flex items-center gap-1.5 min-w-0">

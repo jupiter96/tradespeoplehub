@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import AvailableJobsSection from "./AvailableJobsSection";
 import MyQuotesSection from "./MyQuotesSection";
@@ -34,6 +34,7 @@ import { formatJobLocationCityOnly } from "./orders/utils";
 import { cn } from "./ui/utils";
 import JobDeliverWorkModal from "./JobDeliverWorkModal";
 import type { Job } from "./JobsContext";
+import JobSkillBadges from "./JobSkillBadges";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
@@ -279,86 +280,73 @@ function ActiveJobsSection() {
                 className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
                 onClick={() => navigate(`/job/${job.slug || job.id}?tab=payment`)}
               >
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-1">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                        {job.title}
-                      </h3>
-                      <Badge
-                        className={`font-['Poppins',sans-serif] whitespace-nowrap ${
-                          job.status === "delivered"
-                            ? "bg-purple-600 text-white border-purple-600"
-                            : "bg-green-600 text-white border-green-600"
-                        }`}
-                      >
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        {job.status === "delivered" ? "Delivered" : "In Progress"}
-                      </Badge>
-                    </div>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold mb-2">
-                      Budget{" "}
-                      {job.budgetMin != null && job.budgetMax != null
-                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
-                        : formatPrice(job.budgetAmount ?? 0)}
-                    </p>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
-                      {getTruncatedDescription(job.description)}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {job.categories?.map((category, idx) => (
+                <div className="flex flex-col md:flex-row gap-5">
+                  {/* Left column (70%) */}
+                  <div className="md:w-[70%] min-w-0">
+                    <div>
+                      <div className="flex items-start gap-3 mb-1">
+                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                          {job.title}
+                        </h3>
                         <Badge
-                          key={idx}
-                          variant="outline"
-                          className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
+                          className={`font-['Poppins',sans-serif] whitespace-nowrap ${
+                            job.status === "delivered"
+                              ? "bg-purple-600 text-white border-purple-600"
+                              : "bg-green-600 text-white border-green-600"
+                          }`}
                         >
-                          {category}
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          {job.status === "delivered" ? "Delivered" : "In Progress"}
                         </Badge>
-                      ))}
+                      </div>
+
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                        {getTruncatedDescription(job.description)}
+                      </p>
+
+                      <div className="mt-1">
+                        <JobSkillBadges
+                          categories={job.categories}
+                          jobSlug={job.slug}
+                          jobId={job.id}
+                        />
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-100 mt-3 flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                        {/* <div className="flex items-center gap-1.5">
+                          
+                        </div> */}
+
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4" />
+                          {formatJobLocationCityOnly(job)}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4" />
+                          <span>{getRelativeTime(job.postedAt)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-gray-100 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                      <div className="flex items-center gap-1.5">
-                        {(() => {
-                          const count = job.clientReviewCount ?? 0;
-                          const hasReviews = count > 0 && job.clientRatingAverage != null;
-                          return (
-                            <>
-                              <Star
-                                className={cn(
-                                  "w-4 h-4",
-                                  hasReviews ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300"
-                                )}
-                              />
-                              {hasReviews ? (
-                                <span>
-                                  {formatNumber(job.clientRatingAverage as number, 1)} ({count}{" "}
-                                  {count === 1 ? "review" : "reviews"})
-                                </span>
-                              ) : (
-                                <span>0 review</span>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4" />
-                        {formatJobLocationCityOnly(job)}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" />
-                        <span>{getRelativeTime(job.postedAt)}</span>
-                      </div>
+                  {/* Right column (30%) */}
+                  <div
+                    className="md:w-[30%] flex flex-col gap-3 text-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">Budget</p>
+                    <div className="text-right">
+                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-bold">
+                        {job.budgetMin != null && job.budgetMax != null
+                          ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
+                          : formatPrice(job.budgetAmount ?? 0)}
+                      </p>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="mt-auto flex items-center gap-2 flex-wrap">
                       <Button
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
                           e.stopPropagation();
                           if (job.clientId) {
                             startConversation({
@@ -373,11 +361,11 @@ function ActiveJobsSection() {
                         className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
-                        Chat
+                        &nbsp;  &nbsp;   Message &nbsp;  &nbsp; 
                       </Button>
                       {job.status === "in-progress" && (
                         <Button
-                          onClick={(e) => {
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
                             setJobForDeliver(job);
                             setShowDeliverWorkModal(true);
@@ -391,7 +379,7 @@ function ActiveJobsSection() {
                       )}
                       {job.status === "delivered" && (
                         <Button
-                          onClick={(e) => {
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
                             navigate(`/job/${job.slug || job.id}?tab=payment`);
                           }}
