@@ -581,18 +581,51 @@ export default function JobDetailPage() {
   const myAwardedQuote = userRole === "professional" ? job.quotes.find(
     (quote) => quote.professionalId === userInfo?.id && (quote.status === "awarded" || quote.status === "accepted")
   ) : null;
-  // For professional: only their own quotes in Quotes tab
+  // For professional: track own quotes (used for counts / empty state etc.)
   const myQuotes = userRole === "professional" ? job.quotes.filter((q) => q.professionalId === userInfo?.id) : job.quotes;
   // Awarded quotes (for client: show at top) — include both "awarded" and "accepted" (pro accepted = in progress)
   const awardedQuotes = job.quotes.filter(
     (q) => q.status === "awarded" || (q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
   );
-  // List quotes: client sees non-awarded only (awarded at top); pro sees myQuotes or none when they have awarded/accepted quote
-  const listQuotes = isJobOwner
+  // Helper: sort quotes by (1) whether it's the current professional's quote, (2) rating desc, (3) reviews desc, (4) latest first
+  const sortQuotesForDisplay = (quotes: JobQuote[], currentProfessionalId: string | null | undefined) => {
+    return [...quotes].sort((a, b) => {
+      const aIsMine = currentProfessionalId && a.professionalId === currentProfessionalId;
+      const bIsMine = currentProfessionalId && b.professionalId === currentProfessionalId;
+      if (aIsMine && !bIsMine) return -1;
+      if (!aIsMine && bIsMine) return 1;
+
+      const aRating = Number((a as any).professionalRating ?? 0) || 0;
+      const bRating = Number((b as any).professionalRating ?? 0) || 0;
+      if (bRating !== aRating) return bRating - aRating;
+
+      const aReviews = Number((a as any).professionalReviews ?? 0) || 0;
+      const bReviews = Number((b as any).professionalReviews ?? 0) || 0;
+      if (bReviews !== aReviews) return bReviews - aReviews;
+
+      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bCreated - aCreated;
+    });
+  };
+
+  // Base quotes before sorting:
+  // - Client: non-awarded quotes (awarded shown in separate section)
+  // - Professional: all quotes, unless their awarded/accepted quote is shown at top (then hide list)
+  const baseListQuotes = isJobOwner
     ? job.quotes.filter(
-        (q) => q.status !== "awarded" && !(q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
+        (q) =>
+          q.status !== "awarded" &&
+          !(q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
       )
-    : (userRole === "professional" && myAwardedQuote ? [] : myQuotes);
+    : userRole === "professional" && myAwardedQuote
+    ? []
+    : job.quotes;
+
+  const listQuotes = sortQuotesForDisplay(
+    baseListQuotes,
+    userRole === "professional" ? userInfo?.id ?? null : null
+  );
   // Hide empty state and animation when there are list quotes OR when awarded section is shown
   const showQuotesEmptyState =
     listQuotes.length === 0 && !(isJobOwner && awardedQuotes.length > 0);
@@ -1515,7 +1548,7 @@ export default function JobDetailPage() {
                   value="quotes"
                   className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
                 >
-                  Quotes ({isJobOwner ? job.quotes.length : myQuotes.length})
+                  Quotes ({job.quotes.length})
                 </TabsTrigger>
                 {/* Show Payment tab if job is awarded (awaiting-accept / in-progress / delivered) */}
                 {(job.status === "awaiting-accept" || job.status === "in-progress" || job.status === "delivered") && (
@@ -3549,7 +3582,9 @@ export default function JobDetailPage() {
             </button>
             <div className="h-full overflow-y-auto font-['Poppins',sans-serif] bg-[#f0f0f0]">
               <div className="p-5 pb-3 border-b border-gray-100">
-                <h2 className="text-[#FE8A0F] text-xl font-semibold">{proProfileData.tradingName || selectedQuoteForProfile.professionalName}'s Profile</h2>
+                <h2 className="text-[#FE8A0F] text-xl font-semibold">
+                  {(proProfileData?.tradingName || selectedQuoteForProfile?.professionalName || "Professional")}&apos;s Profile
+                </h2>
                 
               </div>
 
