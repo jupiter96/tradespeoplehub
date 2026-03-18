@@ -250,7 +250,7 @@ export default function JobDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
-  const { startConversation, addMessage, getOrCreateContact } = useMessenger();
+  const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
   const { formatPrice, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const validTabs = ["details", "quotes", "payment", "files", "more"] as const;
   const tabFromUrl = searchParams.get("tab") || "details";
@@ -669,6 +669,22 @@ export default function JobDetailPage() {
   const quoteBudgetMaxGBP = job.budgetMax ?? (job.budgetAmount ?? 0) * 1.2;
   const quoteBudgetMinSelected = fromGBP(quoteBudgetMinGBP);
   const quoteBudgetMaxSelected = fromGBP(quoteBudgetMaxGBP);
+
+  const quotePriceSelected = parseFloat(quoteForm.price);
+  const quotePriceSelectedValid = Number.isFinite(quotePriceSelected) && quotePriceSelected > 0;
+  const milestonesTotalSelected = milestones.reduce((sum, m) => {
+    const n = parseFloat(String(m.amount || "").trim());
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  const milestonesTotalRounded = Math.round(milestonesTotalSelected * 100) / 100;
+  const quotePriceRounded = quotePriceSelectedValid ? Math.round(quotePriceSelected * 100) / 100 : 0;
+  const hasAnyMilestoneInput = milestones.some(
+    (m) => String(m.description || "").trim() || String(m.amount || "").trim()
+  );
+  const milestoneDiff = quotePriceSelectedValid ? Math.round((quotePriceRounded - milestonesTotalRounded) * 100) / 100 : 0;
+  const isMilestonesExact = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff === 0;
+  const isMilestonesOver = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff < 0;
+  const isMilestonesUnder = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff > 0;
 
   const handleInviteProfessional = async (pro: typeof recommendedProfessionals[0], message?: string) => {
     try {
@@ -1217,6 +1233,11 @@ export default function JobDetailPage() {
     setProProfileServices([]);
   };
 
+  const isUserOnline = (id?: string | null) => {
+    if (!id) return false;
+    return getContactById(id)?.online === true;
+  };
+
   const openQuoteCreditsSlider = () => {
     setShowQuoteCreditsSlider(true);
   };
@@ -1332,6 +1353,22 @@ export default function JobDetailPage() {
       return;
     }
     try {
+      // Suggested milestones validation: if user entered any milestone fields, total must match the quote price (in selected currency).
+      if (hasAnyMilestoneInput) {
+        if (!quotePriceSelectedValid) {
+          toast.error("Please enter a valid price before adding milestones");
+          return;
+        }
+        if (isMilestonesOver) {
+          toast.error(`Milestone total exceeds your quote price by ${symbol}${Math.abs(milestoneDiff).toFixed(2)}`);
+          return;
+        }
+        if (!isMilestonesExact) {
+          toast.error(`Milestone total must match your quote price. Remaining: ${symbol}${milestoneDiff.toFixed(2)}`);
+          return;
+        }
+      }
+
       const cleanedSuggestedMilestones = milestones
         .map((m) => {
           const description = (m.description || "").trim();
@@ -1800,14 +1837,23 @@ export default function JobDetailPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3">
                               <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                <div className="relative">
+                                  <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
                                   {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
                                     <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
                                   )}
                                   <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
                                     {getTwoLetterInitials(myAwardedQuote.professionalName, "P")}
                                   </AvatarFallback>
-                                </Avatar>
+                                  </Avatar>
+                                  <span
+                                    className={cn(
+                                      "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                      isUserOnline(myAwardedQuote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                                    )}
+                                    aria-label={isUserOnline(myAwardedQuote.professionalId) ? "Online" : "Offline"}
+                                  />
+                                </div>
                               </a>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -1931,12 +1977,21 @@ export default function JobDetailPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-3">
                                   <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                    <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                    <div className="relative">
+                                      <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
                                       {quoteAvatarSrc && <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />}
                                       <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
                                         {getTwoLetterInitials(quote.professionalName, "P")}
                                       </AvatarFallback>
-                                    </Avatar>
+                                      </Avatar>
+                                      <span
+                                        className={cn(
+                                          "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                          isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                                        )}
+                                        aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
+                                      />
+                                    </div>
                                   </a>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 min-w-0">
@@ -2091,14 +2146,23 @@ export default function JobDetailPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                                <div className="relative">
+                                  <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                                   {quoteAvatarSrc && (
                                     <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
                                   )}
                                   <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                     {getTwoLetterInitials(quote.professionalName, "P")}
                                   </AvatarFallback>
-                                </Avatar>
+                                  </Avatar>
+                                  <span
+                                    className={cn(
+                                      "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white",
+                                      isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                                    )}
+                                    aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
+                                  />
+                                </div>
                               </a>
                               <div className="flex items-center gap-2 min-w-0">
                                 <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
@@ -2173,7 +2237,7 @@ export default function JobDetailPage() {
                                 Award
                               </Button>
                             )}
-                            {userRole === "professional" ? (
+                            {userRole === "professional" && quote.professionalId === userInfo?.id ? (
                               <>
                                 <Button
                                   onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
@@ -2220,14 +2284,23 @@ export default function JobDetailPage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3">
                                 <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                                  <div className="relative">
+                                    <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                                     {quoteAvatarSrc && (
                                       <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
                                     )}
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                       {getTwoLetterInitials(quote.professionalName, "P")}
                                     </AvatarFallback>
-                                  </Avatar>
+                                    </Avatar>
+                                    <span
+                                      className={cn(
+                                        "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                        isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
+                                      )}
+                                      aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
+                                    />
+                                  </div>
                                 </a>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 min-w-0">
@@ -2306,7 +2379,7 @@ export default function JobDetailPage() {
                                   Award
                                 </Button>
                               )}
-                              {userRole === "professional" ? (
+                              {userRole === "professional" && quote.professionalId === userInfo?.id ? (
                                 <>
                                   <Button
                                     onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
@@ -4463,7 +4536,7 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: {formatAmountInSelectedCurrency(quoteBudgetMinGBP)} - {formatAmountInSelectedCurrency(quoteBudgetMaxGBP)} (price must be within this range)
+                    💡 Client's budget: {formatPrice(quoteBudgetMinGBP)} - {formatPrice(quoteBudgetMaxGBP)} (price must be within this range)
                   </p>
                 </div>
 
@@ -4640,16 +4713,50 @@ export default function JobDetailPage() {
                     ))}
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addMilestoneToForm}
-                    className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Poppins',sans-serif] h-10"
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add another milestone
-                  </Button>
+                  {/* Totals + validation */}
+                  {quotePriceSelectedValid && hasAnyMilestoneInput && (
+                    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      <div className="flex items-center justify-between gap-3 text-[13px] font-['Poppins',sans-serif]">
+                        <span className="text-[#6b6b6b]">Milestones total</span>
+                        <span className="text-[#2c353f] font-semibold">{symbol}{milestonesTotalRounded.toFixed(2)}</span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-3 text-[13px] font-['Poppins',sans-serif]">
+                        <span className="text-[#6b6b6b]">Quote price</span>
+                        <span className="text-[#2c353f] font-semibold">{symbol}{quotePriceRounded.toFixed(2)}</span>
+                      </div>
+                      {isMilestonesExact ? (
+                        <p className="mt-2 text-[12px] text-green-700 font-['Poppins',sans-serif]">
+                          Total matches your quote price.
+                        </p>
+                      ) : isMilestonesOver ? (
+                        <p className="mt-2 text-[12px] text-red-700 font-['Poppins',sans-serif]">
+                          Total is over by {symbol}{Math.abs(milestoneDiff).toFixed(2)}. Please reduce amounts.
+                        </p>
+                      ) : isMilestonesUnder ? (
+                        <p className="mt-2 text-[12px] text-red-700 font-['Poppins',sans-serif]">
+                          Total is under by {symbol}{milestoneDiff.toFixed(2)}. Please add more to match.
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Add another milestone: hide when totals match (or exceed), or when price is not set */}
+                  {(!quotePriceSelectedValid || !hasAnyMilestoneInput || milestoneDiff > 0) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Prevent adding once total is met/exceeded.
+                        if (quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff <= 0) return;
+                        addMilestoneToForm();
+                      }}
+                      className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Poppins',sans-serif] h-10"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add another milestone
+                    </Button>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>

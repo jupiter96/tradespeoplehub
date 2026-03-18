@@ -121,11 +121,25 @@ function QuoteCardStarRating({
   );
 }
 
+function isFullyVerifiedProfessional(userInfo: any): boolean {
+  const v = userInfo?.verification;
+  const ok = (s: any) => s === "verified" || s === "completed";
+  // 6-step verification: email, phone, address, id, payment method, insurance
+  return !!(
+    ok(v?.email?.status) &&
+    ok(v?.phone?.status) &&
+    ok(v?.address?.status) &&
+    ok(v?.idCard?.status) &&
+    ok(v?.paymentMethod?.status) &&
+    ok(v?.publicLiabilityInsurance?.status)
+  );
+}
+
 export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectionProps = {}) {
   const navigate = useNavigate();
   const { getProfessionalQuotes, withdrawQuote, updateQuoteByProfessional } = useJobs();
   const { userInfo } = useAccount();
-  const { startConversation } = useMessenger();
+  const { startConversation, getContactById } = useMessenger();
   const { formatPrice, toGBP, fromGBP } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -463,10 +477,13 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
             const quoteAvatarSrc = resolveAvatarUrl(
               quote.professionalAvatar || userInfo?.avatar
             );
+            const isOnline = getContactById(proId)?.online === true;
             const proRating = Number(quote.professionalRating) || 0;
             const proReviews = Number(quote.professionalReviews) || 0;
             const proCountry = (quote as { professionalCountry?: string }).professionalCountry;
-            const proVerified = (quote as { professionalFullyVerified?: boolean }).professionalFullyVerified;
+            const proVerified =
+              (quote as { professionalFullyVerified?: boolean }).professionalFullyVerified ??
+              isFullyVerifiedProfessional(userInfo);
             const msg = quote.message || "";
             const isLongMsg = msg.length > 400;
             const msgExpanded = expandedQuoteMessages.has(quote.id);
@@ -488,25 +505,6 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                 )}
                 onClick={() => navigate(`/job/${job.slug || job.id}?tab=quotes`)}
               >
-                {/* Job context (My Quotes only): title + client info (like JobDetailPage) */}
-                <div className="px-4 pt-3 pb-2 border-b border-gray-100 bg-gray-50/80">
-                  <p className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] text-[#003D82] font-medium truncate">
-                    {job.title}
-                  </p>
-                  <div className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[12px] text-[#6b6b6b] font-['Poppins',sans-serif] mt-0.5">
-                    <span className="text-[#2c353f]">
-                      {job.clientName || "Client"}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Star className="w-3.5 h-3.5 text-[#2c353f] fill-[#2c353f]" />
-                      {(job.clientRatingAverage ?? 0).toFixed(1)}
-                    </span>
-                    {(job.clientCity || job.clientCountry) && (
-                      <span>• {[job.clientCity, job.clientCountry].filter(Boolean).join(", ")}</span>
-                    )}
-                  </div>
-                </div>
-
                 {/* Mobile — same structure as JobDetailPage Quotes */}
                 <div className="block sm:hidden p-4">
                   <div className="flex items-start gap-3 mb-3">
@@ -519,14 +517,23 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                           className="flex-shrink-0"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                          <div className="relative">
+                            <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                             {quoteAvatarSrc && (
                               <AvatarImage src={quoteAvatarSrc} alt={proName} />
                             )}
                             <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                               {getTwoLetterInitials(proName, "P")}
                             </AvatarFallback>
-                          </Avatar>
+                            </Avatar>
+                            <span
+                              className={cn(
+                                "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white",
+                                isOnline ? "bg-green-500" : "bg-gray-400"
+                              )}
+                              aria-label={isOnline ? "Online" : "Offline"}
+                            />
+                          </div>
                         </a>
                         <div className="flex items-center gap-2 min-w-0">
                           <a
@@ -712,14 +719,23 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                             className="flex-shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                            <div className="relative">
+                              <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                               {quoteAvatarSrc && (
                                 <AvatarImage src={quoteAvatarSrc} alt={proName} />
                               )}
                               <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                 {getTwoLetterInitials(proName, "P")}
                               </AvatarFallback>
-                            </Avatar>
+                              </Avatar>
+                              <span
+                                className={cn(
+                                  "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                  isOnline ? "bg-green-500" : "bg-gray-400"
+                                )}
+                                aria-label={isOnline ? "Online" : "Offline"}
+                              />
+                            </div>
                           </a>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
