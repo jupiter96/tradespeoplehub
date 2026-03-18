@@ -411,67 +411,7 @@ export default function ServiceCard({
           </div>
         )}
 
-        <div className="flex items-center gap-2 mb-3 pt-3 border-t border-gray-100 mt-auto">
-          {professionalId ? (
-            <Link to={`/profile/${professionalId}`} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
-              <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center cursor-pointer hover:opacity-80 transition-opacity">
-                <AvatarImage src={resolveMediaUrl(service.providerImage)} alt={service.tradingName} />
-                <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                  {(service.tradingName || "").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-          ) : (
-            <div className="flex-shrink-0">
-              <Avatar className="w-6 h-6 md:w-7 md:h-7 self-center">
-                <AvatarImage src={resolveMediaUrl(service.providerImage)} alt={service.tradingName} />
-                <AvatarFallback className="bg-[#FE8A0F] text-white text-[10px] font-semibold">
-                  {(service.tradingName || "").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          )}
-          <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-1.5 min-w-0">
-              {professionalId ? (
-                <Link
-                  to={`/profile/${professionalId}`}
-                  className="hover:opacity-80 transition-opacity max-w-[65%] md:max-w-none flex items-center gap-1"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
-                    by <span className="inline">{displayTradingName}</span>
-                  </p>
-                  <VerificationBadge fullyVerified={verified} size="sm" />
-                </Link>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <p className="font-['Poppins',sans-serif] text-[10px] md:text-[11px] text-[#666] truncate">
-                    by <span className="inline">{displayTradingName}</span>
-                  </p>
-                  <VerificationBadge fullyVerified={verified} size="sm" />
-                </div>
-              )}
-              {topRated && (
-                <div
-                  className="inline-flex items-center gap-0.5 flex-shrink-0 text-[#2c353f] px-1.5 md:px-2 py-1 rounded-md"
-                  style={{ backgroundColor: "#FFD4A3" }}
-                >
-                  <Medal className="w-3 h-3 flex-shrink-0" style={{ color: "#2c353f" }} />
-                  <span className="hidden md:inline font-['Poppins',sans-serif] text-[10px] font-semibold whitespace-nowrap">
-                    Top Rated
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-[#999] flex-shrink-0" />
-              <p className="font-['Poppins',sans-serif] text-[9px] md:text-[10px] text-[#999] truncate">
-                {service.townCity || "Location not available"}
-              </p>
-            </div>
-          </div>
-        </div>
+        <div className="mt-auto pt-3 border-t border-gray-100" />
 
         {renderFooter}
 

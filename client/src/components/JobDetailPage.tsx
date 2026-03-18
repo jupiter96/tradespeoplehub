@@ -33,6 +33,7 @@ import {
   X,
   Plus,
   ChevronDown,
+  ChevronUp,
   Info,
   Eye,
   FileSearch,
@@ -103,6 +104,8 @@ import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
 import FloatingToolsBackground from "./FloatingToolsBackground";
 import JobDeliverWorkModal from "./JobDeliverWorkModal";
+import ServiceCard from "./ServiceCard";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 type SocialShareLink = {
   name: string;
@@ -112,6 +115,19 @@ type SocialShareLink = {
   imgSrc?: string;
   bgImageSrc?: string;
 };
+
+function proPortfolioMediaUrl(url: string | undefined): string {
+  if (!url) return "";
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("blob:") ||
+    url.startsWith("data:")
+  )
+    return url;
+  if (url.startsWith("/")) return resolveApiUrl(url);
+  return url;
+}
 
 export default function JobDetailPage() {
   const iso2FromCountry = (country?: string): string | null => {
@@ -369,6 +385,16 @@ export default function JobDetailPage() {
   const [showViewRevisionModal, setShowViewRevisionModal] = useState(false);
   const [viewRevisionData, setViewRevisionData] = useState<{ milestoneName: string; revisionMessage: string; revisionFileUrls: { url: string; name?: string }[] } | null>(null);
   const [viewRevisionFullscreenUrl, setViewRevisionFullscreenUrl] = useState<string | null>(null);
+
+  // Slider popup for professional profile preview (from quote cards)
+  const [showProProfileSlider, setShowProProfileSlider] = useState(false);
+  const [selectedQuoteForProfile, setSelectedQuoteForProfile] = useState<JobQuote | null>(null);
+  const [proProfileData, setProProfileData] = useState<any | null>(null);
+  const [proProfileLoading, setProProfileLoading] = useState(false);
+  const [proProfileActiveTab, setProProfileActiveTab] = useState<"about" | "services" | "portfolio" | "reviews">("about");
+  const [proProfileServices, setProProfileServices] = useState<any[]>([]);
+  const [proProfileServicesLoading, setProProfileServicesLoading] = useState(false);
+  const [proProfileExpandedReviewResponses, setProProfileExpandedReviewResponses] = useState<Set<string>>(new Set());
 
   // Prevent background scroll when fullscreen viewer is open
   useEffect(() => {
@@ -968,6 +994,176 @@ export default function JobDetailPage() {
     });
   };
 
+  const openProfessionalProfileSlider = async (quote: JobQuote) => {
+    setSelectedQuoteForProfile(quote);
+    setShowProProfileSlider(true);
+    setProProfileActiveTab("about");
+    setProProfileLoading(true);
+    setProProfileData(null);
+    setProProfileServices([]);
+    setProProfileServicesLoading(true);
+    try {
+      const [profileRes, servicesRes] = await Promise.all([
+        fetch(resolveApiUrl(`/api/auth/profile/${quote.professionalId}`), { credentials: "include" }),
+        fetch(
+          resolveApiUrl(
+            `/api/services?professionalId=${encodeURIComponent(quote.professionalId)}&activeOnly=true&status=active&limit=100`
+          ),
+          { credentials: "include" }
+        ),
+      ]);
+
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+        setProProfileData(data?.profile ?? null);
+      }
+
+      if (servicesRes.ok) {
+        const data = await servicesRes.json();
+        const rawServices = Array.isArray(data?.services) ? data.services : Array.isArray(data) ? data : [];
+
+        const services = rawServices.map((s: any) => {
+          // Build thumbnail image & video exactly like ProfilePage
+          let thumbnailImage = "";
+          let thumbnailVideo: { url: string; thumbnail?: string } | null = null;
+          if (s.gallery && Array.isArray(s.gallery) && s.gallery.length > 0) {
+            const firstItem = s.gallery[0];
+            if (firstItem.type === "video" && firstItem.url) {
+              thumbnailVideo = {
+                url: firstItem.url,
+                thumbnail: firstItem.thumbnail,
+              };
+              thumbnailImage = firstItem.thumbnail || "";
+            } else if (firstItem.type === "image" && firstItem.url) {
+              thumbnailImage = firstItem.url;
+            }
+          }
+          if (!thumbnailImage && !thumbnailVideo) {
+            thumbnailImage = s.images?.[0] || s.portfolioImages?.[0] || "";
+          }
+
+          return {
+            id: parseInt(s._id?.slice(-8), 16) || Math.floor(Math.random() * 10000),
+            _id: s._id,
+            slug: s.slug,
+            image: thumbnailImage,
+            thumbnailVideo,
+            professionalId:
+              typeof s.professional === "object"
+                ? (s.professional._id || s.professional.id || s.professional)
+                : (typeof s.professional === "string" ? s.professional : null),
+            providerName:
+              typeof s.professional === "object"
+                ? (s.professional.tradingName || "Professional")
+                : "",
+            tradingName:
+              typeof s.professional === "object"
+                ? s.professional.tradingName || ""
+                : "",
+            providerImage:
+              typeof s.professional === "object"
+                ? s.professional.avatar || ""
+                : "",
+            providerRating:
+              typeof s.professional === "object"
+                ? s.professional.rating || 0
+                : 0,
+            providerReviewCount:
+              typeof s.professional === "object"
+                ? s.professional.reviewCount || 0
+                : 0,
+            providerIsVerified: (() => {
+              if (typeof s.professional !== "object") return false;
+              return s.professional.isVerified || false;
+            })(),
+            description: s.title || "",
+            category:
+              typeof s.serviceCategory === "object" && typeof s.serviceCategory.sector === "object"
+                ? s.serviceCategory.sector.name || ""
+                : "",
+            townCity: (() => {
+              if (s.professional && typeof s.professional === "object" && s.professional !== null) {
+                const value = s.professional.townCity;
+                return value !== undefined && value !== null ? String(value) : "";
+              }
+              return "";
+            })(),
+            subcategory:
+              typeof s.serviceCategory === "object" ? s.serviceCategory.name || "" : "",
+            serviceCategory: s.serviceCategory,
+            detailedSubcategory:
+              typeof s.serviceSubCategory === "object" ? s.serviceSubCategory.name || "" : undefined,
+            rating: s.rating || 0,
+            reviewCount: s.reviewCount || 0,
+            completedTasks: s.completedTasks || 0,
+            price: formatPrice(Number(s.price) || 0),
+            originalPrice:
+              s.originalPrice != null &&
+              (!s.originalPriceValidFrom || new Date(s.originalPriceValidFrom) <= new Date()) &&
+              (!s.originalPriceValidUntil || new Date(s.originalPriceValidUntil) >= new Date())
+                ? formatPrice(Number(s.originalPrice))
+                : undefined,
+            originalPriceValidFrom: s.originalPriceValidFrom || null,
+            originalPriceValidUntil: s.originalPriceValidUntil || null,
+            priceUnit: s.priceUnit || "fixed",
+            badges: s.badges || [],
+            deliveryType: s.deliveryType || "standard",
+            postcode: s.postcode || "",
+            location: s.location || "",
+            latitude: s.latitude,
+            longitude: s.longitude,
+            highlights: s.highlights || [],
+            addons:
+              s.addons?.map((a: any) => ({
+                id: a.id || a._id,
+                name: a.name,
+                description: a.description || "",
+                price: a.price,
+              })) || [],
+            idealFor: s.idealFor || [],
+            specialization: "",
+            packages:
+              s.packages?.map((p: any) => ({
+                id: p.id || p._id,
+                name: p.name,
+                price: formatPrice(Number(p.price) || 0),
+                originalPrice: p.originalPrice != null ? formatPrice(Number(p.originalPrice)) : undefined,
+                originalPriceValidFrom: p.originalPriceValidFrom || null,
+                originalPriceValidUntil: p.originalPriceValidUntil || null,
+                priceUnit: "fixed",
+                description: p.description || "",
+                highlights: [],
+                features: p.features || [],
+                deliveryTime: p.deliveryDays
+                  ? `${p.deliveryDays} ${p.deliveryDays <= 1 ? "day" : "days"}`
+                  : undefined,
+                revisions: p.revisions || "",
+              })) || [],
+            skills: s.skills || [],
+            responseTime: s.responseTime || "",
+            portfolioImages: s.portfolioImages || [],
+          };
+        });
+
+        setProProfileServices(services);
+      } else {
+        setProProfileServices([]);
+      }
+    } catch {
+      // ignore, slider will just show minimal info
+    } finally {
+      setProProfileLoading(false);
+      setProProfileServicesLoading(false);
+    }
+  };
+
+  const closeProfessionalProfileSlider = () => {
+    setShowProProfileSlider(false);
+    setSelectedQuoteForProfile(null);
+    setProProfileData(null);
+    setProProfileServices([]);
+  };
+
   /** Pro: open chat with the job client (when job is in progress). */
   const handleStartChatWithClient = () => {
     if (job?.clientId) startConversation(job.clientId);
@@ -1546,6 +1742,16 @@ export default function JobDetailPage() {
                                     </h3>
                                   </a>
                                   <VerificationBadge fullyVerified={myAwardedQuote.professionalFullyVerified} size="sm" />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openProfessionalProfileSlider(myAwardedQuote)}
+                                    className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                    aria-label="View professional profile"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
                                 </div>
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                                   <div className="flex items-center gap-2 px-2 py-1 rounded">
@@ -1663,6 +1869,16 @@ export default function JobDetailPage() {
                                         <h3 className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f] mb-1 truncate">{quote.professionalName}</h3>
                                       </a>
                                       <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => openProfessionalProfileSlider(quote)}
+                                        className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                        aria-label="View professional profile"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
                                     </div>
                                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                                       <div className="flex items-center gap-2 px-2 py-1 rounded">
@@ -1816,6 +2032,16 @@ export default function JobDetailPage() {
                                   </h3>
                                 </a>
                                 <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openProfessionalProfileSlider(quote)}
+                                  className="h-7 w-7 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                  aria-label="View professional profile"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </Button>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 text-[12px] text-[#6b6b6b] mb-1 flex-wrap">
@@ -1936,6 +2162,16 @@ export default function JobDetailPage() {
                                       </h3>
                                     </a>
                                     <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openProfessionalProfileSlider(quote)}
+                                      className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                      aria-label="View professional profile"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
                                   </div>
                                   <div className="flex items-center gap-4 text-[13px] text-[#6b6b6b] flex-wrap">
                                     <div className="flex items-center gap-2">
@@ -3290,6 +3526,490 @@ export default function JobDetailPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Professional profile slider popup from Quotes tab */}
+      {showProProfileSlider && selectedQuoteForProfile && (
+        <div className="fixed inset-0 z-[9999] flex">
+          {/* Left side: dark blurred overlay (exactly the remaining half) */}
+          <button
+            type="button"
+            className="flex-1 bg-black/40 backdrop-blur-sm"
+            onClick={closeProfessionalProfileSlider}
+            aria-label="Close profile preview"
+          />
+          {/* Right side: white slider occupying exactly half the screen */}
+          <div className="w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col">
+            <button
+              type="button"
+              onClick={closeProfessionalProfileSlider}
+              className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="h-full overflow-y-auto font-['Poppins',sans-serif] bg-[#f0f0f0]">
+              <div className="p-5 pb-3 border-b border-gray-100">
+                <h2 className="text-[#FE8A0F] text-xl font-semibold">{proProfileData.tradingName || selectedQuoteForProfile.professionalName}'s Profile</h2>
+                
+              </div>
+
+              {proProfileLoading && (
+                <div className="p-8 text-center text-[#6b6b6b] text-[14px]">Loading profile...</div>
+              )}
+
+              {!proProfileLoading && !proProfileData && (
+                <div className="p-8 text-center text-[#6b6b6b] text-[14px]">Could not load profile.</div>
+              )}
+
+              {!proProfileLoading && proProfileData && (
+                <div className="p-4 md:p-6 space-y-4 w-full max-w-full overflow-x-hidden">
+                  {/* Profile Header - similar to ProfileSection preview */}
+                  <div className="bg-white rounded-2xl shadow-sm p-3 md:p-6 mb-2 w-full max-w-full overflow-x-hidden">
+                    <div className="flex gap-4 md:gap-6 w-full max-w-full overflow-x-hidden">
+                      <div className="flex-shrink-0 relative">
+                        <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-gray-100 relative">
+                          {resolveAvatarUrl(proProfileData.avatar) && (
+                            <AvatarImage
+                              src={resolveAvatarUrl(proProfileData.avatar)!}
+                              alt={proProfileData.tradingName || "Professional"}
+                              className="object-cover"
+                            />
+                          )}
+                          <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[32px] md:text-[40px] rounded-2xl relative">
+                            {getTwoLetterInitials(proProfileData.tradingName || selectedQuoteForProfile.professionalName, "P")}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="flex-1 min-w-0 h-24 md:h-32 flex flex-col justify-between">
+                        <div className="flex-1 flex flex-col justify-start min-h-0">
+                          <h1
+                            className="text-[#003D82] font-['Poppins',sans-serif] mb-0.5 md:mb-1 whitespace-nowrap overflow-hidden text-[20px]"
+                          >
+                            {proProfileData.tradingName || selectedQuoteForProfile.professionalName}
+                          </h1>
+                          <p className="text-gray-600 text-[19px] md:text-[21px] mb-0.5 md:mb-1 line-clamp-1">
+                            {proProfileData.title || ""}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-gray-500 text-[12px] md:text-[14px] mb-0.5 md:mb-1 mt-1 md:mt-1.5">
+                            <MapPin className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+                            <span className="truncate">
+                              {[proProfileData.townCity, proProfileData.county].filter(Boolean).join(", ") ||
+                                proProfileData.address ||
+                                "Location not specified"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-auto">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 md:w-4 md:h-4 fill-[#FE8A0F] text-[#FE8A0F]" />
+                            <span className="font-semibold text-[11px] md:text-[13px]">
+                              {(proProfileData.ratingAverage ?? selectedQuoteForProfile.professionalRating ?? 0).toLocaleString(
+                                "en-GB",
+                                { minimumFractionDigits: 1, maximumFractionDigits: 1 }
+                              )}
+                            </span>
+                            <span className="text-gray-500 text-[9px] md:text-[11px]">
+                              {(proProfileData.ratingCount ?? selectedQuoteForProfile.professionalReviews ?? 0) === 0
+                                ? "(0 reviews)"
+                                : (proProfileData.ratingCount ?? selectedQuoteForProfile.professionalReviews) === 1
+                                ? "(1 review)"
+                                : `(${proProfileData.ratingCount ?? selectedQuoteForProfile.professionalReviews} reviews)`}
+                            </span>
+                          </div>
+                          {proProfileData.memberSince && (
+                            <div className="text-[9px] md:text-[11px] text-gray-600">
+                              <Calendar className="w-2.5 h-2.5 md:w-3 md:h-3 inline mr-0.5" />
+                              Member since{" "}
+                              {new Date(proProfileData.memberSince).toLocaleDateString("en-GB", {
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Main Content - Tabs like ProfilePage/ProfileSection */}
+                  <div className="flex flex-col gap-4 w-full max-w-full overflow-x-hidden">
+                    <div className="w-full max-w-full overflow-x-hidden">
+                      <Tabs value={proProfileActiveTab} onValueChange={(v) => setProProfileActiveTab(v as any)} className="w-full">
+                        <TabsList className="w-full max-w-full bg-white rounded-xl p-1 shadow-sm mb-4 overflow-x-hidden">
+                          <TabsTrigger
+                            value="about"
+                            className="flex-1 text-[11px] md:text-[13px] data-[state=active]:bg-[#003D82] data-[state=active]:text-white"
+                          >
+                            About Me
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="services"
+                            className="flex-1 text-[11px] md:text-[13px] data-[state=active]:bg-[#003D82] data-[state=active]:text-white"
+                          >
+                            My Services
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="portfolio"
+                            className="flex-1 text-[11px] md:text-[13px] data-[state=active]:bg-[#003D82] data-[state=active]:text-white"
+                          >
+                            Portfolio
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="reviews"
+                            className="flex-1 text-[11px] md:text-[13px] data-[state=active]:bg-[#003D82] data-[state=active]:text-white"
+                          >
+                            Reviews
+                          </TabsTrigger>
+                        </TabsList>
+
+                        {/* About Me Tab - includes About, Qualifications, Certifications, Verifications */}
+                        <TabsContent value="about">
+                          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 space-y-4 md:space-y-6">
+                            {/* About Me */}
+                            <div>
+                              <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
+                                About Me
+                              </h3>
+                              <p className="text-gray-700 leading-relaxed text-[13px] md:text-[14px] whitespace-pre-wrap break-words text-justify">
+                                {(proProfileData.publicProfile?.bio || proProfileData.aboutService || "").trim() || "No bio added yet."}
+                              </p>
+                            </div>
+
+                            {/* Qualifications */}
+                            {(() => {
+                              const q = (proProfileData.publicProfile?.qualifications || "").trim();
+                              if (!q) return null;
+                              return (
+                                <div>
+                                  <h4 className="text-[#003D82] text-[14px] md:text-[16px] font-semibold mb-2">
+                                    Qualifications
+                                  </h4>
+                                  <div className="space-y-1.5">
+                                    {q.split(/\r?\n/).filter((line: string) => line.trim()).map((line: string, idx: number) => (
+                                      <p
+                                        key={idx}
+                                        className="text-gray-700 text-[12px] md:text-[14px] leading-relaxed break-words text-justify"
+                                      >
+                                        {line.trim()}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Certifications */}
+                            {(() => {
+                              const c = (proProfileData.publicProfile?.certifications || "").trim();
+                              if (!c) return null;
+                              return (
+                                <div>
+                                  <h4 className="text-[#003D82] text-[14px] md:text-[16px] font-semibold mb-2">
+                                    Certifications
+                                  </h4>
+                                  <div className="space-y-1.5">
+                                    {c.split(/\r?\n/).filter((line: string) => line.trim()).map((line: string, idx: number) => (
+                                      <p
+                                        key={idx}
+                                        className="text-gray-700 text-[12px] md:text-[14px] leading-relaxed break-words text-justify"
+                                      >
+                                        {line.trim()}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* Verifications summary */}
+                            {proProfileData.verification && (
+                              <div className="border-t border-gray-100 pt-4 md:pt-5">
+                                <h4 className="text-[#003D82] text-[14px] md:text-[16px] font-semibold mb-3">
+                                  Verifications
+                                </h4>
+                                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                                  {[
+                                    {
+                                      key: "phone",
+                                      label: "Phone",
+                                      status: proProfileData.verification?.phone?.status,
+                                    },
+                                    {
+                                      key: "identity",
+                                      label: "Identity",
+                                      status: proProfileData.verification?.idCard?.status,
+                                    },
+                                    {
+                                      key: "address",
+                                      label: "Address",
+                                      status: proProfileData.verification?.address?.status,
+                                    },
+                                    {
+                                      key: "insurance",
+                                      label: "Insurance",
+                                      status: proProfileData.verification?.publicLiabilityInsurance?.status,
+                                    },
+                                  ].map((item) => {
+                                    const completed =
+                                      item.status === "verified" || item.status === "completed";
+                                    return (
+                                      <div
+                                        key={item.key}
+                                        className="flex items-center justify-between p-2 md:p-3 bg-gray-50 rounded-lg"
+                                      >
+                                        <span className="text-[12px] md:text-[14px] text-[#2c353f]">
+                                          {item.label}
+                                        </span>
+                                        {completed ? (
+                                          <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
+                                        ) : (
+                                          <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-500 flex-shrink-0" />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </TabsContent>
+
+                        {/* My Services Tab */}
+                        <TabsContent value="services">
+                          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6">
+                            <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
+                              My Services
+                            </h3>
+                            {proProfileServicesLoading ? (
+                              <p className="text-gray-500 text-[13px] py-4">Loading services...</p>
+                            ) : proProfileServices.length === 0 ? (
+                              <p className="text-gray-500 text-[13px] py-4">No services available yet.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 lg:gap-6 justify-items-center">
+                                {proProfileServices.map((service) => (
+                                  <ServiceCard
+                                    key={service._id || service.id}
+                                    service={service}
+                                    onClick={() =>
+                                      window.open(
+                                        `/service/${service.slug || service._id || service.id}`,
+                                        "_blank",
+                                        "noopener,noreferrer"
+                                      )
+                                    }
+                                    showHeart={false}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </TabsContent>
+
+                        {/* Portfolio Tab — same data as Profile tab public portfolio */}
+                        <TabsContent value="portfolio">
+                          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 w-full max-w-full overflow-x-hidden">
+                            <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
+                              Portfolio
+                            </h3>
+                            {(() => {
+                              const portfolio = Array.isArray(proProfileData?.publicProfile?.portfolio)
+                                ? proProfileData.publicProfile.portfolio
+                                : [];
+                              if (portfolio.length === 0) {
+                                return (
+                                  <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">
+                                    No portfolio items available yet.
+                                  </p>
+                                );
+                              }
+                              return (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                  {portfolio.map((item: any, index: number) => {
+                                    const mediaUrl = proPortfolioMediaUrl(item.url || item.image);
+                                    const isVideo = item.type === "video";
+                                    return (
+                                      <div
+                                        key={item.id || index}
+                                        className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+                                      >
+                                        {isVideo ? (
+                                          <div className="relative w-full h-32 md:h-48 bg-black">
+                                            <video
+                                              src={mediaUrl}
+                                              className="w-full h-32 md:h-48 object-cover"
+                                              controls
+                                              preload="metadata"
+                                            />
+                                            <div className="absolute top-2 left-2 bg-purple-500/90 text-white px-2 py-1 rounded-md text-xs font-medium">
+                                              Video
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <ImageWithFallback
+                                            src={mediaUrl}
+                                            alt={item.title || "Portfolio"}
+                                            className="w-full h-32 md:h-48 object-cover"
+                                          />
+                                        )}
+                                        <div className="p-3 md:p-4">
+                                          <h4 className="text-[#003D82] font-semibold mb-1 md:mb-2 text-[13px] md:text-[15px]">
+                                            {item.title || "Portfolio item"}
+                                          </h4>
+                                          {item.description ? (
+                                            <p className="text-gray-600 text-[11px] md:text-[14px] leading-relaxed break-words whitespace-pre-wrap">
+                                              {item.description}
+                                            </p>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </TabsContent>
+
+                        {/* Reviews Tab - dynamic data (service + job reviews) */}
+                        <TabsContent value="reviews">
+                          <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 w-full max-w-full overflow-x-hidden">
+                            {(() => {
+                              const reviewCount = proProfileData?.ratingCount ?? 0;
+                              const reviews = Array.isArray(proProfileData?.reviews) ? proProfileData.reviews : [];
+                              const loading = proProfileLoading && !proProfileData;
+                              const toggleResponse = (reviewId: string) => {
+                                setProProfileExpandedReviewResponses((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(reviewId)) next.delete(reviewId);
+                                  else next.add(reviewId);
+                                  return next;
+                                });
+                              };
+
+                              return (
+                                <>
+                                  <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
+                                    Reviews ({reviewCount})
+                                  </h3>
+                                  <div className="space-y-4 md:space-y-6">
+                                    {loading ? (
+                                      <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">
+                                        Loading reviews...
+                                      </p>
+                                    ) : reviews.length === 0 ? (
+                                      <p className="text-gray-500 text-center py-6 md:py-8 text-[13px] md:text-[14px]">
+                                        No reviews yet.
+                                      </p>
+                                    ) : (
+                                      reviews.map((r: any) => {
+                                        const createdAt = r.createdAt ? new Date(r.createdAt) : null;
+                                        const time =
+                                          createdAt && !Number.isNaN(createdAt.getTime())
+                                            ? createdAt.toLocaleDateString("en-GB", {
+                                                day: "2-digit",
+                                                month: "short",
+                                                year: "numeric",
+                                              })
+                                            : "";
+                                        const stars =
+                                          typeof r.stars === "number"
+                                            ? Math.max(0, Math.min(5, Math.round(r.stars)))
+                                            : 0;
+                                        const hasResponse = r.response?.text;
+                                        const isExpanded = proProfileExpandedReviewResponses.has(r.id);
+                                        return (
+                                          <div
+                                            key={r.id}
+                                            className="flex gap-3 p-3 md:p-4 border border-gray-200 rounded-xl"
+                                          >
+                                            <div className="w-10 h-10 rounded-full bg-[#E6F0FF] flex items-center justify-center flex-shrink-0 font-['Poppins',sans-serif] text-[14px] font-semibold text-[#003D82]">
+                                              {(r.name || "A").charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                                                  {r.name || "Anonymous"}
+                                                </span>
+                                                {time && (
+                                                  <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                                                    {time}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex gap-0.5 mb-2">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                  <Star
+                                                    key={star}
+                                                    className={`w-4 h-4 ${
+                                                      star <= stars
+                                                        ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                                        : "fill-[#E5E5E5] text-[#E5E5E5]"
+                                                    }`}
+                                                  />
+                                                ))}
+                                              </div>
+                                              {r.text && (
+                                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">
+                                                  {r.text}
+                                                </p>
+                                              )}
+                                              {hasResponse && (
+                                                <div className="mt-3 border-t border-gray-200 pt-3">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => toggleResponse(r.id)}
+                                                    className="w-full flex items-center justify-between gap-2 py-2 px-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-left"
+                                                  >
+                                                    <span className="font-['Poppins',sans-serif] text-[12px] font-medium text-[#003D82]">
+                                                      {proProfileData?.tradingName || "Professional"}&apos;s Response
+                                                    </span>
+                                                    {isExpanded ? (
+                                                      <ChevronUp className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" />
+                                                    ) : (
+                                                      <ChevronDown className="w-4 h-4 text-[#6b6b6b] flex-shrink-0" />
+                                                    )}
+                                                  </button>
+                                                  {isExpanded && (
+                                                    <div className="mt-2 ml-2 pl-3 border-l-2 border-blue-200">
+                                                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-pre-wrap">
+                                                        {r.response!.text}
+                                                      </p>
+                                                      {r.response?.respondedAt && (
+                                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#9ca3af] mt-2">
+                                                          {new Date(r.response.respondedAt).toLocaleDateString(
+                                                            "en-GB",
+                                                            {
+                                                              day: "numeric",
+                                                              month: "short",
+                                                              year: "numeric",
+                                                            }
+                                                          )}
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Attachment preview modal (job post attachments) */}
       <Dialog open={!!attachmentPreview} onOpenChange={(open) => { if (!open) setAttachmentPreview(null); }}>
