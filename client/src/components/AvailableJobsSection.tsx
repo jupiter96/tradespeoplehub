@@ -339,16 +339,13 @@ export default function AvailableJobsSection() {
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold">
                       Budget{" "}
                       {job.budgetMin != null && job.budgetMax != null
-                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)} ${symbol}`
-                        : `${formatPrice(job.budgetAmount ?? 0)} ${symbol}`}
+                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
+                        : `${formatPrice(job.budgetAmount ?? 0)}`}
                     </p>
-                    {getTimingIcon(job.timing)}
-                    <Badge className="bg-[#1976D2] text-white border-[#1976D2] font-['Poppins',sans-serif] text-[11px]">
-                      {job.sector}
-                    </Badge>
+                    
                   </div>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
                     {getTruncatedDescription(job.description)}

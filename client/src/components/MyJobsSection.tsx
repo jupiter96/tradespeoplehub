@@ -350,120 +350,87 @@ export default function MyJobsSection() {
                 navigate(`/job/${job.slug || job.id}`);
               }}
             >
-              <div className="flex flex-col gap-4">
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <div className="min-w-0">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
-                        {job.title}
-                      </h3>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      {newQuoteJobIds.has(job.id) && (
-                        <div className="relative">
-                          <span className="absolute -inset-1 rounded-full bg-[#FE8A0F]/30 animate-ping" />
-                          <span
-                            className="inline-flex items-center rounded-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] px-3 py-1 text-[11px] font-['Poppins',sans-serif] font-semibold shadow-md ring-2 ring-[#FE8A0F]/30"
-                            style={{ animation: "gotNewQuoteTextPulse 1.4s ease-in-out infinite" }}
+              {/* Two-column layout (70% left / 30% right) */}
+              <div className="flex flex-col md:flex-row gap-5">
+                {/* Left column: title, description, skills, address, time, quote count */}
+                <div className="md:w-[70%] min-w-0">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate mb-2">
+                    {job.title}
+                  </h3>
+
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                    {getTruncatedDescription(job.description)}
+                  </p>
+
+                  {(job as { categories?: string[] }).categories &&
+                    (job as { categories: string[] }).categories.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {(job as { categories: string[] }).categories.map((category, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="outline"
+                            className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
                           >
-                            Got New Quotes
-                          </span>
-                        </div>
-                      )}
-                      <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] whitespace-nowrap">
+                            {category}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                  <div className="pt-3 flex flex-wrap items-center text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <MapPin className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{formatJobLocationCityOnly(job)}</span>
+                    </div>
+                    <span className="hidden sm:inline text-[#c7c7c7]" aria-hidden="true">•</span>
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <Calendar className="w-4 h-4 flex-shrink-0" />
+                      <span>Posted {getRelativeTime(job.postedAt)}</span>
+                    </div>
+                    <span className="hidden sm:inline text-[#c7c7c7]" aria-hidden="true">•</span>
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                      <span>
                         {job.quotes.length} {job.quotes.length === 1 ? "Quote" : "Quotes"}
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                      Budget{" "}
+                </div>
+
+                {/* Right column: price info (top) + view quotes button (bottom) */}
+                <div className="md:w-[30%] flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-start justify-end">
+                    {newQuoteJobIds.has(job.id) && (
+                      <div className="relative">
+                        <span className="absolute -inset-1 rounded-full bg-[#FE8A0F]/30 animate-ping" />
+                        <span
+                          className="inline-flex items-center rounded-full bg-gradient-to-r from-[#FE8A0F] to-[#FFB347] px-3 py-1 text-[11px] font-['Poppins',sans-serif] font-semibold shadow-md ring-2 ring-[#FE8A0F]/30"
+                          style={{ animation: "gotNewQuoteTextPulse 1.4s ease-in-out infinite" }}
+                        >
+                          Got New Quotes
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                    <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-bold">
                       {job.budgetMin != null && job.budgetMax != null
                         ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
                         : formatPrice(job.budgetAmount ?? 0)}
-                      {job.budgetType ? ` (${job.budgetType})` : ""}
                     </p>
-                    {getTimingIcon(job.timing)}
-                    {(() => {
-                      const statusNorm = String((job as any).status || "").toLowerCase();
-                      return (
-                        <Badge className={`${getStatusBadge(statusNorm)} font-['Poppins',sans-serif] text-[11px]`}>
-                          {statusNorm === "awaiting-accept"
-                        ? "Awaiting Accept"
-                        : statusNorm === "in-progress"
-                          ? "In Progress"
-                          : statusNorm === "delivered"
-                            ? "Delivered"
-                            : statusNorm === "open"
-                              ? "Open"
-                              : statusNorm ? statusNorm.charAt(0).toUpperCase() + statusNorm.slice(1) : "—"}
-                        </Badge>
-                      );
-                    })()}
-                    {(job as { sector?: string }).sector && (
-                      <Badge className="bg-[#1976D2] text-white border-[#1976D2] font-['Poppins',sans-serif] text-[11px]">
-                        {(job as { sector: string }).sector}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
-                    {getTruncatedDescription(job.description)}
-                  </p>
-                  {(job as { categories?: string[] }).categories && (job as { categories: string[] }).categories.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {(job as { categories: string[] }).categories.map((category, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="outline"
-                          className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
-                        >
-                          {category}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                <div className="pt-2 border-t border-gray-100 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4" />
-                      {formatJobLocationCityOnly(job)}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
-                      <span>Posted {getRelativeTime(job.postedAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MessageCircle className="w-4 h-4" />
-                      {job.quotes.length} {job.quotes.length === 1 ? "Quote" : "Quotes"}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="mt-auto flex justify-end">
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         markJobQuotesSeen(job.id);
                         navigate(`/job/${job.slug || job.id}?tab=quotes`);
                       }}
-                      className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
+                      className="w-full font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                     >
                       <Eye className="w-4 h-4 mr-1.5" />
                       View Quotes
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                        e.stopPropagation();
-                        handleDeleteJob(job.id);
-                      }}
-                      className="font-['Poppins',sans-serif] hover:bg-red-50 hover:text-red-600 hover:border-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -567,7 +534,7 @@ export default function MyJobsSection() {
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-start gap-3">
                               <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                <Avatar className="w-12 h-12 cursor-pointer hover:opacity-90 transition-opacity">
+                                <Avatar className="w-14 h-14 cursor-pointer hover:opacity-90 transition-opacity">
                                   {resolveAvatarUrl(quote.professionalAvatar) && (
                                     <AvatarImage src={resolveAvatarUrl(quote.professionalAvatar)} />
                                   )}
@@ -588,6 +555,11 @@ export default function MyJobsSection() {
                                     {formatNumber(Number(quote.professionalRating), 1)} ({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})
                                   </div>
                                 </div>
+                                {!!(quote as any).professionalProfileTitle && (
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold mt-1">
+                                    {(quote as any).professionalProfileTitle}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="text-right whitespace-nowrap">

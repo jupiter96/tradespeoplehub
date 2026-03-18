@@ -123,6 +123,8 @@ function toJobResponse(doc) {
       professionalAvatar: q.professionalAvatar,
       professionalRating: q.professionalRating ?? 0,
       professionalReviews: q.professionalReviews ?? 0,
+      professionalProfileTitle: q.professionalProfileTitle ?? undefined,
+      professionalTownCity: q.professionalTownCity ?? undefined,
       price: q.price,
       deliveryTime: q.deliveryTime,
       message: q.message,
@@ -1306,15 +1308,23 @@ router.get('/:id', authenticateToken, async (req, res) => {
       response.clientReviewCount = n;
       response.clientRatingAverage = n === 0 ? undefined : (clientReviews.reduce((s, r) => s + (r.rating || 0), 0) / n);
     }
-    // Ensure each quote has the professional's current avatar + verification status (from User)
+    // Ensure each quote has the professional's current avatar + verification status + profile title + town/city (from User)
     const quoteProIds = [...new Set((response.quotes || []).map((q) => q.professionalId).filter(Boolean))];
     if (quoteProIds.length > 0) {
-      const pros = await User.find({ _id: { $in: quoteProIds } }).select('avatar verification country').lean();
+      const pros = await User.find({ _id: { $in: quoteProIds } }).select('avatar verification country townCity publicProfile.profileTitle').lean();
       const avatarByProId = Object.fromEntries(pros.map((u) => [u._id.toString(), u.avatar]).filter(([, v]) => v != null));
       const countryByProId = Object.fromEntries(
         pros
           .map((u) => [u._id.toString(), u.country])
           .filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
+      );
+      const townCityByProId = Object.fromEntries(
+        pros
+          .map((u) => [u._id.toString(), u.townCity != null ? String(u.townCity).trim() : undefined])
+      );
+      const profileTitleByProId = Object.fromEntries(
+        pros
+          .map((u) => [u._id.toString(), u.publicProfile && typeof u.publicProfile.profileTitle === 'string' ? u.publicProfile.profileTitle.trim() : undefined])
       );
       const verifiedByProId = Object.fromEntries(
         pros.map((u) => {
@@ -1329,6 +1339,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
         professionalAvatar: avatarByProId[q.professionalId] ?? q.professionalAvatar,
         professionalFullyVerified: verifiedByProId[q.professionalId] ?? false,
         professionalCountry: countryByProId[q.professionalId] ?? q.professionalCountry ?? undefined,
+        professionalTownCity: townCityByProId[q.professionalId] ?? q.professionalTownCity ?? undefined,
+        professionalProfileTitle: profileTitleByProId[q.professionalId] ?? q.professionalProfileTitle ?? undefined,
       }));
     }
     res.json(response);
@@ -1414,7 +1426,7 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
       ...sectorFilter,
       ...(quotedObjectIds.length ? { _id: { $nin: quotedObjectIds } } : {}),
     })
-      .select('_id tradingName firstName lastName avatar postcode address townCity publicProfile.bio verification')
+      .select('_id tradingName firstName lastName avatar postcode address townCity publicProfile.bio publicProfile.profileTitle verification')
       .lean();
 
     if (professionals.length === 0) return res.json({ professionals: [] });
@@ -1454,13 +1466,15 @@ router.get('/:id/recommended-professionals', authenticateToken, async (req, res)
             ? Math.round(haversineMiles(jobCoords.latitude, jobCoords.longitude, proCoords.latitude, proCoords.longitude) * 10) / 10
             : null;
         const bio = (pro.publicProfile && pro.publicProfile.bio) ? String(pro.publicProfile.bio).trim() : '';
+        const profileTitle = (pro.publicProfile && pro.publicProfile.profileTitle) ? String(pro.publicProfile.profileTitle).trim() : '';
         const v = pro.verification || {};
         const steps = ['email', 'phone', 'address', 'idCard', 'paymentMethod', 'publicLiabilityInsurance'];
         const fullyVerified = steps.every((key) => v[key] && v[key].status === 'verified');
         return {
           id,
           name: pro.tradingName || [pro.firstName, pro.lastName].filter(Boolean).join(' ') || 'Professional',
-          title: pro.tradingName || 'Professional',
+          title: profileTitle || pro.tradingName || 'Professional',
+          profileTitle: profileTitle || undefined,
           category: sectorName,
           image: pro.avatar,
           rating: stats.rating,

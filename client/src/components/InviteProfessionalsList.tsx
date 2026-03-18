@@ -18,6 +18,8 @@ interface Professional {
   id: string;
   name: string;
   title: string;
+  /** Short headline from professional profile (from backend). */
+  profileTitle?: string;
   category: string;
   image: string;
   rating: number;
@@ -136,7 +138,7 @@ export default function InviteProfessionalsList({
               <div className="block sm:hidden p-4">
                 <div className="flex gap-3 items-start">
                   <div
-                    className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 cursor-pointer shadow-sm flex items-center justify-center"
+                    className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 cursor-pointer shadow-sm flex items-center justify-center"
                     onClick={() => handleNavigateToProfile(pro.id)}
                   >
                     {resolveAvatarUrl(pro.image) ? (
@@ -197,6 +199,11 @@ export default function InviteProfessionalsList({
                         </span>
                       </div>
                     </div>
+                    {!!pro.profileTitle && (
+                      <p className="mt-1 font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-bold">
+                        {pro.profileTitle}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -206,7 +213,7 @@ export default function InviteProfessionalsList({
                 <div className="flex gap-4">
                   {/* Avatar: rounded square, same row as trading name block */}
                   <div
-                    className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 cursor-pointer shadow-sm flex items-center justify-center self-start"
+                    className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 cursor-pointer shadow-sm flex items-center justify-center self-start"
                     onClick={() => handleNavigateToProfile(pro.id)}
                   >
                     {resolveAvatarUrl(pro.image) ? (
@@ -274,6 +281,11 @@ export default function InviteProfessionalsList({
                         </span>
                       </div>
                     </div>
+                    {!!pro.profileTitle && (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold mb-2">
+                        {pro.profileTitle}
+                      </p>
+                    )}
                     {pro.skills && pro.skills.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {pro.skills.slice(0, 3).map((skill, index) => (
@@ -316,7 +328,7 @@ export default function InviteProfessionalsList({
               {/* Pro info section */}
               <div className="flex gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <div
-                  className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 cursor-pointer"
+                  className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 cursor-pointer"
                   onClick={() => { closeInviteModal(); handleNavigateToProfile(selectedProForInvite.id); }}
                 >
                   {resolveAvatarUrl(selectedProForInvite.image) ? (

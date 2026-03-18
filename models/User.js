@@ -507,7 +507,7 @@ const userSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
-      companyDetails: {
+      profileTitle: {
         type: String,
         trim: true,
       },

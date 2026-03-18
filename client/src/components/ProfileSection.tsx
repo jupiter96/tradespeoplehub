@@ -100,7 +100,7 @@ export default function ProfileSection() {
   const [skills, setSkills] = useState<string[]>([]);
   const [qualifications, setQualifications] = useState<string[]>([]);
   const [certifications, setCertifications] = useState<string[]>([""]);
-  const [companyDetails, setCompanyDetails] = useState<string>("");
+  const [profileTitle, setProfileTitle] = useState<string>("");
   const [insuranceExpiryDate, setInsuranceExpiryDate] = useState<string>("");
   const [professionalIndemnityAmount, setProfessionalIndemnityAmount] = useState<number | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -517,7 +517,7 @@ export default function ProfileSection() {
         setCertifications([""]);
       }
 
-      setCompanyDetails((userInfo.publicProfile as any)?.companyDetails || "");
+      setProfileTitle((userInfo.publicProfile as any)?.profileTitle || "");
       if (userInfo.insuranceExpiryDate) {
         const date = new Date(userInfo.insuranceExpiryDate);
         setInsuranceExpiryDate(date.toISOString().split('T')[0]);
@@ -591,7 +591,7 @@ export default function ProfileSection() {
           isPublic,
           qualifications: qualifications.filter(q => q.trim()).join('\n'),
           certifications: certifications.filter(c => c.trim()).join('\n'),
-          companyDetails,
+          profileTitle,
           coverImage: coverImage || (userInfo?.publicProfile as any)?.coverImage || undefined,
         },
       };
@@ -970,7 +970,7 @@ export default function ProfileSection() {
                     setCertifications([""]);
                   }
 
-                  setCompanyDetails((userInfo?.publicProfile as any)?.companyDetails || "");
+                  setProfileTitle((userInfo?.publicProfile as any)?.profileTitle || "");
                   setCoverImage((userInfo?.publicProfile as any)?.coverImage || null);
                   if (userInfo?.insuranceExpiryDate) {
                     const date = new Date(userInfo.insuranceExpiryDate);
@@ -1154,6 +1154,47 @@ export default function ProfileSection() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Profile Title (moved under profile picture) */}
+      <div className="bg-white rounded-2xl p-6 shadow-md">
+        <Label className="text-[#FE8A0F] font-semibold mb-2 block">Profile Title</Label>
+        {isEditing ? (
+          <Input
+            value={profileTitle}
+            onChange={(e) => setProfileTitle(e.target.value)}
+            placeholder="e.g., Bathroom renovation specialist"
+            className="mt-2 bg-white border-[#FE8A0F] text-black placeholder:text-black/50"
+            maxLength={80}
+          />
+        ) : (
+          <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-black whitespace-pre-wrap">
+              {profileTitle || "No profile title added yet. Click 'Edit Profile' to add one."}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Bio Section (moved under profile picture) */}
+      <div className="bg-white rounded-2xl p-6 shadow-md">
+        <Label className="text-[#FE8A0F] font-semibold mb-2 block">Bio / About Me</Label>
+        {isEditing ? (
+          <Textarea
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Tell clients about yourself, your experience, and what makes you unique..."
+            className="mt-2 bg-white border-[#FE8A0F] text-black placeholder:text-black/50 min-h-[150px]"
+            maxLength={1000}
+          />
+        ) : (
+          <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-black whitespace-pre-wrap">
+              {bio || "No bio added yet. Click 'Edit Profile' to add your bio."}
+            </p>
+          </div>
+        )}
+        {isEditing && <p className="text-xs text-gray-500 mt-2">{bio.length}/1000 characters</p>}
       </div>
 
       {/* Skills Section */}
@@ -1416,48 +1457,6 @@ export default function ProfileSection() {
               <p className="text-gray-500 text-sm">No certifications added yet. Click 'Edit Profile' to add certifications.</p>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Company Details Section */}
-      <div className="bg-white rounded-2xlp-6 shadow-md">
-        <Label className="text-[#FE8A0F] font-semibold mb-2 block">Company Details</Label>
-        {isEditing ? (
-          <Textarea
-            value={companyDetails}
-            onChange={(e) => setCompanyDetails(e.target.value)}
-            placeholder="Enter your company details..."
-            className="mt-2 bg-white border-[#FE8A0F] text-black placeholder:text-black/50  min-h-[100px]"
-          />
-        ) : (
-          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
-            <p className="text-black whitespace-pre-wrap">
-              {companyDetails || "No company details added yet. Click 'Edit Profile' to add company details."}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Bio Section */}
-      <div className="bg-white rounded-2xl p-6 shadow-md">
-        <Label className="text-[#FE8A0F] font-semibold mb-2 block">Bio / About Me</Label>
-        {isEditing ? (
-          <Textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell clients about yourself, your experience, and what makes you unique..."
-            className="mt-2 bg-white border-[#FE8A0F] text-black placeholder:text-black/50  min-h-[150px]"
-            maxLength={1000}
-          />
-        ) : (
-          <div className="mt-2 p-4 bg-gray-50  rounded-lg border border-gray-200 ">
-            <p className="text-black whitespace-pre-wrap">
-              {bio || "No bio added yet. Click 'Edit Profile' to add your bio."}
-            </p>
-          </div>
-        )}
-        {isEditing && (
-          <p className="text-xs text-gray-500 mt-2">{bio.length}/1000 characters</p>
         )}
       </div>
 
@@ -1850,7 +1849,7 @@ export default function ProfileSection() {
                     </AvatarFallback>
                     {/* Online status badge on image (when image exists) */}
                     {(avatarPreview || userInfo?.avatar) && (
-                      <div className="absolute top-0 right-0 w-4 h-4 md:w-5 md:h-5 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 -translate-y-1/2"></div>
+                      <div className="absolute bottom-0 right-0 w-4 h-4 md:w-5 md:h-5 bg-green-500 rounded-full border-2 border-white transform translate-x-1/2 translate-y-1/2"></div>
                     )}
                   </Avatar>
                 </div>
@@ -1926,6 +1925,11 @@ export default function ProfileSection() {
                   <TabsContent value="about">
                     <Card className="w-full max-w-full overflow-x-hidden">
                       <CardContent className="p-4 md:p-6 w-full max-w-full overflow-x-hidden">
+                        {!!profileTitle && (
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold mb-3">
+                            {profileTitle}
+                          </p>
+                        )}
                         <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
                           About Me
                         </h3>
@@ -1955,14 +1959,6 @@ export default function ProfileSection() {
                                   </p>
                                 ))}
                               </div>
-                            </div>
-                          )}
-                          {companyDetails && (
-                            <div className="mt-3 md:mt-4">
-                              <h5 className="text-[#003D82] text-[13px] md:text-[16px] font-semibold mb-2">Company Details</h5>
-                              <p className="text-gray-700  whitespace-pre-wrap break-words text-justify text-[12px] md:text-[14px] leading-relaxed">
-                                {companyDetails}
-                              </p>
                             </div>
                           )}
                           {(professionalIndemnityAmount || insuranceExpiryDate) && (

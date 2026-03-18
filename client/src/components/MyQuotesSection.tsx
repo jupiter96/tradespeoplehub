@@ -481,6 +481,8 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
             const proRating = Number(quote.professionalRating) || 0;
             const proReviews = Number(quote.professionalReviews) || 0;
             const proCountry = (quote as { professionalCountry?: string }).professionalCountry;
+            const proTownCity = (quote as { professionalTownCity?: string }).professionalTownCity;
+            const proProfileTitle = (quote as { professionalProfileTitle?: string }).professionalProfileTitle;
             const proVerified =
               (quote as { professionalFullyVerified?: boolean }).professionalFullyVerified ??
               isFullyVerifiedProfessional(userInfo);
@@ -518,7 +520,7 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="relative">
-                            <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                            <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                             {quoteAvatarSrc && (
                               <AvatarImage src={quoteAvatarSrc} alt={proName} />
                             )}
@@ -571,10 +573,15 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                                 />
                               ) : null;
                             })()}
-                            <span className="truncate max-w-[160px]">{proCountry}</span>
+                            <span className="truncate max-w-[160px]">{proTownCity || proCountry}</span>
                           </span>
                         )}
                       </div>
+                      {!!proProfileTitle && (
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-bold">
+                          {proProfileTitle}
+                        </p>
+                      )}
                       {quote.status !== "pending" && (
                         <Badge
                           className={`text-[10px] px-2 py-0.5 ${
@@ -720,7 +727,7 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="relative">
-                              <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                              <Avatar className="w-14 h-14 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                               {quoteAvatarSrc && (
                                 <AvatarImage src={quoteAvatarSrc} alt={proName} />
                               )}
@@ -773,10 +780,15 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                                       />
                                     ) : null;
                                   })()}
-                                  <span className="truncate max-w-[180px]">{proCountry}</span>
+                                  <span className="truncate max-w-[180px]">{proTownCity || proCountry}</span>
                                 </span>
                               )}
                             </div>
+                            {!!proProfileTitle && (
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold mt-1">
+                                {proProfileTitle}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

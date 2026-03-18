@@ -9,6 +9,8 @@ interface Professional {
   id: string;
   name: string;
   title: string;
+  /** Short headline from professional profile (from backend). */
+  profileTitle?: string;
   category: string;
   image: string;
   rating: number;
@@ -55,7 +57,7 @@ export default function RecommendedProfessionals({
             >
               {/* Professional Header */}
               <div className="flex items-start gap-4 mb-4">
-                <Avatar className="w-20 h-20 border-2 border-gray-100 group-hover:border-[#FE8A0F] transition-colors flex-shrink-0">
+                <Avatar className="w-24 h-24 border-2 border-gray-100 group-hover:border-[#FE8A0F] transition-colors flex-shrink-0">
                   {resolveAvatarUrl(pro.image) && (
                     <AvatarImage src={resolveAvatarUrl(pro.image)} />
                   )}
@@ -92,6 +94,11 @@ export default function RecommendedProfessionals({
                       </span>
                     </div>
                   </div>
+                  {!!pro.profileTitle && (
+                    <p className="mt-2 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold">
+                      {pro.profileTitle}
+                    </p>
+                  )}
                 </div>
               </div>
 

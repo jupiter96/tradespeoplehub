@@ -296,7 +296,7 @@ function ActiveJobsSection() {
                         {job.status === "delivered" ? "Delivered" : "In Progress"}
                       </Badge>
                     </div>
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2">
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold mb-2">
                       Budget{" "}
                       {job.budgetMin != null && job.budgetMax != null
                         ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`

@@ -400,8 +400,8 @@ export default function PostJobPage() {
   type AttachedFileItem = { file: File; previewUrl?: string };
   const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
   
-  // Step 3: Headline (pre-filled when using Generate text by AI) – min 45 characters
-  const JOB_TITLE_MIN_LENGTH = 45;
+  // Step 3: Headline (pre-filled when using Generate text by AI) – min 25 characters
+  const JOB_TITLE_MIN_LENGTH = 25;
   const [jobTitle, setJobTitle] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
   
@@ -497,11 +497,16 @@ export default function PostJobPage() {
         toast.error(data.error || "Failed to generate");
         return;
       }
-      if (data.title) setJobTitle(data.title);
+      const nextTitle = typeof data.title === "string" ? data.title.trim() : "";
+      if (nextTitle) setJobTitle(nextTitle);
       const newDescription = data.description ?? "";
       if (newDescription) {
         setDescriptionPreviousState(jobDescription.trim());
         setJobDescription(newDescription);
+      }
+      if (nextTitle && nextTitle.length < JOB_TITLE_MIN_LENGTH) {
+        toast.error(`AI generated title is too short. Please regenerate or edit to at least ${JOB_TITLE_MIN_LENGTH} characters.`);
+        return;
       }
       toast.success("Title and description generated.");
       setCurrentStep((prev) => (prev < 2 ? 2 : prev));
@@ -1212,7 +1217,7 @@ export default function PostJobPage() {
                     </span>
                   </div>
                   <Input
-                    placeholder="e.g., Install new bathroom suite (type at least 45 characters)"
+                    placeholder={`e.g., Install new bathroom suite (type at least ${JOB_TITLE_MIN_LENGTH} characters)`}
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
                     className={`h-12 border-2 rounded-xl font-['Poppins',sans-serif] text-[14px] w-full ${
@@ -1223,7 +1228,7 @@ export default function PostJobPage() {
                   />
                   {jobTitle.trim().length < JOB_TITLE_MIN_LENGTH && (
                     <p className="font-['Poppins',sans-serif] text-[12px] text-red-600 mt-1.5">
-                      Please type 45 characters at least.
+                      Please type {JOB_TITLE_MIN_LENGTH} characters at least.
                     </p>
                   )}
                 </div>

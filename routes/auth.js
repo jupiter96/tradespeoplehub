@@ -3213,8 +3213,8 @@ router.put('/profile', requireAuth, async (req, res) => {
         if (req.body.publicProfile.certifications !== undefined) {
           user.publicProfile.certifications = req.body.publicProfile.certifications?.trim() || undefined;
         }
-        if (req.body.publicProfile.companyDetails !== undefined) {
-          user.publicProfile.companyDetails = req.body.publicProfile.companyDetails?.trim() || undefined;
+        if (req.body.publicProfile.profileTitle !== undefined) {
+          user.publicProfile.profileTitle = req.body.publicProfile.profileTitle?.trim() || undefined;
         }
       }
     } else {

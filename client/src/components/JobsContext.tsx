@@ -10,8 +10,10 @@ export interface JobQuote {
   professionalAvatar?: string;
   professionalFullyVerified?: boolean;
   professionalCountry?: string;
+  professionalTownCity?: string;
   professionalRating: number;
   professionalReviews: number;
+  professionalProfileTitle?: string;
   price: number;
   deliveryTime: string;
   message: string;

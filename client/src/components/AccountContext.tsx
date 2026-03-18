@@ -45,7 +45,7 @@ interface UserInfo {
     isPublic?: boolean;
     qualifications?: string;
     certifications?: string;
-    companyDetails?: string;
+    profileTitle?: string;
   };
   createdAt?: string;
 }
@@ -108,7 +108,7 @@ interface ProfileUpdatePayload {
   aboutService?: string;
   hasTradeQualification?: "yes" | "no";
   hasPublicLiability?: "yes" | "no";
-  publicProfile?: { bio?: string };
+  publicProfile?: { bio?: string; profileTitle?: string };
 }
 
 interface AccountContextType {

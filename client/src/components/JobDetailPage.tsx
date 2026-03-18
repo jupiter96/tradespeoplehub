@@ -1848,7 +1848,7 @@ export default function JobDetailPage() {
                             <div className="flex items-center gap-3">
                               <a href={`/profile/${myAwardedQuote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <div className="relative">
-                                  <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                  <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
                                   {resolveAvatarUrl(myAwardedQuote.professionalAvatar) && (
                                     <AvatarImage src={resolveAvatarUrl(myAwardedQuote.professionalAvatar)} />
                                   )}
@@ -1896,16 +1896,21 @@ export default function JobDetailPage() {
                                   </span>
                                   {!!myAwardedQuote.professionalCountry && (
                                     <span className="inline-flex items-center gap-1 text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                                      <span className="truncate max-w-[160px]">{(myAwardedQuote as any).professionalTownCity || myAwardedQuote.professionalCountry}</span>
                                       {(() => {
                                         const iso = iso2FromCountry(myAwardedQuote.professionalCountry);
                                         return iso ? (
                                           <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={myAwardedQuote.professionalCountry} />
                                         ) : null;
                                       })()}
-                                      <span className="truncate max-w-[160px]">{myAwardedQuote.professionalCountry}</span>
                                     </span>
                                   )}
                                 </div>
+                                {!!(myAwardedQuote as any).professionalProfileTitle && (
+                                  <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] font-bold -mt-1 mb-2">
+                                    {(myAwardedQuote as any).professionalProfileTitle}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1972,6 +1977,7 @@ export default function JobDetailPage() {
                       const displayMsg = expanded ? msg : (isLong ? msg.slice(0, 400) + "..." : msg);
                       const showAcceptedBadge = job?.status === "in-progress" && quote.status === "accepted";
                       const quoteAvatarSrc = resolveAvatarUrl(quote.professionalAvatar);
+                      const profileTitle = (quote as any).professionalProfileTitle as string | undefined;
                       return (
                         <div key={quote.id} className="relative flex flex-col gap-4 bg-orange-50 border border-orange-200 p-4 sm:p-5 rounded-lg shadow-lg mt-4 first:mt-0 overflow-hidden">
                           {showAcceptedBadge && (
@@ -1988,7 +1994,7 @@ export default function JobDetailPage() {
                                 <div className="flex items-center gap-3">
                                   <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                     <div className="relative">
-                                      <Avatar className="w-12 h-12 sm:w-14 sm:h-14 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
+                                      <Avatar className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-gray-200 cursor-pointer hover:opacity-90 transition-opacity">
                                       {quoteAvatarSrc && <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />}
                                       <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[18px]">
                                         {getTwoLetterInitials(quote.professionalName, "P")}
@@ -2030,16 +2036,21 @@ export default function JobDetailPage() {
                                       <span className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
                                       {!!quote.professionalCountry && (
                                         <span className="inline-flex items-center gap-1 text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                                          <span className="truncate max-w-[160px]">{(quote as any).professionalTownCity || quote.professionalCountry}</span>
                                           {(() => {
                                             const iso = iso2FromCountry(quote.professionalCountry);
                                             return iso ? (
                                               <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={quote.professionalCountry} />
                                             ) : null;
                                           })()}
-                                          <span className="truncate max-w-[160px]">{quote.professionalCountry}</span>
                                         </span>
                                       )}
                                     </div>
+                                    {!!profileTitle && (
+                                      <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#2c353f] font-bold -mt-1 mb-2">
+                                        {profileTitle}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -2140,6 +2151,7 @@ export default function JobDetailPage() {
                     const suggestedMilestones = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
                     const hasSuggestedMilestones = suggestedMilestones.length > 0;
                     const milestonesExpanded = expandedQuoteMilestones.has(quote.id);
+                    const profileTitle = quote.professionalProfileTitle;
                     return (
                     <div
                       key={quote.id}
@@ -2160,7 +2172,7 @@ export default function JobDetailPage() {
                             <div className="flex items-center gap-2">
                               <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <div className="relative">
-                                  <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                                  <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                                   {quoteAvatarSrc && (
                                     <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
                                   )}
@@ -2204,16 +2216,21 @@ export default function JobDetailPage() {
                               </div>
                               {!!quote.professionalCountry && (
                                 <span className="inline-flex items-center gap-1 text-[#6b6b6b]">
+                                  <span className="truncate max-w-[160px]">{quote.professionalTownCity || quote.professionalCountry}</span>
                                   {(() => {
                                     const iso = iso2FromCountry(quote.professionalCountry);
                                     return iso ? (
                                       <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={quote.professionalCountry} />
                                     ) : null;
                                   })()}
-                                  <span className="truncate max-w-[160px]">{quote.professionalCountry}</span>
                                 </span>
                               )}
                             </div>
+                            {!!profileTitle && (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f] font-bold mb-1">
+                                {profileTitle}
+                              </p>
+                            )}
                             {quote.status !== "pending" && (
                               <Badge className={`text-[10px] px-2 py-0.5 ${
                                 quote.status === "accepted" ? "bg-green-50 text-green-700 border-green-200" :
@@ -2348,99 +2365,106 @@ export default function JobDetailPage() {
 
                       {/* Desktop Layout */}
                       <div className="hidden sm:block p-5">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3">
-                                <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                  <div className="relative">
-                                    <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                        <div className="flex gap-5">
+                          {/* Left column (70%): profile + message + milestones */}
+                          <div className="w-[70%] min-w-0">
+                            <div className="flex items-start gap-3">
+                              <a
+                                href={`/profile/${quote.professionalId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="relative">
+                                  <Avatar className="w-14 h-14 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
                                     {quoteAvatarSrc && (
                                       <AvatarImage src={quoteAvatarSrc} alt={quote.professionalName} />
                                     )}
                                     <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
                                       {getTwoLetterInitials(quote.professionalName, "P")}
                                     </AvatarFallback>
-                                    </Avatar>
-                                    <span
-                                      className={cn(
-                                        "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
-                                        isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
-                                      )}
-                                      aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
-                                    />
-                                  </div>
-                                </a>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <a href={`/profile/${quote.professionalId}`} target="_blank" rel="noopener noreferrer" className="block hover:underline min-w-0" onClick={(e) => e.stopPropagation()}>
-                                      <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium truncate">
-                                        {quote.professionalName}
-                                      </h3>
-                                    </a>
-                                    <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => openProfessionalProfileSlider(quote)}
-                                      className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
-                                      aria-label="View professional profile"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                  <div className="flex items-center gap-4 text-[13px] text-[#6b6b6b] flex-wrap">
-                                    <div className="flex items-center gap-2">
-                                      <StarRating rating={Number(quote.professionalRating)} size="sm" />
-                                      <span>{formatNumber(Number(quote.professionalRating), 1)}</span>
-                                      <span className="text-[#8d8d8d]">({quote.professionalReviews} {quote.professionalReviews === 1 ? 'review' : 'reviews'})</span>
-                                    </div>
-                                    {!!quote.professionalCountry && (
-                                      <span className="inline-flex items-center gap-1 text-[#6b6b6b]">
-                                        {(() => {
-                                          const iso = iso2FromCountry(quote.professionalCountry);
-                                          return iso ? (
-                                            <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={quote.professionalCountry} />
-                                          ) : null;
-                                        })()}
-                                        <span className="truncate max-w-[180px]">{quote.professionalCountry}</span>
-                                      </span>
+                                  </Avatar>
+                                  <span
+                                    className={cn(
+                                      "absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+                                      isUserOnline(quote.professionalId) ? "bg-green-500" : "bg-gray-400"
                                     )}
-                                  </div>
+                                    aria-label={isUserOnline(quote.professionalId) ? "Online" : "Offline"}
+                                  />
                                 </div>
+                              </a>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <a
+                                    href={`/profile/${quote.professionalId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block hover:underline min-w-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium truncate">
+                                      {quote.professionalName}
+                                    </h3>
+                                  </a>
+                                  <VerificationBadge fullyVerified={quote.professionalFullyVerified} size="sm" />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openProfessionalProfileSlider(quote)}
+                                    className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f] flex-shrink-0"
+                                    aria-label="View professional profile"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-[13px] text-[#6b6b6b] flex-wrap mt-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <StarRating rating={Number(quote.professionalRating)} size="sm" />
+                                    <span>{formatNumber(Number(quote.professionalRating), 1)}</span>
+                                    <span className="text-[#8d8d8d]">
+                                      ({quote.professionalReviews} {quote.professionalReviews === 1 ? "review" : "reviews"})
+                                    </span>
+                                  </div>
+                                  {!!quote.professionalCountry && (
+                                    <span className="inline-flex items-center gap-1 text-[#6b6b6b]">
+                                      <span className="truncate max-w-[180px]">{quote.professionalTownCity || quote.professionalCountry}</span>
+                                      {(() => {
+                                        const iso = iso2FromCountry(quote.professionalCountry);
+                                        return iso ? (
+                                          <ReactCountryFlag countryCode={iso} svg className="w-5 h-5 rounded-sm" aria-label={quote.professionalCountry} />
+                                        ) : null;
+                                      })()}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {!!profileTitle && (
+                                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-bold mt-1">
+                                    {profileTitle}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            {quote.status !== "pending" && (
-                              <Badge className={`text-[12px] px-3 py-1 flex-shrink-0 ${
-                                quote.status === "accepted" ? "bg-green-50 text-green-700 border-green-200" :
-                                quote.status === "awarded" ? "bg-orange-50 text-orange-700 border-orange-200" :
-                                "bg-gray-50 text-gray-700 border-gray-200"
-                              }`}>
-                                {quote.status === "accepted" ? "Accepted" :
-                                 quote.status === "awarded" ? "Awaiting Response" : "Rejected"}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-right ml-4 flex-shrink-0 whitespace-nowrap">
-                            <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">{formatPrice(Number(quote.price))}</p>
-                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">{formatDeliveryDisplay(quote.deliveryTime || "")}</p>
-                          </div>
-                        </div>
 
-                        <div className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-                          {msgExpanded ? <p className="whitespace-pre-wrap">{showMsg}</p> : <span>{showMsg}</span>}
-                          {isLongMsg && (
-                            <button type="button" onClick={() => toggleQuoteMessageExpanded(quote.id)} className="text-[#3B82F6] hover:underline ml-1 text-[12px]">
-                              {msgExpanded ? "Read less" : "Read more"}
-                            </button>
-                          )}
-                        </div>
+                            <div className="mt-3 font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                              {msgExpanded ? <p className="whitespace-pre-wrap">{showMsg}</p> : <span>{showMsg}</span>}
+                              {isLongMsg && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleQuoteMessageExpanded(quote.id)}
+                                  className="text-[#3B82F6] hover:underline ml-1 text-[12px]"
+                                >
+                                  {msgExpanded ? "Read less" : "Read more"}
+                                </button>
+                              )}
+                            </div>
 
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="min-w-[180px]">
-                              {hasSuggestedMilestones && (
+                            {hasSuggestedMilestones && (
+                              <div className="mt-3">
                                 <button
                                   type="button"
                                   onClick={() => toggleQuoteMilestonesExpanded(quote.id)}
@@ -2453,16 +2477,89 @@ export default function JobDetailPage() {
                                   )}
                                   View Milestones
                                 </button>
-                              )}
+
+                                {milestonesExpanded && (
+                                  <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                    <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                                      <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                          <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
+                                          <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
+                                          <th className="text-center py-2.5 px-3 font-medium text-[#2c353f]">Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {suggestedMilestones.map((m) => (
+                                          <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                            <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                            <td className="py-2.5 px-3 text-right text-[#2c353f]">
+                                              {formatPrice(Number(m.amount || 0))}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-center">
+                                              {m.status === "pending" && (
+                                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] px-2 py-0">
+                                                  Pending
+                                                </Badge>
+                                              )}
+                                              {m.status === "accepted" && (
+                                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0">
+                                                  Accepted
+                                                </Badge>
+                                              )}
+                                              {m.status === "rejected" && (
+                                                <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                  rejected
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right column (30%): price (top) + actions (bottom) */}
+                          <div className="w-[30%] flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="text-right">
+                              <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] font-bold">
+                                {formatPrice(Number(quote.price))}
+                              </p>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                                {formatDeliveryDisplay(quote.deliveryTime || "")}
+                              </p>
                             </div>
 
-                            <div className="flex items-center gap-2 justify-end flex-wrap">
+                            {quote.status !== "pending" && (
+                              <div className="flex justify-end">
+                                <Badge
+                                  className={`text-[12px] px-3 py-1 ${
+                                    quote.status === "accepted"
+                                      ? "bg-green-50 text-green-700 border-green-200"
+                                      : quote.status === "awarded"
+                                        ? "bg-orange-50 text-orange-700 border-orange-200"
+                                        : "bg-gray-50 text-gray-700 border-gray-200"
+                                  }`}
+                                >
+                                  {quote.status === "accepted"
+                                    ? "Accepted"
+                                    : quote.status === "awarded"
+                                      ? "Awaiting Response"
+                                      : "Rejected"}
+                                </Badge>
+                              </div>
+                            )}
+
+                            <div className="mt-auto flex flex-col gap-2 items-stretch">
                               {quote.status === "pending" && (
                                 <>
                                   {isJobOwner && (
                                     <Button
                                       onClick={() => handleOpenAwardModal(quote)}
-                                      className="flex-none bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                      className="w-full bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] text-[14px] h-10"
                                     >
                                       Award
                                     </Button>
@@ -2472,7 +2569,7 @@ export default function JobDetailPage() {
                                       <Button
                                         onClick={() => setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id })}
                                         variant="outline"
-                                        className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-red-200 text-red-600 hover:bg-red-50"
+                                        className="w-full font-['Poppins',sans-serif] text-[14px] h-10 border-red-200 text-red-600 hover:bg-red-50"
                                       >
                                         <Undo2 className="w-4 h-4 mr-2" />
                                         Withdraw
@@ -2480,7 +2577,7 @@ export default function JobDetailPage() {
                                       <Button
                                         onClick={() => openEditQuoteModal(quote)}
                                         variant="outline"
-                                        className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                                        className="w-full font-['Poppins',sans-serif] text-[14px] h-10 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
                                       >
                                         <Pencil className="w-4 h-4 mr-2" />
                                         Edit
@@ -2490,7 +2587,7 @@ export default function JobDetailPage() {
                                     <Button
                                       onClick={() => handleStartChat(quote)}
                                       variant="outline"
-                                      className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                      className="w-full font-['Poppins',sans-serif] text-[14px] h-10"
                                     >
                                       Message
                                     </Button>
@@ -2499,7 +2596,7 @@ export default function JobDetailPage() {
                               )}
 
                               {quote.status === "awarded" && (
-                                <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 text-[13px] text-[#6b6b6b]">
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 text-[13px] text-[#6b6b6b] text-center">
                                   Awaiting professional&apos;s response
                                 </div>
                               )}
@@ -2507,7 +2604,7 @@ export default function JobDetailPage() {
                               {quote.status === "accepted" && (
                                 <Button
                                   onClick={() => handleStartChat(quote)}
-                                  className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                                  className="w-full bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10"
                                 >
                                   <MessageCircle className="w-4 h-4 mr-2" />
                                   Chat
@@ -2515,45 +2612,6 @@ export default function JobDetailPage() {
                               )}
                             </div>
                           </div>
-
-                          {hasSuggestedMilestones && milestonesExpanded && (
-                            <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                              <table className="w-full font-['Poppins',sans-serif] text-[13px]">
-                                <thead>
-                                  <tr className="bg-gray-50 border-b border-gray-200">
-                                    <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
-                                    <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
-                                    <th className="text-center py-2.5 px-3 font-medium text-[#2c353f]">Status</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {suggestedMilestones.map((m) => (
-                                    <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
-                                      <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
-                                      <td className="py-2.5 px-3 text-right text-[#2c353f]">{formatPrice(Number(m.amount || 0))}</td>
-                                      <td className="py-2.5 px-3 text-center">
-                                        {m.status === "pending" && (
-                                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] px-2 py-0">
-                                            Pending
-                                          </Badge>
-                                        )}
-                                        {m.status === "accepted" && (
-                                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0">
-                                            Accepted
-                                          </Badge>
-                                        )}
-                                        {m.status === "rejected" && (
-                                          <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
-                                            rejected
-                                          </span>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -3946,6 +4004,17 @@ export default function JobDetailPage() {
                         {/* About Me Tab - includes About, Qualifications, Certifications, Verifications */}
                         <TabsContent value="about">
                           <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 space-y-4 md:space-y-6">
+                            {(() => {
+                              const t =
+                                (proProfileData.publicProfile?.profileTitle || "").trim() ||
+                                (selectedQuoteForProfile.professionalProfileTitle || "").trim();
+                              if (!t) return null;
+                              return (
+                                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold">
+                                  {t}
+                                </p>
+                              );
+                            })()}
                             {/* About Me */}
                             <div>
                               <h3 className="text-[#003D82] text-[16px] md:text-[20px] font-semibold mb-3 md:mb-4">
