@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type React from "react";
 import { useNavigate } from "react-router-dom";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
@@ -14,7 +15,6 @@ import {
   Filter,
   ArrowUpDown,
   MessageCircle,
-  Calendar,
   Banknote,
   MapPin,
   CheckCircle,
@@ -29,8 +29,11 @@ import {
 } from "lucide-react";
 import { formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
-import { formatJobLocationCityOnly } from "./orders/utils";
+import { formatJobLocationCityOnly, resolveAvatarUrl, getTwoLetterInitials } from "./orders/utils";
 import { cn } from "./ui/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import VerificationBadge from "./VerificationBadge";
+import ReactCountryFlag from "react-country-flag";
 import {
   Select,
   SelectContent,
@@ -61,6 +64,63 @@ type MyQuotesSectionProps = {
   onVisibleCountChange?: (count: number) => void;
 };
 
+function iso2FromCountry(country?: string): string | null {
+  const c = String(country || "").trim();
+  if (!c) return null;
+  if (/^[A-Za-z]{2}$/.test(c)) return c.toUpperCase();
+  const key = c.toLowerCase();
+  const map: Record<string, string> = {
+    "united kingdom": "GB",
+    uk: "GB",
+    england: "GB",
+    scotland: "GB",
+    wales: "GB",
+    "northern ireland": "GB",
+    "united states": "US",
+    usa: "US",
+    ireland: "IE",
+    australia: "AU",
+    canada: "CA",
+    france: "FR",
+    germany: "DE",
+    spain: "ES",
+    italy: "IT",
+    netherlands: "NL",
+    belgium: "BE",
+    poland: "PL",
+    india: "IN",
+  };
+  return map[key] || null;
+}
+
+function QuoteCardStarRating({
+  rating,
+  size = "sm",
+  className = "",
+}: {
+  rating: number;
+  size?: "xs" | "sm" | "md";
+  className?: string;
+}) {
+  const r = Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : 0;
+  const w = size === "xs" ? "w-3 h-3" : size === "md" ? "w-5 h-5" : "w-4 h-4";
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${className}`}>
+      {Array.from({ length: 5 }).map((_, i) => {
+        const fillPct = Math.max(0, Math.min(1, r - i)) * 100;
+        return (
+          <span key={i} className={`relative inline-block ${w}`}>
+            <Star className={`absolute inset-0 ${w} text-[#FE8A0F]/30`} />
+            <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPct}%` }}>
+              <Star className={`absolute inset-0 ${w} text-[#FE8A0F] fill-[#FE8A0F]`} />
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectionProps = {}) {
   const navigate = useNavigate();
   const { getProfessionalQuotes, withdrawQuote, updateQuoteByProfessional } = useJobs();
@@ -79,6 +139,16 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
   const [editMessage, setEditMessage] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
+  const [expandedQuoteMessages, setExpandedQuoteMessages] = useState<Set<string>>(new Set());
+
+  const toggleQuoteMessageExpanded = (quoteId: string) => {
+    setExpandedQuoteMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(quoteId)) next.delete(quoteId);
+      else next.add(quoteId);
+      return next;
+    });
+  };
 
   // Get all quotes submitted by the professional
   const allQuotes = getProfessionalQuotes(userInfo?.id || "");
@@ -122,15 +192,6 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
     }
   }, [filteredQuotes.length, onVisibleCountChange]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
   const getRelativeTime = (dateString: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -152,52 +213,10 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
     return `${diffDays} days ago`;
   };
 
-  const getTruncatedMessage = (text: string, maxLength: number = 250) => {
-    if (!text) return "";
-    const singleLine = text.replace(/\s+/g, " ").trim();
-    if (singleLine.length <= maxLength) return singleLine;
-    return singleLine.slice(0, maxLength) + "...";
-  };
-
   const formatDeliveryDisplay = (v: string) => {
     const n = parseInt(String(v).trim(), 10);
     if (Number.isNaN(n)) return v;
     return n === 1 ? "1 day" : `${n} days`;
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-['Poppins',sans-serif]">
-            <Hourglass className="w-3 h-3 mr-1" />
-            Pending
-          </Badge>
-        );
-      case "accepted":
-        return (
-          <Badge className="bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif]">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Accepted
-          </Badge>
-        );
-      case "awarded":
-        return (
-          <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif]">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Awarded
-          </Badge>
-        );
-      case "rejected":
-        return (
-          <Badge className="bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif]">
-            <XCircle className="w-3 h-3 mr-1" />
-            Rejected
-          </Badge>
-        );
-      default:
-        return null;
-    }
   };
 
   const stats = {
@@ -434,143 +453,456 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredQuotes.map(({ job, quote }) => (
-            <div
-              key={quote.id}
-              className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
-              onClick={() => navigate(`/job/${job.slug || job.id}`)}
-            >
-              <div className="flex flex-col gap-4">
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-1">
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                      {job.title}
-                    </h3>
-                    <span className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-nowrap">
-                      £{formatNumber(Number(quote.price))}{" "}
-                      <span className="text-[#6b6b6b]">
-                        in {formatDeliveryDisplay(quote.deliveryTime || "")}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    {getStatusBadge(quote.status)}
-                    <span className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                      Submitted {getRelativeTime(quote.submittedAt)}
-                    </span>
-                  </div>
-                  <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
-                    {getTruncatedMessage(quote.message)}
+          {filteredQuotes.map(({ job, quote }) => {
+            const proId = quote.professionalId || userInfo?.id || "";
+            const proName =
+              quote.professionalName ||
+              userInfo?.tradingName ||
+              userInfo?.name ||
+              "You";
+            const quoteAvatarSrc = resolveAvatarUrl(
+              quote.professionalAvatar || userInfo?.avatar
+            );
+            const proRating = Number(quote.professionalRating) || 0;
+            const proReviews = Number(quote.professionalReviews) || 0;
+            const proCountry = (quote as { professionalCountry?: string }).professionalCountry;
+            const proVerified = (quote as { professionalFullyVerified?: boolean }).professionalFullyVerified;
+            const msg = quote.message || "";
+            const isLongMsg = msg.length > 400;
+            const msgExpanded = expandedQuoteMessages.has(quote.id);
+            const showMsg = msgExpanded ? msg : isLongMsg ? msg.slice(0, 400) + "..." : msg;
+            const isAwarded = quote.status === "awarded";
+
+            return (
+              <div
+                key={quote.id}
+                className={cn(
+                  "rounded-lg border transition-all duration-200 overflow-hidden cursor-pointer",
+                  quote.status === "accepted"
+                    ? "bg-white border-green-500 shadow-sm"
+                    : isAwarded
+                      ? "bg-orange-50 border-orange-300 shadow-lg"
+                      : quote.status === "rejected"
+                        ? "bg-white border-gray-200 opacity-60"
+                        : "bg-white border-gray-200 hover:border-[#FE8A0F] hover:shadow-md"
+                )}
+                onClick={() => navigate(`/job/${job.slug || job.id}?tab=quotes`)}
+              >
+                {/* Job context (My Quotes only): title + client info (like JobDetailPage) */}
+                <div className="px-4 pt-3 pb-2 border-b border-gray-100 bg-gray-50/80">
+                  <p className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] text-[#003D82] font-medium truncate">
+                    {job.title}
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {job.categories?.map((category, idx) => (
-                      <Badge
-                        key={idx}
-                        variant="outline"
-                        className="bg-[#E3F2FD] text-[#1976D2] border-[#1976D2]/30 font-['Poppins',sans-serif] text-[11px]"
-                      >
-                        {category}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-gray-100 mt-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                    <div className="flex items-center gap-1.5">
-                      {(() => {
-                        const count = job.clientReviewCount ?? 0;
-                        const hasReviews = count > 0 && job.clientRatingAverage != null;
-                        return (
-                          <>
-                            <Star
-                              className={cn(
-                                "w-4 h-4",
-                                hasReviews ? "text-[#FE8A0F] fill-[#FE8A0F]" : "text-gray-300"
-                              )}
-                            />
-                            {hasReviews ? (
-                              <span>
-                                {formatNumber(job.clientRatingAverage as number, 1)} ({count}{" "}
-                                {count === 1 ? "review" : "reviews"})
-                              </span>
-                            ) : (
-                              <span>0 review</span>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4" />
-                      {formatJobLocationCityOnly(job)}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
-                      <span>{getRelativeTime(job.postedAt)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (job.clientId) {
-                          startConversation({
-                            id: job.clientId,
-                            name: job.clientName || "Client",
-                            avatar: job.clientAvatar,
-                            jobId: job.id,
-                            jobTitle: job.title,
-                          });
-                        }
-                      }}
-                      variant="outline"
-                      className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Chat
-                    </Button>
-
-                    {quote.status === "pending" && (
-                      <>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id });
-                          }}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] border-red-200 text-red-600 hover:bg-red-50"
-                        >
-                          <Undo2 className="w-4 h-4 mr-2" />
-                          Withdraw
-                        </Button>
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditModal(job, quote);
-                          }}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
-                        >
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                      </>
+                  <div className="flex items-center gap-2 flex-wrap text-[11px] sm:text-[12px] text-[#6b6b6b] font-['Poppins',sans-serif] mt-0.5">
+                    <span className="text-[#2c353f]">
+                      {job.clientName || "Client"}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Star className="w-3.5 h-3.5 text-[#2c353f] fill-[#2c353f]" />
+                      {(job.clientRatingAverage ?? 0).toFixed(1)}
+                    </span>
+                    {(job.clientCity || job.clientCountry) && (
+                      <span>• {[job.clientCity, job.clientCountry].filter(Boolean).join(", ")}</span>
                     )}
                   </div>
                 </div>
+
+                {/* Mobile — same structure as JobDetailPage Quotes */}
+                <div className="block sm:hidden p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`/profile/${proId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Avatar className="w-10 h-10 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                            {quoteAvatarSrc && (
+                              <AvatarImage src={quoteAvatarSrc} alt={proName} />
+                            )}
+                            <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                              {getTwoLetterInitials(proName, "P")}
+                            </AvatarFallback>
+                          </Avatar>
+                        </a>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <a
+                            href={`/profile/${proId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block hover:underline min-w-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <h3 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-medium truncate">
+                              {proName}
+                            </h3>
+                          </a>
+                          <VerificationBadge fullyVerified={!!proVerified} size="sm" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-[12px] text-[#6b6b6b] mb-1 flex-wrap mt-1">
+                        <div className="flex items-center gap-2">
+                          <QuoteCardStarRating rating={proRating} size="xs" />
+                          <span>{formatNumber(proRating, 1)}</span>
+                          <span className="text-[#8d8d8d]">
+                            ({proReviews} {proReviews === 1 ? "review" : "reviews"})
+                          </span>
+                        </div>
+                        {!!proCountry && (
+                          <span className="inline-flex items-center gap-1 text-[#6b6b6b]">
+                            {(() => {
+                              const iso = iso2FromCountry(proCountry);
+                              return iso ? (
+                                <ReactCountryFlag
+                                  countryCode={iso}
+                                  svg
+                                  className="w-5 h-5 rounded-sm"
+                                  aria-label={proCountry}
+                                />
+                              ) : null;
+                            })()}
+                            <span className="truncate max-w-[160px]">{proCountry}</span>
+                          </span>
+                        )}
+                      </div>
+                      {quote.status !== "pending" && (
+                        <Badge
+                          className={`text-[10px] px-2 py-0.5 ${
+                            quote.status === "accepted"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : quote.status === "awarded"
+                                ? "bg-orange-50 text-orange-700 border-orange-200"
+                                : "bg-gray-50 text-gray-700 border-gray-200"
+                          }`}
+                        >
+                          {quote.status === "accepted"
+                            ? "Accepted"
+                            : quote.status === "awarded"
+                              ? "Awarded"
+                              : "Rejected"}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-right flex-shrink-0 whitespace-nowrap">
+                      <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                        {formatPrice(Number(quote.price))}
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
+                        {formatDeliveryDisplay(quote.deliveryTime || "")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">
+                    {msgExpanded ? (
+                      <p className="whitespace-pre-wrap">{showMsg}</p>
+                    ) : (
+                      <span>{showMsg}</span>
+                    )}
+                    {isLongMsg && (
+                      <button
+                        type="button"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          toggleQuoteMessageExpanded(quote.id);
+                        }}
+                        className="text-[#3B82F6] hover:underline ml-1 text-[12px]"
+                      >
+                        {msgExpanded ? "Read less" : "Read more"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Bottom bar: left info + right actions (same line) */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                    <div className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] flex flex-wrap items-center gap-2 min-w-0">
+                      <span className="whitespace-nowrap">Submitted {getRelativeTime(quote.submittedAt)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap justify-end flex-shrink-0">
+                      {quote.status === "pending" && (
+                        <>
+                          <Button
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              if (job.clientId) {
+                                startConversation({
+                                  id: job.clientId,
+                                  name: job.clientName || "Client",
+                                  avatar: job.clientAvatar,
+                                  jobId: job.id,
+                                  jobTitle: job.title,
+                                });
+                              }
+                            }}
+                            variant="outline"
+                            className="flex-none font-['Poppins',sans-serif] text-[13px] h-9"
+                          >
+                            <MessageCircle className="w-3 h-3 mr-1" />
+                            Chat
+                          </Button>
+                          <Button
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id });
+                            }}
+                            variant="outline"
+                            className="flex-none font-['Poppins',sans-serif] text-[13px] h-9 border-red-200 text-red-600 hover:bg-red-50"
+                          >
+                            <Undo2 className="w-3 h-3 mr-1" />
+                            Withdraw
+                          </Button>
+                          <Button
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              openEditModal(job, quote);
+                            }}
+                            variant="outline"
+                            className="flex-none font-['Poppins',sans-serif] text-[13px] h-9 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                          >
+                            <Pencil className="w-3 h-3 mr-1" />
+                            Edit
+                          </Button>
+                        </>
+                      )}
+
+                      {quote.status === "awarded" && (
+                        <span className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 text-[12px] text-[#6b6b6b]">
+                          Awaiting response
+                        </span>
+                      )}
+
+                      {quote.status === "accepted" && (
+                        <Button
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            if (job.clientId) {
+                              startConversation({
+                                id: job.clientId,
+                                name: job.clientName || "Client",
+                                avatar: job.clientAvatar,
+                                jobId: job.id,
+                                jobTitle: job.title,
+                              });
+                            }
+                          }}
+                          className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[13px] h-9 px-4"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Chat
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop — same as JobDetailPage Quotes */}
+                <div className="hidden sm:block p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/profile/${proId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Avatar className="w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity">
+                              {quoteAvatarSrc && (
+                                <AvatarImage src={quoteAvatarSrc} alt={proName} />
+                              )}
+                              <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif]">
+                                {getTwoLetterInitials(proName, "P")}
+                              </AvatarFallback>
+                            </Avatar>
+                          </a>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <a
+                                href={`/profile/${proId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block hover:underline min-w-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-medium truncate">
+                                  {proName}
+                                </h3>
+                              </a>
+                              <VerificationBadge fullyVerified={!!proVerified} size="sm" />
+                            </div>
+                            <div className="flex items-center gap-4 text-[13px] text-[#6b6b6b] flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <QuoteCardStarRating rating={proRating} size="sm" />
+                                <span>{formatNumber(proRating, 1)}</span>
+                                <span className="text-[#8d8d8d]">
+                                  ({proReviews} {proReviews === 1 ? "review" : "reviews"})
+                                </span>
+                              </div>
+                              {!!proCountry && (
+                                <span className="inline-flex items-center gap-1 text-[#6b6b6b]">
+                                  {(() => {
+                                    const iso = iso2FromCountry(proCountry);
+                                    return iso ? (
+                                      <ReactCountryFlag
+                                        countryCode={iso}
+                                        svg
+                                        className="w-5 h-5 rounded-sm"
+                                        aria-label={proCountry}
+                                      />
+                                    ) : null;
+                                  })()}
+                                  <span className="truncate max-w-[180px]">{proCountry}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {quote.status !== "pending" && (
+                        <Badge
+                          className={`text-[12px] px-3 py-1 flex-shrink-0 ${
+                            quote.status === "accepted"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : quote.status === "awarded"
+                                ? "bg-orange-50 text-orange-700 border-orange-200"
+                                : "bg-gray-50 text-gray-700 border-gray-200"
+                          }`}
+                        >
+                          {quote.status === "accepted"
+                            ? "Accepted"
+                            : quote.status === "awarded"
+                              ? "Awaiting Response"
+                              : "Rejected"}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-right ml-4 flex-shrink-0 whitespace-nowrap">
+                      <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
+                        {formatPrice(Number(quote.price))}
+                      </p>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                        {formatDeliveryDisplay(quote.deliveryTime || "")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                    {msgExpanded ? (
+                      <p className="whitespace-pre-wrap">{showMsg}</p>
+                    ) : (
+                      <span>{showMsg}</span>
+                    )}
+                    {isLongMsg && (
+                      <button
+                        type="button"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          toggleQuoteMessageExpanded(quote.id);
+                        }}
+                        className="text-[#3B82F6] hover:underline ml-1 text-[12px]"
+                      >
+                        {msgExpanded ? "Read less" : "Read more"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Bottom bar: left info + right actions (same line) */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+                    <div className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] flex flex-wrap items-center gap-2 min-w-0">
+                      <span className="whitespace-nowrap">Submitted {getRelativeTime(quote.submittedAt)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap justify-end flex-shrink-0">
+                      {quote.status === "pending" && (
+                        <>
+                          <Button
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              if (job.clientId) {
+                                startConversation({
+                                  id: job.clientId,
+                                  name: job.clientName || "Client",
+                                  avatar: job.clientAvatar,
+                                  jobId: job.id,
+                                  jobTitle: job.title,
+                                });
+                              }
+                            }}
+                            variant="outline"
+                            className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                          >
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            Chat
+                          </Button>
+                          <Button
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              setQuoteToWithdraw({ jobId: job.id, quoteId: quote.id });
+                            }}
+                            variant="outline"
+                            className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-red-200 text-red-600 hover:bg-red-50"
+                          >
+                            <Undo2 className="w-4 h-4 mr-2" />
+                            Withdraw
+                          </Button>
+                          <Button
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              openEditModal(job, quote);
+                            }}
+                            variant="outline"
+                            className="flex-none font-['Poppins',sans-serif] text-[14px] h-10 px-5 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                          >
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                        </>
+                      )}
+
+                      {quote.status === "awarded" && (
+                        <span className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-2 text-[13px] text-[#6b6b6b]">
+                          Awaiting response
+                        </span>
+                      )}
+
+                      {quote.status === "accepted" && (
+                        <Button
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            if (job.clientId) {
+                              startConversation({
+                                id: job.clientId,
+                                name: job.clientName || "Client",
+                                avatar: job.clientAvatar,
+                                jobId: job.id,
+                                jobTitle: job.title,
+                              });
+                            }
+                          }}
+                          className="bg-[#1976D2] hover:bg-[#1565C0] text-white font-['Poppins',sans-serif] text-[14px] h-10 px-6"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Chat
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Withdraw confirmation */}
-      <AlertDialog open={!!quoteToWithdraw} onOpenChange={(open) => !open && setQuoteToWithdraw(null)}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+      <AlertDialog open={!!quoteToWithdraw} onOpenChange={(open: boolean) => !open && setQuoteToWithdraw(null)}>
+        <AlertDialogContent onClick={(e: React.MouseEvent) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-['Poppins',sans-serif]">Withdraw quote?</AlertDialogTitle>
             <AlertDialogDescription className="font-['Poppins',sans-serif]">
@@ -591,8 +923,8 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
       </AlertDialog>
 
       {/* Edit quote modal (Send Quote style) */}
-      <Dialog open={!!editingQuote} onOpenChange={(open) => !open && setEditingQuote(null)}>
-        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <Dialog open={!!editingQuote} onOpenChange={(open: boolean) => !open && setEditingQuote(null)}>
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
           <DialogHeader className="border-b border-gray-200 pb-4 mb-6">
             <DialogTitle className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
               Edit Quote
