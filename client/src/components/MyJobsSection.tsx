@@ -53,7 +53,7 @@ import JobSkillBadges from "./JobSkillBadges";
 
 export default function MyJobsSection() {
   const navigate = useNavigate();
-  const { formatPrice } = useCurrency();
+  const { formatPriceWhole } = useCurrency();
   const { jobs, getUserJobs, deleteJob, updateJob, updateQuoteStatus } = useJobs();
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
@@ -354,15 +354,13 @@ export default function MyJobsSection() {
               {/* Two-column layout (70% left / 30% right) */}
               <div className="flex flex-col md:flex-row gap-5">
                 {/* Left column: title, description, skills, address, time, quote count */}
-                <div className="md:w-[70%] min-w-0">
-                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate mb-2">
+                <div className="w-[60%]">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate mb-2 w-[80%]">
                     {job.title}
                   </h3>
-
-                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 w-[80%]">
                     {getTruncatedDescription(job.description)}
                   </p>
-
                   <div className="mb-4">
                     <JobSkillBadges
                       categories={(job as { categories?: string[] }).categories}
@@ -390,9 +388,8 @@ export default function MyJobsSection() {
                     </div>
                   </div>
                 </div>
-
                 {/* Right column: price info (top) + view quotes button (bottom) */}
-                <div className="md:w-[30%] flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+                <div className="md:w-[40%] flex flex-col gap-3 text-center" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-start justify-end">
                     {newQuoteJobIds.has(job.id) && (
                       <div className="relative">
@@ -406,27 +403,32 @@ export default function MyJobsSection() {
                       </div>
                     )}
                   </div>
+                  <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
+                    Budget
+                  </p>
 
                     <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-bold">
                       {job.budgetMin != null && job.budgetMax != null
-                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
-                        : formatPrice(job.budgetAmount ?? 0)}
+                        ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                        : formatPriceWhole(job.budgetAmount ?? 0)}
                     </p>
 
-                  <div className="mt-auto flex justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                        e.stopPropagation();
-                        markJobQuotesSeen(job.id);
-                        navigate(`/job/${job.slug || job.id}?tab=quotes`);
-                      }}
-                      className="w-full font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
-                    >
-                      <Eye className="w-4 h-4 mr-1.5" />
-                      View Quotes
-                    </Button>
-                  </div>
+                  {(job.quotes?.length ?? 0) > 0 && (
+                    <div className="mt-auto flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                          e.stopPropagation();
+                          markJobQuotesSeen(job.id);
+                          navigate(`/job/${job.slug || job.id}?tab=quotes`);
+                        }}
+                        className="w-full font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
+                      >
+                        <Eye className="w-4 h-4 mr-1.5" />
+                        View Quotes
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -485,8 +487,8 @@ export default function MyJobsSection() {
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.budgetMin != null && currentJob.budgetMax != null
-                        ? `${formatPrice(currentJob.budgetMin)} - ${formatPrice(currentJob.budgetMax)}`
-                        : formatPrice(currentJob.budgetAmount ?? 0)} ({currentJob.budgetType})
+                        ? `${formatPriceWhole(currentJob.budgetMin)} - ${formatPriceWhole(currentJob.budgetMax)}`
+                        : formatPriceWhole(currentJob.budgetAmount ?? 0)} ({currentJob.budgetType})
                       </p>
                     </div>
                   </div>
@@ -558,7 +560,7 @@ export default function MyJobsSection() {
                             </div>
                             <div className="text-right whitespace-nowrap">
                               <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-1">
-                                {formatPrice(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
+                                {formatPriceWhole(Number(quote.price))} in {formatDeliveryDisplay(quote.deliveryTime || "")}
                               </p>
                               {quote.status === "accepted" && (
                                 <Badge className="bg-green-100 text-green-700 border-green-300">

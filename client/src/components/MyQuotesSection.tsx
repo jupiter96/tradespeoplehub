@@ -140,7 +140,7 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
   const { getProfessionalQuotes, withdrawQuote, updateQuoteByProfessional } = useJobs();
   const { userInfo } = useAccount();
   const { startConversation, getContactById } = useMessenger();
-  const { formatPrice, toGBP, fromGBP } = useCurrency();
+  const { formatPrice, formatPriceWhole, toGBP, fromGBP } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<string>("date");
@@ -607,7 +607,7 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                     </div>
                     <div className="text-right flex-shrink-0 whitespace-nowrap">
                       <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                        {formatPrice(Number(quote.price))}
+                        {formatPriceWhole(Number(quote.price))}
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
                         {formatDeliveryDisplay(quote.deliveryTime || "")}
@@ -863,7 +863,7 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
 
                       <div className="text-right">
                         <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                          {formatPrice(Number(quote.price))}
+                          {formatPriceWhole(Number(quote.price))}
                         </p>
                         <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                           {formatDeliveryDisplay(quote.deliveryTime || "")}

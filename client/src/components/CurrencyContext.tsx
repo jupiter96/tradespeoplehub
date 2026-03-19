@@ -20,6 +20,8 @@ interface CurrencyContextType {
   error: string | null;
   /** Convert GBP amount to selected currency and format with symbol (e.g. "£10.00", "$13.34") */
   formatPrice: (gbpAmount: number, options?: { minFractionDigits?: number; maxFractionDigits?: number }) => string;
+  /** Same as formatPrice but rounds to nearest whole unit in selected currency (no decimals). For job/quote cards. */
+  formatPriceWhole: (gbpAmount: number) => string;
   /** Symbol for current currency: £ $ € */
   symbol: string;
   /** Multiplier from GBP to current currency (1 for GBP) */
@@ -151,6 +153,20 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     [rate, symbol]
   );
 
+  const formatPriceWhole = useCallback(
+    (gbpAmount: number) => {
+      const n = Number(gbpAmount);
+      if (!Number.isFinite(n)) return `${symbol}0`;
+      const value = Math.round(n * rate);
+      const formatted = value.toLocaleString("en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      });
+      return `${symbol}${formatted}`;
+    },
+    [rate, symbol]
+  );
+
   const toGBP = useCallback(
     (amountInSelectedCurrency: number) => (rate === 0 ? amountInSelectedCurrency : amountInSelectedCurrency / rate),
     [rate]
@@ -182,13 +198,14 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       loading,
       error,
       formatPrice,
+      formatPriceWhole,
       symbol,
       rate,
       toGBP,
       fromGBP,
       formatAmountInSelectedCurrency,
     }),
-    [currency, setCurrency, rates, loading, error, formatPrice, symbol, rate, toGBP, fromGBP, formatAmountInSelectedCurrency]
+    [currency, setCurrency, rates, loading, error, formatPrice, formatPriceWhole, symbol, rate, toGBP, fromGBP, formatAmountInSelectedCurrency]
   );
 
   return <CurrencyContext.Provider value={value}>{children}</CurrencyContext.Provider>;

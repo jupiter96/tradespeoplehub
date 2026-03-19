@@ -61,7 +61,7 @@ export default function AvailableJobsSection() {
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const { sectors: sectorsList } = useSectors();
-  const { formatPrice, symbol, toGBP } = useCurrency();
+  const { formatPrice, formatPriceWhole, symbol, toGBP } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -380,11 +380,11 @@ export default function AvailableJobsSection() {
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                   Budget
                 </p>
-                  <div className="text-right">
+                  <div className="text-center">
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold">
                       {job.budgetMin != null && job.budgetMax != null
-                        ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
-                        : formatPrice(job.budgetAmount ?? 0)}
+                        ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                        : formatPriceWhole(job.budgetAmount ?? 0)}
                     </p>
                   </div>
 
@@ -469,8 +469,8 @@ export default function AvailableJobsSection() {
                   <div className="pt-3 border-t border-gray-100 space-y-2">
                     <div className="font-['Poppins',sans-serif] text-[28px] text-[#059669]">
                       {currentJob.budgetMin != null && currentJob.budgetMax != null
-                      ? `${formatPrice(currentJob.budgetMin)} - ${formatPrice(currentJob.budgetMax)}`
-                      : formatPrice(currentJob.budgetAmount ?? 0)}
+                      ? `${formatPriceWhole(currentJob.budgetMin)} - ${formatPriceWhole(currentJob.budgetMax)}`
+                      : formatPriceWhole(currentJob.budgetAmount ?? 0)}
                     </div>
                     <div className="flex items-center gap-1.5 text-[#2c353f] text-[14px] font-['Poppins',sans-serif]">
                       <MapPin className="w-4 h-4 text-red-600" />
@@ -511,8 +511,8 @@ export default function AvailableJobsSection() {
                     />
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
                       💡 Client's budget: {currentJob.budgetMin != null && currentJob.budgetMax != null
-                      ? `${formatPrice(currentJob.budgetMin)} - ${formatPrice(currentJob.budgetMax)}`
-                      : formatPrice(currentJob.budgetAmount ?? 0)}
+                      ? `${formatPriceWhole(currentJob.budgetMin)} - ${formatPriceWhole(currentJob.budgetMax)}`
+                      : formatPriceWhole(currentJob.budgetAmount ?? 0)}
                     </p>
                   </div>
 

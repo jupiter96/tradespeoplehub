@@ -251,7 +251,7 @@ export default function JobDetailPage() {
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
-  const { formatPrice, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
+  const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const validTabs = ["details", "quotes", "payment", "files", "more"] as const;
   const tabFromUrl = searchParams.get("tab") || "details";
   const [activeTab, setActiveTab] = useState(validTabs.includes(tabFromUrl as any) ? tabFromUrl : "details");
@@ -1942,7 +1942,7 @@ export default function JobDetailPage() {
                         <div className="sm:w-[30%] flex flex-col gap-3 sm:items-end">
                           <div className="text-right flex-shrink-0 whitespace-nowrap">
                             <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
-                              {formatPrice(Number(myAwardedQuote.price))}
+                              {formatPriceWhole(Number(myAwardedQuote.price))}
                             </p>
                             <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
                               {formatDeliveryDisplay(myAwardedQuote.deliveryTime || "")}
@@ -2088,7 +2088,7 @@ export default function JobDetailPage() {
                             <div className="sm:w-[30%] flex flex-col gap-3 sm:items-end">
                               <div className="text-right flex-shrink-0 whitespace-nowrap">
                                 <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
-                                  {formatPrice(Number(quote.price))}
+                                  {formatPriceWhole(Number(quote.price))}
                                 </p>
                                 <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b]">
                                   {formatDeliveryDisplay(quote.deliveryTime || "")}
@@ -2259,7 +2259,7 @@ export default function JobDetailPage() {
                             )}
                           </div>
                           <div className="text-right flex-shrink-0 whitespace-nowrap">
-                            <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">{formatPrice(Number(quote.price))}</p>
+                            <p className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">{formatPriceWhole(Number(quote.price))}</p>
                             <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">{formatDeliveryDisplay(quote.deliveryTime || "")}</p>
                           </div>
                         </div>
@@ -2302,7 +2302,7 @@ export default function JobDetailPage() {
                                     {suggestedMilestones.map((m) => (
                                       <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
                                         <td className="py-2 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
-                                        <td className="py-2 px-3 text-right text-[#2c353f]">{formatPrice(Number(m.amount || 0))}</td>
+                                        <td className="py-2 px-3 text-right text-[#2c353f]">{formatPriceWhole(Number(m.amount || 0))}</td>
                                         <td className="py-2 px-3 text-center">
                                           {m.status === "pending" && (
                                             <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
@@ -2509,7 +2509,7 @@ export default function JobDetailPage() {
                                           <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
                                             <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
                                             <td className="py-2.5 px-3 text-right text-[#2c353f]">
-                                              {formatPrice(Number(m.amount || 0))}
+                                              {formatPriceWhole(Number(m.amount || 0))}
                                             </td>
                                             <td className="py-2.5 px-3 text-center">
                                               {m.status === "pending" && (
@@ -2542,7 +2542,7 @@ export default function JobDetailPage() {
                           <div className="w-[30%] flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
                             <div className="text-right">
                               <p className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] font-bold">
-                                {formatPrice(Number(quote.price))}
+                                {formatPriceWhole(Number(quote.price))}
                               </p>
                               <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
                                 {formatDeliveryDisplay(quote.deliveryTime || "")}
@@ -2695,7 +2695,7 @@ export default function JobDetailPage() {
                                   {m.description || "Milestone"}
                                 </td>
                                 <td className="py-2.5 px-3 text-right text-[#1f2933]">
-                                  {formatPrice(Number(m.amount || 0))}
+                                  {formatPriceWhole(Number(m.amount || 0))}
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
                                   {m.status === "pending" && (
@@ -4752,7 +4752,7 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: {formatPrice(quoteBudgetMinGBP)} - {formatPrice(quoteBudgetMaxGBP)} (price must be within this range)
+                    💡 Client's budget: {formatPriceWhole(quoteBudgetMinGBP)} - {formatPriceWhole(quoteBudgetMaxGBP)} (price must be within this range)
                   </p>
                 </div>
 
@@ -5146,7 +5146,7 @@ export default function JobDetailPage() {
                 <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
                   Total: <strong>{awardWithMilestone
                     ? formatAmountInSelectedCurrency(awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0))
-                    : formatPrice(Number(selectedQuoteForAward.price))}</strong>
+                    : formatPriceWhole(Number(selectedQuoteForAward.price))}</strong>
                 </p>
               </div>
 

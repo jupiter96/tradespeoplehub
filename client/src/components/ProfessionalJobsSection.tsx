@@ -40,7 +40,6 @@ export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
   const { getProfessionalActiveJobs, getProfessionalQuotes, getAvailableJobs } = useJobs();
   const { userInfo } = useAccount();
-  const { formatPrice } = useCurrency();
 
   // Get counts for badges (Available Jobs: exclude jobs the pro already quoted)
   const availableJobsCount = getAvailableJobs().filter(
@@ -130,7 +129,7 @@ function ActiveJobsSection() {
   const { getProfessionalActiveJobs, fetchJobById } = useJobs();
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
-  const { formatPrice } = useCurrency();
+  const { formatPriceWhole } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -336,11 +335,11 @@ function ActiveJobsSection() {
                     onClick={(e) => e.stopPropagation()}
                   >
                       <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">Budget</p>
-                    <div className="text-right">
+                    <div className="text-center">
                       <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-bold">
                         {job.budgetMin != null && job.budgetMax != null
-                          ? `${formatPrice(job.budgetMin)} - ${formatPrice(job.budgetMax)}`
-                          : formatPrice(job.budgetAmount ?? 0)}
+                          ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                          : formatPriceWhole(job.budgetAmount ?? 0)}
                       </p>
                     </div>
 
