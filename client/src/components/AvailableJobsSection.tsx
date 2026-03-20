@@ -1,5 +1,6 @@
-import { useState, type MouseEvent } from "react";
+import { useState, useEffect, useRef, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
@@ -55,6 +56,7 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { toast } from "sonner@2.0.3";
+import BidsAndMembershipSection from "./BidsAndMembershipSection";
 
 export default function AvailableJobsSection() {
   const navigate = useNavigate();
@@ -62,7 +64,7 @@ export default function AvailableJobsSection() {
   const { userInfo } = useAccount();
   const { startConversation } = useMessenger();
   const { sectors: sectorsList } = useSectors();
-  const { formatPrice, formatPriceWhole, symbol, toGBP } = useCurrency();
+  const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,6 +111,60 @@ export default function AvailableJobsSection() {
   });
 
   const currentJob = selectedJob ? availableJobs.find(j => j.id === selectedJob) : null;
+  const quoteBudgetMinGBP = currentJob ? (currentJob.budgetMin ?? currentJob.budgetAmount) : 0;
+  const quoteBudgetMaxGBP = currentJob ? (currentJob.budgetMax ?? currentJob.budgetAmount * 1.2) : 0;
+  const quoteBudgetMinSelected = currentJob ? fromGBP(quoteBudgetMinGBP) : 0;
+  const quoteBudgetMaxSelected = currentJob ? fromGBP(quoteBudgetMaxGBP) : 0;
+
+  // Quote credits purchase slider (professional insufficient credits)
+  const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
+  const [quoteCreditsSliderAnimateIn, setQuoteCreditsSliderAnimateIn] = useState(false);
+  const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
+  const [hideQuoteCreditsSliderPanel, setHideQuoteCreditsSliderPanel] = useState(false);
+
+  const openQuoteCreditsSlider = () => {
+    setShowQuoteCreditsSlider(true);
+    setQuoteCreditsSliderAnimateIn(false);
+    setHideQuoteCreditsSliderPanel(false);
+    if (quoteCreditsSliderAnimTimerRef.current) {
+      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
+      quoteCreditsSliderAnimTimerRef.current = null;
+    }
+    quoteCreditsSliderAnimTimerRef.current = window.setTimeout(() => {
+      setQuoteCreditsSliderAnimateIn(true);
+    }, 30);
+  };
+
+  const closeQuoteCreditsSlider = () => {
+    setShowQuoteCreditsSlider(false);
+    setQuoteCreditsSliderAnimateIn(false);
+    setHideQuoteCreditsSliderPanel(false);
+    if (quoteCreditsSliderAnimTimerRef.current) {
+      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
+      quoteCreditsSliderAnimTimerRef.current = null;
+    }
+  };
+
+  // When currency changes, keep "Your Price" inside the converted budget range.
+  useEffect(() => {
+    if (!currentJob) return;
+    if (!isQuoteDialogOpen) return;
+
+    const minGBP = currentJob.budgetMin ?? currentJob.budgetAmount;
+    const maxGBP = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
+    const minSelected = fromGBP(minGBP);
+    const maxSelected = fromGBP(maxGBP);
+
+    setQuotePrice((prev) => {
+      // Keep empty until the user types something.
+      if (!prev || prev.trim() === "") return prev;
+      const v = parseFloat(prev);
+      if (Number.isNaN(v) || v <= 0) return minSelected.toFixed(2);
+      const clamped = Math.min(maxSelected, Math.max(minSelected, v));
+      if (Math.abs(clamped - v) < 1e-9) return prev;
+      return clamped.toFixed(2);
+    });
+  }, [currentJob?.id, isQuoteDialogOpen, fromGBP]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -217,6 +273,16 @@ export default function AvailableJobsSection() {
       setQuoteMessage("");
       setMilestones([{ description: "", amount: "" }]);
     } catch (e: any) {
+      const msg = String(e?.message || "");
+      const isCreditError =
+        /credit|credits|bid|bids|insufficient/i.test(msg) &&
+        /credit|bid/i.test(msg); // keep narrow to avoid unrelated errors
+
+      if (isCreditError) {
+        openQuoteCreditsSlider();
+        return;
+      }
+
       toast.error(e?.message || "Failed to send quote");
     }
   };
@@ -495,18 +561,16 @@ export default function AvailableJobsSection() {
                     <Input
                       type="number"
                       placeholder="Enter your price"
-                      min={currentJob.budgetMin ?? currentJob.budgetAmount}
-                      max={currentJob.budgetMax ?? currentJob.budgetAmount * 1.2}
+                      min={quoteBudgetMinSelected}
+                      max={quoteBudgetMaxSelected}
                       step="0.01"
                       value={quotePrice}
                       onChange={(e) => setQuotePrice(e.target.value)}
                       onBlur={() => {
                         const v = parseFloat(quotePrice);
                         if (quotePrice !== "" && !isNaN(v)) {
-                          const minB = currentJob.budgetMin ?? currentJob.budgetAmount;
-                          const maxB = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
-                          const clamped = Math.min(maxB, Math.max(minB, v));
-                          if (clamped !== v) setQuotePrice(String(clamped));
+                          const clamped = Math.min(quoteBudgetMaxSelected, Math.max(quoteBudgetMinSelected, v));
+                          if (Math.abs(clamped - v) > 1e-9) setQuotePrice(clamped.toFixed(2));
                         }
                       }}
                       className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
@@ -694,6 +758,48 @@ export default function AvailableJobsSection() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Quote credits purchase slider (shown when pro has no credits) */}
+      {showQuoteCreditsSlider &&
+        createPortal(
+          <div className="fixed inset-0 z-[1000000] flex" style={{ zIndex: 1000000 }}>
+            <button
+              type="button"
+              className={["flex-1 bg-black/0", hideQuoteCreditsSliderPanel ? "opacity-0 pointer-events-none" : ""].join(" ")}
+              onClick={closeQuoteCreditsSlider}
+              aria-label="Close quote credits"
+            />
+            <div
+              className={[
+                "w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col",
+                "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+                hideQuoteCreditsSliderPanel ? "pointer-events-none" : "",
+              ].join(" ")}
+              style={{
+                transform: quoteCreditsSliderAnimateIn ? "translateX(0)" : "translateX(100%)",
+                opacity: quoteCreditsSliderAnimateIn ? (hideQuoteCreditsSliderPanel ? 0 : 1) : 0,
+              }}
+            >
+              <button
+                type="button"
+                onClick={closeQuoteCreditsSlider}
+                className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
+                <div className="p-4 md:p-6">
+                  <BidsAndMembershipSection
+                    hideHeader
+                    onWalletFundModalOpenChange={(open) => setHideQuoteCreditsSliderPanel(open)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
