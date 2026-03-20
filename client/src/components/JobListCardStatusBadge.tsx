@@ -76,6 +76,8 @@ function proActiveLabel(status: Job["status"]): string {
 
 function proActiveClass(status: Job["status"]): string {
   switch (status) {
+    case "open":
+      return "bg-blue-600 text-white";
     case "awaiting-accept":
       return "bg-orange-600 text-white";
     case "in-progress":

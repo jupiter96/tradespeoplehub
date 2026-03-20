@@ -406,6 +406,8 @@ export default function JobDetailPage() {
 
   // Slider popup for professional profile preview (from quote cards)
   const [showProProfileSlider, setShowProProfileSlider] = useState(false);
+  const [proProfileSliderAnimateIn, setProProfileSliderAnimateIn] = useState(false);
+  const proProfileSliderAnimTimerRef = useRef<number | null>(null);
   const [selectedQuoteForProfile, setSelectedQuoteForProfile] = useState<JobQuote | null>(null);
   const [proProfileData, setProProfileData] = useState<any | null>(null);
   const [proProfileLoading, setProProfileLoading] = useState(false);
@@ -632,7 +634,7 @@ export default function JobDetailPage() {
 
   // Base quotes before sorting:
   // - Client: non-awarded quotes (awarded shown in separate section)
-  // - Professional: all quotes, unless their awarded/accepted quote is shown at top (then hide list)
+  // - Professional: keep other quotes under "Awarded Professionals"
   const baseListQuotes = isJobOwner
     ? job.quotes.filter(
         (q) =>
@@ -640,7 +642,7 @@ export default function JobDetailPage() {
           !(q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
       )
     : userRole === "professional" && myAwardedQuote
-    ? []
+    ? job.quotes.filter((q) => q.id !== myAwardedQuote.id)
     : job.quotes;
 
   const listQuotes = sortQuotesForDisplay(
@@ -649,7 +651,11 @@ export default function JobDetailPage() {
   );
   // Hide empty state and animation when there are list quotes OR when awarded section is shown
   const showQuotesEmptyState =
-    listQuotes.length === 0 && !(isJobOwner && awardedQuotes.length > 0);
+    listQuotes.length === 0 &&
+    !(
+      (isJobOwner && awardedQuotes.length > 0) ||
+      (userRole === "professional" && myAwardedQuote)
+    );
 
   const toggleQuoteMessageExpanded = (quoteId: string) => {
     setExpandedQuoteMessages((prev) => {
@@ -1079,11 +1085,21 @@ export default function JobDetailPage() {
   const openProfessionalProfileSlider = async (quote: JobQuote) => {
     setSelectedQuoteForProfile(quote);
     setShowProProfileSlider(true);
+    // Ensure the first paint is off-screen, then animate in.
+    setProProfileSliderAnimateIn(false);
+    if (proProfileSliderAnimTimerRef.current) {
+      window.clearTimeout(proProfileSliderAnimTimerRef.current);
+      proProfileSliderAnimTimerRef.current = null;
+    }
     setProProfileActiveTab("about");
     setProProfileLoading(true);
     setProProfileData(null);
     setProProfileServices([]);
     setProProfileServicesLoading(true);
+    // Next tick after the slider is mounted.
+    proProfileSliderAnimTimerRef.current = window.setTimeout(() => {
+      setProProfileSliderAnimateIn(true);
+    }, 30);
     try {
       const [profileRes, servicesRes] = await Promise.all([
         fetch(resolveApiUrl(`/api/auth/profile/${quote.professionalId}`), { credentials: "include" }),
@@ -1241,6 +1257,11 @@ export default function JobDetailPage() {
 
   const closeProfessionalProfileSlider = () => {
     setShowProProfileSlider(false);
+    setProProfileSliderAnimateIn(false);
+    if (proProfileSliderAnimTimerRef.current) {
+      window.clearTimeout(proProfileSliderAnimTimerRef.current);
+      proProfileSliderAnimTimerRef.current = null;
+    }
     setSelectedQuoteForProfile(null);
     setProProfileData(null);
     setProProfileServices([]);
@@ -2057,8 +2078,8 @@ export default function JobDetailPage() {
                   </div>
                 ) : null}
 
-                {/* Quote list: hidden for professional when their awarded quote is shown above. When quotes exist, hide empty state + animation. */}
-                {!(userRole === "professional" && myAwardedQuote) && (showQuotesEmptyState ? (
+                {/* Quote list: keep rendering even when "Awarded Professionals" is shown */}
+                {showQuotesEmptyState ? (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-16 md:p-24 text-center">
                     {isJobOwner ? (
                       <div className="mx-auto mb-6 flex min-h-[80px] justify-center">
@@ -2582,7 +2603,7 @@ export default function JobDetailPage() {
                       </div>
                     </div>
                   ); })
-                ) )}
+                )}
 
                 {/* Invite Professionals List - hidden when job is in-progress (already awarded) */}
                 {isJobOwner && job.status !== "in-progress" && (
@@ -3836,12 +3857,21 @@ export default function JobDetailPage() {
           {/* Left side: dark blurred overlay (exactly the remaining half) */}
           <button
             type="button"
-            className="flex-1 bg-black/40 backdrop-blur-sm"
+            className="flex-1 bg-black/0"
             onClick={closeProfessionalProfileSlider}
             aria-label="Close profile preview"
           />
           {/* Right side: white slider occupying exactly half the screen */}
-          <div className="w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col">
+          <div
+            className={[
+              "w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col",
+              "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+            ].join(" ")}
+            style={{
+              transform: proProfileSliderAnimateIn ? "translateX(0)" : "translateX(100%)",
+              opacity: proProfileSliderAnimateIn ? 1 : 0,
+            }}
+          >
             <button
               type="button"
               onClick={closeProfessionalProfileSlider}
