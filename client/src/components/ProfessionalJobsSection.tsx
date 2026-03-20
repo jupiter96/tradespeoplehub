@@ -7,7 +7,6 @@ import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import {
   Search,
@@ -16,8 +15,8 @@ import {
   MessageCircle,
   Calendar,
   MapPin,
-  CheckCircle,
   Briefcase,
+  CheckCircle,
   Star,
   Send,
 } from "lucide-react";
@@ -31,10 +30,13 @@ import {
 import { formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
 import { formatJobLocationCityOnly } from "./orders/utils";
-import { cn } from "./ui/utils";
 import JobDeliverWorkModal from "./JobDeliverWorkModal";
 import type { Job } from "./JobsContext";
 import JobSkillBadges from "./JobSkillBadges";
+import {
+  ProActiveJobListStatusBadge,
+  StatusCountBadge,
+} from "./JobListCardStatusBadge";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
@@ -72,9 +74,12 @@ export default function ProfessionalJobsSection() {
               <Briefcase className="w-4 h-4" />
               Available Jobs
               {availableJobsCount > 0 && (
-                <Badge className="bg-[#FE8A0F] text-white ml-2">
-                  {availableJobsCount}
-                </Badge>
+                <StatusCountBadge
+                  status="open"
+                  count={availableJobsCount}
+                  variant="client"
+                  className="ml-2"
+                />
               )}
             </TabsTrigger>
             <TabsTrigger
@@ -84,9 +89,12 @@ export default function ProfessionalJobsSection() {
               <MessageCircle className="w-4 h-4" />
               My Quotes
               {(activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount) > 0 && (
-                <Badge className="bg-[#FE8A0F] text-white ml-2">
-                  {activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount}
-                </Badge>
+                <StatusCountBadge
+                  status="awaiting-accept"
+                  count={activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount}
+                  variant="client"
+                  className="ml-2"
+                />
               )}
             </TabsTrigger>
             <TabsTrigger
@@ -96,9 +104,12 @@ export default function ProfessionalJobsSection() {
               <CheckCircle className="w-4 h-4" />
               Active Jobs
               {activeJobsCount > 0 && (
-                <Badge className="bg-green-600 text-white ml-2">
-                  {activeJobsCount}
-                </Badge>
+                <StatusCountBadge
+                  status="in-progress"
+                  count={activeJobsCount}
+                  variant="pro"
+                  className="ml-2"
+                />
               )}
             </TabsTrigger>
           </TabsList>
@@ -283,21 +294,20 @@ function ActiveJobsSection() {
                   {/* Left column (70%) */}
                   <div className="md:w-[70%] min-w-0">
                     <div>
-                      <div className="flex items-start gap-3 mb-1">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      <div className="mb-1 min-w-0">
+                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
                           {job.title}
                         </h3>
-                        <Badge
-                          className={`font-['Poppins',sans-serif] whitespace-nowrap ${
-                            job.status === "delivered"
-                              ? "bg-purple-600 text-white border-purple-600"
-                              : "bg-green-600 text-white border-green-600"
-                          }`}
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          {job.status === "delivered" ? "Delivered" : "In Progress"}
-                        </Badge>
                       </div>
+
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                        <span className="text-[#6b6b6b]">Budget: &nbsp; </span>
+                        <span className="font-bold">
+                          {job.budgetMin != null && job.budgetMax != null
+                            ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                            : formatPriceWhole(job.budgetAmount ?? 0)}
+                        </span>
+                      </p>
 
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
                         {getTruncatedDescription(job.description)}
@@ -334,15 +344,9 @@ function ActiveJobsSection() {
                     className="md:w-[30%] flex flex-col gap-3 text-center"
                     onClick={(e) => e.stopPropagation()}
                   >
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">Budget</p>
-                    <div className="text-center">
-                      <p className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f] font-bold">
-                        {job.budgetMin != null && job.budgetMax != null
-                          ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
-                          : formatPriceWhole(job.budgetAmount ?? 0)}
-                      </p>
+                    <div className="flex justify-end w-full">
+                      <ProActiveJobListStatusBadge status={job.status} />
                     </div>
-
                     <div className="mt-auto flex items-center gap-2 flex-wrap">
                       <Button
                         onClick={(e: MouseEvent<HTMLButtonElement>) => {

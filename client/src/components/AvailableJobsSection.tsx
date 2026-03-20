@@ -31,6 +31,7 @@ import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import JobSkillBadges from "./JobSkillBadges";
+import { ClientJobListStatusBadge } from "./JobListCardStatusBadge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -329,11 +330,20 @@ export default function AvailableJobsSection() {
                 {/* Left column (70%) */}
                 <div className="md:w-[70%] min-w-0">
                   <div>
-                    <div className="flex items-start justify-between gap-3 mb-1">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                    <div className="mb-1 min-w-0">
+                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
                         {job.title}
                       </h3>
                     </div>
+
+                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                      <span className="text-[#6b6b6b]">Budget: &nbsp; </span>
+                      <span className="font-bold">
+                        {job.budgetMin != null && job.budgetMax != null
+                          ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                          : formatPriceWhole(job.budgetAmount ?? 0)}
+                      </span>
+                    </p>
 
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
                       {getTruncatedDescription(job.description)}
@@ -377,17 +387,9 @@ export default function AvailableJobsSection() {
                   className="md:w-[30%] flex flex-col gap-3 text-center"
                   onClick={(e) => e.stopPropagation()}
                 >
-                <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                  Budget
-                </p>
-                  <div className="text-center">
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold">
-                      {job.budgetMin != null && job.budgetMax != null
-                        ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
-                        : formatPriceWhole(job.budgetAmount ?? 0)}
-                    </p>
+                  <div className="flex justify-end w-full">
+                    <ClientJobListStatusBadge status={job.status} />
                   </div>
-
                   <div className="mt-auto flex items-center gap-2 flex-wrap">
                     <Button
                       variant="outline"

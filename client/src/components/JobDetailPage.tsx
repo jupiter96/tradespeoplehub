@@ -10,6 +10,10 @@ import { useCurrency } from "./CurrencyContext";
 import Nav from "../imports/Nav";
 import Footer from "./Footer";
 import VerificationBadge from "./VerificationBadge";
+import {
+  ClientJobListStatusBadge,
+  ProActiveJobListStatusBadge,
+} from "./JobListCardStatusBadge";
 import ReactCountryFlag from "react-country-flag";
 import {
   MapPin,
@@ -460,7 +464,6 @@ export default function JobDetailPage() {
       professionalCountry: (q as any).professionalCountry,
       professionalFullyVerified: (q as any).professionalFullyVerified,
     }));
-    console.log("[JobDetailPage] Quote professional countries:", rows);
   }, [job?.id, job?.quotes]);
 
   // Fetch recommended professionals (same sector as job, sorted by rating then reviews)
@@ -1465,63 +1468,10 @@ export default function JobDetailPage() {
   };
 
   const getStatusBadge = (size: "normal" | "large" = "normal") => {
-    const sizeClasses = size === "large" 
-      ? "px-4 py-2 text-[14px] sm:text-[16px]" 
-      : "";
-    
-    switch (job.status) {
-      case "open":
-        return (
-          <Badge className={`bg-green-50 text-green-700 border-green-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Open
-          </Badge>
-        );
-      case "awaiting-accept":
-        return (
-          <Badge className={`bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <Clock className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Awaiting Accept
-          </Badge>
-        );
-      case "in-progress":
-        return (
-          <Badge className={`bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <Clock className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            In Progress
-          </Badge>
-        );
-      case "delivered":
-        return (
-          <Badge className={`bg-purple-50 text-purple-700 border-purple-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Delivered
-          </Badge>
-        );
-      case "completed":
-        return (
-          <Badge className={`bg-purple-50 text-purple-700 border-purple-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <CheckCircle2 className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Completed
-          </Badge>
-        );
-      case "cancelled":
-        return (
-          <Badge className={`bg-red-50 text-red-700 border-red-200 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <XCircle className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Cancelled
-          </Badge>
-        );
-      case "closed":
-        return (
-          <Badge className={`bg-gray-100 text-gray-700 border-gray-300 font-['Poppins',sans-serif] ${sizeClasses}`}>
-            <XCircle className={size === "large" ? "w-5 h-5 mr-2" : "w-3 h-3 mr-1"} />
-            Closed
-          </Badge>
-        );
-      default:
-        return null;
-    }
+    // JobDetailPage viewer can be either the client (job owner) or a professional.
+    // To keep badge styling consistent with the My Jobs cards, we switch variants by ownership.
+    const VariantBadge = isJobOwner ? ClientJobListStatusBadge : ProActiveJobListStatusBadge;
+    return <VariantBadge status={job.status} size={size} />;
   };
 
   return (
@@ -3621,7 +3571,7 @@ export default function JobDetailPage() {
                     })
                     .catch((e: any) => toast.error(e?.message || "Failed to request revision"));
                 }}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 font-['Poppins',sans-serif]"
+                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] shadow-sm"
               >
                 Submit Request
               </Button>

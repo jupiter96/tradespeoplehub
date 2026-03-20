@@ -50,6 +50,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { toast } from "sonner@2.0.3";
 import { resolveAvatarUrl, formatJobLocationCityOnly } from "./orders/utils";
 import JobSkillBadges from "./JobSkillBadges";
+import { ClientJobListStatusBadge } from "./JobListCardStatusBadge";
 
 export default function MyJobsSection() {
   const navigate = useNavigate();
@@ -140,28 +141,6 @@ export default function MyJobsSection() {
   });
 
   const currentJob = selectedJob ? jobs.find(j => j.id === selectedJob) : null;
-
-  const getStatusBadge = (status: string) => {
-    const s = String(status || "").toLowerCase();
-    switch (s) {
-      case "open":
-        return "bg-blue-500 text-white border-blue-500";
-      case "awaiting-accept":
-        return "bg-blue-600 text-white border-blue-600";
-      case "in-progress":
-        return "bg-blue-600 text-white border-blue-600";
-      case "delivered":
-        return "bg-green-500 text-white border-green-500";
-      case "completed":
-        return "bg-green-600 text-white border-green-600";
-      case "cancelled":
-        return "bg-red-600 text-white border-red-600";
-      case "closed":
-        return "!bg-gray-600 text-white !border-gray-600";
-      default:
-        return "bg-gray-700 text-white border-gray-700";
-    }
-  };
 
   const getTimingIcon = (timing: string) => {
     if (timing === "urgent") {
@@ -313,6 +292,7 @@ export default function MyJobsSection() {
             <SelectItem value="open">Open</SelectItem>
             <SelectItem value="awaiting-accept">Awaiting Accept</SelectItem>
             <SelectItem value="in-progress">In Progress</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
@@ -353,11 +333,19 @@ export default function MyJobsSection() {
             >
               {/* Two-column layout (70% left / 30% right) */}
               <div className="flex flex-col md:flex-row gap-5">
-                {/* Left column: title, description, skills, address, time, quote count */}
-                <div className="w-[60%]">
-                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate mb-2 w-[80%]">
+                {/* Left column: title, budget (one line), description, skills, address, time, quote count */}
+                <div className="md:w-[70%] min-w-0">
+                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate mb-2">
                     {job.title}
                   </h3>
+                  <p className="font-['Poppins',sans-serif] text-[14px] mb-2 flex flex-wrap items-center gap-x-4 gap-y-0.5">
+                    <span className="text-[#6b6b6b]">Budget: &nbsp; </span>
+                    <span className="text-[#2c353f] font-bold">
+                      {job.budgetMin != null && job.budgetMax != null
+                        ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                        : formatPriceWhole(job.budgetAmount ?? 0)}
+                    </span>
+                  </p>
                   <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3 w-[80%]">
                     {getTruncatedDescription(job.description)}
                   </p>
@@ -388,8 +376,11 @@ export default function MyJobsSection() {
                     </div>
                   </div>
                 </div>
-                {/* Right column: price info (top) + view quotes button (bottom) */}
-                <div className="md:w-[40%] flex flex-col gap-3 text-center" onClick={(e) => e.stopPropagation()}>
+                {/* Right column: status (top), new-quote badge, view quotes */}
+                <div className="md:w-[30%] flex flex-col gap-3 text-center" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-end w-full">
+                    <ClientJobListStatusBadge status={job.status} />
+                  </div>
                   <div className="flex items-start justify-end">
                     {newQuoteJobIds.has(job.id) && (
                       <div className="relative">
@@ -403,15 +394,6 @@ export default function MyJobsSection() {
                       </div>
                     )}
                   </div>
-                  <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f]">
-                    Budget
-                  </p>
-
-                    <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-bold">
-                      {job.budgetMin != null && job.budgetMax != null
-                        ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
-                        : formatPriceWhole(job.budgetAmount ?? 0)}
-                    </p>
 
                   {(job.quotes?.length ?? 0) > 0 && (
                     <div className="mt-auto flex justify-end">
@@ -483,7 +465,7 @@ export default function MyJobsSection() {
                     </div>
                     <div>
                       <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mb-1">
-                        Budget
+                        Budget: &nbsp; 
                       </p>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                         {currentJob.budgetMin != null && currentJob.budgetMax != null

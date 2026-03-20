@@ -198,16 +198,66 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
 
+  const matchesProfessionalSector = (job: Job) => {
+    // If professional sectors are not set, keep existing behavior (show all).
+    // This avoids empty lists due to missing profile data.
+    const proSectorsRaw: unknown[] = Array.isArray(userInfo?.sectors)
+      ? (userInfo?.sectors as unknown[])
+      : userInfo?.sector
+        ? [userInfo?.sector]
+        : [];
+
+    if (!proSectorsRaw.length) return true;
+
+    const proSectors = new Set(
+      proSectorsRaw
+        .filter((s) => s != null)
+        .map((s) => String(s).toLowerCase())
+    );
+
+    const jobSectorId = job.sectorId ? String(job.sectorId).toLowerCase() : "";
+    const jobSector = job.sector ? String(job.sector).toLowerCase() : "";
+
+    // Exact match first
+    if (jobSectorId && proSectors.has(jobSectorId)) return true;
+    if (jobSector && proSectors.has(jobSector)) return true;
+
+    // Fallback: substring match (sector id/slug vs display name mismatch)
+    for (const pro of proSectors) {
+      if (!pro) continue;
+      if (jobSectorId && (jobSectorId.includes(pro) || pro.includes(jobSectorId))) return true;
+      if (jobSector && (jobSector.includes(pro) || pro.includes(jobSector))) return true;
+    }
+
+    return false;
+  };
+
+  // Cache last known jobs to survive hard refresh timing issues.
+  // Note: use userId only because role can be temporarily undefined right after refresh.
+  const jobsCacheKey = userInfo?.id ? `jobsCache:${userInfo.id}` : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!jobsCacheKey) return;
+    try {
+      const raw = localStorage.getItem(jobsCacheKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setJobs(parsed as Job[]);
+      }
+    } catch {
+      // ignore cache errors
+    }
+  }, [jobsCacheKey]);
+
   const refreshJobs = useCallback(async () => {
-    if (!userInfo?.id) {
-      setJobs([]);
-      return;
-    }
-    const role = userInfo?.role || 'client';
-    if (role !== 'client' && role !== 'professional') {
-      setJobs([]);
-      return;
-    }
+    if (!userInfo?.id) return;
+    const role = userInfo?.role;
+    // If auth context is not ready yet, don't guess role.
+    if (!role) return;
+    if (role !== "client" && role !== "professional") return;
+
     setLoading(true);
     try {
       const res = await fetch(resolveApiUrl('/api/jobs'), { credentials: 'include' });
@@ -216,14 +266,32 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         throw new Error(err.error || 'Failed to fetch jobs');
       }
       const data = await res.json();
-      setJobs(Array.isArray(data) ? data : []);
+      // Be tolerant to API response shapes:
+      // - Job[] directly
+      // - { jobs: Job[] }
+      let nextJobs: Job[] | null = null;
+      if (Array.isArray(data)) {
+        nextJobs = data as Job[];
+      } else if (data && Array.isArray((data as any).jobs)) {
+        nextJobs = (data as any).jobs as Job[];
+      }
+
+      if (nextJobs) {
+        setJobs(nextJobs);
+        // Cache successful fetch results for resiliency.
+        try {
+          if (jobsCacheKey) localStorage.setItem(jobsCacheKey, JSON.stringify(nextJobs));
+        } catch {
+          // ignore cache write errors
+        }
+      }
     } catch (e) {
       console.error('Jobs fetch error:', e);
-      setJobs([]);
+      // Keep current jobs on transient failures (prevents "cards disappear").
     } finally {
       setLoading(false);
     }
-  }, [userInfo?.id, userInfo?.role]);
+  }, [userInfo?.id, userInfo?.role, jobsCacheKey]);
 
   useEffect(() => {
     refreshJobs();
@@ -422,11 +490,14 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   };
 
   const getAvailableJobs = (): Job[] =>
-    userInfo?.role === 'professional' ? jobs.filter((job) => job.status === 'open') : [];
+    userInfo?.role === 'professional'
+      ? jobs.filter((job) => job.status === 'open' && matchesProfessionalSector(job))
+      : [];
 
   const getProfessionalQuotes = (professionalId: string): { job: Job; quote: JobQuote }[] => {
     const result: { job: Job; quote: JobQuote }[] = [];
     jobs.forEach((job) => {
+      if (!matchesProfessionalSector(job)) return;
       (job.quotes || []).forEach((quote) => {
         // Exclude any jobs that have been awarded to this professional;
         // awarded jobs should appear only in Active Jobs, not in My Quotes.
@@ -444,12 +515,55 @@ export function JobsProvider({ children }: { children: ReactNode }) {
 
   const getProfessionalActiveJobs = (professionalId: string): Job[] =>
     jobs.filter((job) => {
-      if (job.status === 'awaiting-accept' || job.status === 'completed') {
-        return job.awardedProfessionalId === professionalId;
+      if (!matchesProfessionalSector(job)) return false;
+      if (job.status === "awaiting-accept") {
+        return (
+          job.awardedProfessionalId === professionalId ||
+          (job.quotes || []).some((q) => q.professionalId === professionalId)
+        );
       }
-      if (job.status === 'in-progress' || job.status === 'delivered') {
-        return (job.quotes || []).some(
-          (q) => q.professionalId === professionalId && (q.status === 'accepted' || q.status === 'awarded')
+      if (job.status === "completed") {
+        return (
+          job.awardedProfessionalId === professionalId ||
+          (job.quotes || []).some((q) => q.professionalId === professionalId) ||
+          (job.milestoneDeliveries || []).some((d) => d?.deliveredBy === professionalId)
+        );
+      }
+      if (job.status === 'in-progress') {
+        return (
+          job.awardedProfessionalId === professionalId ||
+          (job.quotes || []).some(
+            (q) =>
+              q.professionalId === professionalId &&
+              (q.status === "accepted" || q.status === "awarded")
+          ) || (job.quotes || []).some((q) => q.professionalId === professionalId)
+        );
+      }
+      if (job.status === 'delivered') {
+        // delivered means the client has approved deliveries;
+        // ensure it shows up for the awarded professional even if the quote status
+        // hasn't been updated to `accepted/awarded`.
+        const pid = String(professionalId);
+        const toIdString = (v: unknown) => (v == null ? "" : String(v));
+        const getAwardedProId = (j: any) =>
+          j?.awardedProfessionalId ?? j?.awardedProfessional?.id ?? j?.awardedProfessional?._id;
+        const getQuoteProId = (q: any) =>
+          q?.professionalId ?? q?.professional?.id ?? q?.professional?._id;
+        const getDeliveredById = (d: any) =>
+          d?.deliveredBy ?? d?.deliveredById ?? d?.deliveredBy?.id ?? d?.deliveredBy?._id;
+        const getApprovedById = (d: any) =>
+          d?.approvedBy ?? d?.approvedById ?? d?.approvedBy?.id ?? d?.approvedBy?._id;
+
+        return (
+          (job.milestoneDeliveries || []).some((d) => {
+            const deliveredBy = toIdString(getDeliveredById(d));
+            const approvedBy = toIdString(getApprovedById(d));
+            return deliveredBy === pid || approvedBy === pid;
+          }) ||
+          toIdString(getAwardedProId(job as any)) === pid ||
+          // If this job is delivered, the awarded pro should have a quote record.
+          // Some backends update job.status before quote.status, so don't rely only on quote status.
+          (job.quotes || []).some((q) => toIdString(getQuoteProId(q)) === pid)
         );
       }
       return false;

@@ -5690,7 +5690,9 @@
   .bg-orange-100 {
     background-color: var(--color-orange-100);
   }
-
+  .bg-orange-600 {
+    background-color: var(--color-orange-400);
+  }
   .bg-popover {
     background-color: var(--popover);
   }
@@ -5715,6 +5717,9 @@
 
   .bg-purple-100 {
     background-color: var(--color-purple-100);
+  }
+  .bg-purple-500 {
+    background-color: var(--color-purple-500);
   }
 
   .bg-red-50 {
