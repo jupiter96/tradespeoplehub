@@ -613,9 +613,45 @@ export default function AvailableJobsSection() {
                   </div>
 
                   <div className="bg-white rounded-lg p-4 border border-orange-100">
-                    <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                      Message to Client <span className="text-red-500">*</span>
-                    </Label>
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] block">
+                        Message to Client <span className="text-red-500">*</span>
+                      </Label>
+                      {isQuoteMessageAiGenerated && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (quoteMessageBeforeAi != null) {
+                                setQuoteMessage(quoteMessageBeforeAi);
+                              }
+                              setIsQuoteMessageAiGenerated(false);
+                            }}
+                            className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f]"
+                            aria-label="Restore previous message"
+                            title="Restore"
+                          >
+                            <Undo2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setQuoteMessage("");
+                              setIsQuoteMessageAiGenerated(false);
+                            }}
+                            className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#DC3545]"
+                            aria-label="Clear message"
+                            title="Clear"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     <Textarea
                       placeholder="Enter key points or a few words, then use Generate text by AI to write a full message..."
                       value={quoteMessage}
@@ -623,38 +659,6 @@ export default function AvailableJobsSection() {
                       className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      {isQuoteMessageAiGenerated && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (quoteMessageBeforeAi != null) {
-                                setQuoteMessage(quoteMessageBeforeAi);
-                              }
-                              setQuoteMessageBeforeAi(null);
-                              setIsQuoteMessageAiGenerated(false);
-                            }}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] transition-colors"
-                            title="Revert to previous message"
-                            aria-label="Revert to previous message"
-                          >
-                            <Undo2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuoteMessage("");
-                              setQuoteMessageBeforeAi(null);
-                              setIsQuoteMessageAiGenerated(false);
-                            }}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
-                            title="Clear generated message"
-                            aria-label="Clear generated message"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
                       {!isQuoteMessageAiGenerated && (
                       <button
                         type="button"
