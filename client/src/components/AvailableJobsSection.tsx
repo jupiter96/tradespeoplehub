@@ -23,6 +23,8 @@ import {
   Sparkles,
   MessageCircle,
   Star,
+  Undo2,
+  Trash2,
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
@@ -75,6 +77,8 @@ export default function AvailableJobsSection() {
   const [quoteDeliveryTime, setQuoteDeliveryTime] = useState("");
   const [quoteMessage, setQuoteMessage] = useState("");
   const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
+  const [quoteMessageBeforeAi, setQuoteMessageBeforeAi] = useState<string | null>(null);
+  const [isQuoteMessageAiGenerated, setIsQuoteMessageAiGenerated] = useState(false);
   
   // Milestone state
   const [milestones, setMilestones] = useState<Array<{ description: string; amount: string }>>([
@@ -271,6 +275,8 @@ export default function AvailableJobsSection() {
       setQuotePrice("");
       setQuoteDeliveryTime("");
       setQuoteMessage("");
+      setQuoteMessageBeforeAi(null);
+      setIsQuoteMessageAiGenerated(false);
       setMilestones([{ description: "", amount: "" }]);
     } catch (e: any) {
       const msg = String(e?.message || "");
@@ -289,6 +295,7 @@ export default function AvailableJobsSection() {
 
   const handleGenerateQuoteMessage = async () => {
     if (!currentJob) return;
+    if (!isQuoteMessageAiGenerated) setQuoteMessageBeforeAi(quoteMessage);
     setAiQuoteMessageGenerating(true);
     try {
       const res = await fetch(resolveApiUrl("/api/jobs/generate-quote-message"), {
@@ -308,7 +315,10 @@ export default function AvailableJobsSection() {
         toast.error(data.error || "Failed to generate message");
         return;
       }
-      if (data.message) setQuoteMessage(data.message);
+      if (data.message) {
+        setQuoteMessage(data.message);
+        setIsQuoteMessageAiGenerated(true);
+      }
       toast.success("Message generated. You can edit it before sending.");
     } catch {
       toast.error("Failed to generate message. Please try again.");
@@ -613,6 +623,39 @@ export default function AvailableJobsSection() {
                       className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {isQuoteMessageAiGenerated && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (quoteMessageBeforeAi != null) {
+                                setQuoteMessage(quoteMessageBeforeAi);
+                              }
+                              setQuoteMessageBeforeAi(null);
+                              setIsQuoteMessageAiGenerated(false);
+                            }}
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] transition-colors"
+                            title="Revert to previous message"
+                            aria-label="Revert to previous message"
+                          >
+                            <Undo2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuoteMessage("");
+                              setQuoteMessageBeforeAi(null);
+                              setIsQuoteMessageAiGenerated(false);
+                            }}
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                            title="Clear generated message"
+                            aria-label="Clear generated message"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      {!isQuoteMessageAiGenerated && (
                       <button
                         type="button"
                         onClick={handleGenerateQuoteMessage}
@@ -627,6 +670,7 @@ export default function AvailableJobsSection() {
                         <Sparkles className={cn("w-5 h-5 flex-shrink-0", aiQuoteMessageGenerating && "animate-pulse")} />
                         {aiQuoteMessageGenerating ? "Generating…" : "Generate text by AI"}
                       </button>
+                      )}
                     </div>
                     <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-green-50 px-3 py-1 rounded-md inline-block">
                       💡 Tip: Mention your relevant experience and availability
@@ -740,6 +784,8 @@ export default function AvailableJobsSection() {
                     setQuotePrice("");
                     setQuoteDeliveryTime("");
                     setQuoteMessage("");
+                    setQuoteMessageBeforeAi(null);
+                    setIsQuoteMessageAiGenerated(false);
                   }}
                   className="flex-1 font-['Poppins',sans-serif] h-12 text-[15px] border-2"
                 >
