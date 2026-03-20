@@ -420,6 +420,7 @@ export default function JobDetailPage() {
   const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
   const [quoteCreditsSliderAnimateIn, setQuoteCreditsSliderAnimateIn] = useState(false);
   const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
+  const [hideQuoteCreditsSliderPanel, setHideQuoteCreditsSliderPanel] = useState(false);
   const [showFundWalletModal, setShowFundWalletModal] = useState(false);
 
   // Prevent background scroll when fullscreen viewer is open
@@ -1277,6 +1278,7 @@ export default function JobDetailPage() {
   const openQuoteCreditsSlider = () => {
     setShowQuoteCreditsSlider(true);
     setQuoteCreditsSliderAnimateIn(false);
+    setHideQuoteCreditsSliderPanel(false);
     if (quoteCreditsSliderAnimTimerRef.current) {
       window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
       quoteCreditsSliderAnimTimerRef.current = null;
@@ -1289,6 +1291,7 @@ export default function JobDetailPage() {
   const closeQuoteCreditsSlider = () => {
     setShowQuoteCreditsSlider(false);
     setQuoteCreditsSliderAnimateIn(false);
+    setHideQuoteCreditsSliderPanel(false);
     if (quoteCreditsSliderAnimTimerRef.current) {
       window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
       quoteCreditsSliderAnimTimerRef.current = null;
@@ -4377,7 +4380,7 @@ export default function JobDetailPage() {
             {/* Left side overlay (kept non-blur, just to catch outside clicks) */}
             <button
               type="button"
-              className="flex-1 bg-black/0"
+            className={["flex-1 bg-black/0", hideQuoteCreditsSliderPanel ? "opacity-0 pointer-events-none" : ""].join(" ")}
               onClick={closeQuoteCreditsSlider}
               aria-label="Close quote credits"
             />
@@ -4385,10 +4388,11 @@ export default function JobDetailPage() {
               className={[
                 "w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col",
                 "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+                hideQuoteCreditsSliderPanel ? "pointer-events-none" : "",
               ].join(" ")}
               style={{
                 transform: quoteCreditsSliderAnimateIn ? "translateX(0)" : "translateX(100%)",
-                opacity: quoteCreditsSliderAnimateIn ? 1 : 0,
+                opacity: quoteCreditsSliderAnimateIn ? (hideQuoteCreditsSliderPanel ? 0 : 1) : 0,
               }}
             >
               <button
@@ -4401,7 +4405,10 @@ export default function JobDetailPage() {
               </button>
               <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
                 <div className="p-4 md:p-6">
-                  <BidsAndMembershipSection hideHeader />
+                  <BidsAndMembershipSection
+                    hideHeader
+                    onWalletFundModalOpenChange={(open) => setHideQuoteCreditsSliderPanel(open)}
+                  />
                 </div>
               </div>
             </div>

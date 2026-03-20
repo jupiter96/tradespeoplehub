@@ -583,14 +583,21 @@ export default function WalletFundModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          {!hideTitle && (
-            <DialogHeader>
-              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-                {titleText || "Fund Your Wallet"}
-              </DialogTitle>
-            </DialogHeader>
-          )}
+        <DialogContent
+          className="max-w-5xl max-h-[90vh] overflow-y-auto"
+          style={{ zIndex: 2000001 }}
+        >
+          <DialogHeader>
+            <DialogTitle
+              className={
+                hideTitle
+                  ? "sr-only"
+                  : "font-['Poppins',sans-serif] text-[20px] text-[#2c353f]"
+              }
+            >
+              {titleText || "Fund Your Wallet"}
+            </DialogTitle>
+          </DialogHeader>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
             {/* Left Section: Select Payment Method */}
@@ -657,15 +664,8 @@ export default function WalletFundModal({
                     ) : paymentMethods.length === 0 ? (
                       <div className="space-y-3">
                         <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600">
-                          No payment methods found. Please add a payment method.
+                          No Cards found.
                         </p>
-                        <Button
-                          onClick={() => setShowAddCardModal(true)}
-                          className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Payment Method
-                        </Button>
                       </div>
                     ) : (
                       <RadioGroup
@@ -715,9 +715,6 @@ export default function WalletFundModal({
                     )}
 
                     <div className="pt-3 border-t border-gray-200">
-                      <p className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#2c353f] mb-2">
-                        Add new payment method
-                      </p>
                       <div className="space-y-2">
                         <div
                           className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
@@ -730,11 +727,8 @@ export default function WalletFundModal({
                             <CreditCard className="w-5 h-5 text-gray-400" />
                             <div>
                               <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                                Debit or credit card
+                                Add New Card
                               </span>
-                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b]">
-                                All major cards accepted
-                              </p>
                             </div>
                           </div>
                         </div>

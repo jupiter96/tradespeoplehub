@@ -49,7 +49,13 @@ const TABS: { id: CreditTab; label: string }[] = [
   { id: "history", label: "History" },
 ];
 
-export default function BidsAndMembershipSection({ hideHeader = false }: { hideHeader?: boolean }) {
+export default function BidsAndMembershipSection({
+  hideHeader = false,
+  onWalletFundModalOpenChange,
+}: {
+  hideHeader?: boolean;
+  onWalletFundModalOpenChange?: (open: boolean) => void;
+}) {
   const { formatPrice, currency, fromGBP } = useCurrency();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CreditTab>("balance");
@@ -69,6 +75,10 @@ export default function BidsAndMembershipSection({ hideHeader = false }: { hideH
   const [waitingForExternalPayment, setWaitingForExternalPayment] = useState(false);
   const pendingPurchaseRef = useRef<{ kind: "custom"; qty: number } | { kind: "plan"; planId: string } | null>(null);
   const [walletFundInitialAmount, setWalletFundInitialAmount] = useState<string>("");
+
+  useEffect(() => {
+    onWalletFundModalOpenChange?.(showWalletFundModal);
+  }, [showWalletFundModal, onWalletFundModalOpenChange]);
 
   const [historyList, setHistoryList] = useState<CreditPurchaseRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);

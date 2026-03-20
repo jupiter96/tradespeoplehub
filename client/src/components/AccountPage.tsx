@@ -3938,7 +3938,7 @@ function BillingSection() {
                           ) : fundPaymentMethods.length === 0 ? (
                             <div className="space-y-3">
                               <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600">
-                                No payment methods found. Please add a payment method.
+                                No Cards found.
                               </p>
                               <Button
                                 onClick={() => setShowAddCardModal(true)}
@@ -5019,6 +5019,8 @@ function WithdrawSection() {
   const { formatPrice, currency, symbol, toGBP } = useCurrency();
   const [withdrawTab, setWithdrawTab] = useState<"balance" | "accounts" | "withdraw" | "history">("balance");
   const [showAddPayPal, setShowAddPayPal] = useState(false);
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [publishableKeyForWithdraw, setPublishableKeyForWithdraw] = useState<string | null>(null);
   const [showBankVerificationModal, setShowBankVerificationModal] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -5047,8 +5049,28 @@ function WithdrawSection() {
     }
     if (withdrawTab === "accounts") {
       fetchPaymentMethods();
+      void (async () => {
+        try {
+          const res = await fetch(resolveApiUrl("/api/payment/publishable-key"), { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            setPublishableKeyForWithdraw(data?.publishableKey ?? null);
+          }
+        } catch {
+          // ignore
+        }
+      })();
     }
   }, [withdrawTab]);
+
+  const cardMethods = useMemo(() => {
+    const list = (paymentMethods || []).filter((m: any) => {
+      const type = String(m?.type || "");
+      return (type === "stripe" || type === "card") && m?.card && m?.card?.last4;
+    });
+    // Put default card on top (if present)
+    return [...list].sort((a: any, b: any) => (Number(b?.isDefault) || 0) - (Number(a?.isDefault) || 0));
+  }, [paymentMethods]);
 
   const fetchWalletBalance = async () => {
     setLoadingBalance(true);
@@ -5523,6 +5545,94 @@ function WithdrawSection() {
       {/* Payment Methods Tab */}
       {withdrawTab === "accounts" && (
         <div>
+          <PaymentMethodModal
+            isOpen={showAddCardModal && !!publishableKeyForWithdraw}
+            onClose={() => setShowAddCardModal(false)}
+            onSuccess={() => {
+              setShowAddCardModal(false);
+              fetchPaymentMethods();
+            }}
+            publishableKey={publishableKeyForWithdraw || ""}
+          />
+
+          {/* Linked Cards (top-most) */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                Linked Cards
+              </h3>
+              <Button
+                onClick={() => setShowAddCardModal(true)}
+                className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                disabled={!publishableKeyForWithdraw}
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Add New Card
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto border border-gray-200 rounded-xl">
+              {loadingPaymentMethods ? (
+                <div className="px-4 py-6 text-center font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  Loading cards...
+                </div>
+              ) : cardMethods.length === 0 ? (
+                <div className="px-4 py-6 text-center font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                  No cards connected yet.
+                </div>
+              ) : (
+                <table className="min-w-full text-left">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                        Card
+                      </th>
+                      <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                        Expiry
+                      </th>
+                      <th className="px-4 py-3 font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cardMethods.map((m: any) => {
+                      const brand = String(m?.card?.brand || "Card");
+                      const last4 = String(m?.card?.last4 || "");
+                      const expMonth = m?.card?.expMonth ?? "";
+                      const expYear = m?.card?.expYear ?? "";
+                      const exp = expMonth && expYear ? `${String(expMonth).padStart(2, "0")}/${String(expYear).slice(-2)}` : "—";
+                      return (
+                        <tr key={m.paymentMethodId} className="border-t border-gray-100">
+                          <td className="px-4 py-4 font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-[#FFF5EB] rounded-lg flex items-center justify-center flex-shrink-0">
+                                <CreditCard className="w-5 h-5 text-[#FE8A0F]" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold truncate">
+                                  {brand} •••• {last4}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">{exp}</td>
+                          <td className="px-4 py-4">
+                            {m?.isDefault ? (
+                              <Badge className="bg-[#FE8A0F]/10 text-[#FE8A0F] border-[#FE8A0F]/30 text-[11px]">Default</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-700 border-gray-200 text-[11px]">Linked</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">

@@ -158,7 +158,7 @@ export default function PaymentMethodModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" style={{ zIndex: 2000002 }}>
         <DialogHeader>
           <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
             Add Payment Method
