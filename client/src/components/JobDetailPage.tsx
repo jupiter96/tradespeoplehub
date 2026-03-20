@@ -418,6 +418,8 @@ export default function JobDetailPage() {
 
   // Quote credits purchase slider (shown when pro has no credits)
   const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
+  const [quoteCreditsSliderAnimateIn, setQuoteCreditsSliderAnimateIn] = useState(false);
+  const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
   const [showFundWalletModal, setShowFundWalletModal] = useState(false);
 
   // Prevent background scroll when fullscreen viewer is open
@@ -1274,10 +1276,23 @@ export default function JobDetailPage() {
 
   const openQuoteCreditsSlider = () => {
     setShowQuoteCreditsSlider(true);
+    setQuoteCreditsSliderAnimateIn(false);
+    if (quoteCreditsSliderAnimTimerRef.current) {
+      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
+      quoteCreditsSliderAnimTimerRef.current = null;
+    }
+    quoteCreditsSliderAnimTimerRef.current = window.setTimeout(() => {
+      setQuoteCreditsSliderAnimateIn(true);
+    }, 30);
   };
 
   const closeQuoteCreditsSlider = () => {
     setShowQuoteCreditsSlider(false);
+    setQuoteCreditsSliderAnimateIn(false);
+    if (quoteCreditsSliderAnimTimerRef.current) {
+      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
+      quoteCreditsSliderAnimTimerRef.current = null;
+    }
   };
 
   /** Pro: open chat with the job client (when job is in progress). */
@@ -1437,8 +1452,6 @@ export default function JobDetailPage() {
         /credit|credits|bid|bids|insufficient/i.test(msg) &&
         /credit|bid/i.test(msg); // keep narrow to avoid hijacking unrelated errors
       if (isCreditError) {
-        toast.error(msg || "You don't have enough quote credits.");
-        setShowQuoteDialog(false);
         openQuoteCreditsSlider();
       } else {
         toast.error(msg || "Failed to submit quote");
@@ -4358,71 +4371,55 @@ export default function JobDetailPage() {
       )}
 
       {/* Quote credits purchase slider (top-most) */}
-      {showQuoteCreditsSlider && (
-        <div className="fixed inset-0 z-[30000] flex">
-          <button
-            type="button"
-            className="flex-1 bg-black/40 backdrop-blur-sm"
-            onClick={closeQuoteCreditsSlider}
-            aria-label="Close quote credits"
-          />
-          <div className="w-1/2 max-w-[980px] bg-white h-full shadow-2xl relative flex flex-col">
+      {showQuoteCreditsSlider &&
+        createPortal(
+          <div className="fixed inset-0 z-[1000000] flex" style={{ zIndex: 1000000 }}>
+            {/* Left side overlay (kept non-blur, just to catch outside clicks) */}
             <button
               type="button"
+              className="flex-1 bg-black/0"
               onClick={closeQuoteCreditsSlider}
-              className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
-              aria-label="Close"
+              aria-label="Close quote credits"
+            />
+            <div
+              className={[
+                "w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col",
+                "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
+              ].join(" ")}
+              style={{
+                transform: quoteCreditsSliderAnimateIn ? "translateX(0)" : "translateX(100%)",
+                opacity: quoteCreditsSliderAnimateIn ? 1 : 0,
+              }}
             >
-              <X className="w-4 h-4" />
-            </button>
-            <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
-              <div className="p-5 pb-4 border-b border-gray-100">
-                <h2 className="text-[#FE8A0F] text-xl font-semibold">Quote credits</h2>
-                <p className="text-[13px] text-[#6b6b6b] mt-1">
-                  You need credits to submit a quote. Purchase credits or fund your wallet here.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      // Show wallet funding modal above everything (close slider to avoid z-index conflicts)
-                      setShowQuoteCreditsSlider(false);
-                      setShowFundWalletModal(true);
-                    }}
-                    className="bg-[#003D82] hover:bg-[#002a59] text-white font-['Poppins',sans-serif]"
-                  >
-                    Add funds (card / PayPal / bank)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate("/account?tab=quote-credits")}
-                    className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
-                  >
-                    Open in account page
-                  </Button>
+              <button
+                type="button"
+                onClick={closeQuoteCreditsSlider}
+                className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
+                <div className="p-4 md:p-6">
+                  <BidsAndMembershipSection hideHeader />
                 </div>
               </div>
-              <div className="p-4 md:p-6">
-                {/* Same UI as Account → Quote credits */}
-                <BidsAndMembershipSection />
-              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Wallet funding modal (card / paypal / bank) */}
       <WalletFundModal
         isOpen={showFundWalletModal}
         onClose={() => {
           setShowFundWalletModal(false);
-          setShowQuoteCreditsSlider(true);
+          openQuoteCreditsSlider();
         }}
         onSuccess={() => {
           // After funding, reopen credits slider so user can buy credits immediately.
           setShowFundWalletModal(false);
-          setShowQuoteCreditsSlider(true);
+          openQuoteCreditsSlider();
         }}
       />
 

@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown, ArrowUp, ArrowDown, FileText } from "lucide-react";
+import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown, ArrowUp, ArrowDown, FileText, Wallet, CreditCard, CircleDollarSign } from "lucide-react";
 import { Button } from "./ui/button";
 import { resolveApiUrl } from "../config/api";
 import { toast } from "sonner@2.0.3";
 import { useCurrency } from "./CurrencyContext";
+import WalletFundModal from "./WalletFundModal";
 
 interface CreditPurchaseRecord {
   id: string;
@@ -48,8 +49,8 @@ const TABS: { id: CreditTab; label: string }[] = [
   { id: "history", label: "History" },
 ];
 
-export default function BidsAndMembershipSection() {
-  const { formatPrice, currency } = useCurrency();
+export default function BidsAndMembershipSection({ hideHeader = false }: { hideHeader?: boolean }) {
+  const { formatPrice, currency, fromGBP } = useCurrency();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CreditTab>("balance");
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -61,6 +62,13 @@ export default function BidsAndMembershipSection() {
   const [purchasingPlanId, setPurchasingPlanId] = useState<string | null>(null);
   const [customQuantity, setCustomQuantity] = useState<number>(10);
   const [purchasingCustom, setPurchasingCustom] = useState(false);
+
+  // Quote credits purchase payment method
+  const [quoteCreditPaymentMethod, setQuoteCreditPaymentMethod] = useState<"balance" | "card" | "paypal">("balance");
+  const [showWalletFundModal, setShowWalletFundModal] = useState(false);
+  const [waitingForExternalPayment, setWaitingForExternalPayment] = useState(false);
+  const pendingPurchaseRef = useRef<{ kind: "custom"; qty: number } | { kind: "plan"; planId: string } | null>(null);
+  const [walletFundInitialAmount, setWalletFundInitialAmount] = useState<string>("");
 
   const [historyList, setHistoryList] = useState<CreditPurchaseRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -231,18 +239,63 @@ export default function BidsAndMembershipSection() {
     }
   };
 
-  const handleBuyCredit = () => {
-    if (selectedOption === CUSTOM_OPTION_VALUE) {
-      handlePurchaseCustom();
-    } else if (selectedOption) {
-      handlePurchase(selectedOption);
+  const handleWalletFundSuccessThenPurchase = async () => {
+    setWaitingForExternalPayment(false);
+    const pending = pendingPurchaseRef.current;
+    pendingPurchaseRef.current = null;
+    if (!pending) return;
+
+    if (pending.kind === "custom") {
+      await handlePurchaseCustom();
+    } else {
+      await handlePurchase(pending.planId);
     }
+  };
+
+  const handleBuyCredit = async () => {
+    const customQtyLocal = Math.max(1, Math.min(500, Math.floor(Number(customQuantity)) || 1));
+    const requiredGBP =
+      selectedOption === CUSTOM_OPTION_VALUE
+        ? customQtyLocal * pricePerBid
+        : selectedPlan
+          ? selectedPlan.amountPence / 100
+          : 0;
+
+    if (!requiredGBP || requiredGBP <= 0) {
+      toast.error("Please select a credit option first.");
+      return;
+    }
+
+    // Account balance: purchase directly from wallet
+    if (quoteCreditPaymentMethod === "balance") {
+      if (selectedOption === CUSTOM_OPTION_VALUE) return handlePurchaseCustom();
+      if (selectedPlan?.id) return handlePurchase(selectedPlan.id);
+      return;
+    }
+
+    // Card/PayPal: fund wallet first, then purchase
+    pendingPurchaseRef.current =
+      selectedOption === CUSTOM_OPTION_VALUE
+        ? { kind: "custom", qty: customQtyLocal }
+        : selectedPlan?.id
+          ? { kind: "plan", planId: selectedPlan.id }
+          : null;
+
+    if (!pendingPurchaseRef.current) {
+      toast.error("Please select a credit plan first.");
+      return;
+    }
+
+    const amountSelectedCurrency = fromGBP(requiredGBP);
+    setWalletFundInitialAmount(amountSelectedCurrency.toFixed(2));
+    setWaitingForExternalPayment(true);
+    setShowWalletFundModal(true);
   };
 
   const customQty = Math.max(1, Math.min(500, Math.floor(Number(customQuantity)) || 1));
   const customTotal = (customQty * pricePerBid).toFixed(2);
   const selectedPlan = plans.find((p) => p.id === selectedOption);
-  const isPurchasing = purchasingPlanId !== null || purchasingCustom;
+  const isPurchasing = purchasingPlanId !== null || purchasingCustom || waitingForExternalPayment;
 
   if (loading) {
     return (
@@ -254,14 +307,16 @@ export default function BidsAndMembershipSection() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
-          Quote credits
-        </h2>
-        <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-          You use one credit each time you submit a quote on a project. Free credits are refreshed every month. You can buy extra credit packs below.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h2 className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f] mb-2">
+            Quote credits
+          </h2>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            You use one credit each time you submit a quote on a project. Free credits are refreshed every month. You can buy extra credit packs below.
+          </p>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
@@ -347,8 +402,35 @@ export default function BidsAndMembershipSection() {
             Purchase credit
           </h3>
           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-            Credits are valid for one month from purchase. Payment is taken from your Billing wallet.
+            Credits are valid for one month from purchase. Choose how to pay.
           </p>
+
+          <div className="mb-6 flex flex-wrap gap-2">
+            {([
+              { id: "balance", label: "Account balance" },
+              { id: "card", label: "Card" },
+              { id: "paypal", label: "PayPal" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setQuoteCreditPaymentMethod(opt.id)}
+                className={[
+                  "px-4 py-2 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[14px] font-semibold",
+                  quoteCreditPaymentMethod === opt.id
+                    ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                    : "border-gray-200 bg-white text-[#2c353f] hover:border-gray-300",
+                ].join(" ")}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {opt.id === "balance" && <Wallet className="w-4 h-4 text-[#FE8A0F]" />}
+                  {opt.id === "card" && <CreditCard className="w-4 h-4 text-[#FE8A0F]" />}
+                  {opt.id === "paypal" && <CircleDollarSign className="w-4 h-4 text-[#FE8A0F]" />}
+                  {opt.label}
+                </span>
+              </button>
+            ))}
+          </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Left: plan options */}
@@ -458,7 +540,11 @@ export default function BidsAndMembershipSection() {
                       disabled={isPurchasing}
                       className="bg-[#FE8A0F] hover:bg-[#e57d0e] text-white font-['Poppins',sans-serif] h-11"
                     >
-                      {purchasingCustom ? <Loader2 className="w-4 h-4 animate-spin" /> : "Buy credit"}
+                      {purchasingCustom || (waitingForExternalPayment && quoteCreditPaymentMethod !== "balance") ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Buy credit"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -474,7 +560,9 @@ export default function BidsAndMembershipSection() {
                         disabled={isPurchasing}
                         className="bg-[#FE8A0F] hover:bg-[#e57d0e] text-white font-['Poppins',sans-serif] h-11 shrink-0"
                       >
-                        {purchasingPlanId === selectedOption ? (
+                        {waitingForExternalPayment && quoteCreditPaymentMethod !== "balance" ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : purchasingPlanId === selectedOption ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           "Buy credit"
@@ -621,6 +709,24 @@ export default function BidsAndMembershipSection() {
           )}
         </div>
       )}
+
+      <WalletFundModal
+        isOpen={showWalletFundModal}
+        onClose={() => {
+          setShowWalletFundModal(false);
+          setWaitingForExternalPayment(false);
+          pendingPurchaseRef.current = null;
+        }}
+        onSuccess={() => {
+          void handleWalletFundSuccessThenPurchase();
+        }}
+        hideTitle
+        hideBankOption
+        restrictToSelectedPaymentType
+        lockAmount
+        initialPaymentType={quoteCreditPaymentMethod === "paypal" ? "paypal" : "card"}
+        initialAmount={walletFundInitialAmount}
+      />
     </div>
   );
 }

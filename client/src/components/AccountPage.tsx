@@ -613,7 +613,7 @@ export default function AccountPage() {
               {activeSection === "my-jobs" && userRole === "professional" && <ProfessionalJobsSection />}
               {/* Promo Code (Professional only) */}
               {activeSection === "promo-code" && userRole === "professional" && <ProPromoCodeSection />}
-              {activeSection === "quote-credits" && userRole === "professional" && <BidsAndMembershipSection />}
+              {activeSection === "quote-credits" && userRole === "professional" && <BidsAndMembershipSection hideHeader />}
               {activeSection === "verification" && (
                 <AccountVerificationSection 
                   onVerificationStatusChange={() => {

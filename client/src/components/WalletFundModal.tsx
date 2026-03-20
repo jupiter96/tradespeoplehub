@@ -8,6 +8,7 @@ import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Loader2, CreditCard, Building2, Plus, Trash2, Check, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { resolveApiUrl } from "../config/api";
 import PaymentMethodModal from "./PaymentMethodModal";
 import { useCurrency } from "./CurrencyContext";
@@ -30,6 +31,13 @@ interface WalletFundModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  hideTitle?: boolean;
+  titleText?: string;
+  initialPaymentType?: "card" | "paypal" | "bank";
+  initialAmount?: string;
+  hideBankOption?: boolean;
+  restrictToSelectedPaymentType?: boolean;
+  lockAmount?: boolean;
 }
 
 // Payment method logos
@@ -66,12 +74,23 @@ const BankLogo = () => (
   </svg>
 );
 
-export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFundModalProps) {
+export default function WalletFundModal({
+  isOpen,
+  onClose,
+  onSuccess,
+  hideTitle,
+  titleText,
+  initialPaymentType,
+  initialAmount,
+  hideBankOption,
+  restrictToSelectedPaymentType,
+  lockAmount,
+}: WalletFundModalProps) {
   const { userInfo } = useAccount();
   const { formatPrice, symbol, currency, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
-  const [selectedPaymentType, setSelectedPaymentType] = useState<"card" | "paypal" | "bank">("card");
-  const [expandedPaymentType, setExpandedPaymentType] = useState<"card" | "paypal" | "bank" | null>("card");
-  const [amount, setAmount] = useState("20");
+  const [selectedPaymentType, setSelectedPaymentType] = useState<"card" | "paypal" | "bank">(initialPaymentType ?? "card");
+  const [expandedPaymentType, setExpandedPaymentType] = useState<"card" | "paypal" | "bank" | null>(initialPaymentType ?? "card");
+  const [amount, setAmount] = useState(initialAmount ?? "20");
   const [reference, setReference] = useState("");
   const [fullName, setFullName] = useState("");
   const [dateOfDeposit, setDateOfDeposit] = useState("");
@@ -93,6 +112,14 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     stripeCommissionFixed: 0.29,
     bankProcessingFeePercentage: 2.00,
   });
+
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+  const [paypalEnabled, setPaypalEnabled] = useState(false);
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+  const [paypalTransactionId, setPaypalTransactionId] = useState<string | null>(null);
+
+  const restrictPaymentType = !!restrictToSelectedPaymentType;
+  const lockAmountField = !!lockAmount;
 
   // Calculate fees (amount and fee in selected currency for display)
   const calculateFees = () => {
@@ -139,12 +166,29 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     }
   }, [isOpen, selectedPaymentType]);
 
+  // Always fetch publishable keys (needed for PayPal) when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchPublishableKey();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   // Fetch payment settings when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchPaymentSettings();
+      if (typeof initialPaymentType !== "undefined") {
+        setSelectedPaymentType(initialPaymentType);
+        setExpandedPaymentType(initialPaymentType);
+      }
+      if (typeof initialAmount !== "undefined") {
+        setAmount(String(initialAmount));
+      }
+      setPaypalOrderId(null);
+      setPaypalTransactionId(null);
     }
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialPaymentType, initialAmount]);
 
   const fetchBankAccountDetails = async () => {
     try {
@@ -233,6 +277,8 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
       if (response.ok) {
         const data = await response.json();
         setPublishableKey(data.publishableKey);
+        setPaypalClientId(data.paypalClientId || null);
+        setPaypalEnabled(data.paypalEnabled === true);
       }
     } catch (error) {
       console.error("Error fetching publishable key:", error);
@@ -273,7 +319,60 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     } else if (selectedPaymentType === "bank") {
       await handleManualTransfer();
     } else if (selectedPaymentType === "paypal") {
-      toast.info("PayPal integration coming soon");
+      // PayPal is handled via PayPalButtons in the UI.
+    }
+  };
+
+  const handlePayPalCreateOrder = async (): Promise<string> => {
+    if (!amount || parseFloat(amount) <= 0) {
+      throw new Error("Please enter a valid amount");
+    }
+    const amountGBP = toGBP(parseFloat(amount));
+    const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ amount: amountGBP }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to create PayPal order");
+    }
+
+    setPaypalOrderId(data.orderId ?? null);
+    setPaypalTransactionId(data.transactionId ?? null);
+    return data.orderId as string;
+  };
+
+  const handlePayPalApprove = async (data: { orderID: string }) => {
+    try {
+      setLoading(true);
+      if (!paypalTransactionId) {
+        throw new Error("Missing PayPal transaction id");
+      }
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal/capture"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          orderId: data.orderID,
+          transactionId: paypalTransactionId,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to capture PayPal payment");
+      }
+
+      toast.success(`Wallet funded successfully! New balance: ${formatPrice(result.balance ?? 0)}`);
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to process PayPal payment");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -472,6 +571,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
   };
 
   const togglePaymentType = (type: "card" | "paypal" | "bank") => {
+    if (hideBankOption && type === "bank") return;
     if (expandedPaymentType === type) {
       setExpandedPaymentType(null);
     } else {
@@ -484,11 +584,13 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
-              Fund Your Wallet
-            </DialogTitle>
-          </DialogHeader>
+          {!hideTitle && (
+            <DialogHeader>
+              <DialogTitle className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
+                {titleText || "Fund Your Wallet"}
+              </DialogTitle>
+            </DialogHeader>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
             {/* Left Section: Select Payment Method */}
@@ -499,14 +601,16 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
               <RadioGroup
                 value={selectedPaymentType}
-                onValueChange={(value) => {
+                onValueChange={(value: string) => {
+                  if (restrictPaymentType) return;
                   const type = value as "card" | "paypal" | "bank";
                   togglePaymentType(type);
                 }}
                 className="space-y-4"
               >
                 {/* Card Payment Option */}
-                <div className="border-2 rounded-lg overflow-hidden">
+                {(!restrictPaymentType || selectedPaymentType === "card") && (
+                  <div className="border-2 rounded-lg overflow-hidden">
                   <div
                     className={`p-4 cursor-pointer transition-all ${
                       selectedPaymentType === "card"
@@ -638,10 +742,12 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     </div>
                   </div>
                 )}
-              </div>
+                  </div>
+                )}
 
                 {/* PayPal Option */}
-                <div className="border-2 rounded-lg overflow-hidden">
+                {(!restrictPaymentType || selectedPaymentType === "paypal") && (
+                  <div className="border-2 rounded-lg overflow-hidden">
                   <div
                     className={`p-4 cursor-pointer transition-all ${
                       selectedPaymentType === "paypal"
@@ -674,122 +780,137 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
 
                 {expandedPaymentType === "paypal" && (
                   <div className="border-t border-gray-200 p-4 bg-white">
-                    <p className="font-['Poppins',sans-serif] text-[13px] text-gray-600">
-                      PayPal integration coming soon
+                    <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      Select the amount on the right. PayPal buttons will appear below.
                     </p>
                   </div>
                 )}
-              </div>
-
-                {/* Bank Transfer Option */}
-                <div className="border-2 rounded-lg overflow-hidden">
-                  <div
-                    className={`p-4 cursor-pointer transition-all ${
-                      selectedPaymentType === "bank"
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:bg-gray-50"
-                    }`}
-                    onClick={() => togglePaymentType("bank")}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem
-                          value="bank"
-                          id="payment-bank"
-                          className="mt-0"
-                        />
-                        <div className="flex items-center gap-2">
-                          <BankLogo />
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            Bank Transfer
-                          </span>
-                        </div>
-                      </div>
-                      {expandedPaymentType === "bank" ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
-                      )}
-                    </div>
-                  </div>
-
-                {expandedPaymentType === "bank" && (
-                  <div className="border-t border-gray-200 p-4 bg-white space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                      <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                        Our bank information
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-[#6b6b6b]">Account Name: </span>
-                          <span className="font-semibold text-[#2c353f]">{bankAccountDetails.accountName || "Loading..."}</span>
-                        </div>
-                        <div>
-                          <span className="text-[#6b6b6b]">Bank Name: </span>
-                          <span className="font-semibold text-[#2c353f]">{bankAccountDetails.bankName || "Loading..."}</span>
-                        </div>
-                        <div>
-                          <span className="text-[#6b6b6b]">Sort Code: </span>
-                          <span className="font-semibold text-[#2c353f]">{bankAccountDetails.sortCode || "Loading..."}</span>
-                        </div>
-                        <div>
-                          <span className="text-[#6b6b6b]">Account Number: </span>
-                          <span className="font-semibold text-[#2c353f]">{bankAccountDetails.accountNumber || "Loading..."}</span>
-                        </div>
-                        <div>
-                          <span className="text-[#6b6b6b]">Reference ID: </span>
-                          <span className="font-semibold text-[#2c353f]">{userInfo?.referenceId || "Loading..."}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="full-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          Full name:
-                        </Label>
-                        <Input
-                          id="full-name"
-                          type="text"
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          placeholder="Enter your full name"
-                          className="mt-1 font-['Poppins',sans-serif]"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="date-of-deposit" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          Date of deposit:
-                        </Label>
-                        <Input
-                          id="date-of-deposit"
-                          type="date"
-                          value={dateOfDeposit}
-                          onChange={(e) => setDateOfDeposit(e.target.value)}
-                          className="mt-1 font-['Poppins',sans-serif]"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="deposit-reference" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
-                          Deposit reference:
-                        </Label>
-                        <Input
-                          id="deposit-reference"
-                          type="text"
-                          value={loadingReference ? "Generating..." : reference}
-                          onChange={(e) => setReference(e.target.value)}
-                          placeholder="Enter deposit reference"
-                          className="mt-1 font-['Poppins',sans-serif] bg-gray-50"
-                          readOnly
-                          disabled
-                        />
-                      </div>
-                    </div>
                   </div>
                 )}
-                </div>
+
+                {!hideBankOption && (!restrictPaymentType || selectedPaymentType === "bank") && (
+                  <>
+                    {/* Bank Transfer Option */}
+                    <div className="border-2 rounded-lg overflow-hidden">
+                      <div
+                        className={`p-4 cursor-pointer transition-all ${
+                          selectedPaymentType === "bank"
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:bg-gray-50"
+                        }`}
+                        onClick={() => togglePaymentType("bank")}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem
+                              value="bank"
+                              id="payment-bank"
+                              className="mt-0"
+                            />
+                            <div className="flex items-center gap-2">
+                              <BankLogo />
+                              <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                                Bank Transfer
+                              </span>
+                            </div>
+                          </div>
+                          {expandedPaymentType === "bank" ? (
+                            <ChevronUp className="w-5 h-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+
+                      {expandedPaymentType === "bank" && (
+                        <div className="border-t border-gray-200 p-4 bg-white space-y-4">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                            <h4 className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                              Our bank information
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <span className="text-[#6b6b6b]">Account Name: </span>
+                                <span className="font-semibold text-[#2c353f]">
+                                  {bankAccountDetails.accountName || "Loading..."}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#6b6b6b]">Bank Name: </span>
+                                <span className="font-semibold text-[#2c353f]">
+                                  {bankAccountDetails.bankName || "Loading..."}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#6b6b6b]">Sort Code: </span>
+                                <span className="font-semibold text-[#2c353f]">
+                                  {bankAccountDetails.sortCode || "Loading..."}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#6b6b6b]">Account Number: </span>
+                                <span className="font-semibold text-[#2c353f]">
+                                  {bankAccountDetails.accountNumber || "Loading..."}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[#6b6b6b]">Reference ID: </span>
+                                <span className="font-semibold text-[#2c353f]">
+                                  {userInfo?.referenceId || "Loading..."}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor="full-name" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                Full name:
+                              </Label>
+                              <Input
+                                id="full-name"
+                                type="text"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                placeholder="Enter your full name"
+                                className="mt-1 font-['Poppins',sans-serif]"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="date-of-deposit" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                Date of deposit:
+                              </Label>
+                              <Input
+                                id="date-of-deposit"
+                                type="date"
+                                value={dateOfDeposit}
+                                onChange={(e) => setDateOfDeposit(e.target.value)}
+                                className="mt-1 font-['Poppins',sans-serif]"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="deposit-reference" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                                Deposit reference:
+                              </Label>
+                              <Input
+                                id="deposit-reference"
+                                type="text"
+                                value={loadingReference ? "Generating..." : reference}
+                                onChange={(e) => setReference(e.target.value)}
+                                placeholder="Enter deposit reference"
+                                className="mt-1 font-['Poppins',sans-serif] bg-gray-50"
+                                readOnly
+                                disabled
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </RadioGroup>
             </div>
 
@@ -811,6 +932,7 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                     id="amount"
                     type="number"
                     value={amount}
+                    disabled={lockAmountField}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="20"
                     className="pl-8 font-['Poppins',sans-serif]"
@@ -821,6 +943,43 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
                   Minimum: {formatAmountInSelectedCurrency(10)}
                 </p>
+
+                {selectedPaymentType === "paypal" && (
+                  <div className="pt-3">
+                    {!paypalEnabled || !paypalClientId ? (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-800">
+                        PayPal is not configured.
+                      </p>
+                    ) : (
+                      <PayPalScriptProvider
+                        options={{
+                          clientId: paypalClientId,
+                          currency: "GBP",
+                          intent: "capture",
+                        }}
+                      >
+                        <PayPalButtons
+                          createOrder={handlePayPalCreateOrder}
+                          onApprove={handlePayPalApprove}
+                          onError={() => {
+                            toast.error("PayPal payment failed. Please try again.");
+                            setLoading(false);
+                          }}
+                          onCancel={() => {
+                            setPaypalOrderId(null);
+                            setPaypalTransactionId(null);
+                          }}
+                          style={{
+                            layout: "vertical",
+                            color: "blue",
+                            shape: "rect",
+                            label: "paypal",
+                          }}
+                        />
+                      </PayPalScriptProvider>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Payment Summary */}
@@ -870,20 +1029,28 @@ export default function WalletFundModal({ isOpen, onClose, onSuccess }: WalletFu
               </div>
 
               {/* Confirm Button */}
-              <Button
-                onClick={handlePayment}
-                disabled={loading || !amount || parseFloat(amount) <= 0 || (selectedPaymentType === "card" && !selectedPaymentMethod && paymentMethods.length === 0) || (selectedPaymentType === "bank" && (!fullName || !dateOfDeposit || !reference))}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  `Confirm and pay ${formatAmountInSelectedCurrency(fees.paymentDue)}`
-                )}
-              </Button>
+              {selectedPaymentType !== "paypal" && (
+                <Button
+                  onClick={handlePayment}
+                  disabled={
+                    loading ||
+                    !amount ||
+                    parseFloat(amount) <= 0 ||
+                    (selectedPaymentType === "card" && !selectedPaymentMethod && paymentMethods.length === 0) ||
+                    (selectedPaymentType === "bank" && (!fullName || !dateOfDeposit || !reference))
+                  }
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-['Poppins',sans-serif] py-6 text-[16px] font-semibold"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    `Confirm and pay ${formatAmountInSelectedCurrency(fees.paymentDue)}`
+                  )}
+                </Button>
+              )}
 
               <Button
                 onClick={onClose}
