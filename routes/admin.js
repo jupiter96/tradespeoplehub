@@ -3589,26 +3589,102 @@ router.delete('/bid-plans/:id', requireAdmin, async (req, res) => {
 
 // --- Admin Job Posts (list, get, update, delete) ---
 
-// GET /api/admin/jobs – list all jobs with search, filter, sort, pagination
+function buildAdminJobsSearchFilter(search) {
+  if (!search || String(search).trim() === '') return {};
+  const term = String(search).trim();
+  return {
+    $or: [
+      { title: { $regex: term, $options: 'i' } },
+      { description: { $regex: term, $options: 'i' } },
+      { postcode: { $regex: term, $options: 'i' } },
+      { slug: { $regex: term, $options: 'i' } },
+    ],
+  };
+}
+
+/** Exclude jobs that have any disputed milestone (same buckets as client My Jobs). */
+const ADMIN_JOBS_NO_DISPUTED_MILESTONE = {
+  $nor: [{ milestones: { $elemMatch: { status: 'disputed' } } }],
+};
+
+function mergeAdminJobsFilters(a, b) {
+  const aKeys = a && typeof a === 'object' ? Object.keys(a).length : 0;
+  const bKeys = b && typeof b === 'object' ? Object.keys(b).length : 0;
+  if (aKeys && bKeys) return { $and: [a, b] };
+  if (aKeys) return a;
+  if (bKeys) return b;
+  return {};
+}
+
+/** Tab keys: open | awarded | delivered | completed | other */
+function adminJobsStatusTabQuery(statusTab) {
+  const tab = String(statusTab || 'open').trim();
+  switch (tab) {
+    case 'open':
+      return mergeAdminJobsFilters({ status: 'open' }, ADMIN_JOBS_NO_DISPUTED_MILESTONE);
+    case 'awarded':
+      return mergeAdminJobsFilters(
+        { status: { $in: ['awaiting-accept', 'in-progress'] } },
+        ADMIN_JOBS_NO_DISPUTED_MILESTONE
+      );
+    case 'delivered':
+      return mergeAdminJobsFilters({ status: 'delivered' }, ADMIN_JOBS_NO_DISPUTED_MILESTONE);
+    case 'completed':
+      return mergeAdminJobsFilters({ status: 'completed' }, ADMIN_JOBS_NO_DISPUTED_MILESTONE);
+    case 'other':
+      return {
+        $or: [
+          { status: { $in: ['cancelled', 'closed'] } },
+          { milestones: { $elemMatch: { status: 'disputed' } } },
+        ],
+      };
+    default:
+      return mergeAdminJobsFilters({ status: 'open' }, ADMIN_JOBS_NO_DISPUTED_MILESTONE);
+  }
+}
+
+// GET /api/admin/jobs/tab-counts – counts per status tab (optional search)
+router.get('/jobs/tab-counts', requireAdmin, async (req, res) => {
+  try {
+    const { search } = req.query;
+    const searchFilter = buildAdminJobsSearchFilter(search);
+    const tabs = ['open', 'awarded', 'delivered', 'completed', 'other'];
+    const counts = {};
+    for (const tab of tabs) {
+      const q = mergeAdminJobsFilters(searchFilter, adminJobsStatusTabQuery(tab));
+      counts[tab] = await Job.countDocuments(q);
+    }
+    return res.json(counts);
+  } catch (err) {
+    console.error('[Admin] Jobs tab counts:', err);
+    return res.status(500).json({ error: err.message || 'Failed to count jobs by tab' });
+  }
+});
+
+// GET /api/admin/jobs – list all jobs with search, tab filter, sort, pagination
 router.get('/jobs', requireAdmin, async (req, res) => {
   try {
-    const { search, status, sortBy = 'postedAt', sortOrder = 'desc', page = 1, limit = 20 } = req.query;
+    const {
+      search,
+      status,
+      statusTab,
+      sortBy = 'postedAt',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 20,
+    } = req.query;
     const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
-    const query = {};
-    if (status && String(status).trim() !== '') {
-      query.status = String(status).trim();
-    }
-    if (search && String(search).trim() !== '') {
-      const term = String(search).trim();
-      query.$or = [
-        { title: { $regex: term, $options: 'i' } },
-        { description: { $regex: term, $options: 'i' } },
-        { postcode: { $regex: term, $options: 'i' } },
-        { slug: { $regex: term, $options: 'i' } },
-      ];
+    const searchFilter = buildAdminJobsSearchFilter(search);
+    let query;
+    if (statusTab != null && String(statusTab).trim() !== '') {
+      query = mergeAdminJobsFilters(searchFilter, adminJobsStatusTabQuery(statusTab));
+    } else if (status && String(status).trim() !== '') {
+      query = mergeAdminJobsFilters(searchFilter, { status: String(status).trim() });
+    } else {
+      query = mergeAdminJobsFilters(searchFilter, adminJobsStatusTabQuery('open'));
     }
 
     let sortField = String(sortBy || 'postedAt');

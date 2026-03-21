@@ -1,5 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { Search, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Search,
+  Loader2,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  FolderOpen,
+  Handshake,
+  Package,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 import AdminPageLayout from "./AdminPageLayout";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -33,6 +46,8 @@ import {
 import { resolveApiUrl } from "../../config/api";
 import { useAdminRouteGuard } from "../../hooks/useAdminRouteGuard";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
+import { StatusCountBadge } from "../JobListCardStatusBadge";
 
 interface AdminJob {
   id: string;
@@ -81,11 +96,14 @@ function SortableHeader({
   );
 }
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
+type AdminJobStatusTab = "open" | "awarded" | "delivered" | "completed" | "other";
+
+/** Edit modal only — full enum for job.status */
+const EDIT_STATUS_OPTIONS = [
   { value: "open", label: "Open" },
   { value: "awaiting-accept", label: "Awaiting Accept" },
   { value: "in-progress", label: "In Progress" },
+  { value: "delivered", label: "Delivered" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
   { value: "closed", label: "Closed" },
@@ -104,6 +122,7 @@ function getStatusBadgeClass(status: string): string {
     open: "bg-green-100 text-green-700 border-green-200",
     "awaiting-accept": "bg-amber-100 text-amber-700 border-amber-200",
     "in-progress": "bg-blue-100 text-blue-700 border-blue-200",
+    delivered: "bg-purple-100 text-purple-800 border-purple-200",
     completed: "bg-gray-100 text-gray-700 border-gray-200",
     cancelled: "bg-red-100 text-red-700 border-red-200",
     closed: "bg-gray-100 text-gray-700 border-gray-300",
@@ -116,7 +135,14 @@ export default function AdminJobPostsPage() {
   const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [activeTab, setActiveTab] = useState<AdminJobStatusTab>("open");
+  const [tabCounts, setTabCounts] = useState<Record<AdminJobStatusTab, number>>({
+    open: 0,
+    awarded: 0,
+    delivered: 0,
+    completed: 0,
+    other: 0,
+  });
   const [sortBy, setSortBy] = useState("postedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
@@ -143,7 +169,7 @@ export default function AdminJobPostsPage() {
   const [jobToDelete, setJobToDelete] = useState<AdminJob | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -151,7 +177,7 @@ export default function AdminJobPostsPage() {
       params.set("limit", String(pageSize));
       params.set("sortBy", sortBy);
       params.set("sortOrder", sortOrder);
-      if (statusFilter) params.set("status", statusFilter);
+      params.set("statusTab", activeTab);
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
 
       const res = await fetch(resolveApiUrl(`/api/admin/jobs?${params.toString()}`), {
@@ -172,15 +198,42 @@ export default function AdminJobPostsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, sortBy, sortOrder, activeTab, searchQuery]);
+
+  const fetchTabCounts = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      const res = await fetch(
+        resolveApiUrl(`/api/admin/jobs/tab-counts?${params.toString()}`),
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setTabCounts({
+          open: Number(data.open) || 0,
+          awarded: Number(data.awarded) || 0,
+          delivered: Number(data.delivered) || 0,
+          completed: Number(data.completed) || 0,
+          other: Number(data.other) || 0,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchJobs();
-  }, [page, sortBy, sortOrder, statusFilter, searchQuery]);
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    fetchTabCounts();
+  }, [fetchTabCounts]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, activeTab]);
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -270,6 +323,7 @@ export default function AdminJobPostsPage() {
         setEditModalOpen(false);
         setEditingJob(null);
         fetchJobs();
+        fetchTabCounts();
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || "Failed to update job");
@@ -299,6 +353,7 @@ export default function AdminJobPostsPage() {
         setDeleteDialogOpen(false);
         setJobToDelete(null);
         fetchJobs();
+        fetchTabCounts();
       } else {
         const data = await res.json().catch(() => ({}));
         toast.error(data.error || "Failed to delete job");
@@ -319,9 +374,89 @@ export default function AdminJobPostsPage() {
   return (
     <AdminPageLayout
       title="Job Status"
-      description="View and manage all job status. Search, filter, sort, edit or delete jobs."
+      description="View and manage jobs by status. Search, sort, edit or delete jobs."
     >
-      <div className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v: string) => setActiveTab(v as AdminJobStatusTab)}
+        className="w-full space-y-6"
+      >
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-5 bg-gray-100 p-1 rounded-xl h-auto gap-1">
+            <TabsTrigger
+              value="open"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <FolderOpen className="w-4 h-4 shrink-0" />
+              Open
+              {tabCounts.open > 0 && (
+                <StatusCountBadge status="open" count={tabCounts.open} variant="client" className="ml-1" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="awarded"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <Handshake className="w-4 h-4 shrink-0" />
+              Awarded
+              {tabCounts.awarded > 0 && (
+                <StatusCountBadge
+                  status="awaiting-accept"
+                  count={tabCounts.awarded}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="delivered"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <Package className="w-4 h-4 shrink-0" />
+              Delivered
+              {tabCounts.delivered > 0 && (
+                <StatusCountBadge
+                  status="delivered"
+                  count={tabCounts.delivered}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="completed"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              Completed
+              {tabCounts.completed > 0 && (
+                <StatusCountBadge
+                  status="completed"
+                  count={tabCounts.completed}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="other"
+              title="Cancelled, closed, or any disputed milestone"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-2.5 sm:py-3 flex items-center gap-1.5 whitespace-normal text-center leading-tight text-[11px] sm:text-sm flex-shrink-0"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span className="max-w-[4.5rem] sm:max-w-none">Other jobs</span>
+              {tabCounts.other > 0 && (
+                <StatusCountBadge
+                  status="cancelled"
+                  count={tabCounts.other}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-4 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -333,20 +468,6 @@ export default function AdminJobPostsPage() {
               className="pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 border rounded-md min-w-[160px]"
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value || "all"} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Sort by:</span>
             <select
@@ -497,7 +618,7 @@ export default function AdminJobPostsPage() {
             </>
           )}
         </div>
-      </div>
+      </Tabs>
 
       {/* Edit modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
@@ -540,7 +661,7 @@ export default function AdminJobPostsPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
                   className="w-full px-3 py-2 border rounded-md"
                 >
-                  {STATUS_OPTIONS.filter((o) => o.value).map((o) => (
+                  {EDIT_STATUS_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
