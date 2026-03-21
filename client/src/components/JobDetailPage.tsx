@@ -36,6 +36,7 @@ import {
   Flame,
   X,
   Plus,
+  Loader2,
   ChevronDown,
   ChevronUp,
   Info,
@@ -302,6 +303,7 @@ export default function JobDetailPage() {
   ]);
   const [isMilestoneOpen, setIsMilestoneOpen] = useState(false);
   const [updatingSuggestedMilestoneId, setUpdatingSuggestedMilestoneId] = useState<string | null>(null);
+  const [suggestedBulkAction, setSuggestedBulkAction] = useState<null | "accept-all" | "reject-all">(null);
 
   // Award modal state
   const [showAwardModal, setShowAwardModal] = useState(false);
@@ -796,7 +798,22 @@ export default function JobDetailPage() {
 
   const handleOpenAwardModal = (quote: JobQuote) => {
     setSelectedQuoteForAward(quote);
-    setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toFixed(2) }]);
+    const suggested = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
+    const validSuggested = suggested.filter(
+      (m) => String(m.description || "").trim() && Number(m.amount) > 0
+    );
+    if (validSuggested.length > 0) {
+      setAwardWithMilestone(true);
+      setAwardMilestones(
+        validSuggested.map((m) => ({
+          name: String(m.description || "").trim() || "Milestone",
+          amount: fromGBP(Number(m.amount)).toFixed(2),
+        }))
+      );
+    } else {
+      setAwardWithMilestone(true);
+      setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toFixed(2) }]);
+    }
     setShowAwardModal(true);
   };
 
@@ -877,6 +894,81 @@ export default function JobDetailPage() {
       } else {
         toast.error(e?.message || "Failed to award job");
       }
+    }
+  };
+
+  const getAwardedQuoteForJob = () => {
+    if (!job?.awardedProfessionalId) return null;
+    return (job.quotes || []).find(
+      (q) => String(q.professionalId) === String(job.awardedProfessionalId)
+    );
+  };
+
+  /** Fund every pending suggested milestone in order (wallet must cover the total). */
+  const handleAcceptAllSuggestedMilestones = async () => {
+    if (!job?.id || !isJobOwner) return;
+    const awardedQuote = getAwardedQuoteForJob();
+    if (!awardedQuote?.id) return;
+    const pending = (awardedQuote.suggestedMilestones || []).filter((m) => m.status === "pending");
+    if (pending.length === 0) return;
+    setSuggestedBulkAction("accept-all");
+    try {
+      for (const m of pending) {
+        const res = await fetch(
+          resolveApiUrl(
+            `/api/jobs/${job.id}/quotes/${awardedQuote.id}/suggested-milestones/${m.id}/accept`
+          ),
+          { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include" }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to accept a milestone");
+        }
+      }
+      await fetchJobById(job.slug || job.id);
+      toast.success("All suggested milestones were accepted and funded.");
+    } catch (e: any) {
+      await fetchJobById(job.slug || job.id);
+      toast.error(e?.message || "Could not accept all milestones");
+    } finally {
+      setSuggestedBulkAction(null);
+    }
+  };
+
+  const handleRejectAllSuggestedMilestones = async () => {
+    if (!job?.id || !isJobOwner) return;
+    const awardedQuote = getAwardedQuoteForJob();
+    if (!awardedQuote?.id) return;
+    const pending = (awardedQuote.suggestedMilestones || []).filter((m) => m.status === "pending");
+    if (pending.length === 0) return;
+    if (
+      !window.confirm(
+        `Reject all ${pending.length} suggested milestone(s)? You can still create milestones manually below.`
+      )
+    ) {
+      return;
+    }
+    setSuggestedBulkAction("reject-all");
+    try {
+      for (const m of pending) {
+        const res = await fetch(
+          resolveApiUrl(
+            `/api/jobs/${job.id}/quotes/${awardedQuote.id}/suggested-milestones/${m.id}/reject`
+          ),
+          { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include" }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to reject a milestone");
+        }
+      }
+      await fetchJobById(job.slug || job.id);
+      toast.success("All suggested milestones were declined.");
+    } catch (e: any) {
+      await fetchJobById(job.slug || job.id);
+      toast.error(e?.message || "Could not reject all milestones");
+    } finally {
+      setSuggestedBulkAction(null);
     }
   };
 
@@ -2645,24 +2737,37 @@ export default function JobDetailPage() {
             {/* Payment Tab */}
             {activeTab === "payment" && (
               <div className="bg-white rounded-xl shadow-sm p-6">
-                {/* Suggested milestones from awarded quote (if any) */}
+                {/* Suggested milestones from awarded quote (shown above milestone creation; esp. after "Without milestone" award) */}
                 {job.awardedProfessionalId && job.quotes && job.quotes.length > 0 && (() => {
                   const awardedQuote = job.quotes.find(
-                    (q) => q.professionalId === job.awardedProfessionalId
+                    (q) => String(q.professionalId) === String(job.awardedProfessionalId)
                   );
                   const suggested = awardedQuote?.suggestedMilestones || [];
                   if (!awardedQuote || suggested.length === 0) return null;
                   const hasPending = suggested.some((m) => m.status === "pending");
+                  const noFundedMilestonesYet = !job.milestones || job.milestones.length === 0;
+                  const bulkBusy = !!suggestedBulkAction;
+                  const rowBusy = !!updatingSuggestedMilestoneId || bulkBusy;
+                  const suggestedTotalAmount = suggested.reduce(
+                    (sum, m) => sum + (Number(m.amount) || 0),
+                    0
+                  );
                   return (
                     <div className="mb-6 border border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/60">
-                      <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#047857] mb-2 flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Milestones Suggested
-                      </h3>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#166534] mb-3">
-                        The professional suggested the following milestone payment plan when sending their quote.
-                        You can accept items to create funded milestones, or reject items you don&apos;t want.
+                      <div className="mb-2">
+                        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#047857] flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Suggested milestone plan
+                        </h3>
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#166534] mb-2">
+                        From the professional&apos;s quote. Accept to fund each step from your wallet (same as creating a milestone), or decline if you prefer a different plan.
                       </p>
+                      {noFundedMilestonesYet && hasPending && (
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#065f46] mb-3 rounded-lg bg-white/80 border border-emerald-100 px-3 py-2">
+                          You can use this plan as-is, or add your own milestones in the section below.
+                        </p>
+                      )}
                       <div className="overflow-x-auto rounded-lg border border-emerald-100 bg-white">
                         <table className="w-full font-['Poppins',sans-serif] text-[13px]">
                           <thead>
@@ -2697,7 +2802,7 @@ export default function JobDetailPage() {
                                   )}
                                   {m.status === "rejected" && (
                                     <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
-                                      rejected
+                                      declined
                                     </span>
                                   )}
                                 </td>
@@ -2706,8 +2811,8 @@ export default function JobDetailPage() {
                                     <div className="inline-flex gap-2">
                                       <Button
                                         size="sm"
-                                        disabled={!!updatingSuggestedMilestoneId}
-                                        className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        disabled={rowBusy}
+                                        className="h-8 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm"
                                         onClick={async () => {
                                           if (!job) return;
                                           setUpdatingSuggestedMilestoneId(m.id);
@@ -2726,7 +2831,7 @@ export default function JobDetailPage() {
                                             if (!res.ok) {
                                               throw new Error(data.error || "Failed to accept milestone");
                                             }
-                                            await fetchJobById(job.id);
+                                            await fetchJobById(job.slug || job.id);
                                             toast.success("Milestone created from suggestion.");
                                           } catch (e: any) {
                                             toast.error(e?.message || "Failed to accept milestone");
@@ -2735,12 +2840,16 @@ export default function JobDetailPage() {
                                           }
                                         }}
                                       >
-                                        {updatingSuggestedMilestoneId === m.id ? "..." : "Accept"}
+                                        {updatingSuggestedMilestoneId === m.id ? (
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                          "Accept"
+                                        )}
                                       </Button>
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        disabled={!!updatingSuggestedMilestoneId}
+                                        disabled={rowBusy}
                                         className="h-8 px-3 border-red-300 text-red-600 hover:bg-red-50"
                                         onClick={async () => {
                                           if (!job) return;
@@ -2760,8 +2869,8 @@ export default function JobDetailPage() {
                                             if (!res.ok) {
                                               throw new Error(data.error || "Failed to reject milestone");
                                             }
-                                            await fetchJobById(job.id);
-                                            toast.success("Suggested milestone rejected.");
+                                            await fetchJobById(job.slug || job.id);
+                                            toast.success("Suggestion declined.");
                                           } catch (e: any) {
                                             toast.error(e?.message || "Failed to reject milestone");
                                           } finally {
@@ -2769,7 +2878,11 @@ export default function JobDetailPage() {
                                           }
                                         }}
                                       >
-                                        {updatingSuggestedMilestoneId === m.id ? "..." : "Reject"}
+                                        {updatingSuggestedMilestoneId === m.id ? (
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : (
+                                          "Decline"
+                                        )}
                                       </Button>
                                     </div>
                                   )}
@@ -2778,6 +2891,51 @@ export default function JobDetailPage() {
                             ))}
                           </tbody>
                         </table>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-emerald-100 bg-emerald-50/50 px-3 py-3">
+                          <div className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-left">
+                            <span className="text-[#6b6b6b]">Total milestone amount</span>
+                            <div className="text-[#047857] font-semibold text-[16px] sm:text-[17px] tabular-nums mt-0.5">
+                              {formatPriceWhole(suggestedTotalAmount)}
+                            </div>
+                          </div>
+                          {isJobOwner && hasPending && (
+                            <div className="flex flex-wrap gap-2 justify-end sm:ml-auto">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={rowBusy}
+                                className="h-9 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm font-['Poppins',sans-serif]"
+                                onClick={() => void handleAcceptAllSuggestedMilestones()}
+                              >
+                                {suggestedBulkAction === "accept-all" ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin inline" />
+                                    Accepting…
+                                  </>
+                                ) : (
+                                  "Accept all as proposed"
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={rowBusy}
+                                className="h-9 px-3 border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
+                                onClick={() => void handleRejectAllSuggestedMilestones()}
+                              >
+                                {suggestedBulkAction === "reject-all" ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin inline" />
+                                    Declining…
+                                  </>
+                                ) : (
+                                  "Decline all"
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -2823,26 +2981,7 @@ export default function JobDetailPage() {
                 )}
 
                 {/* Empty state if no milestones */}
-                {(!job.milestones || job.milestones.length === 0) && (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
-                    <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
-                      No Milestones Yet
-                    </h3>
-                    <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4 max-w-md mx-auto">
-                      Milestone payments allow you to pay in stages. Create your first milestone to get started.
-                    </p>
-                    {isJobOwner && (
-                      <Button
-                        onClick={() => setShowNewMilestoneDialog(true)}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create First Milestone
-                      </Button>
-                    )}
-                  </div>
-                )}
+                
 
                 {/* Milestones table */}
                 {job.milestones && job.milestones.length > 0 && (
@@ -5016,7 +5155,21 @@ export default function JobDetailPage() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[14px] text-[#2c353f]">
-                    <strong>{selectedQuoteForAward.professionalName}</strong> has requested the following Milestone Payment:
+                    <strong>{selectedQuoteForAward.professionalName}</strong>
+                    {(() => {
+                      const n = (selectedQuoteForAward.suggestedMilestones || []).filter(
+                        (s) => String(s.description || "").trim() && Number(s.amount) > 0
+                      ).length;
+                      return n > 0 ? (
+                        <>
+                          {" "}
+                          suggested a <strong>{n}-step</strong> milestone plan in their quote — it&apos;s pre-filled when you choose
+                          &quot;With milestone&quot; (you can edit before awarding).
+                        </>
+                      ) : (
+                        <> — choose milestone payments or award without milestones.</>
+                      );
+                    })()}
                   </p>
                 </div>
               </div>
@@ -5076,6 +5229,13 @@ export default function JobDetailPage() {
               {awardWithMilestone && (
                 <div className="space-y-3">
                   <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">Milestones</Label>
+                  {(selectedQuoteForAward.suggestedMilestones || []).filter(
+                    (s) => String(s.description || "").trim() && Number(s.amount) > 0
+                  ).length > 0 && (
+                    <div className="rounded-lg border border-blue-200 bg-[#EFF6FF] px-3 py-2 font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#1e40af]">
+                      Pre-filled from the quote. Adjust names or amounts if needed; funds are held when you award.
+                    </div>
+                  )}
                   {awardMilestones.map((row, index) => (
                     <div key={index} className="flex gap-2 items-center">
                       <Input

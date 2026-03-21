@@ -1922,6 +1922,13 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
           });
         }
         job.markModified('milestones');
+        // Quote suggestions were realised as funded milestones at award; close pending rows so Payment tab does not offer duplicate acceptance.
+        if (quote.suggestedMilestones?.length) {
+          for (const sm of quote.suggestedMilestones) {
+            if (sm.status === 'pending') sm.status = 'rejected';
+          }
+          job.markModified('quotes');
+        }
       } else if (totalMilestoneAmount > 0) {
         const amount = req.body.milestoneAmount != null && !isNaN(Number(req.body.milestoneAmount)) ? Number(req.body.milestoneAmount) : null;
         if (amount != null && amount >= 0) {
