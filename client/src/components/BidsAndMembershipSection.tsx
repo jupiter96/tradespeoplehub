@@ -1,19 +1,41 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown, ArrowUp, ArrowDown, FileText, Wallet, CreditCard, CircleDollarSign } from "lucide-react";
+import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown, ArrowUp, ArrowDown, FileText, Wallet, CreditCard, CircleDollarSign, Eye } from "lucide-react";
 import { Button } from "./ui/button";
 import { resolveApiUrl } from "../config/api";
 import { toast } from "sonner@2.0.3";
 import { useCurrency } from "./CurrencyContext";
 import WalletFundModal from "./WalletFundModal";
 
-interface CreditPurchaseRecord {
+interface CreditPurchaseRow {
+  kind: "purchase";
   id: string;
   purchasedAt: string;
   credits: number;
   amountPounds: number;
   planName: string;
   invoiceNumber: string;
+}
+
+interface QuoteCreditUsageRow {
+  kind: "quote_used";
+  id: string;
+  usedAt: string;
+  credits: number;
+  jobId: string;
+  jobSlug: string;
+  jobTitle: string;
+  source: "free" | "purchased";
+}
+
+type CreditHistoryRow = CreditPurchaseRow | QuoteCreditUsageRow;
+
+function historyRowDate(r: CreditHistoryRow): string {
+  return r.kind === "purchase" ? r.purchasedAt : r.usedAt;
+}
+
+function historyRowDetail(r: CreditHistoryRow): string {
+  return r.kind === "purchase" ? r.planName : r.jobTitle;
 }
 
 interface Balance {
@@ -86,15 +108,16 @@ export default function BidsAndMembershipSection({
   const [waitingForExternalPayment, setWaitingForExternalPayment] = useState(false);
   const pendingPurchaseRef = useRef<{ kind: "custom"; qty: number } | { kind: "plan"; planId: string } | null>(null);
   const [walletFundInitialAmount, setWalletFundInitialAmount] = useState<string>("");
+  const [walletBalanceGBP, setWalletBalanceGBP] = useState<number>(0);
 
   useEffect(() => {
     onWalletFundModalOpenChange?.(showWalletFundModal);
   }, [showWalletFundModal, onWalletFundModalOpenChange]);
 
-  const [historyList, setHistoryList] = useState<CreditPurchaseRecord[]>([]);
+  const [historyList, setHistoryList] = useState<CreditHistoryRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
-  const [historySortBy, setHistorySortBy] = useState<"purchasedAt" | "credits" | "amountPounds" | "planName">("purchasedAt");
+  const [historySortBy, setHistorySortBy] = useState<"date" | "credits" | "amountPounds" | "detail">("date");
   const [historySortDir, setHistorySortDir] = useState<"asc" | "desc">("desc");
 
   const fetchBalance = async () => {
@@ -129,11 +152,23 @@ export default function BidsAndMembershipSection({
     }
   };
 
+  const fetchWalletBalance = async () => {
+    try {
+      const res = await fetch(resolveApiUrl("/api/wallet/balance"), { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setWalletBalanceGBP(typeof data.balance === "number" ? data.balance : 0);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      await Promise.all([fetchBalance(), fetchPlans()]);
+      await Promise.all([fetchBalance(), fetchPlans(), fetchWalletBalance()]);
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -143,6 +178,7 @@ export default function BidsAndMembershipSection({
   useEffect(() => {
     const onChanged = () => {
       fetchBalance();
+      fetchWalletBalance();
     };
     window.addEventListener("bids:changed", onChanged);
     return () => {
@@ -156,7 +192,8 @@ export default function BidsAndMembershipSection({
       const res = await fetch(resolveApiUrl("/api/bids/history"), { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setHistoryList(data.history || []);
+        const raw = Array.isArray(data.items) ? data.items : [];
+        setHistoryList(raw as CreditHistoryRow[]);
       }
     } catch {
       setHistoryList([]);
@@ -173,22 +210,34 @@ export default function BidsAndMembershipSection({
     let list = [...historyList];
     if (historySearch.trim()) {
       const q = historySearch.trim().toLowerCase();
-      list = list.filter(
-        (r) =>
-          r.invoiceNumber.toLowerCase().includes(q) ||
-          r.planName.toLowerCase().includes(q) ||
-          String(r.credits).includes(q) ||
-          String(r.amountPounds).includes(q) ||
-          new Date(r.purchasedAt).toLocaleDateString("en-GB").toLowerCase().includes(q)
-      );
+      list = list.filter((r) => {
+        const dateStr = new Date(historyRowDate(r)).toLocaleDateString("en-GB").toLowerCase();
+        if (dateStr.includes(q) || String(r.credits).includes(q)) return true;
+        if (r.kind === "purchase") {
+          return (
+            r.invoiceNumber.toLowerCase().includes(q) ||
+            r.planName.toLowerCase().includes(q) ||
+            String(r.amountPounds).includes(q)
+          );
+        }
+        return (
+          r.jobTitle.toLowerCase().includes(q) ||
+          r.jobId.toLowerCase().includes(q) ||
+          (r.jobSlug && r.jobSlug.toLowerCase().includes(q)) ||
+          r.source.toLowerCase().includes(q) ||
+          (q.length >= 3 && "quote sent".includes(q))
+        );
+      });
     }
+    const amountOf = (r: CreditHistoryRow) => (r.kind === "purchase" ? r.amountPounds : 0);
     list.sort((a, b) => {
       let cmp = 0;
-      if (historySortBy === "purchasedAt") {
-        cmp = new Date(a.purchasedAt).getTime() - new Date(b.purchasedAt).getTime();
+      if (historySortBy === "date") {
+        cmp = new Date(historyRowDate(a)).getTime() - new Date(historyRowDate(b)).getTime();
       } else if (historySortBy === "credits") cmp = a.credits - b.credits;
-      else if (historySortBy === "amountPounds") cmp = a.amountPounds - b.amountPounds;
-      else if (historySortBy === "planName") cmp = (a.planName || "").localeCompare(b.planName || "");
+      else if (historySortBy === "amountPounds") cmp = amountOf(a) - amountOf(b);
+      else if (historySortBy === "detail")
+        cmp = historyRowDetail(a).localeCompare(historyRowDetail(b));
       return historySortDir === "asc" ? cmp : -cmp;
     });
     return list;
@@ -197,6 +246,12 @@ export default function BidsAndMembershipSection({
   const handleViewInvoice = (purchaseId: string) => {
     const url = resolveApiUrl(`/api/bids/invoice/${purchaseId}?currency=${encodeURIComponent(currency)}`);
     window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleViewJobQuotes = (row: QuoteCreditUsageRow) => {
+    const path = row.jobSlug || row.jobId;
+    if (!path) return;
+    navigate(`/job/${path}?tab=quotes`);
   };
 
   const handlePurchase = async (planId: string) => {
@@ -212,6 +267,7 @@ export default function BidsAndMembershipSection({
       if (res.ok) {
         toast.success(data.message || "Plan purchased. Your credits have been added.");
         await fetchBalance();
+        await fetchWalletBalance();
         notifyBidsChanged();
         if (activeTab === "history") await fetchHistory();
         onQuoteCreditsPurchaseSuccess?.();
@@ -252,6 +308,7 @@ export default function BidsAndMembershipSection({
       if (res.ok) {
         toast.success(data.message || `${qty} credits purchased.`);
         await fetchBalance();
+        await fetchWalletBalance();
         notifyBidsChanged();
         if (activeTab === "history") await fetchHistory();
         onQuoteCreditsPurchaseSuccess?.();
@@ -285,22 +342,36 @@ export default function BidsAndMembershipSection({
     }
   };
 
-  const handleBuyCredit = async () => {
-    const customQtyLocal = Math.max(1, Math.min(500, Math.floor(Number(customQuantity)) || 1));
-    const requiredGBP =
-      selectedOption === CUSTOM_OPTION_VALUE
-        ? customQtyLocal * pricePerBid
-        : selectedPlan
-          ? selectedPlan.amountPence / 100
-          : 0;
+  const customQty = Math.max(1, Math.min(500, Math.floor(Number(customQuantity)) || 1));
+  const selectedPlan = plans.find((p) => p.id === selectedOption);
+  const purchaseRequiredGBP =
+    selectedOption === CUSTOM_OPTION_VALUE
+      ? customQty * pricePerBid
+      : selectedPlan
+        ? selectedPlan.amountPence / 100
+        : 0;
+  const canPayFromWallet =
+    purchaseRequiredGBP <= 0 || walletBalanceGBP + 1e-6 >= purchaseRequiredGBP;
 
-    if (!requiredGBP || requiredGBP <= 0) {
+  useLayoutEffect(() => {
+    if (purchaseRequiredGBP <= 0) return;
+    if (walletBalanceGBP + 1e-6 >= purchaseRequiredGBP) return;
+    setQuoteCreditPaymentMethod((m) => (m === "balance" ? "card" : m));
+  }, [purchaseRequiredGBP, walletBalanceGBP]);
+
+  const handleBuyCredit = async () => {
+    if (!purchaseRequiredGBP || purchaseRequiredGBP <= 0) {
       toast.error("Please select a credit option first.");
       return;
     }
 
     // Account balance: purchase directly from wallet
     if (quoteCreditPaymentMethod === "balance") {
+      if (walletBalanceGBP + 1e-6 < purchaseRequiredGBP) {
+        toast.error("Insufficient wallet balance. Choose Card or PayPal, or add funds.");
+        setQuoteCreditPaymentMethod("card");
+        return;
+      }
       if (selectedOption === CUSTOM_OPTION_VALUE) return handlePurchaseCustom();
       if (selectedPlan?.id) return handlePurchase(selectedPlan.id);
       return;
@@ -309,7 +380,7 @@ export default function BidsAndMembershipSection({
     // Card/PayPal: fund wallet first, then purchase
     pendingPurchaseRef.current =
       selectedOption === CUSTOM_OPTION_VALUE
-        ? { kind: "custom", qty: customQtyLocal }
+        ? { kind: "custom", qty: customQty }
         : selectedPlan?.id
           ? { kind: "plan", planId: selectedPlan.id }
           : null;
@@ -319,15 +390,12 @@ export default function BidsAndMembershipSection({
       return;
     }
 
-    const amountSelectedCurrency = fromGBP(requiredGBP);
+    const amountSelectedCurrency = fromGBP(purchaseRequiredGBP);
     setWalletFundInitialAmount(amountSelectedCurrency.toFixed(2));
     setWaitingForExternalPayment(true);
     setShowWalletFundModal(true);
   };
 
-  const customQty = Math.max(1, Math.min(500, Math.floor(Number(customQuantity)) || 1));
-  const customTotal = (customQty * pricePerBid).toFixed(2);
-  const selectedPlan = plans.find((p) => p.id === selectedOption);
   const isPurchasing = purchasingPlanId !== null || purchasingCustom || waitingForExternalPayment;
 
   if (loading) {
@@ -439,112 +507,122 @@ export default function BidsAndMembershipSection({
           </p>
 
           <div className="mb-6 flex flex-wrap gap-2">
-            {([
-              { id: "balance", label: "Account balance" },
-              { id: "card", label: "Card" },
-              { id: "paypal", label: "PayPal" },
-            ] as const).map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setQuoteCreditPaymentMethod(opt.id)}
-                className={[
-                  "px-4 py-2 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[14px] font-semibold",
-                  quoteCreditPaymentMethod === opt.id
-                    ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
-                    : "border-gray-200 bg-white text-[#2c353f] hover:border-gray-300",
-                ].join(" ")}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {opt.id === "balance" && <Wallet className="w-4 h-4 text-[#FE8A0F]" />}
-                  {opt.id === "card" && <CreditCard className="w-4 h-4 text-[#FE8A0F]" />}
-                  {opt.id === "paypal" && <CircleDollarSign className="w-4 h-4 text-[#FE8A0F]" />}
-                  {opt.label}
-                </span>
-              </button>
-            ))}
+            {(
+              [
+                { id: "balance" as const, label: "Account balance" },
+                { id: "card" as const, label: "Card" },
+                { id: "paypal" as const, label: "PayPal" },
+              ] as const
+            )
+              .filter((opt) => opt.id !== "balance" || canPayFromWallet)
+              .map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setQuoteCreditPaymentMethod(opt.id)}
+                  className={[
+                    "px-4 py-2 rounded-xl border-2 transition-all font-['Poppins',sans-serif] text-[14px] font-semibold",
+                    quoteCreditPaymentMethod === opt.id
+                      ? "border-[#FE8A0F] bg-[#FFF5EB] text-[#FE8A0F]"
+                      : "border-gray-200 bg-white text-[#2c353f] hover:border-gray-300",
+                  ].join(" ")}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {opt.id === "balance" && <Wallet className="w-4 h-4 text-[#FE8A0F]" />}
+                    {opt.id === "card" && <CreditCard className="w-4 h-4 text-[#FE8A0F]" />}
+                    {opt.id === "paypal" && <CircleDollarSign className="w-4 h-4 text-[#FE8A0F]" />}
+                    {opt.label}
+                  </span>
+                </button>
+              ))}
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left: plan options */}
-            <div className="lg:min-w-[280px] space-y-3">
-              <p className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#2c353f] mb-2">Select an option</p>
-              {plans.map((plan) => (
+          <div className="space-y-6">
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#2c353f] mb-3">
+                Select an option
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {plans.map((plan) => (
+                  <label
+                    key={plan.id}
+                    className={`flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[120px] ${
+                      selectedOption === plan.id
+                        ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="credit-option"
+                        value={plan.id}
+                        checked={selectedOption === plan.id}
+                        onChange={() => setSelectedOption(plan.id)}
+                        className="sr-only peer"
+                      />
+                      <span
+                        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${
+                          selectedOption === plan.id
+                            ? "bg-[#FE8A0F] border-white"
+                            : "bg-white border-gray-300"
+                        }`}
+                        aria-hidden
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f] block">
+                          {plan.name}
+                        </span>
+                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
+                          {plan.bids} credit{plan.bids !== 1 ? "s" : ""} · {plan.validityMonths} month
+                          {plan.validityMonths !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] pl-7">
+                      {formatPrice(plan.amountPence / 100)}
+                    </span>
+                  </label>
+                ))}
                 <label
-                  key={plan.id}
-                  className={`flex items-center justify-between gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    selectedOption === plan.id
+                  className={`flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[120px] ${
+                    selectedOption === CUSTOM_OPTION_VALUE
                       ? "border-[#FE8A0F] bg-[#FFF5EB]"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-2">
                     <input
                       type="radio"
                       name="credit-option"
-                      value={plan.id}
-                      checked={selectedOption === plan.id}
-                      onChange={() => setSelectedOption(plan.id)}
+                      value={CUSTOM_OPTION_VALUE}
+                      checked={selectedOption === CUSTOM_OPTION_VALUE}
+                      onChange={() => setSelectedOption(CUSTOM_OPTION_VALUE)}
                       className="sr-only peer"
                     />
                     <span
-                      className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
-                        selectedOption === plan.id
+                      className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${
+                        selectedOption === CUSTOM_OPTION_VALUE
                           ? "bg-[#FE8A0F] border-white"
                           : "bg-white border-gray-300"
                       }`}
                       aria-hidden
                     />
-                    <div>
-                      <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f]">
-                        {plan.name}
+                    <div className="min-w-0 flex-1">
+                      <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f] block">
+                        Custom
                       </span>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                        {plan.bids} credit{plan.bids !== 1 ? "s" : ""} · {plan.validityMonths} month{plan.validityMonths !== 1 ? "s" : ""}
+                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
+                        {formatPrice(pricePerBid)}/credit
                       </p>
                     </div>
                   </div>
-                  <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
-                    {formatPrice(plan.amountPence / 100)}
-                  </span>
                 </label>
-              ))}
-              <label
-                className={`flex items-center justify-between gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedOption === CUSTOM_OPTION_VALUE
-                    ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="credit-option"
-                    value={CUSTOM_OPTION_VALUE}
-                    checked={selectedOption === CUSTOM_OPTION_VALUE}
-                    onChange={() => setSelectedOption(CUSTOM_OPTION_VALUE)}
-                    className="sr-only peer"
-                  />
-                  <span
-                    className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
-                      selectedOption === CUSTOM_OPTION_VALUE
-                        ? "bg-[#FE8A0F] border-white"
-                        : "bg-white border-gray-300"
-                    }`}
-                    aria-hidden
-                  />
-                  <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f]">
-                    Custom
-                  </span>
-                </div>
-                <span className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
-                  {formatPrice(pricePerBid)}/credit
-                </span>
-              </label>
+              </div>
             </div>
 
-            {/* Right: custom quantity (when Custom selected) or Buy credit button */}
-            <div className="flex-1 flex flex-col justify-center">
+            {/* Custom quantity (when Custom selected) or Buy credit button */}
+            <div className="flex flex-col justify-center pt-1 border-t border-gray-100">
               {selectedOption === CUSTOM_OPTION_VALUE ? (
                 <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-5">
                   <label htmlFor="customQuantity" className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] block mb-2">
@@ -606,7 +684,7 @@ export default function BidsAndMembershipSection({
                 </div>
               ) : (
                 <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                  Select an option above to purchase credits.
+                  Select a package above to purchase credits.
                 </p>
               )}
             </div>
@@ -625,9 +703,11 @@ export default function BidsAndMembershipSection({
       {/* History tab */}
       {activeTab === "history" && (
         <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <h3 className="font-['Poppins',sans-serif] text-[18px] font-medium text-[#2c353f] mb-2">Purchase history</h3>
-          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-            When and how many credits you purchased. Click "View invoice" to open the PDF invoice.
+          <h3 className="font-['Poppins',sans-serif] text-[18px] font-medium text-[#2c353f] mb-2">
+            Quote credit history
+          </h3>
+          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-4">
+            Purchases and each time you used a credit to send a quote on a job.
           </p>
 
           <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -635,7 +715,7 @@ export default function BidsAndMembershipSection({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by date, plan, amount, invoice #..."
+                placeholder="Search by date, job, plan, invoice #..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
                 className="w-full h-10 pl-9 pr-3 border-2 border-gray-200 rounded-xl font-['Poppins',sans-serif] text-[14px] focus:border-[#FE8A0F] focus:outline-none"
@@ -650,7 +730,7 @@ export default function BidsAndMembershipSection({
           ) : filteredAndSortedHistory.length === 0 ? (
             <div className="py-12 text-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50">
               <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                {historyList.length === 0 ? "No purchases yet." : "No results match your search."}
+                {historyList.length === 0 ? "No activity yet." : "No results match your search."}
               </p>
             </div>
           ) : (
@@ -662,13 +742,27 @@ export default function BidsAndMembershipSection({
                       <button
                         type="button"
                         onClick={() => {
-                          setHistorySortBy("purchasedAt");
+                          setHistorySortBy("date");
                           setHistorySortDir((d) => (d === "asc" ? "desc" : "asc"));
                         }}
                         className="flex items-center gap-1 hover:text-[#FE8A0F]"
                       >
                         Date
-                        {historySortBy === "purchasedAt" ? (historySortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
+                        {historySortBy === "date" ? (historySortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">Type</th>
+                    <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHistorySortBy("detail");
+                          setHistorySortDir((d) => (d === "asc" ? "desc" : "asc"));
+                        }}
+                        className="flex items-center gap-1 hover:text-[#FE8A0F]"
+                      >
+                        Details
+                        {historySortBy === "detail" ? (historySortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
                       </button>
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">
@@ -697,42 +791,69 @@ export default function BidsAndMembershipSection({
                         {historySortBy === "amountPounds" ? (historySortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
                       </button>
                     </th>
-                    <th className="text-left py-3 px-4 font-semibold text-[#2c353f]">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setHistorySortBy("planName");
-                          setHistorySortDir((d) => (d === "asc" ? "desc" : "asc"));
-                        }}
-                        className="flex items-center gap-1 hover:text-[#FE8A0F]"
-                      >
-                        Plan
-                        {historySortBy === "planName" ? (historySortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />) : <ArrowUpDown className="w-4 h-4 opacity-50" />}
-                      </button>
-                    </th>
                     <th className="text-right py-3 px-4 font-semibold text-[#2c353f]">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAndSortedHistory.map((row) => (
-                    <tr key={row.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                    <tr key={`${row.kind}-${row.id}`} className="border-b border-gray-100 hover:bg-gray-50/50">
+                      <td className="py-3 px-4 text-[#2c353f] whitespace-nowrap">
+                        {formatDate(historyRowDate(row))}
+                      </td>
                       <td className="py-3 px-4 text-[#2c353f]">
-                        {formatDate(row.purchasedAt)}
+                        {row.kind === "purchase" ? (
+                          <span className="inline-flex rounded-md bg-blue-50 text-blue-800 border border-blue-100 px-2 py-0.5 text-[12px] font-medium">
+                            Purchase
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-md bg-amber-50 text-amber-900 border border-amber-100 px-2 py-0.5 text-[12px] font-medium">
+                            Quote sent
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-[#2c353f] max-w-[240px]">
+                        {row.kind === "purchase" ? (
+                          <span>
+                            {row.planName} plan
+                            <span className="block text-[12px] text-[#6b6b6b] mt-0.5">{row.invoiceNumber}</span>
+                          </span>
+                        ) : (
+                          <span>
+                            {row.jobTitle}
+                            <span className="block text-[12px] text-[#6b6b6b] mt-0.5">
+                              {row.source === "free" ? "Monthly free credit" : "Purchased credit"}
+                            </span>
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-[#2c353f]">{row.credits}</td>
-                      <td className="py-3 px-4 text-[#2c353f]">{formatPrice(row.amountPounds || 0)}</td>
-                      <td className="py-3 px-4 text-[#2c353f]">{row.planName}</td>
+                      <td className="py-3 px-4 text-[#2c353f]">
+                        {row.kind === "purchase" ? formatPrice(row.amountPounds || 0) : "—"}
+                      </td>
                       <td className="py-3 px-4 text-right">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewInvoice(row.id)}
-                          className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
-                        >
-                          <FileText className="w-4 h-4 mr-1.5" />
-                          View invoice
-                        </Button>
+                        {row.kind === "purchase" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewInvoice(row.id)}
+                            className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                          >
+                            <FileText className="w-4 h-4 mr-1.5" />
+                            View invoice
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewJobQuotes(row)}
+                            className="font-['Poppins',sans-serif] border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB]"
+                          >
+                            <Eye className="w-4 h-4 mr-1.5" />
+                            View
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

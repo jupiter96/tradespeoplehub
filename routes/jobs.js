@@ -25,6 +25,7 @@ import JobFile from '../models/JobFile.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import { getIO } from '../services/socket.js';
 import { deductBid } from './bids.js';
+import QuoteCreditUsage from '../models/QuoteCreditUsage.js';
 import { sendTemplatedEmail } from '../services/notifier.js';
 
 const router = express.Router();
@@ -1682,7 +1683,7 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
     if (existing) return res.status(400).json({ error: 'You have already submitted a quote for this job' });
 
     const deducted = await deductBid(req.user.id);
-    if (!deducted) {
+    if (!deducted.ok) {
       return res.status(403).json({
         error: 'Insufficient credits.',
       });
@@ -1742,6 +1743,19 @@ router.post('/:id/quotes', authenticateToken, requireRole(['professional']), asy
     });
     job.markModified('quotes');
     await job.save();
+    try {
+      await ensureJobSlug(job);
+      await QuoteCreditUsage.create({
+        userId: req.user.id,
+        jobId: job._id,
+        jobSlug: job.slug || '',
+        jobTitle: job.title || 'Job',
+        credits: 1,
+        source: deducted.source,
+      });
+    } catch (logErr) {
+      console.error('[Jobs] QuoteCreditUsage log error:', logErr);
+    }
     emitJobUpdated(job);
     res.status(201).json(toJobResponse(job));
     // Send quote emails in background so response is immediate

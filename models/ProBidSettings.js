@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 
 /**
- * Global Pro bid settings (single document, admin-editable).
- * freeBidsPerMonth: number of free bids each Pro gets every month.
+ * Legacy global settings (single document). Prefer PaymentSettings for quote credits.
+ * freeBidsPerMonth: monthly free quote credits per professional (one credit per quote sent).
  */
 const proBidSettingsSchema = new mongoose.Schema(
   {

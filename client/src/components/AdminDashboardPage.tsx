@@ -63,6 +63,7 @@ import AdminRatingsManagePage from "./admin/AdminRatingsManagePage";
 import AdminDisputeListPage from "./admin/AdminDisputeListPage";
 import AdminAskStepInPage from "./admin/AdminAskStepInPage";
 import AdminPaymentSettingsPage from "./admin/AdminPaymentSettingsPage";
+import AdminUserPlansPage from "./admin/AdminUserPlansPage";
 import AdminTransactionHistoryPage from "./admin/AdminTransactionHistoryPage";
 import AdminBankTransferRequestPage from "./admin/AdminBankTransferRequestPage";
 import AdminJobPostsPage from "./admin/AdminJobPostsPage";
@@ -344,6 +345,8 @@ export default function AdminDashboardPage() {
         return <AdminSectorsPage key={activeSection} />;
       case "payment-settings":
         return <AdminPaymentSettingsPage key={activeSection} />;
+      case "user-plans":
+        return <AdminUserPlansPage key={activeSection} />;
       case "ratings-manage":
         return <AdminRatingsManagePage key={activeSection} />;
       case "transaction-history":

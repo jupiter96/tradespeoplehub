@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 
 /**
- * Admin-created bid plans that Pros can purchase (e.g. Basic £5/2 bids, Standard £10/5, Premium £15/15).
- * amountPence: price in pence (e.g. 500 = £5).
- * validityMonths: how long purchased bids last (default 1).
+ * Admin-created quote credit packs Pros can purchase (e.g. Basic £5/2 credits).
+ * `bids` field = number of quote credits in the pack. amountPence: price in pence (e.g. 500 = £5).
+ * validityMonths: how long purchased credits last (default 1).
  */
 const bidPlanSchema = new mongoose.Schema(
   {

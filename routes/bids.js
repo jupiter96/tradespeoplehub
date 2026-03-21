@@ -6,6 +6,7 @@ import PaymentSettings from '../models/PaymentSettings.js';
 import ProBidBalance from '../models/ProBidBalance.js';
 import User from '../models/User.js';
 import CreditPurchase from '../models/CreditPurchase.js';
+import QuoteCreditUsage from '../models/QuoteCreditUsage.js';
 import { getOrCreateBalance, deductBid } from '../services/bids.js';
 
 const requirePdf = createRequire(import.meta.url);
@@ -41,7 +42,7 @@ function getPlansFromPaymentSettings(ps) {
 
 /**
  * GET /api/bids/balance
- * Professional only. Returns current bid balance (free + purchased), reset date, and purchased blocks.
+ * Professional only. Returns quote credit balance (free + purchased), reset date, and purchased blocks.
  */
 router.get('/balance', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
@@ -59,13 +60,13 @@ router.get('/balance', authenticateToken, requireRole(['professional']), async (
     });
   } catch (err) {
     console.error('[Bids] Balance error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to get bid balance' });
+    return res.status(500).json({ error: err.message || 'Failed to get quote credit balance' });
   }
 });
 
 /**
  * GET /api/bids/plans
- * List bid plans from Payment Settings (Basic, Standard, Premium) and pricePerBid for custom quantity.
+ * List quote credit packs from PaymentSettings (Basic, Standard, Premium) and pricePerBid for custom quantity.
  */
 router.get('/plans', async (req, res) => {
   try {
@@ -91,7 +92,7 @@ router.get('/plans', async (req, res) => {
 
 /**
  * POST /api/bids/purchase
- * Professional only. Body: { planId }. Deducts from pro's wallet and adds a bid block (valid 1 month).
+ * Professional only. Body: { planId }. Deducts from pro's wallet and adds a purchased credit block (valid 1 month).
  */
 router.post('/purchase', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
@@ -172,7 +173,7 @@ router.post('/purchase', authenticateToken, requireRole(['professional']), async
 
 /**
  * POST /api/bids/purchase-custom
- * Professional only. Body: { quantity } (number of bids). Total = quantity * pricePerBid from PaymentSettings.
+ * Professional only. Body: { quantity } (quote credits). Total = quantity * pricePerBid from PaymentSettings.
  */
 router.post('/purchase-custom', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
@@ -238,27 +239,30 @@ router.post('/purchase-custom', authenticateToken, requireRole(['professional'])
 
     const { totalAvailable, freeBidsRemaining, purchasedTotal } = await getOrCreateBalance(req.user.id);
     return res.json({
-      message: `${quantity} bid${quantity !== 1 ? 's' : ''} purchased`,
+      message: `${quantity} quote credit${quantity !== 1 ? 's' : ''} purchased`,
       quantity,
       totalPaid: amountPounds,
       balance: { totalAvailable, freeBidsRemaining, purchasedTotal },
     });
   } catch (err) {
     console.error('[Bids] Purchase-custom error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to purchase bids' });
+    return res.status(500).json({ error: err.message || 'Failed to purchase quote credits' });
   }
 });
 
 /**
  * GET /api/bids/history
- * Professional only. Returns all credit purchases for the current user (newest first).
+ * Professional only. Purchases + quote credit usage (merged, newest first).
  */
 router.get('/history', authenticateToken, requireRole(['professional']), async (req, res) => {
   try {
-    const list = await CreditPurchase.find({ userId: req.user.id })
-      .sort({ purchasedAt: -1 })
-      .lean();
-    const history = list.map((doc) => ({
+    const [purchaseDocs, usageDocs] = await Promise.all([
+      CreditPurchase.find({ userId: req.user.id }).sort({ purchasedAt: -1 }).lean(),
+      QuoteCreditUsage.find({ userId: req.user.id }).sort({ usedAt: -1 }).lean(),
+    ]);
+
+    const purchaseItems = purchaseDocs.map((doc) => ({
+      kind: 'purchase',
       id: doc._id.toString(),
       purchasedAt: doc.purchasedAt,
       credits: doc.credits,
@@ -266,7 +270,25 @@ router.get('/history', authenticateToken, requireRole(['professional']), async (
       planName: doc.planName,
       invoiceNumber: doc.invoiceNumber,
     }));
-    return res.json({ history });
+
+    const usageItems = usageDocs.map((doc) => ({
+      kind: 'quote_used',
+      id: doc._id.toString(),
+      usedAt: doc.usedAt,
+      credits: doc.credits ?? 1,
+      jobId: doc.jobId?.toString?.() || String(doc.jobId),
+      jobSlug: doc.jobSlug || '',
+      jobTitle: doc.jobTitle || 'Job',
+      source: doc.source,
+    }));
+
+    const items = [...purchaseItems, ...usageItems].sort((a, b) => {
+      const ta = new Date(a.kind === 'purchase' ? a.purchasedAt : a.usedAt).getTime();
+      const tb = new Date(b.kind === 'purchase' ? b.purchasedAt : b.usedAt).getTime();
+      return tb - ta;
+    });
+
+    return res.json({ items });
   } catch (err) {
     console.error('[Bids] History error:', err);
     return res.status(500).json({ error: err.message || 'Failed to get history' });

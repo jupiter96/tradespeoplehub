@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 
 /**
- * Per-professional bid balance.
- * - freeBidsRemaining: remaining free bids for the current period.
- * - freeBidsResetAt: start of next free-bid period (e.g. start of next month).
- * - purchasedBlocks: blocks of bids bought via plans; each expires after validityMonths.
+ * Per-professional quote credit balance (one credit consumed per quote sent).
+ * - freeBidsRemaining: remaining free quote credits for the current period.
+ * - freeBidsResetAt: start of next free-credit period (e.g. start of next month).
+ * - purchasedBlocks: blocks of credits bought via packs; each expires after validityMonths.
  */
 const purchasedBlockSchema = new mongoose.Schema(
   {
@@ -42,7 +42,7 @@ const proBidBalanceSchema = new mongoose.Schema(
 proBidBalanceSchema.index({ userId: 1 });
 
 /**
- * Ensure free bids are reset if we're past freeBidsResetAt (new month).
+ * Ensure free quote credits are reset if we're past freeBidsResetAt (new month).
  * Call this when reading balance.
  */
 proBidBalanceSchema.statics.ensureFreeBidsReset = async function (balance, settings) {

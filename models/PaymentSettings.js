@@ -297,7 +297,7 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    // Pro bids & membership (used on Bids & Membership page)
+    // Quote credits (pros spend one credit per quote sent; configured in admin User Plans)
     freeBidsPerMonth: {
       type: Number,
       default: 3,

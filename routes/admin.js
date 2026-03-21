@@ -3458,9 +3458,9 @@ router.put('/payment-settings', requireAdmin, async (req, res) => {
   }
 });
 
-// --- Pro Bids & Membership (admin) ---
+// --- Quote credits (admin; stored on PaymentSettings) ---
 
-// GET pro bid settings (free bids per month)
+// GET pro bid settings (legacy collection; free bids per month)
 router.get('/pro-bid-settings', requireAdmin, async (req, res) => {
   try {
     const settings = await ProBidSettings.getSettings();
