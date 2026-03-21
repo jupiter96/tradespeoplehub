@@ -4408,6 +4408,9 @@ export default function JobDetailPage() {
                   <BidsAndMembershipSection
                     hideHeader
                     onWalletFundModalOpenChange={(open) => setHideQuoteCreditsSliderPanel(open)}
+                    onQuoteCreditsPurchaseSuccess={() => {
+                      closeQuoteCreditsSlider();
+                    }}
                   />
                 </div>
               </div>

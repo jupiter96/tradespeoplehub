@@ -38,6 +38,8 @@ interface WalletFundModalProps {
   hideBankOption?: boolean;
   restrictToSelectedPaymentType?: boolean;
   lockAmount?: boolean;
+  /** When true, card/PayPal wallet top-up skips admin min deposit (used for Quote credits flow). Bank unchanged. */
+  forQuoteCreditPurchase?: boolean;
 }
 
 // Payment method logos
@@ -85,6 +87,7 @@ export default function WalletFundModal({
   hideBankOption,
   restrictToSelectedPaymentType,
   lockAmount,
+  forQuoteCreditPurchase = false,
 }: WalletFundModalProps) {
   const { userInfo } = useAccount();
   const { formatPrice, symbol, currency, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
@@ -120,6 +123,7 @@ export default function WalletFundModal({
 
   const restrictPaymentType = !!restrictToSelectedPaymentType;
   const lockAmountField = !!lockAmount;
+  const isQuoteCreditTopUp = !!forQuoteCreditPurchase;
 
   // Calculate fees (amount and fee in selected currency for display)
   const calculateFees = () => {
@@ -328,12 +332,15 @@ export default function WalletFundModal({
       throw new Error("Please enter a valid amount");
     }
     const amountGBP = toGBP(parseFloat(amount));
-    const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ amount: amountGBP }),
-    });
+      const response = await fetch(resolveApiUrl("/api/wallet/fund/paypal"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          amount: amountGBP,
+          ...(isQuoteCreditTopUp ? { forQuoteCreditPurchase: true } : {}),
+        }),
+      });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -391,9 +398,10 @@ export default function WalletFundModal({
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           amount: toGBP(parseFloat(amount)),
           paymentMethodId: selectedPaymentMethod,
+          ...(isQuoteCreditTopUp ? { forQuoteCreditPurchase: true } : {}),
         }),
       });
 
@@ -930,12 +938,16 @@ export default function WalletFundModal({
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="20"
                     className="pl-8 font-['Poppins',sans-serif]"
-                    min="10"
+                    min={isQuoteCreditTopUp ? "0.01" : "10"}
                     step="0.01"
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                  Minimum: {formatAmountInSelectedCurrency(10)}
+                  {isQuoteCreditTopUp && (selectedPaymentType === "card" || selectedPaymentType === "paypal") ? (
+                    <></>
+                  ) : (
+                    <>Minimum: {formatAmountInSelectedCurrency(10)}</>
+                  )}
                 </p>
 
                 {selectedPaymentType === "paypal" && (

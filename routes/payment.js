@@ -585,7 +585,7 @@ router.delete('/payment-methods/:paymentMethodId', authenticateToken, async (req
 router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
   
   try {
-    const { amount, paymentMethodId } = req.body;
+    const { amount, paymentMethodId, forQuoteCreditPurchase } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
@@ -597,10 +597,16 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Stripe payments are not configured' });
     }
     
-    
-    if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
-      return res.status(400).json({ 
-        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
+    // Quote credit top-ups (card) may be below admin min wallet deposit; max still applies.
+    const skipMinForQuoteCredits = forQuoteCreditPurchase === true;
+    if (!skipMinForQuoteCredits && amount < settings.minDepositAmount) {
+      return res.status(400).json({
+        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}`,
+      });
+    }
+    if (amount > settings.maxDepositAmount) {
+      return res.status(400).json({
+        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}`,
       });
     }
     
@@ -1015,7 +1021,7 @@ function createPayPalClient(settings) {
 router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
   
   try {
-    const { amount } = req.body;
+    const { amount, forQuoteCreditPurchase } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
@@ -1030,9 +1036,15 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'PayPal is not configured' });
     }
     
-    if (amount < settings.minDepositAmount || amount > settings.maxDepositAmount) {
-      return res.status(400).json({ 
-        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}` 
+    const skipMinForQuoteCredits = forQuoteCreditPurchase === true;
+    if (!skipMinForQuoteCredits && amount < settings.minDepositAmount) {
+      return res.status(400).json({
+        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}`,
+      });
+    }
+    if (amount > settings.maxDepositAmount) {
+      return res.status(400).json({
+        error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}`,
       });
     }
     

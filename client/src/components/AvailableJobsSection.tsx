@@ -120,6 +120,23 @@ export default function AvailableJobsSection() {
   const quoteBudgetMinSelected = currentJob ? fromGBP(quoteBudgetMinGBP) : 0;
   const quoteBudgetMaxSelected = currentJob ? fromGBP(quoteBudgetMaxGBP) : 0;
 
+  // Suggested milestones: totals vs "Your Price" (selected currency) — same logic as JobDetailPage send-quote modal
+  const quotePriceSelected = parseFloat(quotePrice);
+  const quotePriceSelectedValid = Number.isFinite(quotePriceSelected) && quotePriceSelected > 0;
+  const milestonesTotalSelected = milestones.reduce((sum, m) => {
+    const n = parseFloat(String(m.amount || "").trim());
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  const milestonesTotalRounded = Math.round(milestonesTotalSelected * 100) / 100;
+  const quotePriceRounded = quotePriceSelectedValid ? Math.round(quotePriceSelected * 100) / 100 : 0;
+  const hasAnyMilestoneInput = milestones.some(
+    (m) => String(m.description || "").trim() || String(m.amount || "").trim()
+  );
+  const milestoneDiff = quotePriceSelectedValid ? Math.round((quotePriceRounded - milestonesTotalRounded) * 100) / 100 : 0;
+  const isMilestonesExact = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff === 0;
+  const isMilestonesOver = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff < 0;
+  const isMilestonesUnder = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff > 0;
+
   // Quote credits purchase slider (professional insufficient credits)
   const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
   const [quoteCreditsSliderAnimateIn, setQuoteCreditsSliderAnimateIn] = useState(false);
@@ -248,6 +265,21 @@ export default function AvailableJobsSection() {
       toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)} (job budget range)`);
       return;
     }
+    // Suggested milestones validation: if user entered any milestone fields, total must match the quote price (in selected currency).
+    if (hasAnyMilestoneInput) {
+      if (!quotePriceSelectedValid) {
+        toast.error("Please enter a valid price before adding milestones");
+        return;
+      }
+      if (isMilestonesOver) {
+        toast.error(`Milestone total exceeds your quote price by ${symbol}${Math.abs(milestoneDiff).toFixed(2)}`);
+        return;
+      }
+      if (!isMilestonesExact) {
+        toast.error(`Milestone total must match your quote price. Remaining: ${symbol}${milestoneDiff.toFixed(2)}`);
+        return;
+      }
+    }
     try {
       const cleanedSuggestedMilestones = milestones
         .map((m) => {
@@ -327,8 +359,8 @@ export default function AvailableJobsSection() {
     }
   };
 
-  // Milestone functions
-  const addMilestone = () => {
+  // Milestone functions (aligned with JobDetailPage send-quote modal)
+  const addMilestoneToForm = () => {
     setMilestones([...milestones, { description: "", amount: "" }]);
   };
 
@@ -736,7 +768,7 @@ export default function AvailableJobsSection() {
                               </Label>
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6b6b6b] font-['Poppins',sans-serif] text-[14px]">
-                                  £
+                                  {symbol}
                                 </span>
                                 <Input
                                   type="number"
@@ -765,16 +797,57 @@ export default function AvailableJobsSection() {
                       ))}
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addMilestone}
-                      className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Poppins',sans-serif] h-10"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add another milestone
-                    </Button>
+                    {/* Totals + validation (same as JobDetailPage) */}
+                    {quotePriceSelectedValid && hasAnyMilestoneInput && (
+                      <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <div className="flex items-center justify-between gap-3 text-[13px] font-['Poppins',sans-serif]">
+                          <span className="text-[#6b6b6b]">Milestones total</span>
+                          <span className="text-[#2c353f] font-semibold">
+                            {symbol}
+                            {milestonesTotalRounded.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-3 text-[13px] font-['Poppins',sans-serif]">
+                          <span className="text-[#6b6b6b]">Quote price</span>
+                          <span className="text-[#2c353f] font-semibold">
+                            {symbol}
+                            {quotePriceRounded.toFixed(2)}
+                          </span>
+                        </div>
+                        {isMilestonesExact ? (
+                          <p className="mt-2 text-[12px] text-green-700 font-['Poppins',sans-serif]">
+                            Total matches your quote price.
+                          </p>
+                        ) : isMilestonesOver ? (
+                          <p className="mt-2 text-[12px] text-red-700 font-['Poppins',sans-serif]">
+                            Total is over by {symbol}
+                            {Math.abs(milestoneDiff).toFixed(2)}. Please reduce amounts.
+                          </p>
+                        ) : isMilestonesUnder ? (
+                          <p className="mt-2 text-[12px] text-red-700 font-['Poppins',sans-serif]">
+                            Total is under by {symbol}
+                            {milestoneDiff.toFixed(2)}. Please add more to match.
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Add another milestone: hide when total matches quote (or exceeds), or when price is not set */}
+                    {(!quotePriceSelectedValid || !hasAnyMilestoneInput || milestoneDiff > 0) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff <= 0) return;
+                          addMilestoneToForm();
+                        }}
+                        className="mt-3 bg-[#059669] text-white hover:bg-[#047857] border-0 font-['Poppins',sans-serif] h-10"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add another milestone
+                      </Button>
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -790,6 +863,7 @@ export default function AvailableJobsSection() {
                     setQuoteMessage("");
                     setQuoteMessageBeforeAi(null);
                     setIsQuoteMessageAiGenerated(false);
+                    setMilestones([{ description: "", amount: "" }]);
                   }}
                   className="flex-1 font-['Poppins',sans-serif] h-12 text-[15px] border-2"
                 >
@@ -843,6 +917,9 @@ export default function AvailableJobsSection() {
                   <BidsAndMembershipSection
                     hideHeader
                     onWalletFundModalOpenChange={(open) => setHideQuoteCreditsSliderPanel(open)}
+                    onQuoteCreditsPurchaseSuccess={() => {
+                      closeQuoteCreditsSlider();
+                    }}
                   />
                 </div>
               </div>

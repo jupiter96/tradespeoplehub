@@ -49,12 +49,23 @@ const TABS: { id: CreditTab; label: string }[] = [
   { id: "history", label: "History" },
 ];
 
+function notifyBidsChanged() {
+  try {
+    window.dispatchEvent(new Event("bids:changed"));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function BidsAndMembershipSection({
   hideHeader = false,
   onWalletFundModalOpenChange,
+  /** After wallet top-up + credit purchase (or balance purchase) succeeds from this UI — e.g. close quote-credits slider so Send Quote modal is visible again. */
+  onQuoteCreditsPurchaseSuccess,
 }: {
   hideHeader?: boolean;
   onWalletFundModalOpenChange?: (open: boolean) => void;
+  onQuoteCreditsPurchaseSuccess?: () => void;
 }) {
   const { formatPrice, currency, fromGBP } = useCurrency();
   const navigate = useNavigate();
@@ -201,7 +212,9 @@ export default function BidsAndMembershipSection({
       if (res.ok) {
         toast.success(data.message || "Plan purchased. Your credits have been added.");
         await fetchBalance();
+        notifyBidsChanged();
         if (activeTab === "history") await fetchHistory();
+        onQuoteCreditsPurchaseSuccess?.();
       } else {
         const isInsufficient = (data.error || "").toLowerCase().includes("insufficient wallet");
         if (isInsufficient) {
@@ -218,8 +231,15 @@ export default function BidsAndMembershipSection({
     }
   };
 
-  const handlePurchaseCustom = async () => {
-    const qty = Math.max(1, Math.min(500, Math.floor(Number(customQuantity)) || 1));
+  /** `quantityOverride` — use after card/PayPal wallet top-up so the purchased qty matches the amount funded (not stale UI state). */
+  const handlePurchaseCustom = async (quantityOverride?: number) => {
+    const qty = Math.max(
+      1,
+      Math.min(
+        500,
+        Math.floor(Number(quantityOverride ?? customQuantity)) || 1
+      )
+    );
     setPurchasingCustom(true);
     try {
       const res = await fetch(resolveApiUrl("/api/bids/purchase-custom"), {
@@ -232,7 +252,9 @@ export default function BidsAndMembershipSection({
       if (res.ok) {
         toast.success(data.message || `${qty} credits purchased.`);
         await fetchBalance();
+        notifyBidsChanged();
         if (activeTab === "history") await fetchHistory();
+        onQuoteCreditsPurchaseSuccess?.();
       } else {
         const isInsufficient = (data.error || "").toLowerCase().includes("insufficient wallet");
         if (isInsufficient) {
@@ -255,8 +277,9 @@ export default function BidsAndMembershipSection({
     pendingPurchaseRef.current = null;
     if (!pending) return;
 
+    // Wallet was just funded via Stripe/PayPal; deduct from wallet and add credits (second step).
     if (pending.kind === "custom") {
-      await handlePurchaseCustom();
+      await handlePurchaseCustom(pending.qty);
     } else {
       await handlePurchase(pending.planId);
     }
@@ -734,6 +757,7 @@ export default function BidsAndMembershipSection({
         hideBankOption
         restrictToSelectedPaymentType
         lockAmount
+        forQuoteCreditPurchase
         initialPaymentType={quoteCreditPaymentMethod === "paypal" ? "paypal" : "card"}
         initialAmount={walletFundInitialAmount}
       />
