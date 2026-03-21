@@ -114,11 +114,15 @@ export function ProActiveJobListStatusBadge({
   );
 }
 
+/** Tab count pills next to My Jobs tabs — unified brand orange. */
+const tabCountBadgeClass =
+  "bg-[#FE8A0F] text-white border border-[#e57d0e] shadow-sm";
+
 export function StatusCountBadge({
   status,
   count,
   size = "normal",
-  variant = "client",
+  variant: _variant = "client",
   className,
 }: {
   status: Job["status"];
@@ -127,12 +131,9 @@ export function StatusCountBadge({
   variant?: "client" | "pro";
   className?: string;
 }) {
-  const statusClass =
-    variant === "pro" ? proActiveClass(status) : clientStatusClass(status);
-
   return (
     <span
-      className={cn(badgeBase, badgeSizeClasses(size), statusClass, className)}
+      className={cn(badgeBase, badgeSizeClasses(size), tabCountBadgeClass, className)}
       aria-label={`${CLIENT_LABEL[status] ?? status}: ${count}`}
     >
       {count}

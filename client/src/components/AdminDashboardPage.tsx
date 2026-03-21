@@ -212,7 +212,7 @@ export default function AdminDashboardPage() {
       "transaction-history": "Transaction History",
       "user-plans": "User Plans",
       "job-manage": "Job Manage",
-      "job-posts": "Job Posts",
+      "job-posts": "Job Status",
       "bids-on-posts": "Bids on Posts",
       "job-amount": "Job Amount",
       "ratings-manage": "Ratings Manage",

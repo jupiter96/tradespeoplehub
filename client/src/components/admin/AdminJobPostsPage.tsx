@@ -318,8 +318,8 @@ export default function AdminJobPostsPage() {
 
   return (
     <AdminPageLayout
-      title="Job Posts"
-      description="View and manage all job posts. Search, filter, sort, edit or delete jobs."
+      title="Job Status"
+      description="View and manage all job status. Search, filter, sort, edit or delete jobs."
     >
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row gap-4 flex-wrap">

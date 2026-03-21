@@ -162,7 +162,7 @@ const menuItems: MenuItem[] = [
     label: "Job Manage",
     icon: BriefcaseBusiness,
     children: [
-      { key: "job-posts", label: "Job Posts", icon: FileText, path: "/admin/job-posts" },
+      { key: "job-posts", label: "Job Status", icon: FileText, path: "/admin/job-posts" },
       { key: "bids-on-posts", label: "Bids on Posts", icon: TrendingUp, path: "/admin/bids-on-posts" },
       { key: "job-amount", label: "Job Amount", icon: DollarSign, path: "/admin/job-amount" },
     ],

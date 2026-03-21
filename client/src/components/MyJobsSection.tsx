@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useJobs, JobQuote } from "./JobsContext";
+import { useJobs, JobQuote, type Job } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
 import { getTwoLetterInitials } from "./orders/utils";
@@ -19,10 +19,13 @@ import {
   XCircle,
   Send,
   Flame,
-  ChevronDown,
-  Filter,
   Search,
   X,
+  FolderOpen,
+  Handshake,
+  Package,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -35,13 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Separator } from "./ui/separator";
@@ -50,7 +47,25 @@ import { ScrollArea } from "./ui/scroll-area";
 import { toast } from "sonner@2.0.3";
 import { resolveAvatarUrl, formatJobLocationCityOnly } from "./orders/utils";
 import JobSkillBadges from "./JobSkillBadges";
-import { ClientJobListStatusBadge } from "./JobListCardStatusBadge";
+import { ClientJobListStatusBadge, StatusCountBadge } from "./JobListCardStatusBadge";
+
+type ClientMyJobsTabId = "open" | "awarded" | "delivered" | "completed" | "other";
+
+function jobHasDisputedMilestone(job: Job): boolean {
+  return (job.milestones ?? []).some((m) => m.status === "disputed");
+}
+
+/** Route each client job to exactly one My Jobs tab (disputed milestones and cancelled/closed → other). */
+function getClientMyJobsTab(job: Job): ClientMyJobsTabId {
+  const s = job.status;
+  if (s === "cancelled" || s === "closed") return "other";
+  if (jobHasDisputedMilestone(job)) return "other";
+  if (s === "completed") return "completed";
+  if (s === "delivered") return "delivered";
+  if (s === "awaiting-accept" || s === "in-progress") return "awarded";
+  if (s === "open") return "open";
+  return "other";
+}
 
 export default function MyJobsSection() {
   const navigate = useNavigate();
@@ -61,7 +76,7 @@ export default function MyJobsSection() {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<ClientMyJobsTabId>("open");
   const [searchQuery, setSearchQuery] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<JobQuote | null>(null);
@@ -132,13 +147,33 @@ export default function MyJobsSection() {
     }
   };
 
-  // Filter jobs based on status and search
-  const filteredJobs = userJobs.filter((job) => {
-    const matchesStatus = filterStatus === "all" || job.status === filterStatus;
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const tabCounts = useMemo(() => {
+    const c = { open: 0, awarded: 0, delivered: 0, completed: 0, other: 0 };
+    userJobs.forEach((job) => {
+      c[getClientMyJobsTab(job)] += 1;
+    });
+    return c;
+  }, [userJobs]);
+
+  const jobsInClientTab = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const matchSearch = (job: Job) =>
+      !q ||
+      job.title.toLowerCase().includes(q) ||
+      job.description.toLowerCase().includes(q);
+    const buckets: Record<ClientMyJobsTabId, Job[]> = {
+      open: [],
+      awarded: [],
+      delivered: [],
+      completed: [],
+      other: [],
+    };
+    userJobs.forEach((job) => {
+      const tab = getClientMyJobsTab(job);
+      if (matchSearch(job)) buckets[tab].push(job);
+    });
+    return buckets;
+  }, [userJobs, searchQuery]);
 
   const currentJob = selectedJob ? jobs.find(j => j.id === selectedJob) : null;
 
@@ -271,58 +306,133 @@ export default function MyJobsSection() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 md:mb-6">
-        <div className="relative flex-1">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as ClientMyJobsTabId)}
+        className="w-full"
+      >
+        <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-5 bg-gray-100 p-1 rounded-xl h-auto gap-1">
+            <TabsTrigger
+              value="open"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <FolderOpen className="w-4 h-4" />
+              Open
+              {tabCounts.open > 0 && (
+                <StatusCountBadge status="open" count={tabCounts.open} variant="client" className="ml-1" />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="awarded"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <Handshake className="w-4 h-4" />
+              Awarded
+              {tabCounts.awarded > 0 && (
+                <StatusCountBadge
+                  status="awaiting-accept"
+                  count={tabCounts.awarded}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="delivered"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <Package className="w-4 h-4" />
+              Delivered
+              {tabCounts.delivered > 0 && (
+                <StatusCountBadge
+                  status="delivered"
+                  count={tabCounts.delivered}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="completed"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Completed
+              {tabCounts.completed > 0 && (
+                <StatusCountBadge
+                  status="completed"
+                  count={tabCounts.completed}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="other"
+              title="Disputed milestones and cancelled jobs"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-2.5 sm:py-3 flex items-center gap-1.5 whitespace-normal text-center leading-tight text-[11px] sm:text-sm flex-shrink-0"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span className="max-w-[4.5rem] sm:max-w-none">Other jobs</span>
+              {tabCounts.other > 0 && (
+                <StatusCountBadge
+                  status="cancelled"
+                  count={tabCounts.other}
+                  variant="client"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <div className="relative mb-4 md:mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" />
           <Input
-            placeholder="Search jobs..."
+            placeholder="Search in this tab..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 font-['Poppins',sans-serif] text-[14px]"
           />
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif] text-[14px]">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Jobs</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="awaiting-accept">Awaiting Accept</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="delivered">Delivered</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Jobs List */}
-      <div className="space-y-4">
-        {filteredJobs.length === 0 ? (
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
-            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
-              No jobs found
-            </h3>
-            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-              {searchQuery || filterStatus !== "all"
-                ? "Try adjusting your filters"
-                : "Post your first job to get started"}
-            </p>
-            {!searchQuery && filterStatus === "all" && (
-              <Button
-                onClick={() => window.location.href = "/post-job"}
-                className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
-              >
-                Post a Job
-              </Button>
-            )}
-          </div>
-        ) : (
-          filteredJobs.map((job) => (
+        {(
+          ["open", "awarded", "delivered", "completed", "other"] as const
+        ).map((tab) => {
+          const list = jobsInClientTab[tab];
+          return (
+          <TabsContent key={tab} value={tab} className="mt-0 space-y-4">
+            {list.length === 0 ? (
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
+                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
+                  No jobs found
+                </h3>
+                <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+                  {searchQuery.trim()
+                    ? "Try adjusting your search"
+                    : tab === "open"
+                      ? "Post your first job to get started"
+                      : tab === "awarded"
+                        ? "When you award a quote, the job appears here while work is ongoing"
+                        : tab === "delivered"
+                          ? "Jobs awaiting your approval after delivery show here"
+                          : tab === "completed"
+                            ? "Finished jobs appear here"
+                            : "Cancelled jobs and jobs with an open dispute on a milestone appear here"}
+                </p>
+                {!searchQuery.trim() && tab === "open" && tabCounts.open === 0 && userJobs.length === 0 && (
+                  <Button
+                    onClick={() => navigate("/post-job")}
+                    className="bg-[#FE8A0F] hover:bg-[#FFB347] font-['Poppins',sans-serif]"
+                  >
+                    Post a Job
+                  </Button>
+                )}
+              </div>
+            ) : (
+          list.map((job) => (
             <div
               key={job.id}
               className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
@@ -415,8 +525,11 @@ export default function MyJobsSection() {
               </div>
             </div>
           ))
-        )}
-      </div>
+            )}
+          </TabsContent>
+        );
+        })}
+      </Tabs>
 
       {/* View Job Dialog with Quotes */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
