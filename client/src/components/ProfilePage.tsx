@@ -853,6 +853,14 @@ export default function ProfilePage() {
                     {completedJobs} completed jobs
                   </span>
                 </div>
+                {!!profile?.publicProfile?.profileTitle?.trim() && (
+                  <div
+                    className="seller-profile-headline w-full mt-2 font-['Poppins',sans-serif] text-[14px] md:text-[15px] font-semibold text-[#2c353f] leading-snug"
+                    aria-label="Profile title"
+                  >
+                    {profile.publicProfile.profileTitle.trim()}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -898,13 +906,6 @@ export default function ProfilePage() {
                   <p className="text-slate-500">No profile information available.</p>
                 ) : (
                   <div className="space-y-6">
-                    {!!profile?.publicProfile?.profileTitle && (
-                      <div>
-                        <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-bold">
-                          {profile.publicProfile.profileTitle}
-                        </p>
-                      </div>
-                    )}
                     {bioText && (
                       <div>
                         <h3 className="section-title">Bio</h3>

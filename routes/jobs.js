@@ -223,6 +223,12 @@ function toJobResponse(doc) {
       revisionRequestedBy: d.revisionRequestedBy?.toString?.() || d.revisionRequestedBy || null,
       revisionFileUrls: d.revisionFileUrls || [],
     })),
+    clientReviewRating:
+      job.clientReviewAt != null && job.clientReviewRating != null
+        ? Number(job.clientReviewRating)
+        : undefined,
+    clientReviewComment: job.clientReviewAt && job.clientReviewComment ? String(job.clientReviewComment) : undefined,
+    clientReviewAt: job.clientReviewAt ? new Date(job.clientReviewAt).toISOString() : undefined,
   };
 }
 
@@ -973,7 +979,11 @@ function canAccessJobFiles(job, userId, userRole) {
   if (!job || !userId) return false;
   const clientId = job.clientId?.toString?.();
   const awardedId = job.awardedProfessionalId?.toString?.();
-  const statusOk = job.status === 'awaiting-accept' || job.status === 'in-progress' || job.status === 'delivered';
+  const statusOk =
+    job.status === 'awaiting-accept' ||
+    job.status === 'in-progress' ||
+    job.status === 'delivered' ||
+    job.status === 'completed';
   if (userRole === 'client' && clientId === userId && statusOk) return true;
   if (userRole === 'professional' && awardedId === userId && statusOk) return true;
   return false;
@@ -1036,6 +1046,44 @@ router.post('/:id/files', authenticateToken, jobFilesUpload.single('file'), asyn
   } catch (err) {
     console.error('[Jobs] POST file:', err);
     return res.status(500).json({ error: err.message || 'Failed to upload file' });
+  }
+});
+
+// Client: submit a one-time review after the job is completed (all milestones released)
+router.post('/:id/client-review', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const idOrSlug = req.params.id;
+    let job = await Job.findById(idOrSlug);
+    if (!job) job = await Job.findOne({ slug: idOrSlug });
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.clientId?.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to review this job' });
+    }
+    if (job.status !== 'completed') {
+      return res.status(400).json({ error: 'You can only leave a review after the job is completed' });
+    }
+    if (!job.awardedProfessionalId) {
+      return res.status(400).json({ error: 'No professional to review' });
+    }
+    if (job.clientReviewAt) {
+      return res.status(400).json({ error: 'You have already submitted a review for this job' });
+    }
+    const rating = Number(req.body.rating);
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+    const comment = String(req.body.comment || '')
+      .trim()
+      .slice(0, 2000);
+    job.clientReviewRating = rating;
+    job.clientReviewComment = comment;
+    job.clientReviewAt = new Date();
+    await job.save();
+    emitJobUpdated(job);
+    return res.json({ job: toJobResponse(job) });
+  } catch (err) {
+    console.error('[Jobs] client-review error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to submit review' });
   }
 });
 

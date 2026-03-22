@@ -499,7 +499,14 @@ export default function AvailableJobsSection() {
                   <div className="flex justify-end w-full">
                     <ClientJobListStatusBadge status={job.status} />
                   </div>
-                  <div className="mt-auto flex items-center gap-2 flex-wrap">
+                  <div className="mt-auto flex flex-col gap-2 w-full">
+                    {job.status === "open" &&
+                      !(job.quotes || []).some((q) => q.professionalId === userInfo?.id) && (
+                        <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] text-center leading-snug">
+                          Be first to quote
+                        </p>
+                      )}
+                    <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
                     <Button
                       variant="outline"
                       size="sm"
@@ -545,6 +552,7 @@ export default function AvailableJobsSection() {
                         Send Quote
                       </Button>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>

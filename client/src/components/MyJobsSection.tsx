@@ -72,6 +72,15 @@ function getClientMyJobsTab(job: Job): ClientMyJobsTabId {
   return "other";
 }
 
+/** Open-tab client cards: line above View Quotes (quote count = submitted quotes on the job). */
+function getClientOpenJobQuoteSummaryLine(quoteCount: number): string {
+  if (quoteCount === 0) return "Awaiting quotes from Pros";
+  if (quoteCount < 5) return "You got quotes from under 5 pros";
+  if (quoteCount < 10) return "You got quotes from under 10 pros";
+  if (quoteCount < 20) return "You got quotes from under 20 pros";
+  return "You got quotes from 20+ pros";
+}
+
 export default function MyJobsSection() {
   const navigate = useNavigate();
   const { formatPriceWhole } = useCurrency();
@@ -515,6 +524,11 @@ export default function MyJobsSection() {
                   </div>
 
                   <div className="mt-auto flex flex-col gap-2 w-full">
+                    {tab === "open" && (
+                      <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] text-center leading-snug px-1">
+                        {getClientOpenJobQuoteSummaryLine(job.quotes?.length ?? 0)}
+                      </p>
+                    )}
                     {tab === "awarded" && clientCanCreateMilestoneOnAwardedList(job) && (
                       <Button
                         type="button"

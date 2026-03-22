@@ -166,6 +166,10 @@ const jobSchema = new mongoose.Schema(
         size: { type: Number, default: 0 },
       },
     ],
+    /** Client's one-time review of the awarded professional after all milestones are released */
+    clientReviewRating: { type: Number, min: 1, max: 5, default: null },
+    clientReviewComment: { type: String, trim: true, default: '' },
+    clientReviewAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

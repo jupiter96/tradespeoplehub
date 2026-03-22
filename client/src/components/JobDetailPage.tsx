@@ -261,7 +261,7 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateJob, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision, submitClientJobReview } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady, refreshUser } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
   const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
@@ -288,7 +288,7 @@ export default function JobDetailPage() {
     return [{ name: DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN, amount: fromGBP(quote.price).toFixed(2) }];
   };
 
-  const validTabs = ["details", "quotes", "payment", "files", "more"] as const;
+  const validTabs = ["details", "quotes", "payment", "files", "review", "more"] as const;
   const tabFromUrl = searchParams.get("tab") || "details";
   const [activeTab, setActiveTab] = useState(validTabs.includes(tabFromUrl as any) ? tabFromUrl : "details");
   useEffect(() => {
@@ -376,9 +376,6 @@ export default function JobDetailPage() {
   const [cancelRequestMilestone, setCancelRequestMilestone] = useState<Milestone | null>(null);
   const [cancelRequestReason, setCancelRequestReason] = useState("");
 
-  // Release milestone confirmation modal
-  const [milestoneToRelease, setMilestoneToRelease] = useState<{ jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
-  const [releasing, setReleasing] = useState(false);
 
   // Pro: accept/reject milestone cancel request confirmation
   const [cancelResponseConfirm, setCancelResponseConfirm] = useState<{ action: "accept" | "reject"; jobId: string; milestoneId: string; milestone: Milestone } | null>(null);
@@ -479,6 +476,9 @@ export default function JobDetailPage() {
   const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
   const [hideQuoteCreditsSliderPanel, setHideQuoteCreditsSliderPanel] = useState(false);
   const [showFundWalletModal, setShowFundWalletModal] = useState(false);
+  const [jobReviewRating, setJobReviewRating] = useState(0);
+  const [jobReviewText, setJobReviewText] = useState("");
+  const [jobReviewSubmitting, setJobReviewSubmitting] = useState(false);
 
   // Prevent background scroll when fullscreen viewer is open
   useEffect(() => {
@@ -642,9 +642,32 @@ export default function JobDetailPage() {
   // File tab visibility (must be before early return so hook order is stable)
   const showFileTab = !!(
     job &&
-    (job.status === "awaiting-accept" || job.status === "in-progress" || job.status === "delivered") &&
+    (job.status === "awaiting-accept" ||
+      job.status === "in-progress" ||
+      job.status === "delivered" ||
+      job.status === "completed") &&
     (userInfo?.id === job.clientId || (userRole === "professional" && job.awardedProfessionalId === userInfo?.id))
   );
+
+  const showReviewTab = !!(
+    job &&
+    job.status === "completed" &&
+    job.awardedProfessionalId &&
+    userInfo?.id &&
+    (String(userInfo.id) === String(job.clientId) ||
+      (userRole === "professional" && String(userInfo.id) === String(job.awardedProfessionalId)))
+  );
+
+  useEffect(() => {
+    if (activeTab !== "review") return;
+    if (!job) return;
+    if (!showReviewTab) {
+      setActiveTab("details");
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", "details");
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeTab, job, showReviewTab, searchParams, setSearchParams]);
 
   const fetchJobFiles = async () => {
     if (!job?.id || !showFileTab) return;
@@ -756,6 +779,11 @@ export default function JobDetailPage() {
 
   // Check if current user is the job owner (client)
   const isJobOwner = userInfo?.id === job.clientId || userRole === "client";
+  const isActualJobClient = userInfo?.id != null && String(userInfo.id) === String(job.clientId);
+  const isAwardedProfessionalUser =
+    userInfo?.id != null &&
+    job.awardedProfessionalId != null &&
+    String(userInfo.id) === String(job.awardedProfessionalId);
   // Check if current user already submitted a quote
   const hasSubmittedQuote = job.quotes.some(
     (quote) => quote.professionalId === userInfo?.id
@@ -770,6 +798,9 @@ export default function JobDetailPage() {
   const awardedQuotes = job.quotes.filter(
     (q) => q.status === "awarded" || (q.status === "accepted" && job.awardedProfessionalId && q.professionalId === job.awardedProfessionalId)
   );
+  const jobReviewProfessionalName =
+    job.quotes.find((q) => String(q.professionalId) === String(job.awardedProfessionalId))?.professionalName ||
+    "the professional";
   // Helper: sort quotes by (1) whether it's the current professional's quote, (2) rating desc, (3) reviews desc, (4) latest first
   const sortQuotesForDisplay = (quotes: JobQuote[], currentProfessionalId: string | null | undefined) => {
     return [...quotes].sort((a, b) => {
@@ -1979,8 +2010,11 @@ export default function JobDetailPage() {
                 >
                   Quotes ({job.quotes.length})
                 </TabsTrigger>
-                {/* Show Payment tab if job is awarded (awaiting-accept / in-progress / delivered) */}
-                {(job.status === "awaiting-accept" || job.status === "in-progress" || job.status === "delivered") && (
+                {/* Payment: active work or completed (milestones + summary still visible) */}
+                {(job.status === "awaiting-accept" ||
+                  job.status === "in-progress" ||
+                  job.status === "delivered" ||
+                  job.status === "completed") && (
                   <TabsTrigger
                     value="payment"
                     className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
@@ -1995,6 +2029,14 @@ export default function JobDetailPage() {
                     className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
                   >
                     File
+                  </TabsTrigger>
+                )}
+                {showReviewTab && (
+                  <TabsTrigger
+                    value="review"
+                    className="bg-transparent border-0 text-[#6b6b6b] data-[state=active]:text-[#FE8A0F] data-[state=active]:bg-transparent data-[state=active]:border-b-3 data-[state=active]:border-[#FE8A0F] hover:text-[#2c353f] hover:bg-gray-50 rounded-t-lg rounded-b-none px-4 md:px-6 py-3 font-['Poppins',sans-serif] text-[14px] md:text-[15px] transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                  >
+                    Review
                   </TabsTrigger>
                 )}
                 {isJobOwner && (
@@ -3473,7 +3515,7 @@ export default function JobDetailPage() {
                           Request milestones
                         </Button>
                       )}
-                    {isJobOwner && (
+                    {isJobOwner && job.status !== "completed" && (
                       <Button
                         onClick={() => setShowNewMilestoneDialog(true)}
                         className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
@@ -3705,18 +3747,24 @@ export default function JobDetailPage() {
                                       </DropdownMenu>
                                     ) : (
                                       <DropdownMenu>
-                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-green-600 bg-green-600 shadow-sm">
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-red-300 bg-red-50 shadow-sm">
                                           <button
                                             type="button"
-                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-white font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-green-700/90 transition-colors cursor-pointer"
-                                            onClick={() => setMilestoneToRelease({ jobId: job.id, milestoneId: milestone.id, milestone })}
+                                            disabled={milestone.cancelRequestStatus === "pending"}
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-red-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                            onClick={() => {
+                                              setCancelRequestMilestone(milestone);
+                                              setCancelRequestReason("");
+                                              setShowCancelRequestModal(true);
+                                            }}
                                           >
-                                            Release
+                                            Cancel request
                                           </button>
                                           <DropdownMenuTrigger asChild>
                                             <button
                                               type="button"
-                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-green-700/40 bg-transparent text-white hover:bg-green-700/90 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
+                                              disabled={milestone.cancelRequestStatus === "pending"}
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-red-300/60 bg-transparent text-red-600 hover:bg-red-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                               <ChevronDown className="w-4 h-4" />
                                             </button>
@@ -3739,19 +3787,6 @@ export default function JobDetailPage() {
                                               className="cursor-pointer text-[#1976D2] focus:text-[#1976D2]"
                                             >
                                               View Work delivered
-                                            </DropdownMenuItem>
-                                          )}
-                                          {!deliveryForMilestone && (
-                                            <DropdownMenuItem
-                                              disabled={milestone.cancelRequestStatus === "pending"}
-                                              onClick={() => {
-                                                setCancelRequestMilestone(milestone);
-                                                setCancelRequestReason("");
-                                                setShowCancelRequestModal(true);
-                                              }}
-                                              className="cursor-pointer text-orange-600 focus:text-orange-600"
-                                            >
-                                              Cancel request
                                             </DropdownMenuItem>
                                           )}
                                           {deliveryForMilestone && (
@@ -3779,7 +3814,7 @@ export default function JobDetailPage() {
                                   </Button>
                                 )}
                                 {/* Pro: awaiting-accept → no per-row action (use banner Accept/Reject) */}
-                                {/* Pro: in-progress → dropdown with Cancel as default; or Accept/Reject when cancel requested by client */}
+                                {/* Pro: in-progress → Deliver Work default; Cancel in menu; Accept/Reject when client cancel pending */}
                                 {!isJobOwner && milestone.status === "in-progress" && (
                                   <div className="flex items-center justify-end">
                                     {milestone.cancelRequestStatus === "pending" && milestone.cancelRequestedBy !== userInfo?.id ? (
@@ -3812,24 +3847,24 @@ export default function JobDetailPage() {
                                       </DropdownMenu>
                                     ) : (
                                       <DropdownMenu>
-                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-red-300 bg-red-50 shadow-sm">
+                                        <div className="inline-flex items-stretch rounded-md overflow-hidden border border-[#1976D2]/50 bg-white shadow-sm">
                                           <button
                                             type="button"
-                                            disabled={milestone.cancelRequestStatus === "pending"}
-                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-red-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-[#1976D2] font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-[#E3F2FD] transition-colors cursor-pointer"
                                             onClick={() => {
-                                              setCancelRequestMilestone(milestone);
-                                              setCancelRequestReason("");
-                                              setShowCancelRequestModal(true);
+                                              const idx = (job.milestones || []).findIndex((m) => m.id === milestone.id);
+                                              if (idx >= 0) {
+                                                setDeliverWorkPreselectedMilestoneIndex(idx);
+                                                setShowDeliverWorkModal(true);
+                                              }
                                             }}
                                           >
-                                            Cancel
+                                            Deliver Work
                                           </button>
                                           <DropdownMenuTrigger asChild>
                                             <button
                                               type="button"
-                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-red-300/60 bg-transparent text-red-600 hover:bg-red-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0 disabled:opacity-50"
-                                              disabled={milestone.cancelRequestStatus === "pending"}
+                                              className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-[#1976D2]/40 bg-transparent text-[#1976D2] hover:bg-[#E3F2FD] transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
                                             >
                                               <ChevronDown className="w-4 h-4" />
                                             </button>
@@ -3852,16 +3887,15 @@ export default function JobDetailPage() {
                                             </DropdownMenuItem>
                                           )}
                                           <DropdownMenuItem
+                                            disabled={milestone.cancelRequestStatus === "pending"}
                                             onClick={() => {
-                                              const idx = (job.milestones || []).findIndex((m) => m.id === milestone.id);
-                                              if (idx >= 0) {
-                                                setDeliverWorkPreselectedMilestoneIndex(idx);
-                                                setShowDeliverWorkModal(true);
-                                              }
+                                              setCancelRequestMilestone(milestone);
+                                              setCancelRequestReason("");
+                                              setShowCancelRequestModal(true);
                                             }}
-                                            className="cursor-pointer text-[#1976D2] focus:text-[#1976D2]"
+                                            className="cursor-pointer text-red-600 focus:text-red-600 disabled:opacity-50"
                                           >
-                                            Deliver Work
+                                            Cancel
                                           </DropdownMenuItem>
                                           {deliveryForMilestone && (
                                             <DropdownMenuItem onClick={() => handleOpenDisputeModal(milestone)} className="cursor-pointer text-orange-600 focus:text-orange-600">
@@ -3950,6 +3984,31 @@ export default function JobDetailPage() {
                     </div>
                   </>
                 )}
+
+                {job.status === "completed" && job.awardedProfessionalId && isActualJobClient && (
+                  <div className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50/90 p-5 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <h3 className="font-['Poppins',sans-serif] text-[17px] md:text-[18px] font-semibold text-[#065f46] flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          Job completed
+                        </h3>
+                        <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#047857] mt-1">
+                          {job.clientReviewAt
+                            ? "Thank you — your review has been saved."
+                            : `Tell others how it went with ${jobReviewProfessionalName}.`}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => handleTabChange("review")}
+                        className="shrink-0 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                      >
+                        {job.clientReviewAt ? "View review" : "Leave a review"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -4022,6 +4081,151 @@ export default function JobDetailPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Review tab — completed jobs; client submits, professional reads */}
+            {activeTab === "review" && showReviewTab && (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-2">
+                  Review
+                </h2>
+                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-6">
+                  {isActualJobClient
+                    ? `Rate your experience with ${jobReviewProfessionalName} on this job.`
+                    : `Feedback from the client for "${job.title}".`}
+                </p>
+
+                {isActualJobClient && job.clientReviewAt && job.clientReviewRating != null && (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-5">
+                    <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f] mb-3">Your review</p>
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-6 h-6 ${
+                            star <= (job.clientReviewRating || 0)
+                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                              : "fill-[#E5E5E5] text-[#E5E5E5]"
+                          }`}
+                        />
+                      ))}
+                      <span className="ml-2 font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        {job.clientReviewRating}/5
+                      </span>
+                    </div>
+                    {job.clientReviewComment ? (
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
+                        {job.clientReviewComment}
+                      </p>
+                    ) : (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">No written comment.</p>
+                    )}
+                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-4">
+                      Reviews are submitted once and cannot be edited.
+                    </p>
+                  </div>
+                )}
+
+                {isActualJobClient && !job.clientReviewAt && (
+                  <div className="space-y-5 max-w-lg">
+                    <div>
+                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">Rating</Label>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setJobReviewRating(star)}
+                            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
+                            aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                          >
+                            <Star
+                              className={`w-8 h-8 ${
+                                star <= jobReviewRating ? "fill-[#FE8A0F] text-[#FE8A0F]" : "fill-[#E5E5E5] text-[#E5E5E5]"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="job-review-text" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
+                        Comments (optional)
+                      </Label>
+                      <Textarea
+                        id="job-review-text"
+                        value={jobReviewText}
+                        onChange={(e) => setJobReviewText(e.target.value.slice(0, 2000))}
+                        placeholder="Share details that might help other clients…"
+                        rows={4}
+                        className="font-['Poppins',sans-serif] text-[14px] resize-y min-h-[100px]"
+                      />
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">{jobReviewText.length}/2000</p>
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={jobReviewRating < 1 || jobReviewSubmitting}
+                      onClick={async () => {
+                        if (jobReviewRating < 1) {
+                          toast.error("Please choose a star rating.");
+                          return;
+                        }
+                        setJobReviewSubmitting(true);
+                        try {
+                          await submitClientJobReview(job.slug || job.id, jobReviewRating, jobReviewText);
+                          toast.success("Thank you for your feedback!");
+                          setJobReviewText("");
+                          setJobReviewRating(0);
+                          await fetchJobById(job.slug || job.id);
+                        } catch (e: any) {
+                          toast.error(e?.message || "Could not submit review");
+                        } finally {
+                          setJobReviewSubmitting(false);
+                        }
+                      }}
+                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                    >
+                      {jobReviewSubmitting ? "Submitting…" : "Submit review"}
+                    </Button>
+                  </div>
+                )}
+
+                {isAwardedProfessionalUser && (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-5">
+                    {job.clientReviewAt && job.clientReviewRating != null ? (
+                      <>
+                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f] mb-3">Client review</p>
+                        <div className="flex items-center gap-1 mb-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-6 h-6 ${
+                                star <= (job.clientReviewRating || 0)
+                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
+                                  : "fill-[#E5E5E5] text-[#E5E5E5]"
+                              }`}
+                            />
+                          ))}
+                          <span className="ml-2 font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                            {job.clientReviewRating}/5
+                          </span>
+                        </div>
+                        {job.clientReviewComment ? (
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
+                            {job.clientReviewComment}
+                          </p>
+                        ) : (
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">No written comment.</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+                        The client has not submitted a review yet.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -5234,45 +5438,6 @@ export default function JobDetailPage() {
               className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
             >
               {withdrawing ? "Withdrawing…" : "Withdraw"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Release milestone confirmation */}
-      <AlertDialog open={!!milestoneToRelease} onOpenChange={(open) => !open && !releasing && setMilestoneToRelease(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-['Poppins',sans-serif]">Release payment?</AlertDialogTitle>
-            <AlertDialogDescription className="font-['Poppins',sans-serif]">
-              {milestoneToRelease && (
-                <>
-                  Release {formatPrice(milestoneToRelease.milestone.amount)} &nbsp; for &quot;{milestoneToRelease.milestone.name || milestoneToRelease.milestone.description || "Milestone"} &quot;? The professional will receive this payment.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
-            <Button
-              onClick={async () => {
-                if (!milestoneToRelease) return;
-                setReleasing(true);
-                try {
-                  await updateMilestoneStatus(milestoneToRelease.jobId, milestoneToRelease.milestoneId, "released");
-                  toast.success("Payment released");
-                  setMilestoneToRelease(null);
-                  if (jobSlug) await fetchJobById(jobSlug);
-                } catch (e: any) {
-                  toast.error(e?.message || "Failed to release");
-                } finally {
-                  setReleasing(false);
-                }
-              }}
-              disabled={releasing}
-              className="font-['Poppins',sans-serif] bg-green-600 hover:bg-green-700"
-            >
-              {releasing ? "Releasing…" : "Release"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

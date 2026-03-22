@@ -157,6 +157,10 @@ export interface Job {
   attachments?: { name: string; url: string; mimeType?: string; size?: number }[];
   /** Pro delivery per milestone; client can approve or request revision */
   milestoneDeliveries?: MilestoneDelivery[];
+  /** Client's one-time review after job completed (from API) */
+  clientReviewRating?: number;
+  clientReviewComment?: string;
+  clientReviewAt?: string;
 }
 
 interface JobsContextType {
@@ -207,6 +211,7 @@ interface JobsContextType {
   deliverJobMilestone: (jobId: string, milestoneIndex: number, deliveryMessage: string, files?: File[]) => Promise<void>;
   approveMilestoneDelivery: (jobId: string, milestoneId: string) => Promise<void>;
   requestMilestoneRevision: (jobId: string, milestoneId: string, revisionMessage: string, files?: File[]) => Promise<void>;
+  submitClientJobReview: (jobIdOrSlug: string, rating: number, comment: string) => Promise<void>;
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
@@ -972,6 +977,35 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const submitClientJobReview = async (jobIdOrSlug: string, rating: number, comment: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobIdOrSlug}/client-review`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ rating, comment: comment.trim() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to submit review");
+    }
+    const data = await res.json().catch(() => ({}));
+    const updated = data.job as Job | undefined;
+    if (!updated?.id) {
+      throw new Error("Invalid response from server");
+    }
+    setJobs((prev) => {
+      const idx = prev.findIndex(
+        (j) => j.id === updated.id || j.slug === updated.slug || j.id === jobIdOrSlug || j.slug === jobIdOrSlug
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updated;
+        return next;
+      }
+      return [updated, ...prev];
+    });
+  };
+
   return (
     <JobsContext.Provider
       value={{
@@ -1011,6 +1045,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         deliverJobMilestone,
         approveMilestoneDelivery,
         requestMilestoneRevision,
+        submitClientJobReview,
       }}
     >
       {children}
