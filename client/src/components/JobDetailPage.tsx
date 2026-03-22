@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJobs, JobQuote, Milestone } from "./JobsContext";
@@ -40,6 +40,7 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
+  CreditCard,
   Eye,
   FileSearch,
   Sparkles,
@@ -104,6 +105,7 @@ import milestoneStep3 from "figma:asset/27504741573e0946b791d837bb57de9ad9c0f981
 import xIcon from "../assets/x.png";
 import facebookIcon from "../assets/facebook.png";
 import redditIcon from "../assets/reddit.png";
+import paypalLogo from "../assets/paypal-logo.png";
 import InviteToQuoteModal from "./InviteToQuoteModal";
 import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
@@ -113,6 +115,7 @@ import ServiceCard from "./ServiceCard";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import BidsAndMembershipSection from "./BidsAndMembershipSection";
 import WalletFundModal from "./WalletFundModal";
+import PaymentMethodModal from "./PaymentMethodModal";
 
 type SocialShareLink = {
   name: string;
@@ -254,9 +257,32 @@ export default function JobDetailPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
-  const { userInfo, userRole, isLoggedIn, authReady } = useAccount();
+  const { userInfo, userRole, isLoggedIn, authReady, refreshUser } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
   const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
+
+  /** When the pro did not suggest milestones on the quote, award flow uses a single default milestone. */
+  const DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN = "Word milestone";
+
+  const quoteHasSuggestedMilestonePlan = (quote: JobQuote) => {
+    const suggested = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
+    return suggested.some((m) => String(m.description || "").trim() && Number(m.amount) > 0);
+  };
+
+  const buildAwardMilestonesFromQuote = (quote: JobQuote) => {
+    const suggested = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
+    const validSuggested = suggested.filter(
+      (m) => String(m.description || "").trim() && Number(m.amount) > 0
+    );
+    if (validSuggested.length > 0) {
+      return validSuggested.map((m) => ({
+        name: String(m.description || "").trim() || "Milestone",
+        amount: fromGBP(Number(m.amount)).toFixed(2),
+      }));
+    }
+    return [{ name: DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN, amount: fromGBP(quote.price).toFixed(2) }];
+  };
+
   const validTabs = ["details", "quotes", "payment", "files", "more"] as const;
   const tabFromUrl = searchParams.get("tab") || "details";
   const [activeTab, setActiveTab] = useState(validTabs.includes(tabFromUrl as any) ? tabFromUrl : "details");
@@ -310,6 +336,32 @@ export default function JobDetailPage() {
   const [selectedQuoteForAward, setSelectedQuoteForAward] = useState<JobQuote | null>(null);
   const [awardWithMilestone, setAwardWithMilestone] = useState(true);
   const [awardMilestones, setAwardMilestones] = useState<Array<{ name: string; amount: string }>>([{ name: "", amount: "" }]);
+
+  type AwardSavedCard = {
+    paymentMethodId: string;
+    isDefault?: boolean;
+    card: { brand: string; last4: string; expMonth: number; expYear: number };
+  };
+
+  const [awardWalletBalanceGBP, setAwardWalletBalanceGBP] = useState(0);
+  const [awardFundingLoading, setAwardFundingLoading] = useState(false);
+  const [awardPaymentSource, setAwardPaymentSource] = useState<"wallet" | "card" | "paypal">("wallet");
+  const [awardPayMethods, setAwardPayMethods] = useState<AwardSavedCard[]>([]);
+  const [awardSelectedCardId, setAwardSelectedCardId] = useState<string | null>(null);
+  const [awardPublishableKey, setAwardPublishableKey] = useState<string | null>(null);
+  const [awardStripeEnabled, setAwardStripeEnabled] = useState(false);
+  const [awardPaypalClientId, setAwardPaypalClientId] = useState<string | null>(null);
+  const [awardPaypalEnabled, setAwardPaypalEnabled] = useState(false);
+  const [awardFeeSettings, setAwardFeeSettings] = useState({
+    stripeCommissionPercentage: 1.55,
+    stripeCommissionFixed: 0.29,
+    paypalCommissionPercentage: 3,
+    paypalCommissionFixed: 0.3,
+  });
+  const [showAwardAddCardModal, setShowAwardAddCardModal] = useState(false);
+  const [showAwardPayPalFundModal, setShowAwardPayPalFundModal] = useState(false);
+  const [awardSubmitting, setAwardSubmitting] = useState(false);
+  const pendingPayPalAwardRef = useRef<{ milestones: { name: string; amount: number }[] } | null>(null);
 
   // Cancel request modal (for milestone)
   const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
@@ -453,6 +505,106 @@ export default function JobDetailPage() {
   }, [jobSlug, authReady, isLoggedIn, fetchJobById]);
 
   const job = getJobById(jobSlug || "");
+
+  const awardMilestoneTotalDisplay = useMemo(() => {
+    if (!selectedQuoteForAward) return 0;
+    const hasPlan = quoteHasSuggestedMilestonePlan(selectedQuoteForAward);
+    const rows = hasPlan ? awardMilestones : awardMilestones.slice(0, 1);
+    return rows.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0);
+  }, [selectedQuoteForAward, awardMilestones]);
+
+  const awardMilestoneTotalGBP = useMemo(() => {
+    if (!selectedQuoteForAward) return 0;
+    const hasPlan = quoteHasSuggestedMilestonePlan(selectedQuoteForAward);
+    const rows = hasPlan ? awardMilestones : awardMilestones.slice(0, 1);
+    return rows.reduce((sum, m) => {
+      const v = parseFloat(m.amount);
+      if (!isNaN(v) && v > 0) return sum + toGBP(v);
+      return sum;
+    }, 0);
+  }, [selectedQuoteForAward, awardMilestones, toGBP]);
+
+  const awardInvoiceFees = useMemo(() => {
+    const sub = awardMilestoneTotalDisplay;
+    if (sub <= 0) return { subtotal: 0, fee: 0, totalDue: 0 };
+    if (awardPaymentSource === "wallet") {
+      return { subtotal: sub, fee: 0, totalDue: sub };
+    }
+    const fixedStripe = fromGBP(awardFeeSettings.stripeCommissionFixed);
+    const fixedPaypal = fromGBP(awardFeeSettings.paypalCommissionFixed);
+    if (awardPaymentSource === "card") {
+      const fee = (sub * awardFeeSettings.stripeCommissionPercentage) / 100 + fixedStripe;
+      return { subtotal: sub, fee, totalDue: sub + fee };
+    }
+    const fee = (sub * awardFeeSettings.paypalCommissionPercentage) / 100 + fixedPaypal;
+    return { subtotal: sub, fee, totalDue: sub + fee };
+  }, [awardMilestoneTotalDisplay, awardPaymentSource, awardFeeSettings, fromGBP]);
+
+  const canPayAwardFromWallet =
+    awardMilestoneTotalGBP > 0 && awardWalletBalanceGBP + 1e-6 >= awardMilestoneTotalGBP;
+
+  const fetchAwardFundingData = useCallback(async () => {
+    setAwardFundingLoading(true);
+    try {
+      const [balRes, pkRes, pmRes] = await Promise.all([
+        fetch(resolveApiUrl("/api/wallet/balance"), { credentials: "include" }),
+        fetch(resolveApiUrl("/api/payment/publishable-key"), { credentials: "include" }),
+        fetch(resolveApiUrl("/api/payment-methods"), { credentials: "include" }),
+      ]);
+      if (balRes.ok) {
+        const b = await balRes.json().catch(() => ({}));
+        setAwardWalletBalanceGBP(Number(b.balance) || 0);
+      }
+      if (pkRes.ok) {
+        const d = await pkRes.json().catch(() => ({}));
+        setAwardPublishableKey(d.publishableKey || null);
+        setAwardStripeEnabled(d.stripeEnabled === true);
+        setAwardPaypalEnabled(d.paypalEnabled === true);
+        setAwardPaypalClientId(d.paypalClientId || null);
+        setAwardFeeSettings({
+          stripeCommissionPercentage: d.stripeCommissionPercentage ?? 1.55,
+          stripeCommissionFixed: d.stripeCommissionFixed ?? 0.29,
+          paypalCommissionPercentage: d.paypalCommissionPercentage ?? 3,
+          paypalCommissionFixed: d.paypalCommissionFixed ?? 0.3,
+        });
+      }
+      if (pmRes.ok) {
+        const d = await pmRes.json().catch(() => ({}));
+        const pms = (d.paymentMethods || []) as AwardSavedCard[];
+        setAwardPayMethods(pms);
+        const def = pms.find((p) => p.isDefault);
+        setAwardSelectedCardId((prev) => {
+          if (prev && pms.some((p) => p.paymentMethodId === prev)) return prev;
+          return def?.paymentMethodId || pms[0]?.paymentMethodId || null;
+        });
+      }
+    } finally {
+      setAwardFundingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showAwardModal && awardWithMilestone) {
+      fetchAwardFundingData();
+    }
+  }, [showAwardModal, awardWithMilestone, fetchAwardFundingData]);
+
+  useEffect(() => {
+    if (!showAwardModal || !awardWithMilestone || awardMilestoneTotalGBP <= 0) return;
+    if (awardPaymentSource === "wallet" && !canPayAwardFromWallet) {
+      if (awardStripeEnabled && awardPayMethods.length > 0) setAwardPaymentSource("card");
+      else if (awardPaypalEnabled) setAwardPaymentSource("paypal");
+    }
+  }, [
+    showAwardModal,
+    awardWithMilestone,
+    awardMilestoneTotalGBP,
+    canPayAwardFromWallet,
+    awardPaymentSource,
+    awardStripeEnabled,
+    awardPayMethods.length,
+    awardPaypalEnabled,
+  ]);
 
   // Keep URL canonical: if we have job with slug and URL param differs (e.g. old id), replace with slug so refresh works
   useEffect(() => {
@@ -798,22 +950,12 @@ export default function JobDetailPage() {
 
   const handleOpenAwardModal = (quote: JobQuote) => {
     setSelectedQuoteForAward(quote);
-    const suggested = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
-    const validSuggested = suggested.filter(
-      (m) => String(m.description || "").trim() && Number(m.amount) > 0
-    );
-    if (validSuggested.length > 0) {
-      setAwardWithMilestone(true);
-      setAwardMilestones(
-        validSuggested.map((m) => ({
-          name: String(m.description || "").trim() || "Milestone",
-          amount: fromGBP(Number(m.amount)).toFixed(2),
-        }))
-      );
-    } else {
-      setAwardWithMilestone(true);
-      setAwardMilestones([{ name: "", amount: fromGBP(quote.price).toFixed(2) }]);
-    }
+    setAwardWithMilestone(true);
+    setAwardMilestones(buildAwardMilestonesFromQuote(quote));
+    setAwardPaymentSource("wallet");
+    setAwardSubmitting(false);
+    setShowAwardPayPalFundModal(false);
+    pendingPayPalAwardRef.current = null;
     setShowAwardModal(true);
   };
 
@@ -852,14 +994,63 @@ export default function JobDetailPage() {
     if (!selectedQuoteForAward) return;
 
     if (awardWithMilestone) {
-      const valid = awardMilestones.filter((m) => m.name?.trim() && m.amount && !isNaN(parseFloat(m.amount)) && parseFloat(m.amount) > 0);
+      const hasPlan = selectedQuoteForAward ? quoteHasSuggestedMilestonePlan(selectedQuoteForAward) : false;
+      const rowsForAward = hasPlan ? awardMilestones : awardMilestones.slice(0, 1);
+      const valid = rowsForAward.filter((m) => {
+        const nameOk = hasPlan ? m.name?.trim() : (m.name?.trim() || DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN);
+        return nameOk && m.amount && !isNaN(parseFloat(m.amount)) && parseFloat(m.amount) > 0;
+      });
       if (valid.length === 0) {
-        toast.error("Add at least one milestone with a name and valid amount");
+        toast.error(
+          hasPlan
+            ? "Add at least one milestone with a name and valid amount"
+            : "Enter a valid milestone amount"
+        );
         return;
       }
-      const milestones = valid.map((m) => ({ name: m.name.trim(), amount: toGBP(parseFloat(m.amount)) }));
+      const milestones = valid.map((m) => ({
+        name: (hasPlan ? m.name.trim() : m.name.trim() || DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN),
+        amount: toGBP(parseFloat(m.amount)),
+      }));
+
+      if (awardPaymentSource === "paypal") {
+        if (!awardPaypalEnabled || !awardPaypalClientId) {
+          toast.error("PayPal is not available.");
+          return;
+        }
+        pendingPayPalAwardRef.current = { milestones };
+        setShowAwardPayPalFundModal(true);
+        return;
+      }
+
+      if (awardPaymentSource === "card") {
+        if (!awardStripeEnabled) {
+          toast.error("Card payments are not available.");
+          return;
+        }
+        if (!awardSelectedCardId) {
+          toast.error("Select a saved card or add a new one.");
+          setShowAwardAddCardModal(true);
+          return;
+        }
+      } else if (awardPaymentSource === "wallet" && !canPayAwardFromWallet) {
+        toast.error("Insufficient wallet balance. Choose card or PayPal, or add funds in Billing.");
+        return;
+      }
+
       try {
-        await awardJobWithMilestone(job.id, selectedQuoteForAward.id, selectedQuoteForAward.professionalId, milestones);
+        setAwardSubmitting(true);
+        await awardJobWithMilestone(
+          job.id,
+          selectedQuoteForAward.id,
+          selectedQuoteForAward.professionalId,
+          milestones,
+          awardPaymentSource === "card"
+            ? { paymentSource: "card", paymentMethodId: awardSelectedCardId! }
+            : { paymentSource: "wallet" }
+        );
+        await refreshUser?.();
+        await fetchJobById(job.slug || job.id);
         toast.success(`Job awarded with ${milestones.length} milestone(s)!`);
         setShowAwardModal(false);
         setSelectedQuoteForAward(null);
@@ -869,11 +1060,13 @@ export default function JobDetailPage() {
         navigate(`/job/${job.slug || jobSlug}?tab=payment`, { replace: true });
       } catch (e: any) {
         if (e?.code === "INSUFFICIENT_BALANCE") {
-          toast.error("Insufficient balance. Please add funds to your wallet.");
+          toast.error("Insufficient balance. Pay with card or PayPal, or add funds in Billing.");
           navigate("/account?tab=billing&section=fund");
         } else {
           toast.error(e?.message || "Failed to award job");
         }
+      } finally {
+        setAwardSubmitting(false);
       }
       return;
     }
@@ -4572,6 +4765,69 @@ export default function JobDetailPage() {
         }}
       />
 
+      <WalletFundModal
+        isOpen={showAwardPayPalFundModal}
+        onClose={() => {
+          setShowAwardPayPalFundModal(false);
+          pendingPayPalAwardRef.current = null;
+        }}
+        onSuccess={async () => {
+          const pending = pendingPayPalAwardRef.current;
+          if (!pending || !selectedQuoteForAward || !job?.id) {
+            setShowAwardPayPalFundModal(false);
+            pendingPayPalAwardRef.current = null;
+            return;
+          }
+          try {
+            setAwardSubmitting(true);
+            await awardJobWithMilestone(
+              job.id,
+              selectedQuoteForAward.id,
+              selectedQuoteForAward.professionalId,
+              pending.milestones,
+              { paymentSource: "wallet" }
+            );
+            await refreshUser?.();
+            await fetchJobById(job.slug || job.id);
+            toast.success(`Job awarded with ${pending.milestones.length} milestone(s)!`);
+            setShowAwardModal(false);
+            setSelectedQuoteForAward(null);
+            setAwardMilestones([{ name: "", amount: "" }]);
+            setAwardWithMilestone(true);
+            setActiveTab("payment");
+            navigate(`/job/${job.slug || jobSlug}?tab=payment`, { replace: true });
+          } catch (e: unknown) {
+            toast.error(
+              (e as Error)?.message ||
+                "Wallet was funded but awarding failed. Your balance is updated — try again using account balance."
+            );
+          } finally {
+            pendingPayPalAwardRef.current = null;
+            setShowAwardPayPalFundModal(false);
+            setAwardSubmitting(false);
+          }
+        }}
+        lockAmount={true}
+        initialAmount={awardMilestoneTotalDisplay > 0 ? String(awardMilestoneTotalDisplay) : "0"}
+        restrictToSelectedPaymentType={true}
+        initialPaymentType="paypal"
+        forJobMilestoneAward={true}
+        hideBankOption={true}
+        titleText="PayPal — fund wallet for milestone"
+      />
+
+      {showAwardAddCardModal && awardPublishableKey ? (
+        <PaymentMethodModal
+          isOpen={showAwardAddCardModal}
+          onClose={() => setShowAwardAddCardModal(false)}
+          onSuccess={() => {
+            setShowAwardAddCardModal(false);
+            fetchAwardFundingData();
+          }}
+          publishableKey={awardPublishableKey}
+        />
+      ) : null}
+
       {/* Attachment preview modal (job post attachments) */}
       <Dialog open={!!attachmentPreview} onOpenChange={(open) => { if (!open) setAttachmentPreview(null); }}>
         <DialogContent className="font-['Poppins',sans-serif] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -5175,7 +5431,16 @@ export default function JobDetailPage() {
               </div>
 
               {/* Radio Group */}
-              <RadioGroup value={awardWithMilestone ? "with" : "without"} onValueChange={(value) => setAwardWithMilestone(value === "with")}>
+              <RadioGroup
+                value={awardWithMilestone ? "with" : "without"}
+                onValueChange={(value) => {
+                  const withM = value === "with";
+                  setAwardWithMilestone(withM);
+                  if (withM && selectedQuoteForAward) {
+                    setAwardMilestones(buildAwardMilestonesFromQuote(selectedQuoteForAward));
+                  }
+                }}
+              >
                 <div className="grid grid-cols-2 gap-3">
                   {/* Award with milestone */}
                   <div 
@@ -5226,43 +5491,58 @@ export default function JobDetailPage() {
               </RadioGroup>
 
               {/* Amount Input - Multiple milestones with name + amount */}
-              {awardWithMilestone && (
+              {awardWithMilestone && (() => {
+                const awardModalQuoteHasPlan = quoteHasSuggestedMilestonePlan(selectedQuoteForAward);
+                return (
                 <div className="space-y-3">
-                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">Milestones</Label>
-                  {(selectedQuoteForAward.suggestedMilestones || []).filter(
-                    (s) => String(s.description || "").trim() && Number(s.amount) > 0
-                  ).length > 0 && (
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    {awardModalQuoteHasPlan ? "Milestones" : "Milestone amount"}
+                  </Label>
+                  {awardModalQuoteHasPlan &&
+                    (selectedQuoteForAward.suggestedMilestones || []).filter(
+                      (s) => String(s.description || "").trim() && Number(s.amount) > 0
+                    ).length > 0 && (
                     <div className="rounded-lg border border-blue-200 bg-[#EFF6FF] px-3 py-2 font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#1e40af]">
                       Pre-filled from the quote. Adjust names or amounts if needed; funds are held when you award.
                     </div>
                   )}
-                  {awardMilestones.map((row, index) => (
+                  {!awardModalQuoteHasPlan && (
+                    <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b]">
+                      One milestone will be created for the quoted total. You can adjust the amount if needed.
+                    </p>
+                  )}
+                  {(awardModalQuoteHasPlan ? awardMilestones : awardMilestones.slice(0, 1)).map((row, index) => (
                     <div key={index} className="flex gap-2 items-center">
-                      <Input
-                        value={row.name}
-                        onChange={(e) => {
-                          const next = [...awardMilestones];
-                          next[index] = { ...next[index], name: e.target.value };
-                          setAwardMilestones(next);
-                        }}
-                        placeholder="Milestone name"
-                        className="flex-1 font-['Poppins',sans-serif] text-[14px]"
-                      />
-                      <div className="flex items-center gap-1 w-[120px]">
+                      {awardModalQuoteHasPlan && (
+                        <Input
+                          value={row.name}
+                          onChange={(e) => {
+                            const next = [...awardMilestones];
+                            next[index] = { ...next[index], name: e.target.value };
+                            setAwardMilestones(next);
+                          }}
+                          placeholder="Milestone name"
+                          className="flex-1 font-['Poppins',sans-serif] text-[14px]"
+                        />
+                      )}
+                      <div
+                        className={`flex items-center gap-1 ${awardModalQuoteHasPlan ? "w-[120px]" : "flex-1 sm:max-w-[220px]"}`}
+                      >
                         <span className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">{symbol}</span>
                         <Input
                           type="number"
                           value={row.amount}
                           onChange={(e) => {
                             const next = [...awardMilestones];
-                            next[index] = { ...next[index], amount: e.target.value };
+                            const i = awardModalQuoteHasPlan ? index : 0;
+                            next[i] = { ...next[i], amount: e.target.value };
                             setAwardMilestones(next);
                           }}
                           placeholder="0.00"
                           className="font-['Poppins',sans-serif] text-[14px]"
                         />
                       </div>
-                      {awardMilestones.length > 1 && (
+                      {awardModalQuoteHasPlan && awardMilestones.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -5275,16 +5555,213 @@ export default function JobDetailPage() {
                       )}
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAwardMilestones((prev) => [...prev, { name: "", amount: "" }])}
-                    className="font-['Poppins',sans-serif] text-[13px]"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add another milestone
-                  </Button>
+                  {awardModalQuoteHasPlan && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAwardMilestones((prev) => [...prev, { name: "", amount: "" }])}
+                      className="font-['Poppins',sans-serif] text-[13px]"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add another milestone
+                    </Button>
+                  )}
+                </div>
+                );
+              })()}
+
+              {awardWithMilestone && (
+                <div className="space-y-3 border-t border-gray-200 pt-4">
+                  <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                    Payment method
+                  </Label>
+                  {awardFundingLoading ? (
+                    <div className="flex items-center gap-2 font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      Loading payment options…
+                    </div>
+                  ) : (
+                    <RadioGroup
+                      value={awardPaymentSource}
+                      onValueChange={(v) => setAwardPaymentSource(v as "wallet" | "card" | "paypal")}
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                    >
+                      {canPayAwardFromWallet && (
+                        <div
+                          className={`flex items-center gap-2 rounded-lg border-2 p-3 cursor-pointer ${
+                            awardPaymentSource === "wallet"
+                              ? "border-[#3B82F6] bg-[#EFF6FF]"
+                              : "border-gray-200"
+                          }`}
+                          onClick={() => setAwardPaymentSource("wallet")}
+                        >
+                          <RadioGroupItem value="wallet" id="award-pay-wallet" />
+                          <Label htmlFor="award-pay-wallet" className="cursor-pointer font-['Poppins',sans-serif] text-[12px] flex-1">
+                            <span className="block text-[11px] text-[#6b6b6b] font-normal mt-0.5">
+                              Available balance {formatAmountInSelectedCurrency(fromGBP(awardWalletBalanceGBP))}
+                            </span>
+                          </Label>
+                        </div>
+                      )}
+                      {awardStripeEnabled && (
+                        <div
+                          className={`flex items-center gap-2 rounded-lg border-2 p-3 cursor-pointer ${
+                            awardPaymentSource === "card"
+                              ? "border-[#3B82F6] bg-[#EFF6FF]"
+                              : "border-gray-200"
+                          }`}
+                          onClick={() => setAwardPaymentSource("card")}
+                        >
+                          <RadioGroupItem value="card" id="award-pay-card" />
+                          <Label htmlFor="award-pay-card" className="cursor-pointer font-['Poppins',sans-serif] text-[12px] flex-1">
+                            <CreditCard className="w-6 h-6 mr-2" />
+                            <span className="block text-[11px] text-[#6b6b6b] font-normal mt-0.5">Debit or credit</span>
+                          </Label>
+                        </div>
+                      )}
+                      {awardPaypalEnabled && (
+                        <div
+                          className={`flex items-center justify-center rounded-lg border-2 p-3 cursor-pointer ${
+                            awardPaymentSource === "paypal"
+                              ? "border-[#3B82F6] bg-[#EFF6FF]"
+                              : "border-gray-200"
+                          }`}
+                          onClick={() => setAwardPaymentSource("paypal")}
+                        >
+                          <RadioGroupItem value="paypal" id="award-pay-paypal" />
+                          <Label htmlFor="award-pay-paypal" className="cursor-pointer font-['Poppins',sans-serif] text-[12px] flex-1">
+                            <img
+                              src={paypalLogo}
+                              alt=""
+                              className="shrink-0 object-contain object-left"
+                              width={50}
+                              height={50}
+                            />
+                            <span className="block text-[11px] text-[#6b6b6b] font-normal mt-0.5">PayPal</span>
+                          </Label>
+                        </div>
+                      )}
+                    </RadioGroup>
+                  )}
+                  {!awardFundingLoading &&
+                    !canPayAwardFromWallet &&
+                    awardMilestoneTotalGBP > 0 && (
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#92400e] bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                        Your balance is less than this milestone total. Account balance is hidden — use card or PayPal (funds go to your wallet first, then escrow).
+                      </p>
+                    )}
+                  {awardPaymentSource === "card" && awardStripeEnabled && (
+                    <div className="space-y-2 rounded-lg border border-gray-200 p-3 bg-white">
+                      <p className="font-['Poppins',sans-serif] text-[12px] font-medium text-[#2c353f]">Saved cards</p>
+                      {awardPayMethods.length === 0 ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="font-['Poppins',sans-serif]"
+                          onClick={() => {
+                            if (!awardPublishableKey) {
+                              toast.error("Payment setup is still loading. Try again in a moment.");
+                              return;
+                            }
+                            setShowAwardAddCardModal(true);
+                          }}
+                        >
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Add new card
+                        </Button>
+                      ) : (
+                        <>
+                          <RadioGroup
+                            value={awardSelectedCardId || ""}
+                            onValueChange={(id) => setAwardSelectedCardId(id)}
+                            className="space-y-2"
+                          >
+                            {awardPayMethods.map((pm) => (
+                              <div
+                                key={pm.paymentMethodId}
+                                className={`flex items-center gap-2 rounded-md border p-2 cursor-pointer ${
+                                  awardSelectedCardId === pm.paymentMethodId
+                                    ? "border-[#FE8A0F] bg-[#FFF5EB]"
+                                    : "border-gray-200"
+                                }`}
+                                onClick={() => setAwardSelectedCardId(pm.paymentMethodId)}
+                              >
+                                <RadioGroupItem value={pm.paymentMethodId} id={`award-card-${pm.paymentMethodId}`} />
+                                <Label
+                                  htmlFor={`award-card-${pm.paymentMethodId}`}
+                                  className="cursor-pointer flex-1 font-['Poppins',sans-serif] text-[13px]"
+                                >
+                                  <span className="capitalize">{pm.card.brand}</span> •••• {pm.card.last4}
+                                  <span className="text-[11px] text-[#6b6b6b] ml-2">
+                                    {String(pm.card.expMonth).padStart(2, "0")}/{pm.card.expYear}
+                                  </span>
+                                  {pm.isDefault ? (
+                                    <span className="ml-2 text-[10px] bg-[#FE8A0F] text-white px-1.5 py-0.5 rounded">Default</span>
+                                  ) : null}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="font-['Poppins',sans-serif] w-full mt-1"
+                            onClick={() => {
+                              if (!awardPublishableKey) {
+                                toast.error("Payment setup is still loading. Try again in a moment.");
+                                return;
+                              }
+                              setShowAwardAddCardModal(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add new card
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {awardPaymentSource === "paypal" && awardPaypalEnabled && (
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                      You will complete PayPal in the next step. Your wallet will be funded for the milestone total (plus fee), then the same amount is held for the milestone — both lines appear in billing history.
+                    </p>
+                  )}
+                  {awardMilestoneTotalDisplay > 0 && (
+                    <div className="rounded-lg border border-gray-200 bg-[#f8f9fa] p-4 space-y-2">
+                      <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                        Invoice summary
+                      </p>
+                      <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                        <span>Milestone total (escrow)</span>
+                        <span>{formatAmountInSelectedCurrency(awardInvoiceFees.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                        <span className="inline-flex items-center gap-1">
+                          Processing fee
+                          <Info
+                            className="w-3.5 h-3.5 text-blue-500 cursor-help shrink-0"
+                            title={
+                              awardPaymentSource === "wallet"
+                                ? "No fee when paying from your Sortars balance."
+                                : awardPaymentSource === "card"
+                                  ? `Card: ${awardFeeSettings.stripeCommissionPercentage}% + ${formatPrice(awardFeeSettings.stripeCommissionFixed)} per charge.`
+                                  : `PayPal: ${awardFeeSettings.paypalCommissionPercentage}% + ${formatPrice(awardFeeSettings.paypalCommissionFixed)}.`
+                            }
+                          />
+                        </span>
+                        <span>{formatAmountInSelectedCurrency(awardInvoiceFees.fee)}</span>
+                      </div>
+                      <div className="border-t border-gray-300 pt-2 flex justify-between font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-semibold text-[#2c353f]">
+                        <span>
+                          {awardPaymentSource === "wallet" ? "Deducted from balance" : "Total you pay"}
+                        </span>
+                        <span>{formatAmountInSelectedCurrency(awardInvoiceFees.totalDue)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -5292,7 +5769,12 @@ export default function JobDetailPage() {
               <div className="border-t border-gray-200 pt-3 sm:pt-4">
                 <p className="font-['Poppins',sans-serif] text-[16px] sm:text-[18px] text-[#2c353f]">
                   Total: <strong>{awardWithMilestone
-                    ? formatAmountInSelectedCurrency(awardMilestones.reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0))
+                    ? formatAmountInSelectedCurrency(
+                        (quoteHasSuggestedMilestonePlan(selectedQuoteForAward)
+                          ? awardMilestones
+                          : awardMilestones.slice(0, 1)
+                        ).reduce((sum, m) => sum + (parseFloat(m.amount) || 0), 0)
+                      )
                     : formatPriceWhole(Number(selectedQuoteForAward.price))}</strong>
                 </p>
               </div>
@@ -5316,11 +5798,31 @@ export default function JobDetailPage() {
               {/* Award Button */}
               <Button
                 onClick={handleAwardJob}
-                className="w-full bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] py-5 sm:py-6 text-[14px] sm:text-[16px]"
+                disabled={
+                  awardSubmitting ||
+                  (awardWithMilestone &&
+                    !awardFundingLoading &&
+                    awardMilestoneTotalDisplay > 0 &&
+                    !canPayAwardFromWallet &&
+                    !awardStripeEnabled &&
+                    !awardPaypalEnabled)
+                }
+                className="w-full bg-[#FE8A0F] hover:bg-[#E57A00] text-white font-['Poppins',sans-serif] py-5 sm:py-6 text-[14px] sm:text-[16px] disabled:opacity-50"
               >
-                {awardWithMilestone
-                  ? `Award and Create ${awardMilestones.length} Milestone(s)`
-                  : `Award Job`}
+                {awardSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin inline" />
+                    Processing…
+                  </>
+                ) : awardWithMilestone ? (
+                  awardPaymentSource === "paypal" ? (
+                    `Pay with PayPal & award job`
+                  ) : (
+                    `Award and Create ${quoteHasSuggestedMilestonePlan(selectedQuoteForAward) ? awardMilestones.length : 1} Milestone(s)`
+                  )
+                ) : (
+                  `Award Job`
+                )}
               </Button>
 
               {/* Guide Tip with Steps - Moved below button */}

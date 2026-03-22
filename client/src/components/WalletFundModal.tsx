@@ -40,6 +40,8 @@ interface WalletFundModalProps {
   lockAmount?: boolean;
   /** When true, card/PayPal wallet top-up skips admin min deposit (used for Quote credits flow). Bank unchanged. */
   forQuoteCreditPurchase?: boolean;
+  /** When true, skip min/max deposit limits (job award → wallet → milestone escrow). */
+  forJobMilestoneAward?: boolean;
 }
 
 // Payment method logos
@@ -88,6 +90,7 @@ export default function WalletFundModal({
   restrictToSelectedPaymentType,
   lockAmount,
   forQuoteCreditPurchase = false,
+  forJobMilestoneAward = false,
 }: WalletFundModalProps) {
   const { userInfo } = useAccount();
   const { formatPrice, symbol, currency, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
@@ -124,6 +127,7 @@ export default function WalletFundModal({
   const restrictPaymentType = !!restrictToSelectedPaymentType;
   const lockAmountField = !!lockAmount;
   const isQuoteCreditTopUp = !!forQuoteCreditPurchase;
+  const isJobMilestoneAwardTopUp = !!forJobMilestoneAward;
 
   // Calculate fees (amount and fee in selected currency for display)
   const calculateFees = () => {
@@ -339,6 +343,7 @@ export default function WalletFundModal({
         body: JSON.stringify({
           amount: amountGBP,
           ...(isQuoteCreditTopUp ? { forQuoteCreditPurchase: true } : {}),
+          ...(isJobMilestoneAwardTopUp ? { forJobMilestoneAward: true } : {}),
         }),
       });
 
@@ -374,7 +379,7 @@ export default function WalletFundModal({
       }
 
       toast.success(`Wallet funded successfully! New balance: ${formatPrice(result.balance ?? 0)}`);
-      onSuccess();
+      await Promise.resolve(onSuccess());
       onClose();
     } catch (err: any) {
       toast.error(err?.message || "Failed to process PayPal payment");
@@ -413,14 +418,14 @@ export default function WalletFundModal({
 
       if (data.status === 'succeeded') {
         toast.success(`Wallet funded successfully! New balance: ${formatPrice(data.balance)}`);
-        onSuccess();
+        await Promise.resolve(onSuccess());
         onClose();
       } else if (data.requiresAction) {
         toast.info("Please complete the authentication");
         pollPaymentStatus(data.transactionId, data.clientSecret);
       } else {
         toast.success("Payment processed successfully!");
-        onSuccess();
+        await Promise.resolve(onSuccess());
         onClose();
       }
     } catch (error: any) {
@@ -453,8 +458,7 @@ export default function WalletFundModal({
         if (response.ok && data.transaction?.status === 'completed') {
           clearInterval(poll);
           toast.success(`Wallet funded successfully! New balance: ${formatPrice(data.balance)}`);
-          onSuccess();
-          onClose();
+          Promise.resolve(onSuccess()).then(() => onClose());
         } else if (attempts >= maxAttempts) {
           clearInterval(poll);
           toast.error("Payment confirmation timeout. Please check your wallet balance.");
@@ -511,7 +515,7 @@ export default function WalletFundModal({
       setFullName("");
       setDateOfDeposit("");
       setReference("");
-      onSuccess();
+      await Promise.resolve(onSuccess());
       onClose();
     } catch (error: any) {
       toast.error(error.message || "Failed to create transfer request");
@@ -943,7 +947,8 @@ export default function WalletFundModal({
                   />
                 </div>
                 <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1">
-                  {isQuoteCreditTopUp && (selectedPaymentType === "card" || selectedPaymentType === "paypal") ? (
+                  {(isQuoteCreditTopUp || isJobMilestoneAwardTopUp) &&
+                  (selectedPaymentType === "card" || selectedPaymentType === "paypal") ? (
                     <></>
                   ) : (
                     <>Minimum: {formatAmountInSelectedCurrency(10)}</>

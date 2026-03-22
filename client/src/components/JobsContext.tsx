@@ -169,7 +169,13 @@ interface JobsContextType {
   getAvailableJobs: () => Job[];
   getProfessionalQuotes: (professionalId: string) => { job: Job; quote: JobQuote }[];
   getProfessionalActiveJobs: (professionalId: string) => Job[];
-  awardJobWithMilestone: (jobId: string, quoteId: string, professionalId: string, milestones: { name: string; amount: number }[]) => Promise<void>;
+  awardJobWithMilestone: (
+    jobId: string,
+    quoteId: string,
+    professionalId: string,
+    milestones: { name: string; amount: number }[],
+    options?: { paymentSource?: 'wallet' | 'card'; paymentMethodId?: string }
+  ) => Promise<void>;
   awardJobWithoutMilestone: (jobId: string, quoteId: string, professionalId: string) => void;
   acceptAward: (jobId: string) => Promise<void>;
   rejectAward: (jobId: string) => Promise<void>;
@@ -576,16 +582,27 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     jobId: string,
     quoteId: string,
     professionalId: string,
-    milestones: { name: string; amount: number }[]
+    milestones: { name: string; amount: number }[],
+    options?: { paymentSource?: 'wallet' | 'card'; paymentMethodId?: string }
   ) => {
+    const paymentSource = options?.paymentSource === 'card' ? 'card' : 'wallet';
+    const body: Record<string, unknown> = {
+      status: 'awarded',
+      milestones: milestones.map((m) => ({
+        name: m.name || 'Milestone',
+        description: m.name || 'Milestone',
+        amount: m.amount,
+      })),
+      paymentSource,
+    };
+    if (paymentSource === 'card' && options?.paymentMethodId) {
+      body.paymentMethodId = options.paymentMethodId;
+    }
     const res = await fetch(resolveApiUrl(`/api/jobs/${jobId}/quotes/${quoteId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        status: 'awarded',
-        milestones: milestones.map((m) => ({ name: m.name || 'Milestone', description: m.name || 'Milestone', amount: m.amount })),
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

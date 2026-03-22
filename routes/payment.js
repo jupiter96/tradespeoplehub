@@ -1021,7 +1021,7 @@ function createPayPalClient(settings) {
 router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
   
   try {
-    const { amount, forQuoteCreditPurchase } = req.body;
+    const { amount, forQuoteCreditPurchase, forJobMilestoneAward } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
@@ -1037,12 +1037,13 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
     }
     
     const skipMinForQuoteCredits = forQuoteCreditPurchase === true;
-    if (!skipMinForQuoteCredits && amount < settings.minDepositAmount) {
+    const skipLimitsForMilestoneAward = forJobMilestoneAward === true;
+    if (!skipMinForQuoteCredits && !skipLimitsForMilestoneAward && amount < settings.minDepositAmount) {
       return res.status(400).json({
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}`,
       });
     }
-    if (amount > settings.maxDepositAmount) {
+    if (!skipLimitsForMilestoneAward && amount > settings.maxDepositAmount) {
       return res.status(400).json({
         error: `Amount must be between £${settings.minDepositAmount} and £${settings.maxDepositAmount}`,
       });
@@ -1103,6 +1104,7 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
         feePercentage: paypalCommissionPercentage,
         feeFixed: paypalCommissionFixed,
         totalAmount: totalAmount, // Total amount charged
+        ...(forJobMilestoneAward === true ? { forJobMilestoneAward: true } : {}),
       },
     });
     
