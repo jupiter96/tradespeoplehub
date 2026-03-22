@@ -97,7 +97,7 @@ const jobSchema = new mongoose.Schema(
     location: { type: String, trim: true },
     timing: {
       type: String,
-      enum: ['urgent', 'flexible', 'specific'],
+      enum: ['urgent', 'flexible', 'specific', 'soon'],
       default: 'flexible',
     },
     specificDate: { type: Date, default: null },

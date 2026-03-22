@@ -105,6 +105,28 @@ async function bulkGeocodePostcodes(postcodes) {
   });
 }
 
+/**
+ * Preferred start date from post-job (`<input type="date">` → "YYYY-MM-DD").
+ * Parsed as UTC midnight for that civil date so Mongo round-trips the same YYYY-MM-DD in API responses.
+ */
+function parseJobSpecificDate(value) {
+  if (value == null || value === '') return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (ymd) {
+    const y = parseInt(ymd[1], 10);
+    const mo = parseInt(ymd[2], 10);
+    const d = parseInt(ymd[3], 10);
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    const dt = new Date(Date.UTC(y, mo - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+    return dt;
+  }
+  const dt = new Date(s);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
 function toJobResponse(doc) {
   if (!doc) return null;
   const job = doc.toObject ? doc.toObject() : doc;
@@ -124,7 +146,11 @@ function toJobResponse(doc) {
     state: job.state,
     location: job.location,
     timing: job.timing,
-    specificDate: job.specificDate ? new Date(job.specificDate).toISOString().split('T')[0] : undefined,
+    specificDate: (() => {
+      if (!job.specificDate) return undefined;
+      const d = new Date(job.specificDate);
+      return Number.isNaN(d.getTime()) ? undefined : d.toISOString().split('T')[0];
+    })(),
     budgetType: job.budgetType,
     budgetAmount: job.budgetAmount,
     budgetMin: job.budgetMin != null ? job.budgetMin : undefined,
@@ -699,8 +725,8 @@ router.post('/', authenticateToken, requireRole(['client']), async (req, res) =>
       city: cityTrim,
       state: stateTrim,
       location: resolvedLocation,
-      timing: ['urgent', 'flexible', 'specific'].includes(timing) ? timing : 'flexible',
-      specificDate: specificDate ? new Date(specificDate) : null,
+      timing: ['urgent', 'flexible', 'specific', 'soon'].includes(timing) ? timing : 'flexible',
+      specificDate: parseJobSpecificDate(specificDate),
       budgetType: budgetType === 'hourly' ? 'hourly' : 'fixed',
       budgetAmount: resolvedBudgetAmount,
       status: 'open',
@@ -1646,7 +1672,9 @@ router.patch('/:id', authenticateToken, requireRole(['client']), async (req, res
     ];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
-        if (key === 'specificDate') job[key] = req.body[key] ? new Date(req.body[key]) : null;
+        if (key === 'specificDate') {
+          job[key] = parseJobSpecificDate(req.body[key]);
+        }
         else if (key === 'budgetAmount') job[key] = Number(req.body[key]);
         else if (key === 'budgetMin') job.budgetMin = req.body[key] === null || req.body[key] === '' ? null : Number(req.body[key]);
         else if (key === 'budgetMax') job.budgetMax = req.body[key] === null || req.body[key] === '' ? null : Number(req.body[key]);

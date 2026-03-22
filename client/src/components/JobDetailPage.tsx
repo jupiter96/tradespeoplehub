@@ -835,9 +835,13 @@ export default function JobDetailPage() {
     });
   };
 
-  /** Details tab — urgent jobs: "15 March 2025" from postedAt */
+  /** Details tab — urgent/soon; API date-only "YYYY-MM-DD" is local calendar (not UTC midnight shift). */
   const formatUrgentJobStartLine = (dateString: string) => {
-    const date = new Date(dateString);
+    const s = String(dateString).trim();
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    const date = ymd
+      ? new Date(parseInt(ymd[1], 10), parseInt(ymd[2], 10) - 1, parseInt(ymd[3], 10))
+      : new Date(s);
     if (Number.isNaN(date.getTime())) return "—";
     return date.toLocaleDateString("en-GB", {
       day: "numeric",
@@ -1829,6 +1833,14 @@ export default function JobDetailPage() {
         </Badge>
       );
     }
+    if (job.timing === "soon") {
+      return (
+        <Badge className="bg-orange-50 text-orange-800 border-orange-200 font-['Poppins',sans-serif]">
+          <Clock className="w-3 h-3 mr-1" />
+          Soon
+        </Badge>
+      );
+    }
     if (job.timing === "flexible") {
       return (
         <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-['Poppins',sans-serif]">
@@ -2065,8 +2077,45 @@ export default function JobDetailPage() {
                         Job start and completion time (Urgent completion)
                       </h3>
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-relaxed">
-                        The job starts {formatUrgentJobStartLine(job.postedAt)} and is expected to be completed within 24
-                        hours.
+                        The job starts{" "}
+                        {formatUrgentJobStartLine(job.specificDate || job.postedAt)} and is expected to be completed
+                        within 24 hours.
+                      </p>
+                    </div>
+                  )}
+
+                  {job.timing === "soon" && (
+                    <div className="border-t border-gray-100 py-4">
+                      <h3 className="font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f] mb-2">
+                        Job start and completion time (Soon)
+                      </h3>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-relaxed">
+                        {job.specificDate?.trim() ? (
+                          <>
+                            The job starts on {formatUrgentJobStartLine(job.specificDate)} and is to be completed within
+                            one week.
+                          </>
+                        ) : (
+                          <>The job is to be started and completed within one week.</>
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {job.timing === "flexible" && (
+                    <div className="border-t border-gray-100 py-4">
+                      <h3 className="font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f] mb-2">
+                        Job start and completion time (Flexible)
+                      </h3>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-relaxed">
+                        {job.specificDate?.trim() ? (
+                          <>
+                            The job starts on {formatUrgentJobStartLine(job.specificDate)} and is to be completed within
+                            one month.
+                          </>
+                        ) : (
+                          <>The Job is to be started and completed within one month.</>
+                        )}
                       </p>
                     </div>
                   )}

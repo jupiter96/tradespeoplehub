@@ -656,9 +656,10 @@ export default function PostJobPage() {
       budgetMax = preset?.max ?? 0;
     }
     const budgetAmount = Math.round((budgetMin + budgetMax) / 2);
-    const timingMap: { [key: string]: "urgent" | "flexible" | "specific" } = {
+    const timingMap: { [key: string]: "urgent" | "flexible" | "specific" | "soon" } = {
       urgent: "urgent",
       flexible: "flexible",
+      soon: "soon",
       "specific-date": "specific",
     };
     const sectorEntry = sectors.find((s) => s.value === selectedSector);
@@ -680,7 +681,7 @@ export default function PostJobPage() {
           ? "Online"
           : [townCity, postcode].filter(Boolean).join(", ") || postcode,
       timing: timingMap[urgency] || "flexible",
-      specificDate: urgency === "specific-date" ? preferredStartDate : undefined,
+      specificDate: preferredStartDate.trim() ? preferredStartDate : undefined,
       budgetType: "fixed" as const,
       budgetAmount,
       budgetMin,
@@ -2245,7 +2246,12 @@ export default function PostJobPage() {
       setAddress(job.address || "");
       setCounty(job.state || "");
       setJobLocationType(job.postcode === "Online" ? "online" : "in-person");
-      const timingMap: Record<string, string> = { urgent: "urgent", specific: "specific-date", flexible: "flexible" };
+      const timingMap: Record<string, string> = {
+        urgent: "urgent",
+        specific: "specific-date",
+        flexible: "flexible",
+        soon: "soon",
+      };
       setUrgency(timingMap[job.timing] || "flexible");
       setPreferredStartDate(job.specificDate || "");
       if (job.budgetMin != null && job.budgetMax != null) {

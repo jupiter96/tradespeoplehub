@@ -114,7 +114,7 @@ export interface Job {
   state?: string;
   /** Legacy combined display string */
   location: string;
-  timing: "urgent" | "flexible" | "specific";
+  timing: "urgent" | "flexible" | "specific" | "soon";
   specificDate?: string;
   budgetType: "fixed" | "hourly";
   budgetAmount: number;
@@ -341,7 +341,10 @@ export function JobsProvider({ children }: { children: ReactNode }) {
             ? jobData.location
             : jobData.postcode,
         timing: jobData.timing || 'flexible',
-        specificDate: jobData.specificDate || null,
+        specificDate:
+          jobData.specificDate != null && String(jobData.specificDate).trim() !== ""
+            ? String(jobData.specificDate).trim()
+            : null,
         budgetType: jobData.budgetType || 'fixed',
         budgetAmount: jobData.budgetAmount ?? 0,
         budgetMin: jobData.budgetMin,
