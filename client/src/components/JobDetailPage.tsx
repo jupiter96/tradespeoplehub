@@ -2268,9 +2268,9 @@ export default function JobDetailPage() {
                               Accepted
                             </div>
                           )}
-                          <div className="flex flex-col sm:flex-row gap-5">
+                          <div className="flex flex-col sm:flex-row sm:items-stretch gap-5">
                             {/* Left column (70%) */}
-                            <div className="sm:w-[70%] min-w-0">
+                            <div className="sm:w-[70%] min-w-0 sm:min-h-0">
                               <div className="flex items-start gap-4 flex-1 min-w-0">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-3">
@@ -2356,8 +2356,8 @@ export default function JobDetailPage() {
                               </div>
                             </div>
 
-                            {/* Right column (30%) */}
-                            <div className="sm:w-[30%] flex flex-col gap-3 sm:items-end">
+                            {/* Right column (30%) — price top, Chat pinned to card bottom on sm+ */}
+                            <div className="sm:w-[30%] flex flex-col gap-3 sm:items-end sm:min-h-0">
                               <div className="text-right flex-shrink-0 whitespace-nowrap">
                                 <p className="font-['Poppins',sans-serif] text-[20px] sm:text-[24px] text-[#2c353f]">
                                   {formatPriceWhole(Number(quote.price))}
@@ -2366,7 +2366,7 @@ export default function JobDetailPage() {
                                   {formatDeliveryDisplay(quote.deliveryTime || "")}
                                 </p>
                               </div>
-                              <div className="flex justify-end gap-2 pt-2">
+                              <div className="mt-auto flex justify-end gap-2 pt-2 sm:pt-0 w-full sm:w-auto">
                                 <Button onClick={() => handleStartChat(quote)} className="bg-[#3B82F6] hover:bg-[#2563EB] text-white font-['Poppins',sans-serif] text-[13px] sm:text-[14px] px-4 sm:px-5 py-2">
                                   Chat
                                 </Button>
