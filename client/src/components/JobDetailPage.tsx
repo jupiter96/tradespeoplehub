@@ -22,6 +22,7 @@ import {
   MessageCircle,
   Star,
   Clock,
+  ListChecks,
   CheckCircle2,
   XCircle,
   FileText,
@@ -111,6 +112,10 @@ import InviteProfessionalsList from "./InviteProfessionalsList";
 import RotatingGlobeWithLines from "./RotatingGlobeWithLines";
 import FloatingToolsBackground from "./FloatingToolsBackground";
 import JobDeliverWorkModal from "./JobDeliverWorkModal";
+import {
+  RequestMilestonesDialog,
+  CreateNewMilestoneDialog,
+} from "./JobMilestonePaymentDialogs";
 import ServiceCard from "./ServiceCard";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import BidsAndMembershipSection from "./BidsAndMembershipSection";
@@ -256,7 +261,7 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, addMilestone, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateMilestoneStatus, updateJob, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady, refreshUser } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
   const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
@@ -330,6 +335,9 @@ export default function JobDetailPage() {
   const [isMilestoneOpen, setIsMilestoneOpen] = useState(false);
   const [updatingSuggestedMilestoneId, setUpdatingSuggestedMilestoneId] = useState<string | null>(null);
   const [suggestedBulkAction, setSuggestedBulkAction] = useState<null | "accept-all" | "reject-all">(null);
+  const [showRequestMilestonesDialog, setShowRequestMilestonesDialog] = useState(false);
+  const [updatingRequestedMilestoneId, setUpdatingRequestedMilestoneId] = useState<string | null>(null);
+  const [requestedBulkAction, setRequestedBulkAction] = useState<null | "accept-all" | "reject-all">(null);
 
   // Award modal state
   const [showAwardModal, setShowAwardModal] = useState(false);
@@ -394,11 +402,6 @@ export default function JobDetailPage() {
 
   // New milestone state
   const [showNewMilestoneDialog, setShowNewMilestoneDialog] = useState(false);
-  const [newMilestoneForm, setNewMilestoneForm] = useState({
-    name: "",
-    description: "",
-    amount: "",
-  });
 
   // Dispute modal state
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -832,6 +835,28 @@ export default function JobDetailPage() {
     });
   };
 
+  /** Details tab — urgent jobs: "15 March 2025" from postedAt */
+  const formatUrgentJobStartLine = (dateString: string) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const formatDeliveryDisplay = (v: string) => {
     const n = parseInt(String(v).trim(), 10);
     if (Number.isNaN(n)) return v;
@@ -1165,6 +1190,65 @@ export default function JobDetailPage() {
     }
   };
 
+  const handleAcceptAllRequestedMilestones = async () => {
+    if (!job?.id || !isJobOwner) return;
+    const pending = (job.requestedMilestonePlan || []).filter((m) => m.status === "pending");
+    if (pending.length === 0) return;
+    setRequestedBulkAction("accept-all");
+    try {
+      for (const m of pending) {
+        const res = await fetch(
+          resolveApiUrl(`/api/jobs/${job.id}/requested-milestones/${m.id}/accept`),
+          { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include" }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to accept a milestone");
+        }
+      }
+      await fetchJobById(job.slug || job.id);
+      toast.success("All requested milestones were accepted and funded.");
+    } catch (e: any) {
+      await fetchJobById(job.slug || job.id);
+      toast.error(e?.message || "Could not accept all milestones");
+    } finally {
+      setRequestedBulkAction(null);
+    }
+  };
+
+  const handleRejectAllRequestedMilestones = async () => {
+    if (!job?.id || !isJobOwner) return;
+    const pending = (job.requestedMilestonePlan || []).filter((m) => m.status === "pending");
+    if (pending.length === 0) return;
+    if (
+      !window.confirm(
+        `Decline all ${pending.length} requested milestone(s)? You can still add milestones manually below.`
+      )
+    ) {
+      return;
+    }
+    setRequestedBulkAction("reject-all");
+    try {
+      for (const m of pending) {
+        const res = await fetch(
+          resolveApiUrl(`/api/jobs/${job.id}/requested-milestones/${m.id}/reject`),
+          { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include" }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to decline a milestone");
+        }
+      }
+      await fetchJobById(job.slug || job.id);
+      toast.success("All requested milestones were declined.");
+    } catch (e: any) {
+      await fetchJobById(job.slug || job.id);
+      toast.error(e?.message || "Could not decline all milestones");
+    } finally {
+      setRequestedBulkAction(null);
+    }
+  };
+
   const handleAcceptAward = async () => {
     try {
       await acceptAward(job.id);
@@ -1239,34 +1323,6 @@ export default function JobDetailPage() {
       toast.success("Quote rejected");
     } catch (e: any) {
       toast.error(e?.message || "Failed to reject quote");
-    }
-  };
-
-  const handleCreateMilestone = async () => {
-    const nameOrDesc = (newMilestoneForm.name || newMilestoneForm.description || "").trim();
-    if (!nameOrDesc || !newMilestoneForm.amount) {
-      toast.error("Please fill in milestone name and amount");
-      return;
-    }
-
-    const amountInSelected = parseFloat(newMilestoneForm.amount);
-    if (isNaN(amountInSelected) || amountInSelected <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    try {
-      await addMilestone(job.id, nameOrDesc, toGBP(amountInSelected));
-      toast.success("Milestone created successfully!");
-      setShowNewMilestoneDialog(false);
-      setNewMilestoneForm({ name: "", description: "", amount: "" });
-    } catch (e: any) {
-      if (e?.code === "INSUFFICIENT_BALANCE") {
-        toast.error("Insufficient balance. Please add funds to your wallet.");
-        navigate("/account?tab=billing&section=fund");
-      } else {
-        toast.error(e?.message || "Failed to create milestone");
-      }
     }
   };
 
@@ -2002,6 +2058,18 @@ export default function JobDetailPage() {
                       {job.description}
                     </p>
                   </div>
+
+                  {job.timing === "urgent" && (
+                    <div className="border-t border-gray-100 py-4">
+                      <h3 className="font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f] mb-2">
+                        Job start and completion time (Urgent completion)
+                      </h3>
+                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] leading-relaxed">
+                        The job starts {formatUrgentJobStartLine(job.postedAt)} and is expected to be completed within 24
+                        hours.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="py-3 border-t border-gray-100">
                     <h3 className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">
@@ -2941,10 +3009,9 @@ export default function JobDetailPage() {
                   const noFundedMilestonesYet = !job.milestones || job.milestones.length === 0;
                   const bulkBusy = !!suggestedBulkAction;
                   const rowBusy = !!updatingSuggestedMilestoneId || bulkBusy;
-                  const suggestedTotalAmount = suggested.reduce(
-                    (sum, m) => sum + (Number(m.amount) || 0),
-                    0
-                  );
+                  const suggestedTotalAmount = suggested
+                    .filter((m) => m.status === "pending")
+                    .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
                   return (
                     <div className="mb-6 border border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/60">
                       <div className="mb-2">
@@ -3134,19 +3201,239 @@ export default function JobDetailPage() {
                   );
                 })()}
 
+                {/* Professional milestone plan request (after award without funded milestones) */}
+                {job.awardedProfessionalId &&
+                  job.requestedMilestonePlan &&
+                  job.requestedMilestonePlan.length > 0 &&
+                  (() => {
+                    const requested = job.requestedMilestonePlan;
+                    const hasPendingReq = requested.some((m) => m.status === "pending");
+                    const noFundedMilestonesYetReq = !job.milestones || job.milestones.length === 0;
+                    const bulkReqBusy = !!requestedBulkAction;
+                    const rowReqBusy = !!updatingRequestedMilestoneId || bulkReqBusy;
+                    const requestedTotalAmount = requested
+                      .filter((m) => m.status === "pending")
+                      .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
+                    return (
+                      <div className="mb-6 border border-dashed border-sky-200 rounded-xl p-4 bg-sky-50/60">
+                        <div className="mb-2">
+                          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#0369a1] flex items-center gap-2">
+                            <ListChecks className="w-4 h-4" />
+                            Professional&apos;s milestone plan request
+                          </h3>
+                        </div>
+                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#0c4a6e] mb-2">
+                          The professional proposed these payment steps. Accept to fund each from your wallet (same as quote suggested milestones), or decline if you prefer a different plan.
+                        </p>
+                        {noFundedMilestonesYetReq && hasPendingReq && isJobOwner && (
+                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#075985] mb-3 rounded-lg bg-white/80 border border-sky-100 px-3 py-2">
+                            You can use this plan as-is, or add your own milestones in the section below.
+                          </p>
+                        )}
+                        <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
+                          <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                            <thead>
+                              <tr className="bg-sky-50 border-b border-sky-100">
+                                <th className="text-left py-2.5 px-3 text-[#0c4a6e] font-medium">Description</th>
+                                <th className="text-right py-2.5 px-3 text-[#0c4a6e] font-medium">Amount</th>
+                                <th className="text-center py-2.5 px-3 text-[#0c4a6e] font-medium">Status</th>
+                                <th className="text-right py-2.5 px-3 text-[#0c4a6e] font-medium">
+                                  {isJobOwner && hasPendingReq ? "Actions" : ""}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {requested.map((m) => (
+                                <tr key={m.id} className="border-b border-sky-50 last:border-0">
+                                  <td className="py-2.5 px-3 text-[#1f2933]">
+                                    {m.description || "Milestone"}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right text-[#1f2933]">
+                                    {formatPriceWhole(Number(m.amount || 0))}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    {m.status === "pending" && (
+                                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                        Pending
+                                      </Badge>
+                                    )}
+                                    {m.status === "accepted" && (
+                                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                        Accepted
+                                      </Badge>
+                                    )}
+                                    {m.status === "rejected" && (
+                                      <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                        declined
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    {isJobOwner && m.status === "pending" && (
+                                      <div className="inline-flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          disabled={rowReqBusy}
+                                          className="h-8 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm"
+                                          onClick={async () => {
+                                            if (!job) return;
+                                            setUpdatingRequestedMilestoneId(m.id);
+                                            try {
+                                              const res = await fetch(
+                                                resolveApiUrl(
+                                                  `/api/jobs/${job.id}/requested-milestones/${m.id}/accept`
+                                                ),
+                                                {
+                                                  method: "POST",
+                                                  headers: { "Content-Type": "application/json" },
+                                                  credentials: "include",
+                                                }
+                                              );
+                                              const data = await res.json().catch(() => ({}));
+                                              if (!res.ok) {
+                                                throw new Error(data.error || "Failed to accept milestone");
+                                              }
+                                              await fetchJobById(job.slug || job.id);
+                                              toast.success("Milestone created from request.");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed to accept milestone");
+                                            } finally {
+                                              setUpdatingRequestedMilestoneId(null);
+                                            }
+                                          }}
+                                        >
+                                          {updatingRequestedMilestoneId === m.id ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            "Accept"
+                                          )}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          disabled={rowReqBusy}
+                                          className="h-8 px-3 border-red-300 text-red-600 hover:bg-red-50"
+                                          onClick={async () => {
+                                            if (!job) return;
+                                            setUpdatingRequestedMilestoneId(m.id);
+                                            try {
+                                              const res = await fetch(
+                                                resolveApiUrl(
+                                                  `/api/jobs/${job.id}/requested-milestones/${m.id}/reject`
+                                                ),
+                                                {
+                                                  method: "POST",
+                                                  headers: { "Content-Type": "application/json" },
+                                                  credentials: "include",
+                                                }
+                                              );
+                                              const data = await res.json().catch(() => ({}));
+                                              if (!res.ok) {
+                                                throw new Error(data.error || "Failed to decline milestone");
+                                              }
+                                              await fetchJobById(job.slug || job.id);
+                                              toast.success("Request declined.");
+                                            } catch (e: any) {
+                                              toast.error(e?.message || "Failed to decline milestone");
+                                            } finally {
+                                              setUpdatingRequestedMilestoneId(null);
+                                            }
+                                          }}
+                                        >
+                                          {updatingRequestedMilestoneId === m.id ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            "Decline"
+                                          )}
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-sky-100 bg-sky-50/50 px-3 py-3">
+                            <div className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-left">
+                              <span className="text-[#6b6b6b]">Total milestone amount</span>
+                              <div className="text-[#0369a1] font-semibold text-[16px] sm:text-[17px] tabular-nums mt-0.5">
+                                {formatPriceWhole(requestedTotalAmount)}
+                              </div>
+                            </div>
+                            {isJobOwner && hasPendingReq && (
+                              <div className="flex flex-wrap gap-2 justify-end sm:ml-auto">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={rowReqBusy}
+                                  className="h-9 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm font-['Poppins',sans-serif]"
+                                  onClick={() => void handleAcceptAllRequestedMilestones()}
+                                >
+                                  {requestedBulkAction === "accept-all" ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin inline" />
+                                      Accepting…
+                                    </>
+                                  ) : (
+                                    "Accept all as proposed"
+                                  )}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={rowReqBusy}
+                                  className="h-9 px-3 border-red-300 text-red-600 hover:bg-red-50 font-['Poppins',sans-serif]"
+                                  onClick={() => void handleRejectAllRequestedMilestones()}
+                                >
+                                  {requestedBulkAction === "reject-all" ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin inline" />
+                                      Declining…
+                                    </>
+                                  ) : (
+                                    "Decline all"
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f]">
                     Milestone Payments
                   </h2>
-                  {isJobOwner && (
-                    <Button
-                      onClick={() => setShowNewMilestoneDialog(true)}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      New Milestone
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {!isJobOwner &&
+                      job.awardedProfessionalId &&
+                      userInfo?.id &&
+                      String(job.awardedProfessionalId) === String(userInfo.id) &&
+                      (!job.milestones || job.milestones.length === 0) &&
+                      (job.status === "awaiting-accept" || job.status === "in-progress") && (
+                        <Button
+                          type="button"
+                          onClick={() => setShowRequestMilestonesDialog(true)}
+                          variant="outline"
+                          className="bg-green-500 text-white hover:bg-white font-['Poppins',sans-serif]"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Request milestones
+                        </Button>
+                      )}
+                    {isJobOwner && (
+                      <Button
+                        onClick={() => setShowNewMilestoneDialog(true)}
+                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Milestone
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Professional: Accept/Reject job award when status is awaiting-accept */}
@@ -3155,6 +3442,12 @@ export default function JobDetailPage() {
                     <p className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] mb-3">
                       You&apos;ve been awarded this job. Accept to start working or reject to decline.
                     </p>
+                    {job.awardAcceptDeadlineAt && (
+                      <p className="font-['Poppins',sans-serif] text-[13px] text-amber-900/90 mb-3">
+                        If you do not accept by {formatDateTime(job.awardAcceptDeadlineAt)}, the award may be cancelled
+                        automatically and the job reopened.
+                      </p>
+                    )}
                     <div className="flex gap-2">
                       <Button
                         onClick={handleAcceptAward}
@@ -5866,96 +6159,18 @@ export default function JobDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* New Milestone Dialog */}
-      <Dialog open={showNewMilestoneDialog} onOpenChange={setShowNewMilestoneDialog}>
-        <DialogContent className="w-[70vw] p-6 font-['Poppins',sans-serif]">
-          <DialogHeader>
-            <DialogTitle className="font-['Poppins',sans-serif] text-[24px] text-[#2c353f]">
-              Create New Milestone
-            </DialogTitle>
-            <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-              Add a new milestone payment to this job. The professional will need to complete this milestone to request payment release.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            {/* Name */}
-            <div>
-              <Label htmlFor="milestone-name" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Milestone name
-              </Label>
-              <Input
-                id="milestone-name"
-                value={newMilestoneForm.name}
-                onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, name: e.target.value })}
-                placeholder="e.g., Phase 1 - Plumbing"
-                className="font-['Poppins',sans-serif] text-[14px]"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <Label htmlFor="milestone-description" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Description (optional)
-              </Label>
-              <Textarea
-                id="milestone-description"
-                value={newMilestoneForm.description}
-                onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, description: e.target.value })}
-                placeholder="e.g., Complete plumbing installation"
-                className="font-['Poppins',sans-serif] text-[14px] min-h-[60px]"
-              />
-            </div>
-
-            {/* Amount */}
-            <div>
-              <Label htmlFor="milestone-amount" className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-2 block">
-                Amount ({symbol})
-              </Label>
-              <div className="flex items-center gap-2">
-                <span className="font-['Poppins',sans-serif] text-[16px] text-[#2c353f]">{symbol}</span>
-                <Input
-                  id="milestone-amount"
-                  type="number"
-                  value={newMilestoneForm.amount}
-                  onChange={(e) => setNewMilestoneForm({ ...newMilestoneForm, amount: e.target.value })}
-                  placeholder="0.00"
-                  className="flex-1 font-['Poppins',sans-serif] text-[14px]"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-            </div>
-
-            {/* Info Box */}
-            <div className="bg-[#EFF6FF] border border-[#3B82F6]/30 rounded-lg p-4">
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#2c353f]">
-                The milestone will be created with "Pending" status. Once the professional requests release, you can approve the payment.
-              </p>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex items-center gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowNewMilestoneDialog(false);
-                  setNewMilestoneForm({ name: "", description: "", amount: "" });
-                }}
-                className="flex-1 font-['Poppins',sans-serif]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateMilestone}
-                className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
-              >
-                Create Milestone
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <RequestMilestonesDialog
+        open={showRequestMilestonesDialog}
+        onOpenChange={setShowRequestMilestonesDialog}
+        jobId={job?.id}
+        fetchJobKey={job?.slug || job?.id || ""}
+      />
+      <CreateNewMilestoneDialog
+        open={showNewMilestoneDialog}
+        onOpenChange={setShowNewMilestoneDialog}
+        jobId={job?.id}
+        fetchJobKey={job?.slug || job?.id || ""}
+      />
 
       {/* Cancel Request Modal */}
       <Dialog open={showCancelRequestModal} onOpenChange={(open) => { setShowCancelRequestModal(open); if (!open) { setCancelRequestMilestone(null); setCancelRequestReason(""); } }}>

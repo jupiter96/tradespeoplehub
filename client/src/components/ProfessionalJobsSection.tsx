@@ -34,9 +34,14 @@ import JobDeliverWorkModal from "./JobDeliverWorkModal";
 import type { Job } from "./JobsContext";
 import JobSkillBadges from "./JobSkillBadges";
 import {
+  JobUrgentTitleBadge,
   ProActiveJobListStatusBadge,
   StatusCountBadge,
 } from "./JobListCardStatusBadge";
+import {
+  RequestMilestonesDialog,
+  proCanRequestMilestones,
+} from "./JobMilestonePaymentDialogs";
 
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
@@ -146,6 +151,7 @@ function ActiveJobsSection() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [showDeliverWorkModal, setShowDeliverWorkModal] = useState(false);
   const [jobForDeliver, setJobForDeliver] = useState<Job | null>(null);
+  const [requestMilestoneJob, setRequestMilestoneJob] = useState<Job | null>(null);
 
   const activeJobs = getProfessionalActiveJobs(userInfo?.id || "");
 
@@ -294,10 +300,11 @@ function ActiveJobsSection() {
                   {/* Left column (70%) */}
                   <div className="md:w-[70%] min-w-0">
                     <div>
-                      <div className="mb-1 min-w-0">
-                        <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
+                      <div className="mb-1 flex w-full min-w-0 flex-nowrap items-center gap-2">
+                        <h3 className="min-w-0 truncate font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                           {job.title}
                         </h3>
+                        <JobUrgentTitleBadge timing={job.timing} />
                       </div>
 
                       <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 flex flex-wrap items-center gap-x-4 gap-y-0.5">
@@ -364,8 +371,22 @@ function ActiveJobsSection() {
                         className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
-                        &nbsp;  &nbsp;   Message &nbsp;  &nbsp; 
+                        &nbsp;  &nbsp;   &nbsp;  &nbsp;   &nbsp; Message&nbsp;  &nbsp; &nbsp;  &nbsp;   &nbsp;  &nbsp; 
                       </Button>
+                      {proCanRequestMilestones(job, userInfo?.id) && (
+                        <Button
+                          type="button"
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            setRequestMilestoneJob(job);
+                          }}
+                          variant="outline"
+                          className="bg-green-500 text-white hover:bg-green-600 hover:text-white border-green-500 font-['Poppins',sans-serif]"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Request milestones
+                        </Button>
+                      )}
                       {job.status === "in-progress" && (
                         <Button
                           onClick={(e: MouseEvent<HTMLButtonElement>) => {
@@ -414,6 +435,14 @@ function ActiveJobsSection() {
           setJobForDeliver(null);
           if (jobForDeliver?.id) fetchJobById(jobForDeliver.id);
         }}
+      />
+      <RequestMilestonesDialog
+        open={!!requestMilestoneJob}
+        onOpenChange={(open) => {
+          if (!open) setRequestMilestoneJob(null);
+        }}
+        jobId={requestMilestoneJob?.id}
+        fetchJobKey={requestMilestoneJob?.slug || requestMilestoneJob?.id || ""}
       />
     </div>
   );

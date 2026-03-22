@@ -140,3 +140,18 @@ export function StatusCountBadge({
     </span>
   );
 }
+
+/** Red Urgent pill next to job title (client/pro My Jobs lists) when job was posted with urgent timing. */
+export function JobUrgentTitleBadge({ timing }: { timing?: Job["timing"] }) {
+  if (timing !== "urgent") return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide",
+        "bg-red-600 text-white border border-red-700 shadow-sm shrink-0 font-['Poppins',sans-serif]"
+      )}
+    >
+      Urgent
+    </span>
+  );
+}

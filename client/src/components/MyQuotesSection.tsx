@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { JobUrgentTitleBadge } from "./JobListCardStatusBadge";
 import {
   Dialog,
   DialogContent,
@@ -510,9 +511,12 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                 {/* Mobile — same structure as JobDetailPage Quotes */}
                 <div className="block sm:hidden p-4">
                   {!!job?.title && (
-                    <p className="font-['Poppins',sans-serif] text-[13px] font-bold text-[#1976D2] truncate mb-3">
-                      {job.title}
-                    </p>
+                    <div className="mb-3 flex w-full min-w-0 flex-nowrap items-center gap-2">
+                      <p className="min-w-0 truncate font-['Poppins',sans-serif] text-[13px] font-bold text-[#1976D2]">
+                        {job.title}
+                      </p>
+                      <JobUrgentTitleBadge timing={job.timing} />
+                    </div>
                   )}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1 min-w-0">
@@ -724,9 +728,12 @@ export default function MyQuotesSection({ onVisibleCountChange }: MyQuotesSectio
                     {/* Left column (70%) */}
                     <div className="w-[70%] min-w-0">
                       {!!job?.title && (
-                        <p className="font-['Poppins',sans-serif] text-[14px] font-bold text-[#1976D2] truncate mb-3">
-                          {job.title}
-                        </p>
+                        <div className="mb-3 flex w-full min-w-0 flex-nowrap items-center gap-2">
+                          <p className="min-w-0 truncate font-['Poppins',sans-serif] text-[14px] font-bold text-[#1976D2]">
+                            {job.title}
+                          </p>
+                          <JobUrgentTitleBadge timing={job.timing} />
+                        </div>
                       )}
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className="flex-shrink-0">

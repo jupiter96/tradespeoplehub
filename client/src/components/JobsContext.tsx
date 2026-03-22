@@ -140,6 +140,19 @@ export interface Job {
   clientRatingAverage?: number;
   milestones?: Milestone[];
   awardedProfessionalId?: string;
+  /** When the client last awarded a pro (awaiting pro accept); ISO string */
+  awardPendingAt?: string;
+  /** ISO deadline for pro to accept (from server when policy hours > 0) */
+  awardAcceptDeadlineAt?: string;
+  /** When an open job auto-closes to new quotes; ISO string */
+  closesAt?: string;
+  /** Pro-submitted plan after award without funded milestones; client accepts/rejects like quote suggestions */
+  requestedMilestonePlan?: {
+    id: string;
+    description: string;
+    amount: number;
+    status: "pending" | "accepted" | "rejected";
+  }[];
   /** Attachments from post-job (name, url, mimeType, size) */
   attachments?: { name: string; url: string; mimeType?: string; size?: number }[];
   /** Pro delivery per milestone; client can approve or request revision */

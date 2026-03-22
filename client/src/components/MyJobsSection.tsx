@@ -26,6 +26,7 @@ import {
   Package,
   CheckCircle,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -47,7 +48,11 @@ import { ScrollArea } from "./ui/scroll-area";
 import { toast } from "sonner@2.0.3";
 import { resolveAvatarUrl, formatJobLocationCityOnly } from "./orders/utils";
 import JobSkillBadges from "./JobSkillBadges";
-import { ClientJobListStatusBadge, StatusCountBadge } from "./JobListCardStatusBadge";
+import { ClientJobListStatusBadge, JobUrgentTitleBadge, StatusCountBadge } from "./JobListCardStatusBadge";
+import {
+  CreateNewMilestoneDialog,
+  clientCanCreateMilestoneOnAwardedList,
+} from "./JobMilestonePaymentDialogs";
 
 type ClientMyJobsTabId = "open" | "awarded" | "delivered" | "completed" | "other";
 
@@ -82,6 +87,7 @@ export default function MyJobsSection() {
   const [selectedQuote, setSelectedQuote] = useState<JobQuote | null>(null);
   const [chatMessage, setChatMessage] = useState("");
   const [newQuoteJobIds, setNewQuoteJobIds] = useState<Set<string>>(new Set());
+  const [createMilestoneJob, setCreateMilestoneJob] = useState<Job | null>(null);
 
   // Get user's jobs (from API-backed list when client)
   const userJobs = getUserJobs(userInfo?.id ?? "");
@@ -445,9 +451,12 @@ export default function MyJobsSection() {
               <div className="flex flex-col md:flex-row gap-5">
                 {/* Left column: title, budget (one line), description, skills, address, time, quote count */}
                 <div className="md:w-[70%] min-w-0">
-                  <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate mb-2">
-                    {job.title}
-                  </h3>
+                  <div className="mb-2 flex w-full min-w-0 flex-nowrap items-center gap-2">
+                    <h3 className="min-w-0 truncate font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                      {job.title}
+                    </h3>
+                    <JobUrgentTitleBadge timing={job.timing} />
+                  </div>
                   <p className="font-['Poppins',sans-serif] text-[14px] mb-2 flex flex-wrap items-center gap-x-4 gap-y-0.5">
                     <span className="text-[#6b6b6b]">Budget: &nbsp; </span>
                     <span className="text-[#2c353f] font-bold">
@@ -505,8 +514,21 @@ export default function MyJobsSection() {
                     )}
                   </div>
 
-                  {(job.quotes?.length ?? 0) > 0 && (
-                    <div className="mt-auto flex justify-end">
+                  <div className="mt-auto flex flex-col gap-2 w-full">
+                    {tab === "awarded" && clientCanCreateMilestoneOnAwardedList(job) && (
+                      <Button
+                        type="button"
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                          e.stopPropagation();
+                          setCreateMilestoneJob(job);
+                        }}
+                        className="w-full bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 text-white font-['Poppins',sans-serif]"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        New Milestone
+                      </Button>
+                    )}
+                    {(job.quotes?.length ?? 0) > 0 && (
                       <Button
                         variant="outline"
                         onClick={(e: MouseEvent<HTMLButtonElement>) => {
@@ -519,8 +541,8 @@ export default function MyJobsSection() {
                         <Eye className="w-4 h-4 mr-1.5" />
                         View Quotes
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -530,6 +552,15 @@ export default function MyJobsSection() {
         );
         })}
       </Tabs>
+
+      <CreateNewMilestoneDialog
+        open={!!createMilestoneJob}
+        onOpenChange={(open) => {
+          if (!open) setCreateMilestoneJob(null);
+        }}
+        jobId={createMilestoneJob?.id}
+        fetchJobKey={createMilestoneJob?.slug || createMilestoneJob?.id || ""}
+      />
 
       {/* View Job Dialog with Quotes */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>

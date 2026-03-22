@@ -34,7 +34,7 @@ import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import JobSkillBadges from "./JobSkillBadges";
-import { ClientJobListStatusBadge } from "./JobListCardStatusBadge";
+import { ClientJobListStatusBadge, JobUrgentTitleBadge } from "./JobListCardStatusBadge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -438,10 +438,11 @@ export default function AvailableJobsSection() {
                 {/* Left column (70%) */}
                 <div className="md:w-[70%] min-w-0">
                   <div>
-                    <div className="mb-1 min-w-0">
-                      <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] truncate">
+                    <div className="mb-1 flex w-full min-w-0 flex-nowrap items-center gap-2">
+                      <h3 className="min-w-0 truncate font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
                         {job.title}
                       </h3>
+                      <JobUrgentTitleBadge timing={job.timing} />
                     </div>
 
                     <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 flex flex-wrap items-center gap-x-4 gap-y-0.5">

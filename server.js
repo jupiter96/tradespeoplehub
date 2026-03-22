@@ -36,6 +36,7 @@ import { startDisputeScheduler } from './services/disputeScheduler.js';
 import { startCustomOfferScheduler } from './services/customOfferScheduler.js';
 import { startAbandonedCartScheduler } from './services/abandonedCartScheduler.js';
 import { startJobClosedScheduler } from './services/jobClosedScheduler.js';
+import { startJobAwardExpiryScheduler } from './services/jobAwardExpiryScheduler.js';
 import { initNotifier } from './services/notifier.js';
 import { initializeSocket } from './services/socket.js';
 import { createServer } from 'http';
@@ -164,6 +165,7 @@ const initializeDatabase = async () => {
   startCustomOfferScheduler();
   startAbandonedCartScheduler();
   startJobClosedScheduler();
+  startJobAwardExpiryScheduler();
 };
 
 // Ensure DB is ready before accepting requests (avoids long buffering/hangs on first request)

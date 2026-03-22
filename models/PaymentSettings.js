@@ -198,6 +198,12 @@ const paymentSettingsSchema = new mongoose.Schema(
       default: 30,
       min: 0,
     },
+    // Hours for the awarded professional to accept; if unset/0, no automatic expiry
+    waitingTimeToAcceptJobAwardHours: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     waitingTimeInDays: {
       type: Number,
       default: 1,

@@ -118,7 +118,24 @@ const jobSchema = new mongoose.Schema(
     postedAt: { type: Date, default: Date.now },
     quotes: { type: [jobQuoteSchema], default: [] },
     awardedProfessionalId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    /** Set when client awards a pro; cleared when pro accepts/rejects or award auto-expires. Used for accept deadline. */
+    awardPendingAt: { type: Date, default: null },
     milestones: { type: [milestoneSchema], default: [] },
+    /** After award without funded milestones: pro submits rows; client accepts/rejects like quote suggested milestones */
+    requestedMilestonePlan: {
+      type: [
+        {
+          description: { type: String, trim: true },
+          amount: { type: Number, required: true },
+          status: {
+            type: String,
+            enum: ['pending', 'accepted', 'rejected'],
+            default: 'pending',
+          },
+        },
+      ],
+      default: [],
+    },
     /** Pro delivers work per milestone; client can approve or request revision */
     milestoneDeliveries: [
       {

@@ -2423,6 +2423,24 @@ const defaultTemplates = [
     variables: ['firstName', 'jobTitle', 'clientName', 'jobLink', 'logoUrl'],
   },
   {
+    type: 'job-milestone-plan-request-client',
+    category: 'job',
+    subject: '{{professionalName}} proposed a milestone plan for "{{jobTitle}}"',
+    body: `
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Milestone plan request</title></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;"><img src="{{logoUrl}}" alt="Sortars" style="max-width: 200px; height: auto;"></div>
+  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Hi {{firstName}},</h1>
+    <p><strong>{{professionalName}}</strong> has sent a milestone payment plan for <strong>{{jobTitle}}</strong>. Open the job, go to the Payment tab, and accept or decline each step to fund from your wallet.</p>
+    <p style="text-align: center; margin: 25px 0;"><a href="{{jobLink}}" style="background-color: #FE8A0F; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Review plan</a></p>
+    <p style="margin-top: 30px;">Best regards,<br>The Sortars Team</p>
+  </div>
+  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;"><p>© ${new Date().getFullYear()} Sortars. All rights reserved.</p></div>
+</body></html>`,
+    variables: ['firstName', 'jobTitle', 'professionalName', 'jobLink', 'logoUrl'],
+  },
+  {
     type: 'job-milestone-created-pro',
     category: 'job',
     subject: 'Milestone "{{milestoneName}}" created for job "{{jobTitle}}"',

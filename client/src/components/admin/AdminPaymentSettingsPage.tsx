@@ -63,6 +63,7 @@ export default function AdminPaymentSettingsPage() {
     creditAmountForChatBid: 2.50,
     closedProjectDays: 7,
     closedJobDays: 30,
+    waitingTimeToAcceptJobAwardHours: 0,
     waitingTimeInDays: 1,
     feedbackReviewValidityDays: 90,
     inviteToReview: "Activated",
@@ -928,6 +929,27 @@ export default function AdminPaymentSettingsPage() {
                       </div>
                       <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
                         After this many days from posting, a job is automatically closed and no new quotes can be sent.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="waitingTimeToAcceptJobAwardHours" className="font-['Poppins',sans-serif]">
+                        Waiting time to accept job award:
+                      </Label>
+                      <div className="relative mt-2">
+                        <Input
+                          id="waitingTimeToAcceptJobAwardHours"
+                          type="number"
+                          value={settings.waitingTimeToAcceptJobAwardHours === "" ? "" : settings.waitingTimeToAcceptJobAwardHours ?? 0}
+                          onChange={(e) => updateField("waitingTimeToAcceptJobAwardHours", parseNumberInput(e.target.value, "int"))}
+                          className="pr-16 font-['Poppins',sans-serif] no-spinner"
+                          min="0"
+                          step="1"
+                        />
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-['Poppins',sans-serif]">{((v) => v === 0 || v === 1 ? "Hour" : "Hours")(settings.waitingTimeToAcceptJobAwardHours === "" ? 0 : settings.waitingTimeToAcceptJobAwardHours ?? 0)}</span>
+                      </div>
+                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">
+                        If greater than zero, a job award expires after this many hours without the professional accepting. The job reopens and escrow is refunded to the client. Set to 0 to disable automatic expiry.
                       </p>
                     </div>
 
