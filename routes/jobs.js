@@ -24,6 +24,7 @@ import JobDraft from '../models/JobDraft.js';
 import JobFile from '../models/JobFile.js';
 import PaymentSettings from '../models/PaymentSettings.js';
 import Stripe from 'stripe';
+import paypal from '@paypal/checkout-server-sdk';
 import { getIO } from '../services/socket.js';
 import { deductBid } from './bids.js';
 import QuoteCreditUsage from '../models/QuoteCreditUsage.js';
@@ -43,6 +44,20 @@ function getStripeInstanceForJobs(settings) {
   return new Stripe(secretKey, {
     apiVersion: '2024-12-18.acacia',
   });
+}
+
+function getPayPalClientForJobs(settings) {
+  const isLive = settings?.paypalLiveMode === true;
+  if (isLive) {
+    return new paypal.core.LiveEnvironment(
+      settings.paypalLiveClientId || settings.paypalClientId || settings.paypalPublicKey,
+      settings.paypalLiveSecretKey || settings.paypalSecretKey
+    );
+  }
+  return new paypal.core.SandboxEnvironment(
+    settings.paypalSandboxClientId || settings.paypalClientId || settings.paypalPublicKey,
+    settings.paypalSandboxSecretKey || settings.paypalSecretKey
+  );
 }
 
 const clientOrigin = () => process.env.CLIENT_ORIGIN || 'http://localhost:5000';
@@ -125,6 +140,124 @@ function parseJobSpecificDate(value) {
   }
   const dt = new Date(s);
   return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function toIso(value) {
+  return value ? new Date(value).toISOString() : undefined;
+}
+
+function mapJobDisputeResponse(dispute) {
+  return {
+    id: dispute._id.toString(),
+    jobId: dispute.jobId?.toString?.() || dispute.jobId,
+    milestoneId: dispute.milestoneId?.toString?.() || dispute.milestoneId,
+    claimantId: dispute.claimantId?.toString?.() || dispute.claimantId,
+    respondentId: dispute.respondentId?.toString?.() || dispute.respondentId,
+    reason: dispute.reason,
+    requirements: dispute.requirements || "",
+    unmetRequirements: dispute.unmetRequirements || "",
+    evidence: dispute.evidence || undefined,
+    evidenceFiles: dispute.evidenceFiles || [],
+    status: dispute.status,
+    amount: typeof dispute.amount === 'number' ? dispute.amount : 0,
+    responseDeadline: toIso(dispute.responseDeadline),
+    respondedAt: toIso(dispute.respondedAt),
+    negotiationDeadline: toIso(dispute.negotiationDeadline),
+    milestoneIndices: Array.isArray(dispute.milestoneIndices) ? dispute.milestoneIndices : undefined,
+    clientOffer: dispute.offers?.clientOffer ?? undefined,
+    professionalOffer: dispute.offers?.professionalOffer ?? undefined,
+    arbitrationRequested: !!dispute.arbitrationRequested,
+    arbitrationRequestedAt: toIso(dispute.arbitrationRequestedAt),
+    arbitrationFeeAmount: dispute.arbitrationFeeAmount ?? undefined,
+    arbitrationFeeDeadline: toIso(dispute.arbitrationFeeDeadline),
+    arbitrationPayments: Array.isArray(dispute.arbitrationPayments)
+      ? dispute.arbitrationPayments.map((p) => ({
+          userId: p.userId?.toString?.() || p.userId,
+          amount: p.amount,
+          paidAt: toIso(p.paidAt),
+          paymentMethod: p.paymentMethod,
+          paymentIntentId: p.paymentIntentId || undefined,
+          paypalOrderId: p.paypalOrderId || undefined,
+          transactionId: p.transactionId?.toString?.() || p.transactionId || undefined,
+        }))
+      : [],
+    acceptedBy: dispute.acceptedBy?.toString?.() || dispute.acceptedBy || undefined,
+    acceptedByRole: dispute.acceptedByRole || undefined,
+    acceptedAt: toIso(dispute.acceptedAt),
+    finalAmount: dispute.finalAmount ?? undefined,
+    closedAt: toIso(dispute.closedAt),
+    autoClosed: !!dispute.autoClosed,
+    winnerId: dispute.winnerId?.toString?.() || dispute.winnerId || undefined,
+    loserId: dispute.loserId?.toString?.() || dispute.loserId || undefined,
+    decisionNotes: dispute.decisionNotes || undefined,
+    messages: (dispute.messages || []).map((msg) => ({
+      id: msg._id?.toString?.() || msg.id,
+      userId: msg.userId?.toString?.() || msg.userId,
+      userName: msg.userName,
+      userAvatar: msg.userAvatar,
+      message: msg.message,
+      timestamp: toIso(msg.timestamp),
+      isTeamResponse: !!msg.isTeamResponse,
+    })),
+    createdAt: toIso(dispute.createdAt),
+  };
+}
+
+async function applyJobDisputeSettlement({ job, dispute, agreedAmount }) {
+  const targetMilestone = (job.milestones || []).find((m) => m._id.toString() === dispute.milestoneId?.toString());
+  const totalPaidRaw = Number(targetMilestone?.amount ?? dispute.amount ?? 0);
+  const totalPaid = Number.isFinite(totalPaidRaw) ? totalPaidRaw : 0;
+  const agreedRaw = Number(agreedAmount ?? 0);
+  const normalizedAgreedAmount = Number.isFinite(agreedRaw) ? agreedRaw : 0;
+  const payoutAmount = Math.max(0, Math.min(normalizedAgreedAmount, totalPaid));
+  const refundAmount = Math.max(0, totalPaid - payoutAmount);
+  const milestoneName = targetMilestone?.name || targetMilestone?.description || 'Milestone';
+  if (dispute?.metadata?.settlementProcessed) return;
+
+  const client = await User.findById(job.clientId).select('walletBalance');
+  const professional = job.awardedProfessionalId
+    ? await User.findById(job.awardedProfessionalId).select('walletBalance')
+    : null;
+
+  if (client && refundAmount > 0) {
+    client.walletBalance = (client.walletBalance || 0) + refundAmount;
+    await client.save();
+    await Wallet.create({
+      userId: client._id,
+      type: 'deposit',
+      amount: refundAmount,
+      balance: client.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      jobId: job._id,
+      milestoneId: dispute.milestoneId?.toString(),
+      description: `Dispute refund - ${job.title || 'Job'} - ${milestoneName}`,
+      metadata: { source: 'job_dispute_settlement_refund', disputeId: dispute._id?.toString() },
+    });
+  }
+
+  if (professional && payoutAmount > 0) {
+    professional.walletBalance = (professional.walletBalance || 0) + payoutAmount;
+    await professional.save();
+    await Wallet.create({
+      userId: professional._id,
+      type: 'deposit',
+      amount: payoutAmount,
+      balance: professional.walletBalance,
+      status: 'completed',
+      paymentMethod: 'wallet',
+      jobId: job._id,
+      milestoneId: dispute.milestoneId?.toString(),
+      description: `Dispute payout - ${job.title || 'Job'} - ${milestoneName}`,
+      metadata: { source: 'job_dispute_settlement_payout', disputeId: dispute._id?.toString() },
+    });
+  }
+
+  dispute.metadata = dispute.metadata || {};
+  dispute.metadata.settlementProcessed = true;
+  dispute.metadata.settlementProcessedAt = new Date();
+  dispute.metadata.settlementAgreedAmount = payoutAmount;
+  dispute.metadata.settlementRefundAmount = refundAmount;
 }
 
 function toJobResponse(doc) {
@@ -3607,7 +3740,7 @@ router.post('/:id/disputes', authenticateToken, async (req, res) => {
     if (!isClient && !isPro) {
       return res.status(403).json({ error: 'Not allowed to create dispute for this job' });
     }
-    const { milestoneId, reason, evidence } = req.body;
+    const { milestoneId, reason, evidence, requirements, unmetRequirements, offerAmount } = req.body;
     if (!milestoneId || !reason || !String(reason).trim()) {
       return res.status(400).json({ error: 'milestoneId and reason are required' });
     }
@@ -3622,6 +3755,25 @@ router.post('/:id/disputes', authenticateToken, async (req, res) => {
     const claimantId = req.user.id;
     const respondentId = isClient ? job.awardedProfessionalId : job.clientId;
     if (!respondentId) return res.status(400).json({ error: 'Respondent not found' });
+    const settings = await PaymentSettings.getSettings();
+    const responseTimeHoursRaw = typeof settings.disputeResponseTimeHours === 'number'
+      ? settings.disputeResponseTimeHours
+      : parseFloat(settings.disputeResponseTimeHours || '0');
+    const responseTimeHours = Number.isFinite(responseTimeHoursRaw) && responseTimeHoursRaw > 0
+      ? responseTimeHoursRaw
+      : 48;
+    const responseDeadline = new Date(Date.now() + responseTimeHours * 60 * 60 * 1000);
+    const parsedOfferAmount = offerAmount === undefined || offerAmount === null || offerAmount === ''
+      ? 0
+      : Number(offerAmount);
+    const milestoneAmount = Number(milestone.amount) || 0;
+    if (Number.isFinite(parsedOfferAmount) && parsedOfferAmount > milestoneAmount) {
+      return res.status(400).json({ error: `Offer amount cannot exceed milestone amount (£${milestoneAmount.toFixed(2)})` });
+    }
+    const user = await User.findById(req.user.id).select('firstName lastName tradingName avatar').lean();
+    const userName = isClient
+      ? [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Client'
+      : user?.tradingName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Professional';
 
     const dispute = new JobDispute({
       jobId: job._id,
@@ -3630,8 +3782,24 @@ router.post('/:id/disputes', authenticateToken, async (req, res) => {
       claimantId,
       respondentId,
       reason: String(reason).trim(),
+      requirements: requirements ? String(requirements).trim() : '',
+      unmetRequirements: unmetRequirements ? String(unmetRequirements).trim() : '',
       evidence: evidence ? String(evidence).trim() : null,
+      amount: milestoneAmount,
       status: 'open',
+      responseDeadline,
+      offers: {
+        clientOffer: isClient ? (Number.isFinite(parsedOfferAmount) ? parsedOfferAmount : null) : null,
+        professionalOffer: !isClient ? (Number.isFinite(parsedOfferAmount) ? parsedOfferAmount : null) : null,
+      },
+      messages: [{
+        userId: req.user.id,
+        userName,
+        userAvatar: user?.avatar || '',
+        message: String(reason).trim(),
+        timestamp: new Date(),
+        isTeamResponse: false,
+      }],
     });
     await dispute.save();
 
@@ -3668,25 +3836,7 @@ router.post('/:id/disputes', authenticateToken, async (req, res) => {
     }
 
     const jobRes = toJobResponse(job);
-    const disputeRes = {
-      id: dispute._id.toString(),
-      jobId: job._id.toString(),
-      milestoneId: milestone._id.toString(),
-      claimantId: dispute.claimantId.toString(),
-      respondentId: dispute.respondentId.toString(),
-      reason: dispute.reason,
-      evidence: dispute.evidence || undefined,
-      status: dispute.status,
-      messages: (dispute.messages || []).map((msg) => ({
-        id: msg._id.toString(),
-        userId: msg.userId?.toString(),
-        userName: msg.userName,
-        message: msg.message,
-        timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : null,
-        isTeamResponse: msg.isTeamResponse,
-      })),
-      createdAt: dispute.createdAt ? new Date(dispute.createdAt).toISOString() : null,
-    };
+    const disputeRes = mapJobDisputeResponse(dispute);
     res.status(201).json({ job: jobRes, dispute: disputeRes });
   } catch (err) {
     console.error('[Jobs] Create dispute error:', err);
@@ -3705,29 +3855,54 @@ router.get('/:id/disputes', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Not allowed to view disputes for this job' });
     }
     const disputes = await JobDispute.find({ jobId: job._id }).sort({ createdAt: -1 }).lean();
-    const list = disputes.map((d) => ({
-      id: d._id.toString(),
-      jobId: d.jobId.toString(),
-      milestoneId: d.milestoneId.toString(),
-      claimantId: d.claimantId?.toString(),
-      respondentId: d.respondentId?.toString(),
-      reason: d.reason,
-      evidence: d.evidence || undefined,
-      status: d.status,
-      messages: (d.messages || []).map((m) => ({
-        id: m._id?.toString(),
-        userId: m.userId?.toString(),
-        userName: m.userName,
-        message: m.message,
-        timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : null,
-        isTeamResponse: m.isTeamResponse,
-      })),
-      createdAt: d.createdAt ? new Date(d.createdAt).toISOString() : null,
-    }));
+    const list = disputes.map((d) => mapJobDisputeResponse(d));
     res.json({ disputes: list });
   } catch (err) {
     console.error('[Jobs] List disputes error:', err);
     res.status(500).json({ error: err.message || 'Failed to list disputes' });
+  }
+});
+
+// Get single dispute for a job
+router.get('/:id/disputes/:disputeId', authenticateToken, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const isClient = job.clientId.toString() === req.user.id;
+    const isPro = job.awardedProfessionalId && job.awardedProfessionalId.toString() === req.user.id;
+    if (!isClient && !isPro && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not allowed to view this dispute' });
+    }
+    const dispute = await JobDispute.findById(req.params.disputeId).lean();
+    if (!dispute || dispute.jobId.toString() !== job._id.toString()) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    res.json({ dispute: mapJobDisputeResponse(dispute) });
+  } catch (err) {
+    console.error('[Jobs] Get dispute error:', err);
+    res.status(500).json({ error: err.message || 'Failed to get dispute' });
+  }
+});
+
+// Get single job dispute by dispute id (for deep links)
+router.get('/disputes/:disputeId', authenticateToken, async (req, res) => {
+  try {
+    const dispute = await JobDispute.findById(req.params.disputeId).lean();
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(dispute.jobId).lean();
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const isClient = job.clientId?.toString() === req.user.id;
+    const isPro = job.awardedProfessionalId?.toString() === req.user.id;
+    if (!isClient && !isPro && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not allowed to view this dispute' });
+    }
+    res.json({
+      dispute: mapJobDisputeResponse(dispute),
+      job: toJobResponse(job),
+    });
+  } catch (err) {
+    console.error('[Jobs] Get dispute by id error:', err);
+    res.status(500).json({ error: err.message || 'Failed to get dispute' });
   }
 });
 
@@ -3750,6 +3925,30 @@ router.post('/:id/disputes/:disputeId/messages', authenticateToken, async (req, 
     if (!message || !String(message).trim()) {
       return res.status(400).json({ error: 'Message is required' });
     }
+    if (dispute.status !== 'open' && dispute.status !== 'negotiation') {
+      return res.status(400).json({ error: 'This dispute is closed' });
+    }
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
+    if (isRespondent && !dispute.respondedAt) {
+      if (dispute.responseDeadline && new Date(dispute.responseDeadline) < new Date()) {
+        return res.status(400).json({ error: 'The response deadline has passed' });
+      }
+      const settings = await PaymentSettings.getSettings();
+      const stepInHours = typeof settings.stepInHours === 'number' && settings.stepInHours >= 0
+        ? settings.stepInHours
+        : (typeof settings.stepInDays === 'number' && settings.stepInDays > 0 ? settings.stepInDays * 24 : null);
+      const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
+      const negotiationDeadline = new Date();
+      if (typeof stepInHours === 'number' && stepInHours > 0) {
+        negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInHours * 60 * 60 * 1000);
+      } else {
+        negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
+      }
+      dispute.status = 'negotiation';
+      dispute.respondedAt = new Date();
+      dispute.negotiationDeadline = negotiationDeadline;
+      dispute.arbitrationFeeAmount = typeof settings.stepInAmount === 'number' ? settings.stepInAmount : dispute.arbitrationFeeAmount;
+    }
     const user = await User.findById(req.user.id).select('firstName lastName tradingName avatar').lean();
     const userName = user?.tradingName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
     dispute.messages = dispute.messages || [];
@@ -3764,21 +3963,504 @@ router.post('/:id/disputes/:disputeId/messages', authenticateToken, async (req, 
     dispute.markModified('messages');
     await dispute.save();
     const updated = await JobDispute.findById(dispute._id).lean();
-    const disputeRes = {
-      id: updated._id.toString(),
-      messages: (updated.messages || []).map((m) => ({
-        id: m._id?.toString(),
-        userId: m.userId?.toString(),
-        userName: m.userName,
-        message: m.message,
-        timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : null,
-        isTeamResponse: m.isTeamResponse,
-      })),
-    };
+    const disputeRes = mapJobDisputeResponse(updated);
     res.json(disputeRes);
   } catch (err) {
     console.error('[Jobs] Add dispute message error:', err);
     res.status(500).json({ error: err.message || 'Failed to add message' });
+  }
+});
+
+// Respond to job dispute
+router.post('/:id/disputes/:disputeId/respond', authenticateToken, async (req, res) => {
+  try {
+    const { message } = req.body || {};
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    if (dispute.jobId.toString() !== req.params.id) return res.status(404).json({ error: 'Dispute not found for this job' });
+    if (dispute.status !== 'open') return res.status(400).json({ error: 'This dispute is no longer open' });
+    if (dispute.respondentId?.toString() !== req.user.id) return res.status(403).json({ error: 'Only respondent can respond' });
+    if (dispute.responseDeadline && new Date(dispute.responseDeadline) < new Date()) {
+      return res.status(400).json({ error: 'The response deadline has passed' });
+    }
+    const settings = await PaymentSettings.getSettings();
+    const stepInHours = typeof settings.stepInHours === 'number' && settings.stepInHours >= 0
+      ? settings.stepInHours
+      : (typeof settings.stepInDays === 'number' && settings.stepInDays > 0 ? settings.stepInDays * 24 : null);
+    const negotiationTimeHours = settings.disputeNegotiationTimeHours || 72;
+    const negotiationDeadline = new Date();
+    if (typeof stepInHours === 'number' && stepInHours > 0) {
+      negotiationDeadline.setTime(negotiationDeadline.getTime() + stepInHours * 60 * 60 * 1000);
+    } else {
+      negotiationDeadline.setHours(negotiationDeadline.getHours() + negotiationTimeHours);
+    }
+    if (message && String(message).trim()) {
+      const user = await User.findById(req.user.id).select('firstName lastName tradingName avatar').lean();
+      const userName = user?.tradingName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
+      dispute.messages = dispute.messages || [];
+      dispute.messages.push({
+        userId: req.user.id,
+        userName,
+        userAvatar: user?.avatar || '',
+        message: String(message).trim(),
+        timestamp: new Date(),
+        isTeamResponse: false,
+      });
+    }
+    dispute.status = 'negotiation';
+    dispute.respondedAt = new Date();
+    dispute.negotiationDeadline = negotiationDeadline;
+    dispute.arbitrationFeeAmount = typeof settings.stepInAmount === 'number' ? settings.stepInAmount : dispute.arbitrationFeeAmount;
+    await dispute.save();
+    res.json({ message: 'Dispute response submitted successfully', dispute: mapJobDisputeResponse(dispute) });
+  } catch (err) {
+    console.error('[Jobs] Respond dispute error:', err);
+    res.status(500).json({ error: err.message || 'Failed to respond to dispute' });
+  }
+});
+
+// Submit/Update job dispute offer
+router.post('/:id/disputes/:disputeId/offer', authenticateToken, async (req, res) => {
+  try {
+    const parsedAmount = Number(req.body?.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) return res.status(400).json({ error: 'Invalid offer amount' });
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    if (dispute.jobId.toString() !== req.params.id) return res.status(404).json({ error: 'Dispute not found for this job' });
+    if (!['open', 'negotiation'].includes(dispute.status)) return res.status(400).json({ error: 'Cannot submit offer for a closed dispute' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const isClient = job.clientId.toString() === req.user.id;
+    const isPro = job.awardedProfessionalId?.toString() === req.user.id;
+    if (!isClient && !isPro) return res.status(403).json({ error: 'Not allowed' });
+    const milestone = (job.milestones || []).find((m) => m._id.toString() === dispute.milestoneId?.toString());
+    const maxAmount = Number(milestone?.amount ?? dispute.amount ?? 0);
+    if (parsedAmount > maxAmount) return res.status(400).json({ error: `Offer amount cannot exceed milestone amount (£${maxAmount.toFixed(2)})` });
+    if (!dispute.offers) dispute.offers = { clientOffer: null, professionalOffer: null };
+    if (isClient) {
+      const prev = dispute.offers.clientOffer;
+      if (typeof prev === 'number' && parsedAmount < prev) return res.status(400).json({ error: `You cannot decrease your offer. Your current offer is £${prev.toFixed(2)}` });
+      dispute.offers.clientOffer = parsedAmount;
+    } else {
+      const prev = dispute.offers.professionalOffer;
+      if (typeof prev === 'number' && parsedAmount > prev) return res.status(400).json({ error: `You cannot increase your offer. Your current offer is £${prev.toFixed(2)}` });
+      dispute.offers.professionalOffer = parsedAmount;
+    }
+    dispute.offerHistory = dispute.offerHistory || [];
+    dispute.offerHistory.push({ role: isClient ? 'client' : 'professional', amount: parsedAmount, offeredAt: new Date(), userId: req.user.id });
+    dispute.lastOfferRejectedAt = null;
+    dispute.lastOfferRejectedBy = null;
+    dispute.lastOfferRejectedByRole = null;
+    dispute.lastRejectedOfferAmount = null;
+    const clientOffer = dispute.offers.clientOffer;
+    const proOffer = dispute.offers.professionalOffer;
+    if (typeof clientOffer === 'number' && typeof proOffer === 'number' && clientOffer === proOffer) {
+      dispute.status = 'closed';
+      dispute.closedAt = new Date();
+      dispute.finalAmount = clientOffer;
+      dispute.decisionNotes = `Dispute resolved as both parties agreed on £${clientOffer.toFixed(2)}.`;
+      await applyJobDisputeSettlement({ job, dispute, agreedAmount: clientOffer });
+    }
+    await dispute.save();
+    emitJobUpdated(job);
+    res.json({ message: 'Offer submitted successfully', dispute: mapJobDisputeResponse(dispute) });
+  } catch (err) {
+    console.error('[Jobs] Submit dispute offer error:', err);
+    res.status(500).json({ error: err.message || 'Failed to submit offer' });
+  }
+});
+
+router.post('/:id/disputes/:disputeId/accept', authenticateToken, async (req, res) => {
+  try {
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (dispute.jobId.toString() !== job._id.toString()) return res.status(404).json({ error: 'Dispute not found for this job' });
+    if (!['open', 'negotiation'].includes(dispute.status)) return res.status(400).json({ error: 'This dispute is already closed' });
+    const isClient = job.clientId.toString() === req.user.id;
+    const isPro = job.awardedProfessionalId?.toString() === req.user.id;
+    if (!isClient && !isPro) return res.status(403).json({ error: 'Not allowed' });
+    const agreedAmount = isClient ? dispute.offers?.professionalOffer : dispute.offers?.clientOffer;
+    if (agreedAmount == null) return res.status(400).json({ error: 'The other party has not made an offer yet' });
+    dispute.status = 'closed';
+    dispute.closedAt = new Date();
+    dispute.acceptedBy = req.user.id;
+    dispute.acceptedByRole = isClient ? 'client' : 'professional';
+    dispute.acceptedAt = new Date();
+    dispute.finalAmount = agreedAmount;
+    dispute.decisionNotes = `Dispute resolved by accepted offer (£${Number(agreedAmount).toFixed(2)}).`;
+    await applyJobDisputeSettlement({ job, dispute, agreedAmount });
+    await dispute.save();
+    emitJobUpdated(job);
+    res.json({ message: 'Dispute resolved successfully', dispute: mapJobDisputeResponse(dispute) });
+  } catch (err) {
+    console.error('[Jobs] Accept dispute offer error:', err);
+    res.status(500).json({ error: err.message || 'Failed to accept dispute offer' });
+  }
+});
+
+router.post('/:id/disputes/:disputeId/reject', authenticateToken, async (req, res) => {
+  try {
+    const note = req.body?.message;
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const isClient = job.clientId.toString() === req.user.id;
+    const isPro = job.awardedProfessionalId?.toString() === req.user.id;
+    if (!isClient && !isPro) return res.status(403).json({ error: 'Not allowed' });
+    if (!['open', 'negotiation'].includes(dispute.status)) return res.status(400).json({ error: 'This dispute is already closed' });
+    const rejectedOfferAmount = isClient ? dispute.offers?.professionalOffer : dispute.offers?.clientOffer;
+    if (!dispute.offers) dispute.offers = { clientOffer: null, professionalOffer: null };
+    if (isClient) dispute.offers.professionalOffer = null;
+    else dispute.offers.clientOffer = null;
+    dispute.lastOfferRejectedAt = new Date();
+    dispute.lastOfferRejectedBy = req.user.id;
+    dispute.lastOfferRejectedByRole = isClient ? 'client' : 'professional';
+    dispute.lastRejectedOfferAmount = rejectedOfferAmount ?? null;
+    const user = await User.findById(req.user.id).select('firstName lastName tradingName avatar').lean();
+    const userName = user?.tradingName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
+    dispute.messages = dispute.messages || [];
+    dispute.messages.push({
+      userId: req.user.id,
+      userName,
+      userAvatar: user?.avatar || '',
+      message: note && String(note).trim()
+        ? `Rejected the £${Number(rejectedOfferAmount || 0).toFixed(2)} offer. ${String(note).trim()}`
+        : `Rejected the £${Number(rejectedOfferAmount || 0).toFixed(2)} offer.`,
+      timestamp: new Date(),
+      isTeamResponse: false,
+    });
+    await dispute.save();
+    res.json({ message: 'Offer rejected', dispute: mapJobDisputeResponse(dispute) });
+  } catch (err) {
+    console.error('[Jobs] Reject dispute offer error:', err);
+    res.status(500).json({ error: err.message || 'Failed to reject dispute offer' });
+  }
+});
+
+router.post('/:id/disputes/:disputeId/request-arbitration', authenticateToken, async (req, res) => {
+  try {
+    const { paymentMethod, paymentMethodId } = req.body || {};
+    if (!paymentMethod || !['account_balance', 'wallet', 'card', 'paypal'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Invalid payment method' });
+    }
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (dispute.status !== 'negotiation') return res.status(400).json({ error: 'Dispute must be in negotiation phase to request arbitration' });
+    const isParty = dispute.claimantId?.toString() === req.user.id || dispute.respondentId?.toString() === req.user.id;
+    if (!isParty) return res.status(403).json({ error: 'Only parties involved in the dispute can request arbitration' });
+    const existingPayment = (dispute.arbitrationPayments || []).find((p) => p.userId?.toString() === req.user.id);
+    if (existingPayment) return res.status(400).json({ error: 'You have already paid the arbitration fee for this dispute' });
+    const settings = await PaymentSettings.getSettings();
+    const arbitrationFee = typeof settings.stepInAmount === 'number' ? settings.stepInAmount : 0;
+    const requestingUser = await User.findById(req.user.id).select('walletBalance');
+    if (!requestingUser) return res.status(404).json({ error: 'User not found' });
+    const normalizedMethod = paymentMethod === 'wallet' ? 'account_balance' : paymentMethod;
+    let feeTransaction = null;
+    let paymentIntentId = null;
+
+    if (normalizedMethod === 'account_balance') {
+      if ((requestingUser.walletBalance || 0) < arbitrationFee) {
+        return res.status(400).json({ error: `Insufficient balance. Arbitration fee is £${arbitrationFee.toFixed(2)}.` });
+      }
+      requestingUser.walletBalance = (requestingUser.walletBalance || 0) - arbitrationFee;
+      await requestingUser.save();
+      feeTransaction = await Wallet.create({
+        userId: requestingUser._id,
+        type: 'payment',
+        amount: arbitrationFee,
+        balance: requestingUser.walletBalance,
+        status: 'completed',
+        paymentMethod: 'wallet',
+        jobId: job._id,
+        milestoneId: dispute.milestoneId?.toString(),
+        description: `Dispute arbitration fee - ${job.title || 'Job'}`,
+        metadata: { source: 'job_dispute_arbitration_fee', disputeId: dispute._id?.toString(), paymentMethod: 'wallet' },
+      });
+    } else if (normalizedMethod === 'card') {
+      if (!paymentMethodId) {
+        return res.status(400).json({ error: 'Payment method ID is required for card payments' });
+      }
+      const settingsStripe = await PaymentSettings.getSettings();
+      const stripe = getStripeInstanceForJobs(settingsStripe);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(arbitrationFee * 100),
+        currency: 'gbp',
+        payment_method: paymentMethodId,
+        customer: requestingUser.stripeCustomerId,
+        confirm: true,
+        return_url: `${req.headers.origin || 'http://localhost:5000'}/account`,
+        metadata: {
+          userId: requestingUser._id.toString(),
+          type: 'job_dispute_arbitration_fee',
+          disputeId: dispute._id.toString(),
+          jobId: job._id.toString(),
+        },
+      });
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({
+          error: 'Payment failed',
+          status: paymentIntent.status,
+          requiresAction: paymentIntent.status === 'requires_action',
+        });
+      }
+      paymentIntentId = paymentIntent.id;
+      feeTransaction = await Wallet.create({
+        userId: requestingUser._id,
+        type: 'payment',
+        amount: arbitrationFee,
+        balance: requestingUser.walletBalance || 0,
+        status: 'completed',
+        paymentMethod: 'card',
+        jobId: job._id,
+        milestoneId: dispute.milestoneId?.toString(),
+        description: `Dispute arbitration fee - ${job.title || 'Job'}`,
+        metadata: { source: 'job_dispute_arbitration_fee', disputeId: dispute._id?.toString(), paymentMethod: 'card', paymentIntentId },
+      });
+    } else if (normalizedMethod === 'paypal') {
+      const settingsPaypal = await PaymentSettings.getSettings();
+      const environment = getPayPalClientForJobs(settingsPaypal);
+      const client = new paypal.core.PayPalHttpClient(environment);
+      const request = new paypal.orders.OrdersCreateRequest();
+      request.prefer('return=representation');
+      const origin = req.headers.origin || 'http://localhost:5000';
+      request.requestBody({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          amount: { currency_code: 'GBP', value: arbitrationFee.toFixed(2) },
+          description: `Dispute arbitration fee - ${job.title || 'Job'}`,
+          custom_id: `job-dispute-arbitration-${job._id}-${req.user.id}`,
+        }],
+        application_context: {
+          return_url: `${origin}/disputes/${dispute._id}?paypalCapture=1&jobId=${encodeURIComponent(job._id.toString())}`,
+          cancel_url: `${origin}/disputes/${dispute._id}`,
+          brand_name: 'Sortars UK',
+          locale: 'en-GB',
+        },
+      });
+      const paypalApiOrder = await client.execute(request);
+      if (paypalApiOrder.statusCode !== 201) {
+        return res.status(400).json({ error: 'Failed to create PayPal order' });
+      }
+      const paypalOrderId = paypalApiOrder.result.id;
+      const approveUrl = paypalApiOrder.result.links.find((link) => link.rel === 'approve')?.href;
+      if (!approveUrl) return res.status(400).json({ error: 'Failed to get PayPal approval URL' });
+      dispute.pendingPayPalArbitration = {
+        paypalOrderId,
+        userId: requestingUser._id,
+        amount: arbitrationFee,
+        createdAt: new Date(),
+      };
+      await dispute.save();
+      return res.json({
+        message: 'Redirect to PayPal to complete arbitration fee payment.',
+        requiresRedirect: true,
+        approveUrl,
+        paypalOrderId,
+      });
+    }
+    dispute.arbitrationFeeAmount = arbitrationFee;
+    dispute.arbitrationPayments = dispute.arbitrationPayments || [];
+    dispute.arbitrationPayments.push({
+      userId: requestingUser._id,
+      amount: arbitrationFee,
+      paidAt: new Date(),
+      paymentMethod: normalizedMethod === 'account_balance' ? 'wallet' : normalizedMethod,
+      paymentIntentId: paymentIntentId || null,
+      transactionId: feeTransaction._id,
+    });
+    const feeDeadlineHoursRaw = typeof settings.arbitrationFeeDeadlineHours === 'number'
+      ? settings.arbitrationFeeDeadlineHours
+      : parseFloat(settings.arbitrationFeeDeadlineHours || '0');
+    const fallbackDaysRaw = typeof settings.arbitrationFeeDeadlineDays === 'number'
+      ? settings.arbitrationFeeDeadlineDays
+      : parseFloat(settings.arbitrationFeeDeadlineDays || '1');
+    const feeDeadlineHours = Number.isFinite(feeDeadlineHoursRaw) && feeDeadlineHoursRaw >= 0
+      ? feeDeadlineHoursRaw
+      : ((Number.isFinite(fallbackDaysRaw) ? fallbackDaysRaw : 1) * 24);
+    if (!dispute.arbitrationFeeDeadline && dispute.arbitrationPayments.length === 1) {
+      const feeDeadline = new Date();
+      feeDeadline.setTime(feeDeadline.getTime() + feeDeadlineHours * 60 * 60 * 1000);
+      dispute.arbitrationFeeDeadline = feeDeadline;
+    }
+    const paidUserIds = new Set((dispute.arbitrationPayments || []).map((p) => p.userId?.toString()));
+    const bothPaid = paidUserIds.has(dispute.claimantId?.toString()) && paidUserIds.has(dispute.respondentId?.toString());
+    if (bothPaid) {
+      dispute.status = 'admin_arbitration';
+      dispute.arbitrationRequested = true;
+      dispute.arbitrationRequestedBy = req.user.id;
+      dispute.arbitrationRequestedAt = new Date();
+      dispute.arbitrationFeeDeadline = null;
+    }
+    await dispute.save();
+    res.json({
+      message: bothPaid
+        ? 'Arbitration requested successfully. Admin will review the case.'
+        : 'Arbitration fee paid. Waiting for the other party to pay.',
+      dispute: mapJobDisputeResponse(dispute),
+      newBalance: requestingUser.walletBalance,
+    });
+  } catch (err) {
+    console.error('[Jobs] Request arbitration error:', err);
+    res.status(500).json({ error: err.message || 'Failed to request arbitration' });
+  }
+});
+
+router.post('/:id/disputes/:disputeId/admin-decide', authenticateToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { winnerId, decisionNotes } = req.body || {};
+    if (!winnerId) return res.status(400).json({ error: 'Winner ID is required' });
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (dispute.status !== 'admin_arbitration') return res.status(400).json({ error: 'Dispute must be in admin arbitration phase' });
+    if (winnerId !== dispute.claimantId?.toString() && winnerId !== dispute.respondentId?.toString()) {
+      return res.status(400).json({ error: 'Winner must be either the claimant or respondent' });
+    }
+    const loserId = winnerId === dispute.claimantId?.toString() ? dispute.respondentId?.toString() : dispute.claimantId?.toString();
+    const milestone = (job.milestones || []).find((m) => m._id.toString() === dispute.milestoneId?.toString());
+    const milestoneAmount = Number(milestone?.amount || dispute.amount || 0);
+    if (winnerId === dispute.claimantId?.toString()) {
+      const claimant = await User.findById(winnerId).select('walletBalance');
+      if (claimant && milestoneAmount > 0) {
+        claimant.walletBalance = (claimant.walletBalance || 0) + milestoneAmount;
+        await claimant.save();
+        await Wallet.create({
+          userId: claimant._id,
+          type: 'deposit',
+          amount: milestoneAmount,
+          balance: claimant.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          jobId: job._id,
+          milestoneId: dispute.milestoneId?.toString(),
+          description: `Dispute resolution refund - ${job.title || 'Job'}`,
+          metadata: { source: 'job_dispute_admin_refund', disputeId: dispute._id?.toString() },
+        });
+      }
+    } else {
+      const winner = await User.findById(winnerId).select('walletBalance');
+      if (winner && milestoneAmount > 0) {
+        winner.walletBalance = (winner.walletBalance || 0) + milestoneAmount;
+        await winner.save();
+        await Wallet.create({
+          userId: winner._id,
+          type: 'deposit',
+          amount: milestoneAmount,
+          balance: winner.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          jobId: job._id,
+          milestoneId: dispute.milestoneId?.toString(),
+          description: `Dispute resolution payout - ${job.title || 'Job'}`,
+          metadata: { source: 'job_dispute_admin_payout', disputeId: dispute._id?.toString() },
+        });
+      }
+    }
+    dispute.status = 'closed';
+    dispute.closedAt = new Date();
+    dispute.winnerId = winnerId;
+    dispute.loserId = loserId;
+    dispute.adminDecision = true;
+    dispute.decisionNotes = decisionNotes || '';
+    await dispute.save();
+    res.json({ message: 'Dispute decided successfully', dispute: mapJobDisputeResponse(dispute) });
+  } catch (err) {
+    console.error('[Jobs] Admin decide dispute error:', err);
+    res.status(500).json({ error: err.message || 'Failed to decide dispute' });
+  }
+});
+
+router.post('/:id/disputes/:disputeId/capture-paypal-arbitration', authenticateToken, async (req, res) => {
+  try {
+    const { paypalOrderId } = req.body || {};
+    if (!paypalOrderId) return res.status(400).json({ error: 'PayPal order ID is required' });
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const pending = dispute.pendingPayPalArbitration;
+    if (!pending || pending.paypalOrderId !== paypalOrderId) {
+      return res.status(400).json({ error: 'No pending PayPal arbitration payment found for this dispute' });
+    }
+    if (pending.userId?.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to capture this payment' });
+    }
+    const settings = await PaymentSettings.getSettings();
+    const environment = getPayPalClientForJobs(settings);
+    const client = new paypal.core.PayPalHttpClient(environment);
+    const captureRequest = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    captureRequest.requestBody({});
+    const captureResponse = await client.execute(captureRequest);
+    if (captureResponse.statusCode !== 201) {
+      return res.status(400).json({ error: 'Failed to capture PayPal payment' });
+    }
+    dispute.arbitrationPayments = dispute.arbitrationPayments || [];
+    dispute.arbitrationPayments.push({
+      userId: req.user.id,
+      amount: pending.amount,
+      paidAt: new Date(),
+      paymentMethod: 'paypal',
+      paypalOrderId,
+      transactionId: null,
+    });
+    dispute.arbitrationFeeAmount = pending.amount;
+    dispute.pendingPayPalArbitration = undefined;
+    const paidUserIds = new Set((dispute.arbitrationPayments || []).map((p) => p.userId?.toString()));
+    const bothPaid = paidUserIds.has(dispute.claimantId?.toString()) && paidUserIds.has(dispute.respondentId?.toString());
+    if (bothPaid) {
+      dispute.status = 'admin_arbitration';
+      dispute.arbitrationRequested = true;
+      dispute.arbitrationRequestedBy = req.user.id;
+      dispute.arbitrationRequestedAt = new Date();
+      dispute.arbitrationFeeDeadline = null;
+    }
+    await dispute.save();
+    res.json({
+      message: bothPaid
+        ? 'Arbitration requested successfully. Admin will review the case.'
+        : 'Arbitration fee paid. Waiting for the other party to pay.',
+      dispute: mapJobDisputeResponse(dispute),
+    });
+  } catch (err) {
+    console.error('[Jobs] Capture PayPal arbitration error:', err);
+    res.status(500).json({ error: err.message || 'Failed to capture PayPal payment' });
+  }
+});
+
+router.delete('/:id/disputes/:disputeId', authenticateToken, async (req, res) => {
+  try {
+    const dispute = await JobDispute.findById(req.params.disputeId);
+    if (!dispute) return res.status(404).json({ error: 'Dispute not found' });
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const isClaimant = dispute.claimantId?.toString() === req.user.id;
+    const isRespondent = dispute.respondentId?.toString() === req.user.id;
+    if (!isClaimant && !isRespondent) return res.status(403).json({ error: 'Only parties involved in the dispute can cancel it' });
+    if (!isClaimant) return res.status(403).json({ error: 'Only the dispute opener can cancel this dispute' });
+    dispute.status = 'closed';
+    dispute.closedAt = new Date();
+    dispute.autoClosed = false;
+    dispute.adminDecision = false;
+    dispute.decisionNotes = `Dispute cancelled and withdrawn by claimant.`;
+    await dispute.save();
+    const milestone = (job.milestones || []).find((m) => m._id.toString() === dispute.milestoneId?.toString());
+    if (milestone) {
+      if (milestone.status === 'disputed') milestone.status = 'in-progress';
+      milestone.disputeId = null;
+      job.markModified('milestones');
+      await job.save();
+      emitJobUpdated(job);
+    }
+    res.json({ message: 'Dispute cancelled successfully', dispute: mapJobDisputeResponse(dispute), job: toJobResponse(job) });
+  } catch (err) {
+    console.error('[Jobs] Cancel dispute error:', err);
+    res.status(500).json({ error: err.message || 'Failed to cancel dispute' });
   }
 });
 

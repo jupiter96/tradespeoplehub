@@ -219,8 +219,8 @@ interface JobsContextType {
   respondToReleaseRequest: (jobId: string, milestoneId: string, accept: boolean) => Promise<void>;
   createDispute: (jobId: string, milestoneId: string, reason: string, evidence?: string) => Promise<string>;
   getDisputeById: (disputeId: string) => Dispute | undefined;
-  addDisputeMessage: (disputeId: string, message: string) => void;
-  makeDisputeOffer: (disputeId: string, amount: number) => void;
+  addDisputeMessage: (disputeId: string, message: string) => Promise<void>;
+  makeDisputeOffer: (disputeId: string, amount: number) => Promise<void>;
   deliverJobMilestone: (jobId: string, milestoneIndex: number, deliveryMessage: string, files?: File[]) => Promise<void>;
   approveMilestoneDelivery: (jobId: string, milestoneId: string) => Promise<void>;
   requestMilestoneRevision: (jobId: string, milestoneId: string, revisionMessage: string, files?: File[]) => Promise<void>;
@@ -890,62 +890,39 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return disputes.find((d) => d.id === disputeId);
   };
 
-  const addDisputeMessage = (disputeId: string, message: string) => {
-    const currentUser = localStorage.getItem("currentUserId") || "client-1";
-    const currentUserName = localStorage.getItem("currentUserName") || "David James";
-
-    setDisputes((prev) =>
-      prev.map((d) =>
-        d.id === disputeId
-          ? {
-              ...d,
-              messages: [
-                ...d.messages,
-                {
-                  id: `msg-${Date.now()}`,
-                  userId: currentUser,
-                  userName: currentUserName,
-                  message,
-                  timestamp: new Date().toISOString(),
-                },
-              ],
-            }
-          : d
-      )
-    );
+  const addDisputeMessage = async (disputeId: string, message: string): Promise<void> => {
+    const dispute = disputes.find((d) => d.id === disputeId);
+    if (!dispute?.jobId) throw new Error('Dispute job not found');
+    const res = await fetch(resolveApiUrl(`/api/jobs/${dispute.jobId}/disputes/${disputeId}/messages`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to add dispute message');
+    }
+    const updated = await res.json();
+    setDisputes((prev) => prev.map((d) => (d.id === disputeId ? { ...d, ...updated } : d)));
   };
 
-  const makeDisputeOffer = (disputeId: string, amount: number) => {
-    const currentUser = localStorage.getItem("currentUserId") || "client-1";
+  const makeDisputeOffer = async (disputeId: string, amount: number): Promise<void> => {
     const dispute = disputes.find((d) => d.id === disputeId);
-    if (!dispute) return;
-
-    const isClaimant = dispute.claimantId === currentUser;
-
-    setDisputes((prev) =>
-      prev.map((d) =>
-        d.id === disputeId
-          ? {
-              ...d,
-              ...(isClaimant
-                ? {
-                    claimantOffer: {
-                      userId: currentUser,
-                      amount,
-                      timestamp: new Date().toISOString(),
-                    },
-                  }
-                : {
-                    respondentOffer: {
-                      userId: currentUser,
-                      amount,
-                      timestamp: new Date().toISOString(),
-                    },
-                  }),
-            }
-          : d
-      )
-    );
+    if (!dispute?.jobId) throw new Error('Dispute job not found');
+    const res = await fetch(resolveApiUrl(`/api/jobs/${dispute.jobId}/disputes/${disputeId}/offer`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ amount }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to submit offer');
+    }
+    const data = await res.json();
+    const updated = data.dispute || data;
+    setDisputes((prev) => prev.map((d) => (d.id === disputeId ? { ...d, ...updated } : d)));
   };
 
   const deliverJobMilestone = async (

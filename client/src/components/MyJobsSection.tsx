@@ -542,7 +542,7 @@ export default function MyJobsSection() {
                         New Milestone
                       </Button>
                     )}
-                    {(job.quotes?.length ?? 0) > 0 && (
+                    {job.status === "open" && (job.quotes?.length ?? 0) > 0 && (
                       <Button
                         variant="outline"
                         onClick={(e: MouseEvent<HTMLButtonElement>) => {

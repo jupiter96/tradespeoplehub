@@ -423,6 +423,7 @@ export default function JobDetailPage() {
 
   // Dispute modal state
   const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [submittingDispute, setSubmittingDispute] = useState(false);
   const [disputeMilestone, setDisputeMilestone] = useState<Milestone | null>(null);
   const [disputeForm, setDisputeForm] = useState({
     requirements: "",
@@ -1445,13 +1446,18 @@ export default function JobDetailPage() {
     }
   };
 
-  const inProgressMilestones = (job?.milestones || []).filter((m) => m.status === "in-progress");
+  const unreleasedDisputableMilestones = (job?.milestones || []).filter((m) =>
+    m.status !== "released" &&
+    m.status !== "cancelled" &&
+    m.status !== "awaiting-accept" &&
+    m.status !== "disputed"
+  );
   const hasMilestones = (job?.milestones || []).length > 0;
   const allMilestonesCancelled =
     hasMilestones && (job?.milestones || []).every((m) => m.status === "cancelled");
   const canCloseProjectFromPayments =
     isJobOwner && job?.status === "in-progress" && allMilestonesCancelled;
-  const allSelected = inProgressMilestones.length > 0 && disputeForm.selectedMilestones.length >= inProgressMilestones.length;
+  const allSelected = unreleasedDisputableMilestones.length > 0 && disputeForm.selectedMilestones.length >= unreleasedDisputableMilestones.length;
 
   const handleMilestoneSelection = (milestoneId: string, checked: boolean) => {
     setDisputeForm((prev) => ({
@@ -1472,9 +1478,9 @@ export default function JobDetailPage() {
       setDisputeForm((prev) => ({ ...prev, selectedMilestones: [] }));
       setDisputeMilestone(null);
     } else {
-      const ids = inProgressMilestones.map((m) => m.id);
+      const ids = unreleasedDisputableMilestones.map((m) => m.id);
       setDisputeForm((prev) => ({ ...prev, selectedMilestones: ids }));
-      setDisputeMilestone(inProgressMilestones[0] || null);
+      setDisputeMilestone(unreleasedDisputableMilestones[0] || null);
     }
   };
 
@@ -1496,19 +1502,27 @@ export default function JobDetailPage() {
       ? `${disputeForm.evidenceFiles.length} file(s) attached`
       : undefined;
 
+    const milestoneIds = [...toDispute];
+    const reasonText = reason.trim();
+    // Optimistic UX: close modal and show feedback immediately.
+    setShowDisputeModal(false);
+    setDisputeMilestone(null);
+    setDisputeForm((prev) => ({ ...prev, selectedMilestones: [] }));
+    setSubmittingDispute(true);
+    toast.success(milestoneIds.length === 1 ? "Dispute submitted successfully" : `${milestoneIds.length} disputes submitted successfully`);
+
     try {
       let firstDisputeId: string | null = null;
-      for (const milestoneId of toDispute) {
-        const disputeId = await createDispute(job.id, milestoneId, reason.trim(), evidence);
+      for (const milestoneId of milestoneIds) {
+        const disputeId = await createDispute(job.id, milestoneId, reasonText, evidence);
         if (disputeId && !firstDisputeId) firstDisputeId = disputeId;
       }
-      toast.success(toDispute.length === 1 ? "Dispute submitted successfully" : `${toDispute.length} disputes submitted successfully`);
-      setShowDisputeModal(false);
-      setDisputeMilestone(null);
-      setDisputeForm((prev) => ({ ...prev, selectedMilestones: [] }));
       if (firstDisputeId) navigate(`/disputes/${firstDisputeId}`);
     } catch (e: any) {
       toast.error(e?.message || "Failed to create dispute");
+      await fetchJobById(job.slug || job.id);
+    } finally {
+      setSubmittingDispute(false);
     }
   };
 
@@ -6867,8 +6881,8 @@ export default function JobDetailPage() {
               )}
             </div>
 
-            {/* Milestone Selection - in-progress milestones only (disputable), multi-select + Select all */}
-            {inProgressMilestones.length > 0 && (
+            {/* Milestone Selection - unreleased disputable milestones, multi-select + Select all */}
+            {unreleasedDisputableMilestones.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <Label className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] block">
@@ -6885,7 +6899,7 @@ export default function JobDetailPage() {
                 </Button>
               </div>
               <div className="space-y-2">
-                {inProgressMilestones.map((milestone) => (
+                {unreleasedDisputableMilestones.map((milestone) => (
                   <div key={milestone.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                     <Checkbox
                       id={`dispute-${milestone.id}`}
@@ -6913,15 +6927,17 @@ export default function JobDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => setShowDisputeModal(false)}
+                disabled={submittingDispute}
                 className="flex-1 font-['Poppins',sans-serif]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmitDispute}
+                disabled={submittingDispute}
                 className="flex-1 bg-[#EF4444] hover:bg-[#DC2626] text-white font-['Poppins',sans-serif]"
               >
-                Submit Dispute
+                {submittingDispute ? "Submitting..." : "Submit Dispute"}
               </Button>
             </div>
           </div>

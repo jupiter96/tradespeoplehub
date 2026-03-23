@@ -96,24 +96,41 @@ export default function DisputeDiscussionPage() {
   const didRefetchForMissingDisputeInfo = useRef<string | null>(null);
 
   useEffect(() => {
-    const jobDispute = getDisputeById(disputeId || "");
-    const orderDispute = getOrderDisputeById(disputeId || "");
-    const currentDispute = jobDispute || orderDispute;
-    setDispute(currentDispute);
-
-    if (currentDispute) {
-      if ("jobId" in currentDispute) {
-        setJob(getJobById(currentDispute.jobId));
-      } else if ("orderId" in currentDispute) {
-        const foundOrder = orders.find(o => o.disputeId === disputeId);
-        setOrder(foundOrder);
-        // If order has disputeId but no disputeInfo (e.g. arrived via link or stale state), refetch once so milestones etc. are available
-        if (disputeId && foundOrder && !foundOrder.disputeInfo && didRefetchForMissingDisputeInfo.current !== disputeId) {
-          didRefetchForMissingDisputeInfo.current = disputeId;
-          refreshOrders();
+    let cancelled = false;
+    (async () => {
+      const jobDispute = getDisputeById(disputeId || "");
+      const orderDispute = getOrderDisputeById(disputeId || "");
+      const currentDispute = jobDispute || orderDispute;
+      if (currentDispute) {
+        if (cancelled) return;
+        setDispute(currentDispute);
+        if ("jobId" in currentDispute) {
+          setJob(getJobById(currentDispute.jobId));
+        } else if ("orderId" in currentDispute) {
+          const foundOrder = orders.find(o => o.disputeId === disputeId);
+          setOrder(foundOrder);
+          if (disputeId && foundOrder && !foundOrder.disputeInfo && didRefetchForMissingDisputeInfo.current !== disputeId) {
+            didRefetchForMissingDisputeInfo.current = disputeId;
+            refreshOrders();
+          }
         }
+        return;
       }
-    }
+      // Deep-link fallback: fetch job dispute directly by id.
+      try {
+        const response = await fetch(resolveApiUrl(`/api/jobs/disputes/${disputeId}`), {
+          credentials: "include",
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data?.dispute) return;
+        if (cancelled) return;
+        setDispute(data.dispute);
+        setJob(data.job || getJobById(data.dispute.jobId));
+      } catch {
+        // Keep not-found rendering.
+      }
+    })();
+    return () => { cancelled = true; };
   }, [disputeId, getDisputeById, getOrderDisputeById, getJobById, orders, refreshOrders]);
 
   const handleSendMessage = async () => {
@@ -168,15 +185,25 @@ export default function DisputeDiscussionPage() {
         // Refresh orders so list/context stay in sync
         await refreshOrders?.();
       } else {
-        addDisputeMessage(disputeId, message);
+        const jobId = (job as any)?.id || (job as any)?._id || dispute?.jobId;
+        if (!jobId) throw new Error("Job not found");
+        const response = await fetch(resolveApiUrl(`/api/jobs/${jobId}/disputes/${disputeId}/messages`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ message: message.trim() }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Failed to send message");
         setMessage("");
         setSelectedFiles([]);
         setHasReplied(true);
         toast.success("Message sent");
+        if (data) setDispute(data);
       }
 
       // Refresh dispute from context (only if we didn't already set from server response)
-      if (!isOrderDispute) {
+      if (!isOrderDispute && !(dispute as any)?.jobId) {
         setDispute(getDisputeById(disputeId));
       } else if (!messageResponseData?.dispute?.negotiationDeadline && !messageResponseData?.dispute?.respondedAt) {
         setDispute(getOrderDisputeById(disputeId));
@@ -260,7 +287,16 @@ export default function DisputeDiscussionPage() {
       if (isOrderDispute) {
         await makeOrderDisputeOffer(disputeId, amountGBP);
       } else {
-        makeDisputeOffer(disputeId, amountGBP);
+        const jobId = (job as any)?.id || (job as any)?._id || dispute?.jobId;
+        const response = await fetch(resolveApiUrl(`/api/jobs/${jobId}/disputes/${disputeId}/offer`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ amount: amountGBP }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Failed to submit offer");
+        setDispute(data.dispute || data);
       }
       setNewOffer("");
       toast.success("Offer submitted");
@@ -268,7 +304,7 @@ export default function DisputeDiscussionPage() {
       if (isOrderDispute) {
         setDispute(getOrderDisputeById(disputeId));
       } else {
-        setDispute(getDisputeById(disputeId));
+        setDispute((prev: any) => prev || getDisputeById(disputeId));
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to submit offer");
@@ -279,7 +315,18 @@ export default function DisputeDiscussionPage() {
     if (!disputeId || isOfferActionPending) return;
     setIsOfferActionPending(true);
     try {
-      const acceptAction = isOrderDispute ? acceptDisputeOffer(disputeId) : Promise.resolve();
+      const acceptAction = isOrderDispute
+        ? acceptDisputeOffer(disputeId)
+        : (async () => {
+            const jobId = (job as any)?.id || (job as any)?._id || dispute?.jobId;
+            const response = await fetch(resolveApiUrl(`/api/jobs/${jobId}/disputes/${disputeId}/accept`), {
+              method: "POST",
+              credentials: "include",
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || "Failed to accept offer");
+            setDispute(data.dispute || data);
+          })();
       await toast.promise(acceptAction, {
         loading: "Processing...",
         success: "Dispute resolved successfully",
@@ -304,6 +351,17 @@ export default function DisputeDiscussionPage() {
     try {
       if (isOrderDispute) {
         await rejectDisputeOffer(disputeId);
+      } else {
+        const jobId = (job as any)?.id || (job as any)?._id || dispute?.jobId;
+        const response = await fetch(resolveApiUrl(`/api/jobs/${jobId}/disputes/${disputeId}/reject`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ message: "" }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Failed to reject offer");
+        setDispute(data.dispute || data);
       }
       if (isOrderDispute) {
         const rejectedAtIso = new Date().toISOString();
@@ -344,8 +402,6 @@ export default function DisputeDiscussionPage() {
       // Keep data in sync with server in the background without blocking immediate UI update.
       if (isOrderDispute) {
         void refreshOrders();
-      } else {
-        setDispute(getDisputeById(disputeId));
       }
       setShowRespondActions(false);
       setIsRejectConfirmOpen(false);
@@ -482,12 +538,16 @@ export default function DisputeDiscussionPage() {
     const paypalCapture = searchParams.get("paypalCapture");
     const token = searchParams.get("token");
     const orderIdFromUrl = searchParams.get("orderId");
-    if (paypalCapture !== "1" || !token || !orderIdFromUrl) return;
+    const jobIdFromUrl = searchParams.get("jobId");
+    if (paypalCapture !== "1" || !token || (!orderIdFromUrl && !jobIdFromUrl)) return;
 
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(resolveApiUrl(`/api/orders/${orderIdFromUrl}/dispute/capture-paypal-arbitration`), {
+        const captureUrl = orderIdFromUrl
+          ? resolveApiUrl(`/api/orders/${orderIdFromUrl}/dispute/capture-paypal-arbitration`)
+          : resolveApiUrl(`/api/jobs/${jobIdFromUrl}/disputes/${disputeId}/capture-paypal-arbitration`);
+        const response = await fetch(captureUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -502,6 +562,7 @@ export default function DisputeDiscussionPage() {
             next.delete("paypalCapture");
             next.delete("token");
             next.delete("orderId");
+            next.delete("jobId");
             return next;
           });
           return;
@@ -512,10 +573,15 @@ export default function DisputeDiscussionPage() {
           next.delete("paypalCapture");
           next.delete("token");
           next.delete("orderId");
+          next.delete("jobId");
           return next;
         });
-        await refreshOrders();
-        if (!cancelled) setDispute(getOrderDisputeById(disputeId || ""));
+        if (orderIdFromUrl) {
+          await refreshOrders();
+          if (!cancelled) setDispute(getOrderDisputeById(disputeId || ""));
+        } else if (!cancelled) {
+          setDispute(data.dispute || null);
+        }
       } catch (e: any) {
         if (!cancelled) {
           toast.error(e?.message || "Failed to complete PayPal payment");
@@ -524,6 +590,7 @@ export default function DisputeDiscussionPage() {
             next.delete("paypalCapture");
             next.delete("token");
             next.delete("orderId");
+            next.delete("jobId");
             return next;
           });
         }
@@ -533,7 +600,8 @@ export default function DisputeDiscussionPage() {
   }, [searchParams, disputeId, getOrderDisputeById, refreshOrders, setSearchParams]);
 
   const handleRequestArbitration = async () => {
-    if (!order?.id || !isOrderDispute) return;
+    if (!isOrderDispute && !(job as any)?.id && !(job as any)?._id && !dispute?.jobId) return;
+    if (isOrderDispute && !order?.id) return;
     const deadline = dispute?.negotiationDeadline;
     const deadlineTime = deadline ? new Date(deadline).getTime() : null;
     if (deadlineTime && Date.now() < deadlineTime) {
@@ -544,7 +612,7 @@ export default function DisputeDiscussionPage() {
   };
 
   const handlePayArbitrationFee = async () => {
-    if (!order?.id || !selectedPayment) return;
+    if (!selectedPayment) return;
     const selectedMethod = paymentMethods.find((m: any) => m.id === selectedPayment);
     const feeAmount = typeof dispute?.arbitrationFeeAmount === "number" ? dispute.arbitrationFeeAmount : 0;
     if (!feeAmount || feeAmount <= 0) {
@@ -565,7 +633,10 @@ export default function DisputeDiscussionPage() {
         paymentMethod: selectedMethod?.type === "account_balance" ? "account_balance" : selectedMethod?.type === "paypal" ? "paypal" : "card",
         paymentMethodId: selectedMethod?.type === "card" ? selectedMethod.id : undefined,
       };
-      const response = await fetch(resolveApiUrl(`/api/orders/${order.id}/dispute/request-arbitration`), {
+      const endpoint = isOrderDispute
+        ? resolveApiUrl(`/api/orders/${order.id}/dispute/request-arbitration`)
+        : resolveApiUrl(`/api/jobs/${(job as any)?.id || (job as any)?._id || dispute?.jobId}/disputes/${disputeId}/request-arbitration`);
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -581,8 +652,12 @@ export default function DisputeDiscussionPage() {
       }
       toast.success(data.message || "Arbitration payment submitted.");
       setIsArbitrationPaymentOpen(false);
-      setDispute(getOrderDisputeById(disputeId || ""));
-      refreshOrders();
+      if (isOrderDispute) {
+        setDispute(getOrderDisputeById(disputeId || ""));
+        refreshOrders();
+      } else {
+        setDispute(data.dispute || data);
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to request arbitration");
     } finally {
@@ -591,9 +666,20 @@ export default function DisputeDiscussionPage() {
   };
 
   const handleCancelDispute = async () => {
-    if (!disputeId || !order) return;
+    if (!disputeId) return;
     try {
-      await cancelDispute(order.id);
+      if (isOrderDispute) {
+        if (!order) return;
+        await cancelDispute(order.id);
+      } else {
+        const jobId = (job as any)?.id || (job as any)?._id || dispute?.jobId;
+        const response = await fetch(resolveApiUrl(`/api/jobs/${jobId}/disputes/${disputeId}`), {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Failed to cancel dispute");
+      }
       toast.success("Dispute cancelled successfully");
       setIsCancelConfirmOpen(false);
       navigate(isOrderDispute ? "/account?tab=orders" : "/account?tab=jobs");
@@ -1022,7 +1108,7 @@ export default function DisputeDiscussionPage() {
           {/* Page Header */}
           <div className="mb-6 flex items-center justify-between bg-white rounded-lg shadow-md p-6 border-b border-gray-200">
             <h1 className="font-['Poppins',sans-serif] text-[28px] md:text-[32px] text-[#2c353f]">
-              {isOrderDispute ? "Order payment dispute" : "Milestone payment dispute"}
+              {isOrderDispute ? "Order payment dispute" : "Job payment dispute"}
             </h1>
             {isOrderDispute && order && (
               <Button
@@ -1030,7 +1116,7 @@ export default function DisputeDiscussionPage() {
                 variant="ghost"
                 className="font-['Poppins',sans-serif] text-[14px] text-[#3D78CB] hover:text-[#2C5AA0] hover:bg-transparent"
               >
-                Go Back to Order Details
+                Go Back to {isOrderDispute ? "Order Details" : "Job Details"}
               </Button>
             )}
           </div>

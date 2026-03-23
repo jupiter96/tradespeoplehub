@@ -499,7 +499,7 @@ export default function AvailableJobsSection() {
                   <div className="flex justify-end w-full">
                     <ClientJobListStatusBadge status={job.status} />
                   </div>
-                  <div className="mt-auto flex flex-col gap-2 w-full">
+                  <div className="mt-4 flex flex-col gap-2 w-full">
                     {job.status === "open" &&
                       !(job.quotes || []).some((q) => q.professionalId === userInfo?.id) && (
                         <p className="font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#6b6b6b] text-center leading-snug">

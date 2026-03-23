@@ -1,12 +1,137 @@
 import cron from 'node-cron';
 import Order from '../models/Order.js';
 import Dispute from '../models/Dispute.js';
+import Job from '../models/Job.js';
+import JobDispute from '../models/JobDispute.js';
 import Wallet from '../models/Wallet.js';
 import User from '../models/User.js';
 
 async function processAutomaticDisputeClosures() {
   try {
     const now = new Date();
+    // Job disputes: response deadline passed with no response
+    const jobOpenExpired = await JobDispute.find({
+      status: 'open',
+      responseDeadline: { $lte: now },
+      respondedAt: null,
+    });
+    for (const dispute of jobOpenExpired) {
+      try {
+        const job = await Job.findById(dispute.jobId);
+        if (!job) continue;
+        const winnerId = dispute.claimantId?.toString();
+        const loserId = dispute.respondentId?.toString();
+        const milestone = (job.milestones || []).find((m) => m._id.toString() === dispute.milestoneId?.toString());
+        const amount = Number(milestone?.amount ?? dispute.amount ?? 0);
+        const isWinnerClient = job.clientId?.toString() === winnerId;
+        if (amount > 0) {
+          const winner = await User.findById(winnerId).select('walletBalance');
+          if (winner) {
+            winner.walletBalance = (winner.walletBalance || 0) + amount;
+            await winner.save();
+            await Wallet.create({
+              userId: winner._id,
+              type: 'deposit',
+              amount,
+              balance: winner.walletBalance,
+              status: 'completed',
+              paymentMethod: 'wallet',
+              jobId: job._id,
+              milestoneId: dispute.milestoneId?.toString(),
+              description: `Dispute auto-close ${isWinnerClient ? 'refund' : 'payout'} - ${job.title || 'Job'}`,
+              metadata: { source: 'job_dispute_auto_close', disputeId: dispute._id.toString(), reason: 'No response before deadline' },
+            });
+          }
+        }
+        if (milestone) {
+          milestone.status = 'cancelled';
+          milestone.disputeId = dispute._id;
+          job.markModified('milestones');
+          await job.save();
+        }
+        dispute.messages = dispute.messages || [];
+        dispute.messages.push({
+          userId: dispute.claimantId,
+          userName: 'Dispute team',
+          userAvatar: '',
+          message: 'Dispute resolved automatically due to no response before deadline.',
+          timestamp: now,
+          isTeamResponse: true,
+        });
+        dispute.status = 'closed';
+        dispute.closedAt = now;
+        dispute.winnerId = winnerId;
+        dispute.loserId = loserId;
+        dispute.autoClosed = true;
+        dispute.decisionNotes = 'Auto-closed due to no response before deadline.';
+        await dispute.save();
+      } catch (jobErr) {
+        console.error('[Dispute Scheduler] Error processing job dispute response deadline:', jobErr);
+      }
+    }
+
+    // Job disputes: arbitration fee deadline passed and only one side paid
+    const jobArbExpired = await JobDispute.find({
+      status: 'negotiation',
+      arbitrationFeeDeadline: { $lte: now },
+      'arbitrationPayments.0': { $exists: true },
+    });
+    for (const dispute of jobArbExpired) {
+      try {
+        const paidUserIds = new Set((dispute.arbitrationPayments || []).map((p) => p.userId?.toString()));
+        if (paidUserIds.size !== 1) continue;
+        const winnerId = Array.from(paidUserIds)[0];
+        const loserId = winnerId === dispute.claimantId?.toString() ? dispute.respondentId?.toString() : dispute.claimantId?.toString();
+        const job = await Job.findById(dispute.jobId);
+        if (!job) continue;
+        const milestone = (job.milestones || []).find((m) => m._id.toString() === dispute.milestoneId?.toString());
+        const amount = Number(milestone?.amount ?? dispute.amount ?? 0);
+        if (amount > 0) {
+          const winner = await User.findById(winnerId).select('walletBalance');
+          if (winner) {
+            winner.walletBalance = (winner.walletBalance || 0) + amount;
+            await winner.save();
+            await Wallet.create({
+              userId: winner._id,
+              type: 'deposit',
+              amount,
+              balance: winner.walletBalance,
+              status: 'completed',
+              paymentMethod: 'wallet',
+              jobId: job._id,
+              milestoneId: dispute.milestoneId?.toString(),
+              description: `Dispute auto-close payout - ${job.title || 'Job'}`,
+              metadata: { source: 'job_dispute_auto_close', disputeId: dispute._id.toString(), reason: 'Other party did not pay arbitration fee' },
+            });
+          }
+        }
+        if (milestone) {
+          milestone.status = 'cancelled';
+          milestone.disputeId = dispute._id;
+          job.markModified('milestones');
+          await job.save();
+        }
+        dispute.messages = dispute.messages || [];
+        dispute.messages.push({
+          userId: dispute.claimantId,
+          userName: 'Dispute team',
+          userAvatar: '',
+          message: 'Dispute resolved automatically because one party did not pay arbitration fee before deadline.',
+          timestamp: now,
+          isTeamResponse: true,
+        });
+        dispute.status = 'closed';
+        dispute.closedAt = now;
+        dispute.winnerId = winnerId;
+        dispute.loserId = loserId;
+        dispute.autoClosed = true;
+        dispute.decisionNotes = 'Auto-closed due to unpaid arbitration fee.';
+        await dispute.save();
+      } catch (jobErr) {
+        console.error('[Dispute Scheduler] Error processing job dispute arbitration deadline:', jobErr);
+      }
+    }
+
     
     // Find disputes that have passed their response deadline and are still open (not responded)
     const disputes = await Dispute.find({
