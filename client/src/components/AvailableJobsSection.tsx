@@ -507,51 +507,51 @@ export default function AvailableJobsSection() {
                         </p>
                       )}
                     <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                        e.stopPropagation();
-                        const hasSubmittedQuote = (job.quotes || []).some((q) => q.professionalId === userInfo?.id);
-                        if (!hasSubmittedQuote) {
-                          toast.info("Please send a quote first. You can chat after your quote is submitted.");
-                          return;
-                        }
-                        startConversation({
-                          id: `client-${job.clientId}`,
-                          name: job.clientName || "Client",
-                          avatar: job.clientAvatar,
-                          online: true,
-                          jobId: job.id,
-                          jobTitle: job.title,
-                        });
-                        navigate(`/account?tab=messenger`);
-                      }}
-                      className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-1.5" />
-                       &nbsp;  Message  &nbsp;  
-                    </Button>
 
-                    {(job.quotes || []).some((q) => q.professionalId === userInfo?.id) ? (
-                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium inline-flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-[#059669]" />
-                        Quote Submitted
-                      </span>
-                    ) : (
+                      {(job.quotes || []).some((q) => q.professionalId === userInfo?.id) ? (
+                        <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium inline-flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-[#059669]" />
+                          Quote Submitted
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                            setSelectedJob(job.id);
+                            setIsQuoteDialogOpen(true);
+                          }}
+                          className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                        >
+                          <Send className="w-4 h-4 mr-1.5" />
+                          Send Quote
+                        </Button>
+                      )}
                       <Button
+                        variant="outline"
                         size="sm"
                         onClick={(e: MouseEvent<HTMLButtonElement>) => {
                           e.stopPropagation();
-                          setSelectedJob(job.id);
-                          setIsQuoteDialogOpen(true);
+                          const hasSubmittedQuote = (job.quotes || []).some((q) => q.professionalId === userInfo?.id);
+                          if (!hasSubmittedQuote) {
+                            toast.info("Please send a quote first. You can chat after your quote is submitted.");
+                            return;
+                          }
+                          startConversation({
+                            id: `client-${job.clientId}`,
+                            name: job.clientName || "Client",
+                            avatar: job.clientAvatar,
+                            online: true,
+                            jobId: job.id,
+                            jobTitle: job.title,
+                          });
+                          navigate(`/account?tab=messenger`);
                         }}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+                        className="font-['Poppins',sans-serif] hover:bg-[#E3F2FD] hover:text-[#1976D2] hover:border-[#1976D2]"
                       >
-                        <Send className="w-4 h-4 mr-1.5" />
-                        Send Quote
+                        <MessageCircle className="w-4 h-4 mr-1.5" />
+                        &nbsp;  Message  &nbsp;  
                       </Button>
-                    )}
                     </div>
                   </div>
                 </div>
