@@ -181,6 +181,7 @@ interface JobsContextType {
   disputes: Dispute[];
   addJob: (job: Omit<Job, "id" | "postedAt" | "quotes"> & { sectorId?: string; sectorSlug?: string; categorySlugs?: string[] }) => Promise<Job>;
   updateJob: (id: string, updates: Partial<Job>) => Promise<void>;
+  closeJobProject: (id: string) => Promise<void>;
   deleteJob: (id: string) => Promise<void>;
   getJobById: (id: string) => Job | undefined;
   fetchJobById: (id: string) => Promise<Job | null>;
@@ -389,6 +390,19 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'Failed to update job');
+    }
+    const updated = await res.json();
+    setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
+  };
+
+  const closeJobProject = async (id: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${id}/close-project`), {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to close project');
     }
     const updated = await res.json();
     setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)));
@@ -1098,6 +1112,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         disputes,
         addJob,
         updateJob,
+        closeJobProject,
         deleteJob,
         getJobById,
         fetchJobById,

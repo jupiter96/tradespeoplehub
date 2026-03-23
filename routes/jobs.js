@@ -3369,8 +3369,38 @@ router.patch('/:id/milestones/:milestoneId/respond-cancel', authenticateToken, a
     }
     const { accept } = req.body;
     if (accept === true) {
+      const refundAmount = Number(milestone.amount) || 0;
+      if (refundAmount > 0) {
+        const client = await User.findById(job.clientId).select('walletBalance');
+        if (client) {
+          client.walletBalance = (client.walletBalance || 0) + refundAmount;
+          await client.save();
+          const milestoneName = milestone.name || milestone.description || 'Milestone';
+          await Wallet.create({
+            userId: job.clientId,
+            type: 'refund',
+            amount: refundAmount,
+            balance: client.walletBalance,
+            status: 'completed',
+            paymentMethod: 'wallet',
+            description: `Milestone cancellation refund - ${job.title || 'Job'} - ${milestoneName}`,
+            jobId: job._id,
+            milestoneId: milestone._id.toString(),
+            metadata: {
+              source: 'job_milestone_cancel_refund',
+              jobSlug: job.slug || job._id.toString(),
+              jobTitle: job.title || 'Job',
+              milestoneName,
+              refundedByResponseUserId: req.user.id,
+            },
+          });
+        }
+      }
       milestone.status = 'cancelled';
       milestone.cancelRequestStatus = 'accepted';
+      milestone.cancelRequestedAt = null;
+      milestone.cancelRequestedBy = null;
+      milestone.cancelRequestReason = null;
     } else {
       milestone.cancelRequestStatus = 'rejected';
       milestone.cancelRequestedAt = null;
@@ -3384,6 +3414,39 @@ router.patch('/:id/milestones/:milestoneId/respond-cancel', authenticateToken, a
   } catch (err) {
     console.error('[Jobs] Respond cancel error:', err);
     res.status(500).json({ error: err.message || 'Failed to respond to cancel request' });
+  }
+});
+
+// Client: close a milestone-only project when all milestones are cancelled
+router.post('/:id/close-project', authenticateToken, requireRole(['client']), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.clientId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to close this project' });
+    }
+    if (!job.awardedProfessionalId) {
+      return res.status(400).json({ error: 'Only awarded jobs can be closed as a project' });
+    }
+    if (job.status !== 'in-progress') {
+      return res.status(400).json({ error: 'Only in-progress jobs can be closed' });
+    }
+    const milestones = Array.isArray(job.milestones) ? job.milestones : [];
+    if (milestones.length === 0) {
+      return res.status(400).json({ error: 'No milestones found for this project' });
+    }
+    const allCancelled = milestones.every((m) => m.status === 'cancelled');
+    if (!allCancelled) {
+      return res.status(400).json({ error: 'All milestones must be cancelled before closing project' });
+    }
+
+    job.status = 'closed';
+    await job.save();
+    emitJobUpdated(job);
+    res.json(toJobResponse(job));
+  } catch (err) {
+    console.error('[Jobs] Close project error:', err);
+    res.status(500).json({ error: err.message || 'Failed to close project' });
   }
 });
 

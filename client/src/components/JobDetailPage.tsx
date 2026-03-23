@@ -281,7 +281,7 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateJob, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision, submitClientJobReview, submitProfessionalJobBuyerReview, respondToJobClientReview } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateJob, closeJobProject, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision, submitClientJobReview, submitProfessionalJobBuyerReview, respondToJobClientReview } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady, refreshUser } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
   const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
@@ -395,6 +395,7 @@ export default function JobDetailPage() {
   const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
   const [cancelRequestMilestone, setCancelRequestMilestone] = useState<Milestone | null>(null);
   const [cancelRequestReason, setCancelRequestReason] = useState("");
+  const [sendingCancelRequest, setSendingCancelRequest] = useState(false);
 
 
   // Pro: accept/reject milestone cancel request confirmation
@@ -433,6 +434,8 @@ export default function JobDetailPage() {
   // Delete job confirmation (client manage menu)
   const [showDeleteJobConfirm, setShowDeleteJobConfirm] = useState(false);
   const [deletingJob, setDeletingJob] = useState(false);
+  const [closingProject, setClosingProject] = useState(false);
+  const [showCloseJobConfirm, setShowCloseJobConfirm] = useState(false);
 
   // Invite to quote modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -1081,6 +1084,19 @@ export default function JobDetailPage() {
       toast.error((e as Error)?.message || "Failed to close job");
     }
   };
+  const handleCloseProject = async () => {
+    if (!job?.id) return;
+    setClosingProject(true);
+    try {
+      await closeJobProject(job.id);
+      await fetchJobById(job.slug || job.id);
+      toast.success("Project closed successfully.");
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message || "Failed to close project");
+    } finally {
+      setClosingProject(false);
+    }
+  };
   const handleDeleteJobClick = () => setShowDeleteJobConfirm(true);
   const handleDeleteJobConfirm = async () => {
     if (!job?.id) return;
@@ -1430,6 +1446,11 @@ export default function JobDetailPage() {
   };
 
   const inProgressMilestones = (job?.milestones || []).filter((m) => m.status === "in-progress");
+  const hasMilestones = (job?.milestones || []).length > 0;
+  const allMilestonesCancelled =
+    hasMilestones && (job?.milestones || []).every((m) => m.status === "cancelled");
+  const canCloseProjectFromPayments =
+    isJobOwner && job?.status === "in-progress" && allMilestonesCancelled;
   const allSelected = inProgressMilestones.length > 0 && disputeForm.selectedMilestones.length >= inProgressMilestones.length;
 
   const handleMilestoneSelection = (milestoneId: string, checked: boolean) => {
@@ -3571,6 +3592,17 @@ export default function JobDetailPage() {
                         New Milestone
                       </Button>
                     )}
+                    {canCloseProjectFromPayments && (
+                      <Button
+                        type="button"
+                        onClick={() => setShowCloseJobConfirm(true)}
+                        disabled={closingProject}
+                        variant="outline"
+                        className="border-slate-300 text-slate-700 hover:bg-slate-50 font-['Poppins',sans-serif]"
+                      >
+                        {closingProject ? "Closing..." : "Close Job"}
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -3630,10 +3662,15 @@ export default function JobDetailPage() {
                               <td className="py-3 px-4 text-[#2c353f]">{milestone.name || milestone.description || "Milestone"}</td>
                               <td className="py-3 px-4 text-[#6b6b6b]">{formatDate(milestone.createdAt)}</td>
                               <td className="py-3 px-4">
+                                {milestone.cancelRequestStatus === "pending" && (
+                                  <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] px-2 py-0">
+                                    Cancellation Requested
+                                  </Badge>
+                                )}
                                 {milestone.status === "awaiting-accept" && (
                                   <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] px-2 py-0">Funded</Badge>
                                 )}
-                                {milestone.status === "in-progress" && (
+                                {milestone.status === "in-progress" && milestone.cancelRequestStatus !== "pending" && (
                                   <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-2 py-0">In Progress</Badge>
                                 )}
                                 {milestone.status === "delivered" && (
@@ -5753,6 +5790,33 @@ export default function JobDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Client: Close job confirmation (all milestones cancelled) */}
+      <AlertDialog open={showCloseJobConfirm} onOpenChange={(open) => !open && setShowCloseJobConfirm(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-['Poppins',sans-serif]">Close job?</AlertDialogTitle>
+            <AlertDialogDescription className="font-['Poppins',sans-serif]">
+              All milestones are cancelled. Closing this job will mark the project as closed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]" disabled={closingProject}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={async () => {
+                await handleCloseProject();
+                setShowCloseJobConfirm(false);
+              }}
+              disabled={closingProject}
+              className="font-['Poppins',sans-serif] bg-red-600 hover:bg-red-700"
+            >
+              {closingProject ? "Closing..." : "Yes, Close Job"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Pro: Accept/Reject milestone cancel request confirmation */}
       <AlertDialog open={!!cancelResponseConfirm} onOpenChange={(open) => !open && setCancelResponseConfirm(null)}>
         <AlertDialogContent className="font-['Poppins',sans-serif]">
@@ -6702,17 +6766,26 @@ export default function JobDetailPage() {
                 Cancel
               </Button>
               <Button
+                disabled={sendingCancelRequest}
                 className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
                 onClick={async () => {
                   if (!cancelRequestMilestone) return;
+                  const targetMilestone = cancelRequestMilestone;
+                  const reason = cancelRequestReason;
+                  const jobId = job.id;
+                  // Close immediately for responsive UX; send request in background.
+                  setShowCancelRequestModal(false);
+                  setCancelRequestMilestone(null);
+                  setCancelRequestReason("");
+                  setSendingCancelRequest(true);
+                  toast.success("Cancel request sent");
                   try {
-                    await requestMilestoneCancel(job.id, cancelRequestMilestone.id, cancelRequestReason);
-                    toast.success("Cancel request sent");
-                    setShowCancelRequestModal(false);
-                    setCancelRequestMilestone(null);
-                    setCancelRequestReason("");
+                    await requestMilestoneCancel(jobId, targetMilestone.id, reason);
                   } catch (e: any) {
                     toast.error(e?.message || "Failed to send cancel request");
+                    await fetchJobById(job.slug || job.id);
+                  } finally {
+                    setSendingCancelRequest(false);
                   }
                 }}
               >
