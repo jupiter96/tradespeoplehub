@@ -110,6 +110,8 @@ const jobSchema = new mongoose.Schema(
       enum: ['open', 'awaiting-accept', 'in-progress', 'delivered', 'completed', 'cancelled', 'closed'],
       default: 'open',
     },
+    /** Set when the job first reaches `completed` (all milestones released); used for review time limits */
+    completedAt: { type: Date, default: null },
     clientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -170,6 +172,17 @@ const jobSchema = new mongoose.Schema(
     clientReviewRating: { type: Number, min: 1, max: 5, default: null },
     clientReviewComment: { type: String, trim: true, default: '' },
     clientReviewAt: { type: Date, default: null },
+    /** Professional's public review of the client (buyer), same shape as order.metadata.buyerReview */
+    buyerReview: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: { type: String, trim: true, default: '' },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reviewerName: { type: String, trim: true, default: '' },
+      reviewedAt: { type: Date, default: null },
+    },
+    /** Pro's one-time public response to the client's review (mirrors Order.professionalResponse) */
+    professionalReviewResponse: { type: String, trim: true, default: '' },
+    professionalReviewResponseAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

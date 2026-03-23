@@ -161,6 +161,17 @@ export interface Job {
   clientReviewRating?: number;
   clientReviewComment?: string;
   clientReviewAt?: string;
+  /** When the job first reached completed (for review windows) */
+  completedAt?: string;
+  /** Professional's review of the client */
+  buyerReview?: {
+    rating: number;
+    comment?: string;
+    reviewerName?: string;
+    reviewedAt?: string;
+  };
+  professionalResponse?: string;
+  professionalResponseDate?: string;
 }
 
 interface JobsContextType {
@@ -186,6 +197,7 @@ interface JobsContextType {
   getAvailableJobs: () => Job[];
   getProfessionalQuotes: (professionalId: string) => { job: Job; quote: JobQuote }[];
   getProfessionalActiveJobs: (professionalId: string) => Job[];
+  getProfessionalCompletedJobs: (professionalId: string) => Job[];
   awardJobWithMilestone: (
     jobId: string,
     quoteId: string,
@@ -212,6 +224,8 @@ interface JobsContextType {
   approveMilestoneDelivery: (jobId: string, milestoneId: string) => Promise<void>;
   requestMilestoneRevision: (jobId: string, milestoneId: string, revisionMessage: string, files?: File[]) => Promise<void>;
   submitClientJobReview: (jobIdOrSlug: string, rating: number, comment: string) => Promise<void>;
+  submitProfessionalJobBuyerReview: (jobIdOrSlug: string, rating: number, comment: string) => Promise<void>;
+  respondToJobClientReview: (jobIdOrSlug: string, response: string) => Promise<void>;
 }
 
 const JobsContext = createContext<JobsContextType | undefined>(undefined);
@@ -549,13 +563,6 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           (job.quotes || []).some((q) => q.professionalId === professionalId)
         );
       }
-      if (job.status === "completed") {
-        return (
-          job.awardedProfessionalId === professionalId ||
-          (job.quotes || []).some((q) => q.professionalId === professionalId) ||
-          (job.milestoneDeliveries || []).some((d) => d?.deliveredBy === professionalId)
-        );
-      }
       if (job.status === 'in-progress') {
         return (
           job.awardedProfessionalId === professionalId ||
@@ -594,6 +601,25 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         );
       }
       return false;
+    });
+
+  const getProfessionalCompletedJobs = (professionalId: string): Job[] =>
+    jobs.filter((job) => {
+      if (job.status !== 'completed') return false;
+      const pid = String(professionalId || '');
+      const toIdString = (v: unknown) => (v == null ? '' : String(v));
+      const getAwardedProId = (j: any) =>
+        j?.awardedProfessionalId ?? j?.awardedProfessional?.id ?? j?.awardedProfessional?._id;
+      const getQuoteProId = (q: any) =>
+        q?.professionalId ?? q?.professional?.id ?? q?.professional?._id;
+      const getDeliveredById = (d: any) =>
+        d?.deliveredBy ?? d?.deliveredById ?? d?.deliveredBy?.id ?? d?.deliveredBy?._id;
+
+      return (
+        toIdString(getAwardedProId(job as any)) === pid ||
+        (job.quotes || []).some((q) => toIdString(getQuoteProId(q)) === pid) ||
+        (job.milestoneDeliveries || []).some((d) => toIdString(getDeliveredById(d)) === pid)
+      );
     });
 
   const normalizeAvatar = (value?: string) =>
@@ -1006,6 +1032,63 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const submitProfessionalJobBuyerReview = async (jobIdOrSlug: string, rating: number, comment: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobIdOrSlug}/buyer-review`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ rating, comment: comment.trim() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to submit review");
+    }
+    const data = await res.json().catch(() => ({}));
+    const updated = data.job as Job | undefined;
+    if (!updated?.id) {
+      throw new Error("Invalid response from server");
+    }
+    setJobs((prev) => {
+      const idx = prev.findIndex(
+        (j) => j.id === updated.id || j.slug === updated.slug || j.id === jobIdOrSlug || j.slug === jobIdOrSlug
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = updated;
+        return next;
+      }
+      return [updated, ...prev];
+    });
+  };
+
+  const respondToJobClientReview = async (jobIdOrSlug: string, response: string): Promise<void> => {
+    const res = await fetch(resolveApiUrl(`/api/jobs/${jobIdOrSlug}/respond-to-review`), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ response: response.trim() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Failed to submit response");
+    }
+    const data = await res.json().catch(() => ({}));
+    const updated = data.job as Job | undefined;
+    if (updated?.id) {
+      setJobs((prev) => {
+        const idx = prev.findIndex(
+          (j) => j.id === updated.id || j.slug === updated.slug || j.id === jobIdOrSlug || j.slug === jobIdOrSlug
+        );
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = updated;
+          return next;
+        }
+        return [updated, ...prev];
+      });
+    }
+  };
+
   return (
     <JobsContext.Provider
       value={{
@@ -1026,6 +1109,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         getAvailableJobs,
         getProfessionalQuotes,
         getProfessionalActiveJobs,
+        getProfessionalCompletedJobs,
         awardJobWithMilestone,
         awardJobWithoutMilestone,
         acceptAward,
@@ -1046,6 +1130,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         approveMilestoneDelivery,
         requestMilestoneRevision,
         submitClientJobReview,
+        submitProfessionalJobBuyerReview,
+        respondToJobClientReview,
       }}
     >
       {children}

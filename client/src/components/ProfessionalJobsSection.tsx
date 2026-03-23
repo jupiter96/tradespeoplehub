@@ -17,8 +17,8 @@ import {
   MapPin,
   Briefcase,
   CheckCircle,
-  Star,
   Send,
+  Archive,
 } from "lucide-react";
 import {
   Select,
@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { formatNumber } from "../utils/formatNumber";
 import { useCurrency } from "./CurrencyContext";
 import { formatJobLocationCityOnly } from "./orders/utils";
 import JobDeliverWorkModal from "./JobDeliverWorkModal";
@@ -43,9 +42,197 @@ import {
   proCanRequestMilestones,
 } from "./JobMilestonePaymentDialogs";
 
+type ProMyJobListCardMode = "active" | "completed";
+
+function ProMyJobListCard({
+  job,
+  mode,
+  userInfoId,
+  onDeliverWork,
+  onRequestMilestones,
+}: {
+  job: Job;
+  mode: ProMyJobListCardMode;
+  userInfoId?: string;
+  onDeliverWork?: () => void;
+  onRequestMilestones?: () => void;
+}) {
+  const navigate = useNavigate();
+  const { startConversation } = useMessenger();
+  const { formatPriceWhole } = useCurrency();
+
+  const getTruncatedDescription = (description: string, maxLength: number = 250) => {
+    if (!description) return "";
+    const singleLine = description.replace(/\s+/g, " ").trim();
+    if (singleLine.length <= maxLength) return singleLine;
+    return singleLine.slice(0, maxLength) + "...";
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return "just now";
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) return "just now";
+    if (diffMinutes === 1) return "a minute ago";
+    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours === 1) return "an hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "a day ago";
+    return `${diffDays} days ago`;
+  };
+
+  return (
+    <div
+      className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
+      onClick={() => navigate(`/job/${job.slug || job.id}?tab=payment`)}
+    >
+      <div className="flex flex-col md:flex-row gap-5">
+        <div className="md:w-[70%] min-w-0">
+          <div>
+            <div className="mb-1 flex w-full min-w-0 flex-nowrap items-center gap-2">
+              <h3 className="min-w-0 truncate font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
+                {job.title}
+              </h3>
+              <JobUrgentTitleBadge timing={job.timing} />
+            </div>
+
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 flex flex-wrap items-center gap-x-4 gap-y-0.5">
+              <span className="text-[#6b6b6b]">Budget: &nbsp; </span>
+              <span className="font-bold">
+                {job.budgetMin != null && job.budgetMax != null
+                  ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
+                  : formatPriceWhole(job.budgetAmount ?? 0)}
+              </span>
+            </p>
+
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
+              {getTruncatedDescription(job.description)}
+            </p>
+
+            <div className="mt-1">
+              <JobSkillBadges categories={job.categories} jobSlug={job.slug} jobId={job.id} />
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 mt-3 flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" />
+                {formatJobLocationCityOnly(job)}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4" />
+                <span>{getRelativeTime(job.postedAt)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="md:w-[30%] flex flex-col gap-3 text-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-end w-full">
+            <ProActiveJobListStatusBadge status={job.status} />
+          </div>
+          <div className="mt-auto flex items-center gap-2 flex-wrap">
+            <Button
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation();
+                if (job.clientId) {
+                  startConversation({
+                    id: job.clientId,
+                    name: job.clientName || "Client",
+                    avatar: job.clientAvatar,
+                    jobId: job.id,
+                    jobTitle: job.title,
+                  });
+                }
+              }}
+              className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Message&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+            </Button>
+            {mode === "active" && (
+              <>
+                {proCanRequestMilestones(job, userInfoId) && onRequestMilestones && (
+                  <Button
+                    type="button"
+                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                      e.stopPropagation();
+                      onRequestMilestones();
+                    }}
+                    variant="outline"
+                    className="bg-green-500 text-white hover:bg-green-600 hover:text-white border-green-500 font-['Poppins',sans-serif]"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Request milestones
+                  </Button>
+                )}
+                {job.status === "in-progress" && onDeliverWork && (
+                  <Button
+                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                      e.stopPropagation();
+                      onDeliverWork();
+                    }}
+                    variant="outline"
+                    className="font-['Poppins',sans-serif] border-[#1976D2] text-[#1976D2] hover:bg-[#E3F2FD] hover:text-[#1976D2]"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Deliver Work
+                  </Button>
+                )}
+                {job.status === "delivered" && (
+                  <Button
+                    onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                      e.stopPropagation();
+                      navigate(`/job/${job.slug || job.id}?tab=payment`);
+                    }}
+                    variant="outline"
+                    className="font-['Poppins',sans-serif] border-[#1976D2] text-[#1976D2] hover:bg-[#E3F2FD] hover:text-[#1976D2]"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    &nbsp; &nbsp; &nbsp; View Delivery &nbsp; &nbsp; &nbsp; 
+                  </Button>
+                )}
+              </>
+            )}
+            {mode === "completed" && (
+              <Button
+                onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  navigate(`/job/${job.slug || job.id}?tab=review`);
+                }}
+                variant="outline"
+                className="font-['Poppins',sans-serif] border-[#1976D2] text-[#1976D2] hover:bg-[#E3F2FD] hover:text-[#1976D2]"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                &nbsp; &nbsp; &nbsp; View Review &nbsp; &nbsp; &nbsp; &nbsp; 
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfessionalJobsSection() {
   const [activeTab, setActiveTab] = useState("available");
-  const { getProfessionalActiveJobs, getProfessionalQuotes, getAvailableJobs } = useJobs();
+  const {
+    getProfessionalActiveJobs,
+    getProfessionalCompletedJobs,
+    getProfessionalQuotes,
+    getAvailableJobs,
+  } = useJobs();
   const { userInfo } = useAccount();
 
   // Get counts for badges (Available Jobs: exclude jobs the pro already quoted)
@@ -54,6 +241,7 @@ export default function ProfessionalJobsSection() {
   ).length;
   const myQuotesTotalCount = getProfessionalQuotes(userInfo?.id || "").length;
   const activeJobsCount = getProfessionalActiveJobs(userInfo?.id || "").length;
+  const completedJobsCount = getProfessionalCompletedJobs(userInfo?.id || "").length;
   const [myQuotesVisibleCount, setMyQuotesVisibleCount] = useState(myQuotesTotalCount);
 
   return (
@@ -64,14 +252,14 @@ export default function ProfessionalJobsSection() {
           My Jobs
         </h2>
         <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
-          Manage available jobs, your quotes, and active projects
+          Manage available jobs, your quotes, active projects, and completed work
         </p>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-          <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-3 bg-gray-100 p-1 rounded-xl h-auto gap-1">
+          <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-2 lg:grid-cols-4 bg-gray-100 p-1 rounded-xl h-auto gap-1">
             <TabsTrigger
               value="available"
               className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
@@ -117,6 +305,21 @@ export default function ProfessionalJobsSection() {
                 />
               )}
             </TabsTrigger>
+            <TabsTrigger
+              value="completed"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <Archive className="w-4 h-4" />
+              Completed Jobs
+              {completedJobsCount > 0 && (
+                <StatusCountBadge
+                  status="completed"
+                  count={completedJobsCount}
+                  variant="pro"
+                  className="ml-2"
+                />
+              )}
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -134,6 +337,10 @@ export default function ProfessionalJobsSection() {
         <TabsContent value="active" className="mt-0">
           <ActiveJobsSection />
         </TabsContent>
+
+        <TabsContent value="completed" className="mt-0">
+          <CompletedJobsSection />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -141,11 +348,8 @@ export default function ProfessionalJobsSection() {
 
 // Active Jobs Section Component
 function ActiveJobsSection() {
-  const navigate = useNavigate();
   const { getProfessionalActiveJobs, fetchJobById } = useJobs();
   const { userInfo } = useAccount();
-  const { startConversation } = useMessenger();
-  const { formatPriceWhole } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -179,43 +383,6 @@ function ActiveJobsSection() {
       }
       return sortDirection === "asc" ? comparison : -comparison;
     });
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const getRelativeTime = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    if (diffMs < 0) return "just now";
-
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    if (diffMinutes < 1) return "just now";
-    if (diffMinutes === 1) return "a minute ago";
-    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
-
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours === 1) return "an hour ago";
-    if (diffHours < 24) return `${diffHours} hours ago`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return "a day ago";
-    return `${diffDays} days ago`;
-  };
-
-  const getTruncatedDescription = (description: string, maxLength: number = 250) => {
-    if (!description) return "";
-    const singleLine = description.replace(/\s+/g, " ").trim();
-    if (singleLine.length <= maxLength) return singleLine;
-    return singleLine.slice(0, maxLength) + "...";
-  };
 
   return (
     <div>
@@ -285,141 +452,19 @@ function ActiveJobsSection() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredJobs.map((job) => {
-            const acceptedQuote = job.quotes.find(
-              (q) => q.professionalId === userInfo?.id && q.status === "accepted"
-            );
-
-            return (
-              <div
-                key={job.id}
-                className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:border-[#FE8A0F]"
-                onClick={() => navigate(`/job/${job.slug || job.id}?tab=payment`)}
-              >
-                <div className="flex flex-col md:flex-row gap-5">
-                  {/* Left column (70%) */}
-                  <div className="md:w-[70%] min-w-0">
-                    <div>
-                      <div className="mb-1 flex w-full min-w-0 flex-nowrap items-center gap-2">
-                        <h3 className="min-w-0 truncate font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">
-                          {job.title}
-                        </h3>
-                        <JobUrgentTitleBadge timing={job.timing} />
-                      </div>
-
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mb-3 flex flex-wrap items-center gap-x-4 gap-y-0.5">
-                        <span className="text-[#6b6b6b]">Budget: &nbsp; </span>
-                        <span className="font-bold">
-                          {job.budgetMin != null && job.budgetMax != null
-                            ? `${formatPriceWhole(job.budgetMin)} - ${formatPriceWhole(job.budgetMax)}`
-                            : formatPriceWhole(job.budgetAmount ?? 0)}
-                        </span>
-                      </p>
-
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-3">
-                        {getTruncatedDescription(job.description)}
-                      </p>
-
-                      <div className="mt-1">
-                        <JobSkillBadges
-                          categories={job.categories}
-                          jobSlug={job.slug}
-                          jobId={job.id}
-                        />
-                      </div>
-
-                      <div className="pt-2 border-t border-gray-100 mt-3 flex flex-wrap items-center gap-3 text-[13px] text-[#6b6b6b] font-['Poppins',sans-serif]">
-                        {/* <div className="flex items-center gap-1.5">
-                          
-                        </div> */}
-
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-4 h-4" />
-                          {formatJobLocationCityOnly(job)}
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4" />
-                          <span>{getRelativeTime(job.postedAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right column (30%) */}
-                  <div
-                    className="md:w-[30%] flex flex-col gap-3 text-center"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex justify-end w-full">
-                      <ProActiveJobListStatusBadge status={job.status} />
-                    </div>
-                    <div className="mt-auto flex items-center gap-2 flex-wrap">
-                      <Button
-                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                          e.stopPropagation();
-                          if (job.clientId) {
-                            startConversation({
-                              id: job.clientId,
-                              name: job.clientName || "Client",
-                              avatar: job.clientAvatar,
-                              jobId: job.id,
-                              jobTitle: job.title,
-                            });
-                          }
-                        }}
-                        className="bg-[#FE8A0F] hover:bg-[#FFB347] hover:shadow-[0_0_20px_rgba(254,138,15,0.6)] transition-all duration-300 font-['Poppins',sans-serif]"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        &nbsp;  &nbsp;   &nbsp;  &nbsp;   &nbsp; Message&nbsp;  &nbsp; &nbsp;  &nbsp;   &nbsp;  &nbsp; 
-                      </Button>
-                      {proCanRequestMilestones(job, userInfo?.id) && (
-                        <Button
-                          type="button"
-                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                            e.stopPropagation();
-                            setRequestMilestoneJob(job);
-                          }}
-                          variant="outline"
-                          className="bg-green-500 text-white hover:bg-green-600 hover:text-white border-green-500 font-['Poppins',sans-serif]"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Request milestones
-                        </Button>
-                      )}
-                      {job.status === "in-progress" && (
-                        <Button
-                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                            e.stopPropagation();
-                            setJobForDeliver(job);
-                            setShowDeliverWorkModal(true);
-                          }}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] border-[#1976D2] text-[#1976D2] hover:bg-[#E3F2FD] hover:text-[#1976D2]"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Deliver Work
-                        </Button>
-                      )}
-                      {job.status === "delivered" && (
-                        <Button
-                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                            e.stopPropagation();
-                            navigate(`/job/${job.slug || job.id}?tab=payment`);
-                          }}
-                          variant="outline"
-                          className="font-['Poppins',sans-serif] border-[#1976D2] text-[#1976D2] hover:bg-[#E3F2FD] hover:text-[#1976D2]"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Delivery
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {filteredJobs.map((job) => (
+            <ProMyJobListCard
+              key={job.id}
+              job={job}
+              mode="active"
+              userInfoId={userInfo?.id}
+              onDeliverWork={() => {
+                setJobForDeliver(job);
+                setShowDeliverWorkModal(true);
+              }}
+              onRequestMilestones={() => setRequestMilestoneJob(job)}
+            />
+          ))}
         </div>
       )}
 
@@ -444,6 +489,108 @@ function ActiveJobsSection() {
         jobId={requestMilestoneJob?.id}
         fetchJobKey={requestMilestoneJob?.slug || requestMilestoneJob?.id || ""}
       />
+    </div>
+  );
+}
+
+function CompletedJobsSection() {
+  const { getProfessionalCompletedJobs } = useJobs();
+  const { userInfo } = useAccount();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<string>("completed");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  const completedJobs = getProfessionalCompletedJobs(userInfo?.id || "");
+
+  const filteredJobs = completedJobs
+    .filter((job) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.location.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.postedAt).getTime() - new Date(b.postedAt).getTime();
+          break;
+        case "completed":
+          comparison =
+            new Date(a.completedAt || a.postedAt).getTime() -
+            new Date(b.completedAt || b.postedAt).getTime();
+          break;
+        case "budget":
+          comparison = (a.budgetMax ?? a.budgetAmount) - (b.budgetMax ?? b.budgetAmount);
+          break;
+        default:
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+  return (
+    <div>
+      <div className="bg-gradient-to-br from-slate-50 to-white border-2 border-slate-200 rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">Completed Projects</p>
+            <h3 className="font-['Poppins',sans-serif] text-[32px] text-[#2c353f]">{completedJobs.length}</h3>
+          </div>
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
+            <Archive className="w-8 h-8 text-slate-600" />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-3 mb-6">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" />
+          <Input
+            placeholder="Search completed jobs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 font-['Poppins',sans-serif]"
+          />
+        </div>
+
+        <Select value={sortField} onValueChange={setSortField}>
+          <SelectTrigger className="w-full md:w-[200px] font-['Poppins',sans-serif]">
+            <ArrowUpDown className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="completed">Completed date</SelectItem>
+            <SelectItem value="date">Posted date</SelectItem>
+            <SelectItem value="budget">Budget</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="outline"
+          onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+          className="font-['Poppins',sans-serif]"
+        >
+          {sortDirection === "asc" ? "↑" : "↓"}
+        </Button>
+      </div>
+
+      {filteredJobs.length === 0 ? (
+        <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
+          <Archive className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">No completed jobs</h3>
+          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
+            {searchQuery ? "No jobs match your search" : "Finished jobs will appear here after all milestones are released"}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredJobs.map((job) => (
+            <ProMyJobListCard key={job.id} job={job} mode="completed" userInfoId={userInfo?.id} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

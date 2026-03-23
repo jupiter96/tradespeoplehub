@@ -229,6 +229,20 @@ function toJobResponse(doc) {
         : undefined,
     clientReviewComment: job.clientReviewAt && job.clientReviewComment ? String(job.clientReviewComment) : undefined,
     clientReviewAt: job.clientReviewAt ? new Date(job.clientReviewAt).toISOString() : undefined,
+    completedAt: job.completedAt ? new Date(job.completedAt).toISOString() : undefined,
+    buyerReview:
+      job.buyerReview && job.buyerReview.reviewedAt
+        ? {
+            rating: job.buyerReview.rating,
+            comment: job.buyerReview.comment || '',
+            reviewerName: job.buyerReview.reviewerName || '',
+            reviewedAt: new Date(job.buyerReview.reviewedAt).toISOString(),
+          }
+        : undefined,
+    professionalResponse: job.professionalReviewResponse ? String(job.professionalReviewResponse) : undefined,
+    professionalResponseDate: job.professionalReviewResponseAt
+      ? new Date(job.professionalReviewResponseAt).toISOString()
+      : undefined,
   };
 }
 
@@ -823,28 +837,22 @@ router.get('/', authenticateToken, async (req, res) => {
       const user = await User.findById(req.user.id).select('sectors sector').lean();
       const rawSectorValues =
         user?.sectors?.length ? user.sectors : user?.sector ? [user.sector] : [];
-      if (!rawSectorValues.length) {
-        return res.json([]);
-      }
 
       const sectorObjectIds = rawSectorValues
         .filter((val) => mongoose.Types.ObjectId.isValid(val))
         .map((val) => new mongoose.Types.ObjectId(val));
 
-      if (!sectorObjectIds.length) {
-        return res.json([]);
+      const orClauses = [
+        {
+          status: { $in: ['awaiting-accept', 'in-progress', 'delivered', 'completed'] },
+          awardedProfessionalId: new mongoose.Types.ObjectId(req.user.id),
+        },
+      ];
+      // If pro has sectors configured, also include open jobs in matching sectors
+      if (sectorObjectIds.length > 0) {
+        orClauses.unshift({ status: 'open', sector: { $in: sectorObjectIds } });
       }
-
-      // Include: active jobs in sector (to quote) OR jobs awarded to this pro (awaiting-accept / in-progress)
-      const query = {
-        $or: [
-          { status: 'open', sector: { $in: sectorObjectIds } },
-          {
-            status: { $in: ['awaiting-accept', 'in-progress'] },
-            awardedProfessionalId: new mongoose.Types.ObjectId(req.user.id),
-          },
-        ],
-      };
+      const query = { $or: orClauses };
       const jobs = await Job.find(query).sort({ postedAt: -1 }).lean();
       for (const job of jobs) {
         await ensureJobSlug(job);
@@ -912,6 +920,52 @@ async function findJobByIdOrSlug(idOrSlug) {
     if (byId) return byId;
   }
   return Job.findOne({ slug: idOrSlug }).lean();
+}
+
+/** Job Mongoose document by 24-char hex id or slug (avoids CastError when :id is a slug string). */
+async function loadJobDocByIdOrSlug(idOrSlug) {
+  if (idOrSlug == null || idOrSlug === '') return null;
+  const s = String(idOrSlug).trim();
+  if (!s) return null;
+  let job = null;
+  if (isMongoId(s)) {
+    job = await Job.findById(s);
+  }
+  if (!job) {
+    job = await Job.findOne({ slug: s });
+  }
+  return job;
+}
+
+const REVIEW_CUTOFF_DAYS = 90;
+function isJobCompletedOver90DaysAgo(job) {
+  if (!job || !job.completedAt) return false;
+  const completedAt = new Date(job.completedAt).getTime();
+  if (Number.isNaN(completedAt)) return false;
+  const days = (Date.now() - completedAt) / (24 * 60 * 60 * 1000);
+  return days >= REVIEW_CUTOFF_DAYS;
+}
+
+/** Backfill Review row from legacy Job-only client review fields */
+async function ensureJobReviewDocument(job) {
+  if (!job || !job._id) return null;
+  let doc = await Review.findOne({ job: job._id });
+  if (doc) return doc;
+  if (!job.clientReviewAt || job.clientReviewRating == null || !job.awardedProfessionalId) return null;
+  const client = await User.findById(job.clientId).select('firstName lastName tradingName').lean();
+  if (!client) return null;
+  doc = new Review({
+    professional: job.awardedProfessionalId,
+    job: job._id,
+    order: null,
+    service: null,
+    reviewer: job.clientId,
+    reviewerName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous',
+    rating: Number(job.clientReviewRating),
+    comment: (job.clientReviewComment && String(job.clientReviewComment).trim()) || '',
+  });
+  await doc.save();
+  return doc;
 }
 
 // Shared files (client + awarded pro only) – multer for job-files
@@ -1049,41 +1103,269 @@ router.post('/:id/files', authenticateToken, jobFilesUpload.single('file'), asyn
   }
 });
 
-// Client: submit a one-time review after the job is completed (all milestones released)
+// Get job review bundle (client review + professional client review)
+router.get('/:id/review', authenticateToken, async (req, res) => {
+  try {
+    const idOrSlug = req.params.id;
+    const job = await loadJobDocByIdOrSlug(idOrSlug);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    const uid = req.user.id.toString();
+    const isClient = job.clientId?.toString() === uid;
+    const isPro = job.awardedProfessionalId?.toString() === uid;
+    if (!isClient && !isPro) {
+      return res.status(403).json({ error: 'Not allowed to view reviews for this job' });
+    }
+
+    let review = await Review.findOne({ job: job._id })
+      .populate('reviewer', 'firstName lastName tradingName avatar')
+      .populate('responseBy', 'firstName lastName tradingName avatar');
+    if (!review) {
+      const backfill = await ensureJobReviewDocument(job);
+      if (backfill) {
+        review = await Review.findById(backfill._id)
+          .populate('reviewer', 'firstName lastName tradingName avatar')
+          .populate('responseBy', 'firstName lastName tradingName avatar');
+      }
+    }
+
+    const buyerReview =
+      job.buyerReview && job.buyerReview.reviewedAt
+        ? {
+            rating: job.buyerReview.rating,
+            comment: job.buyerReview.comment || '',
+            reviewedBy: job.buyerReview.reviewedBy?.toString?.() || job.buyerReview.reviewedBy,
+            reviewerName: job.buyerReview.reviewerName || '',
+            reviewedAt: job.buyerReview.reviewedAt
+              ? new Date(job.buyerReview.reviewedAt).toISOString()
+              : undefined,
+          }
+        : null;
+
+    if (!review) {
+      return res.json({ review: null, buyerReview });
+    }
+
+    return res.json({
+      review: {
+        id: review._id.toString(),
+        professional: review.professional.toString(),
+        job: review.job ? review.job.toString() : job._id.toString(),
+        reviewer: review.reviewer
+          ? {
+              id: review.reviewer._id.toString(),
+              name: review.reviewerName,
+              avatar: review.reviewer.avatar,
+            }
+          : {
+              name: review.reviewerName,
+            },
+        rating: review.rating,
+        comment: review.comment,
+        response: review.response,
+        responseBy: review.responseBy
+          ? {
+              id: review.responseBy._id.toString(),
+              name:
+                `${review.responseBy.firstName || ''} ${review.responseBy.lastName || ''}`.trim() ||
+                review.responseBy.tradingName,
+              avatar: review.responseBy.avatar,
+            }
+          : null,
+        responseAt: review.responseAt ? new Date(review.responseAt).toISOString() : undefined,
+        hasResponded: review.hasResponded || false,
+        createdAt: new Date(review.createdAt).toISOString(),
+      },
+      buyerReview,
+    });
+  } catch (err) {
+    console.error('[Jobs] GET review error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to fetch review' });
+  }
+});
+
+// Client: submit or update review after the job is completed
 router.post('/:id/client-review', authenticateToken, requireRole(['client']), async (req, res) => {
   try {
     const idOrSlug = req.params.id;
-    let job = await Job.findById(idOrSlug);
-    if (!job) job = await Job.findOne({ slug: idOrSlug });
+    const job = await loadJobDocByIdOrSlug(idOrSlug);
     if (!job) return res.status(404).json({ error: 'Job not found' });
     if (job.clientId?.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not allowed to review this job' });
     }
     if (job.status !== 'completed') {
-      return res.status(400).json({ error: 'You can only leave a review after the job is completed' });
+      return res.status(400).json({ error: 'Can only review completed jobs' });
+    }
+    if (isJobCompletedOver90DaysAgo(job)) {
+      return res.status(400).json({ error: 'Reviews can only be submitted within 90 days of job completion.' });
     }
     if (!job.awardedProfessionalId) {
       return res.status(400).json({ error: 'No professional to review' });
     }
-    if (job.clientReviewAt) {
-      return res.status(400).json({ error: 'You have already submitted a review for this job' });
-    }
+
     const rating = Number(req.body.rating);
-    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Valid rating (1-5) is required' });
     }
-    const comment = String(req.body.comment || '')
-      .trim()
-      .slice(0, 2000);
+    const comment = String(req.body.comment || '').trim();
+
+    const client = await User.findById(req.user.id);
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    const reviewerName =
+      `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.tradingName || 'Anonymous';
+
+    let reviewDoc = await Review.findOne({ job: job._id });
+    if (reviewDoc) {
+      reviewDoc.rating = rating;
+      reviewDoc.comment = comment;
+      reviewDoc.reviewer = client._id;
+      reviewDoc.reviewerName = reviewerName;
+    } else {
+      reviewDoc = new Review({
+        professional: job.awardedProfessionalId,
+        job: job._id,
+        order: null,
+        service: null,
+        reviewer: client._id,
+        reviewerName,
+        rating,
+        comment,
+      });
+    }
+    await reviewDoc.save();
+
     job.clientReviewRating = rating;
     job.clientReviewComment = comment;
-    job.clientReviewAt = new Date();
+    if (!job.clientReviewAt) job.clientReviewAt = new Date();
     await job.save();
     emitJobUpdated(job);
-    return res.json({ job: toJobResponse(job) });
+    return res.json({
+      message: 'Review submitted successfully',
+      job: toJobResponse(job),
+      review: {
+        id: reviewDoc._id,
+        rating: reviewDoc.rating,
+        comment: reviewDoc.comment,
+        reviewerName: reviewDoc.reviewerName,
+        createdAt: reviewDoc.createdAt,
+      },
+    });
   } catch (err) {
     console.error('[Jobs] client-review error:', err);
     return res.status(500).json({ error: err.message || 'Failed to submit review' });
+  }
+});
+
+// Professional: submit review for client
+router.post('/:id/buyer-review', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const idOrSlug = req.params.id;
+    const job = await loadJobDocByIdOrSlug(idOrSlug);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.awardedProfessionalId?.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to review this job' });
+    }
+    if (job.status !== 'completed') {
+      return res.status(400).json({ error: 'Can only review completed jobs' });
+    }
+    if (isJobCompletedOver90DaysAgo(job)) {
+      return res.status(400).json({ error: 'Reviews can only be submitted within 90 days of job completion.' });
+    }
+
+    const rating = Number(req.body.rating);
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Valid rating (1-5) is required' });
+    }
+
+    const professional = await User.findById(req.user.id);
+    if (!professional) {
+      return res.status(404).json({ error: 'Professional not found' });
+    }
+
+    const comment = String(req.body.comment || '').trim();
+    job.buyerReview = {
+      rating,
+      comment,
+      reviewedBy: req.user.id,
+      reviewerName: professional.tradingName || 'Professional',
+      reviewedAt: new Date(),
+    };
+    job.markModified('buyerReview');
+    await job.save();
+    emitJobUpdated(job);
+
+    return res.json({
+      message: 'Client review submitted successfully',
+      buyerReview: {
+        rating: job.buyerReview.rating,
+        comment: job.buyerReview.comment,
+        reviewedBy: job.buyerReview.reviewedBy?.toString?.(),
+        reviewerName: job.buyerReview.reviewerName,
+        reviewedAt: job.buyerReview.reviewedAt ? new Date(job.buyerReview.reviewedAt).toISOString() : undefined,
+      },
+      job: toJobResponse(job),
+    });
+  } catch (err) {
+    console.error('[Jobs] buyer-review error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to submit client review' });
+  }
+});
+
+// Professional: respond to client review (one-time)
+router.post('/:id/respond-to-review', authenticateToken, requireRole(['professional']), async (req, res) => {
+  try {
+    const idOrSlug = req.params.id;
+    const job = await loadJobDocByIdOrSlug(idOrSlug);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    if (job.awardedProfessionalId?.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Not allowed to respond for this job' });
+    }
+
+    const { response } = req.body;
+    if (!response || !String(response).trim()) {
+      return res.status(400).json({ error: 'Response is required' });
+    }
+
+    if (job.status !== 'completed') {
+      return res.status(400).json({ error: 'Can only respond to reviews for completed jobs' });
+    }
+    if (isJobCompletedOver90DaysAgo(job)) {
+      return res.status(400).json({ error: 'Review responses can only be submitted within 90 days of job completion.' });
+    }
+
+    let reviewDoc = await Review.findOne({ job: job._id });
+    if (!reviewDoc) {
+      reviewDoc = await ensureJobReviewDocument(job);
+    }
+    if (!reviewDoc) {
+      return res.status(400).json({ error: 'No client review found for this job' });
+    }
+    if (reviewDoc.hasResponded) {
+      return res.status(400).json({ error: 'You have already responded to this review' });
+    }
+
+    reviewDoc.response = String(response).trim();
+    reviewDoc.responseBy = req.user.id;
+    reviewDoc.responseAt = new Date();
+    reviewDoc.hasResponded = true;
+    await reviewDoc.save();
+
+    job.professionalReviewResponse = reviewDoc.response;
+    job.professionalReviewResponseAt = reviewDoc.responseAt;
+    await job.save();
+    emitJobUpdated(job);
+
+    return res.json({
+      message: 'Response submitted successfully',
+      professionalResponse: reviewDoc.response,
+      professionalResponseDate: reviewDoc.responseAt,
+      job: toJobResponse(job),
+    });
+  } catch (err) {
+    console.error('[Jobs] respond-to-review error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to submit response' });
   }
 });
 
@@ -1092,8 +1374,7 @@ router.post('/:id/deliver-milestone', authenticateToken, requireRole(['professio
   const { unlinkSync } = await import('fs');
   try {
     const idOrSlug = req.params.id;
-    let job = await Job.findById(idOrSlug);
-    if (!job) job = await Job.findOne({ slug: idOrSlug });
+    const job = await loadJobDocByIdOrSlug(idOrSlug);
     if (!job) {
       if (req.files?.length) req.files.forEach((f) => { try { if (f.path) unlinkSync(f.path); } catch (_) {} });
       return res.status(404).json({ error: 'Job not found' });
@@ -1252,6 +1533,7 @@ router.patch('/:id/milestones/:milestoneId/delivery/approve', authenticateToken,
     const totalReleased = (job.milestones || []).filter((m) => m.status === 'released').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
     if (totalMilestones > 0 && totalReleased >= totalMilestones) {
       job.status = 'completed';
+      if (!job.completedAt) job.completedAt = new Date();
     }
     job.markModified('milestones');
     job.markModified('milestoneDeliveries');
@@ -1375,8 +1657,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const proSectorIdStrings = rawSectorValues.filter((val) => mongoose.Types.ObjectId.isValid(val));
     const jobSectorId = job.sector ? job.sector.toString() : null;
     const hasQuoted = isPro && (job.quotes || []).some((q) => q.professionalId && q.professionalId.toString() === req.user.id);
+    const isAwardedPro = isPro && job.awardedProfessionalId && job.awardedProfessionalId.toString() === req.user.id;
     const sectorMatch = !!jobSectorId && proSectorIdStrings.includes(jobSectorId);
-    const canView = isClient || (isPro && (sectorMatch || hasQuoted));
+    const canView = isClient || (isPro && (sectorMatch || hasQuoted || isAwardedPro));
     if (!canView) {
       return res.status(403).json({ error: 'Not allowed to view this job' });
     }
@@ -2885,6 +3168,7 @@ router.patch('/:id/milestones/:milestoneId', authenticateToken, requireRole(['cl
     const totalReleased = (job.milestones || []).filter((m) => m.status === 'released').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
     if (totalMilestones > 0 && totalReleased >= totalMilestones) {
       job.status = 'completed';
+      if (!job.completedAt) job.completedAt = new Date();
     }
     await job.save();
     emitJobUpdated(job);
@@ -3213,6 +3497,7 @@ router.patch('/:id/milestones/:milestoneId/respond-release', authenticateToken, 
     const totalReleased = (job.milestones || []).filter((m) => m.status === 'released').reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
     if (totalMilestones > 0 && totalReleased >= totalMilestones) {
       job.status = 'completed';
+      if (!job.completedAt) job.completedAt = new Date();
     }
     await job.save();
     emitJobUpdated(job);

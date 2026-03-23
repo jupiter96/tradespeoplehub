@@ -50,6 +50,7 @@ import {
   Trash2,
   Share2,
   Copy,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
@@ -129,6 +130,25 @@ type SocialShareLink = {
   imgAlt: string;
   imgSrc?: string;
   bgImageSrc?: string;
+};
+
+type JobReviewBundle = {
+  review: {
+    id: string;
+    rating: number;
+    comment: string;
+    response?: string | null;
+    responseAt?: string;
+    hasResponded?: boolean;
+    reviewer?: { id?: string; name?: string; avatar?: string };
+    createdAt?: string;
+  } | null;
+  buyerReview: {
+    rating: number;
+    comment: string;
+    reviewerName?: string;
+    reviewedAt?: string;
+  } | null;
 };
 
 function proPortfolioMediaUrl(url: string | undefined): string {
@@ -261,7 +281,7 @@ export default function JobDetailPage() {
   const { jobSlug } = useParams<{ jobSlug: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateJob, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision, submitClientJobReview } = useJobs();
+  const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateJob, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision, submitClientJobReview, submitProfessionalJobBuyerReview, respondToJobClientReview } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady, refreshUser } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
   const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
@@ -476,9 +496,16 @@ export default function JobDetailPage() {
   const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
   const [hideQuoteCreditsSliderPanel, setHideQuoteCreditsSliderPanel] = useState(false);
   const [showFundWalletModal, setShowFundWalletModal] = useState(false);
-  const [jobReviewRating, setJobReviewRating] = useState(0);
+  const [jobReviewCommunication, setJobReviewCommunication] = useState(0);
+  const [jobReviewServiceAsDescribed, setJobReviewServiceAsDescribed] = useState(0);
+  const [jobReviewBuyAgain, setJobReviewBuyAgain] = useState(0);
   const [jobReviewText, setJobReviewText] = useState("");
   const [jobReviewSubmitting, setJobReviewSubmitting] = useState(false);
+  const [jobReviewBundle, setJobReviewBundle] = useState<JobReviewBundle | null>(null);
+  const [proBuyerRating, setProBuyerRating] = useState(0);
+  const [proBuyerReviewText, setProBuyerReviewText] = useState("");
+  const [jobReviewResponseText, setJobReviewResponseText] = useState("");
+  const [jobReviewResponseSubmitting, setJobReviewResponseSubmitting] = useState(false);
 
   // Prevent background scroll when fullscreen viewer is open
   useEffect(() => {
@@ -668,6 +695,26 @@ export default function JobDetailPage() {
       setSearchParams(next, { replace: true });
     }
   }, [activeTab, job, showReviewTab, searchParams, setSearchParams]);
+
+  const refreshJobReviewBundle = useCallback(async () => {
+    if (!job?.slug && !job?.id) return;
+    const jid = job.slug || job.id;
+    try {
+      const res = await fetch(resolveApiUrl(`/api/jobs/${jid}/review`), { credentials: "include" });
+      if (!res.ok) {
+        setJobReviewBundle(null);
+        return;
+      }
+      setJobReviewBundle(await res.json());
+    } catch {
+      setJobReviewBundle(null);
+    }
+  }, [job?.slug, job?.id]);
+
+  useEffect(() => {
+    if (!job || job.status !== "completed" || !showReviewTab) return;
+    refreshJobReviewBundle();
+  }, [job?.id, job?.status, showReviewTab, refreshJobReviewBundle]);
 
   const fetchJobFiles = async () => {
     if (!job?.id || !showFileTab) return;
@@ -4009,6 +4056,31 @@ export default function JobDetailPage() {
                     </div>
                   </div>
                 )}
+
+                {job.status === "completed" && job.awardedProfessionalId && isAwardedProfessionalUser && (
+                  <div className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50/90 p-5 md:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <h3 className="font-['Poppins',sans-serif] text-[17px] md:text-[18px] font-semibold text-[#065f46] flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          Job completed
+                        </h3>
+                        <p className="font-['Poppins',sans-serif] text-[13px] md:text-[14px] text-[#047857] mt-1">
+                          {job.buyerReview?.reviewedAt
+                            ? "Thank you — your feedback has been saved."
+                            : `Share your experience working with ${job.clientName || "the client"}.`}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => handleTabChange("review")}
+                        className="shrink-0 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
+                      >
+                        {job.buyerReview?.reviewedAt ? "View review" : "Leave a review"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -4086,146 +4158,362 @@ export default function JobDetailPage() {
               </div>
             )}
 
-            {/* Review tab — completed jobs; client submits, professional reads */}
+            {/* Review tab — fully inline (no popup modals) */}
             {activeTab === "review" && showReviewTab && (
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-2">
-                  Review
-                </h2>
+                <h2 className="font-['Poppins',sans-serif] text-[20px] text-[#2c353f] mb-2">Review</h2>
                 <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-6">
                   {isActualJobClient
                     ? `Rate your experience with ${jobReviewProfessionalName} on this job.`
-                    : `Feedback from the client for "${job.title}".`}
+                    : `Leave feedback for the client and view their review for this completed job.`}
                 </p>
+                {isActualJobClient && (
+                  <>
+                    {job.clientReviewAt && job.clientReviewRating != null ? (
+                      <div className="flex flex-col space-y-6">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-['Poppins',sans-serif] text-[16px] text-blue-800 font-semibold">Your Review</h3>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-blue-600">
+                                Thank you for sharing your experience!
+                              </p>
+                            </div>
+                          </div>
+                        </div>
 
-                {isActualJobClient && job.clientReviewAt && job.clientReviewRating != null && (
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-5">
-                    <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f] mb-3">Your review</p>
-                    <div className="flex items-center gap-1 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-6 h-6 ${
-                            star <= (job.clientReviewRating || 0)
-                              ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                              : "fill-[#E5E5E5] text-[#E5E5E5]"
-                          }`}
-                        />
-                      ))}
-                      <span className="ml-2 font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                        {job.clientReviewRating}/5
-                      </span>
-                    </div>
-                    {job.clientReviewComment ? (
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
-                        {job.clientReviewComment}
-                      </p>
-                    ) : (
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">No written comment.</p>
-                    )}
-                    <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-4">
-                      Reviews are submitted once and cannot be edited.
-                    </p>
-                  </div>
-                )}
+                        <div className="p-4 bg-gray-50 rounded-lg">
+                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-2">Overall Rating</p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-6 h-6 ${star <= (job.clientReviewRating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`}
+                                />
+                              ))}
+                            </div>
+                            <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold ml-2">
+                              {job.clientReviewRating}/5
+                            </span>
+                          </div>
+                        </div>
 
-                {isActualJobClient && !job.clientReviewAt && (
-                  <div className="space-y-5 max-w-lg">
-                    <div>
-                      <Label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">Rating</Label>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setJobReviewRating(star)}
-                            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-                            aria-label={`${star} star${star === 1 ? "" : "s"}`}
-                          >
-                            <Star
-                              className={`w-8 h-8 ${
-                                star <= jobReviewRating ? "fill-[#FE8A0F] text-[#FE8A0F]" : "fill-[#E5E5E5] text-[#E5E5E5]"
-                              }`}
-                            />
-                          </button>
-                        ))}
+                        {job.clientReviewComment ? (
+                          <div>
+                            <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">Your Review</h4>
+                            <div className="flex gap-2 p-4 bg-yellow-50 rounded-lg">
+                              <Avatar className="w-14 h-14 border-4 border-white/20">
+                                {resolveAvatarUrl(userInfo?.avatar) && <AvatarImage src={resolveAvatarUrl(userInfo?.avatar)!} />}
+                                <AvatarFallback className="bg-[#FE8A0F] text-white font-['Poppins',sans-serif] text-[20px]">
+                                  {getTwoLetterInitials([userInfo?.firstName, userInfo?.lastName].filter(Boolean).join(" ") || userInfo?.name || "", "U")}
+                                </AvatarFallback>
+                              </Avatar>
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap mt-4">
+                                {job.clientReviewComment}
+                              </p>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {(job.professionalResponse || jobReviewBundle?.review?.response) && (
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h5 className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold mb-2">
+                              {jobReviewProfessionalName}&apos;s Response
+                            </h5>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-pre-wrap">
+                              {job.professionalResponse || jobReviewBundle?.review?.response}
+                            </p>
+                            {(job.professionalResponseDate || jobReviewBundle?.review?.responseAt) && (
+                              <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2">
+                                {new Date(job.professionalResponseDate || jobReviewBundle?.review?.responseAt || "").toLocaleDateString("en-GB", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="job-review-text" className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] mb-2 block">
-                        Comments (optional)
-                      </Label>
-                      <Textarea
-                        id="job-review-text"
-                        value={jobReviewText}
-                        onChange={(e) => setJobReviewText(e.target.value.slice(0, 2000))}
-                        placeholder="Share details that might help other clients…"
-                        rows={4}
-                        className="font-['Poppins',sans-serif] text-[14px] resize-y min-h-[100px]"
-                      />
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-1">{jobReviewText.length}/2000</p>
-                    </div>
-                    <Button
-                      type="button"
-                      disabled={jobReviewRating < 1 || jobReviewSubmitting}
-                      onClick={async () => {
-                        if (jobReviewRating < 1) {
-                          toast.error("Please choose a star rating.");
-                          return;
-                        }
-                        setJobReviewSubmitting(true);
-                        try {
-                          await submitClientJobReview(job.slug || job.id, jobReviewRating, jobReviewText);
-                          toast.success("Thank you for your feedback!");
-                          setJobReviewText("");
-                          setJobReviewRating(0);
-                          await fetchJobById(job.slug || job.id);
-                        } catch (e: any) {
-                          toast.error(e?.message || "Could not submit review");
-                        } finally {
-                          setJobReviewSubmitting(false);
-                        }
-                      }}
-                      className="bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif]"
-                    >
-                      {jobReviewSubmitting ? "Submitting…" : "Submit review"}
-                    </Button>
-                  </div>
+                    ) : (
+                      <div className="flex flex-col space-y-6">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                              <CheckCircle2 className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-['Poppins',sans-serif] text-[16px] text-green-800 font-semibold">Congratulations on completing your job</h3>
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-green-600">Share your experience with other users</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-1">Communication With Professional</h4>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">How responsive was the professional during this job?</p>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button key={star} type="button" onClick={() => setJobReviewCommunication(star)} className="transition-transform hover:scale-110">
+                                  <Star className={`w-7 h-7 ${star <= jobReviewCommunication ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-1">Job Outcome as Described</h4>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Did the result match the agreed job requirements?</p>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button key={star} type="button" onClick={() => setJobReviewServiceAsDescribed(star)} className="transition-transform hover:scale-110">
+                                  <Star className={`w-7 h-7 ${star <= jobReviewServiceAsDescribed ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-1">Buy Again or Recommended</h4>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-2">Would you recommend this professional for similar jobs?</p>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button key={star} type="button" onClick={() => setJobReviewBuyAgain(star)} className="transition-transform hover:scale-110">
+                                  <Star className={`w-7 h-7 ${star <= jobReviewBuyAgain ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#3D5A80] font-semibold mb-2">What was it like working with this Professional?</h4>
+                          <Textarea
+                            placeholder="Your review..."
+                            value={jobReviewText}
+                            onChange={(e) => setJobReviewText(e.target.value)}
+                            rows={5}
+                            maxLength={100}
+                            className="font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#3D78CB] resize-none"
+                          />
+                          <p className="text-xs text-gray-500 text-right mt-2">{jobReviewText.length}/100 characters</p>
+                        </div>
+
+                        <Button
+                          type="button"
+                          onClick={async () => {
+                            const averageRating = Math.round((jobReviewCommunication + jobReviewServiceAsDescribed + jobReviewBuyAgain) / 3);
+                            if (averageRating === 0) {
+                              toast.error("Please provide ratings");
+                              return;
+                            }
+                            setJobReviewSubmitting(true);
+                            try {
+                              await submitClientJobReview(job.slug || job.id, averageRating, jobReviewText);
+                              toast.success("Thank you for your feedback! Your review has been submitted.");
+                              setJobReviewCommunication(0);
+                              setJobReviewServiceAsDescribed(0);
+                              setJobReviewBuyAgain(0);
+                              setJobReviewText("");
+                              await fetchJobById(job.slug || job.id);
+                              await refreshJobReviewBundle();
+                            } catch (e: any) {
+                              toast.error(e?.message || "Failed to submit review");
+                            } finally {
+                              setJobReviewSubmitting(false);
+                            }
+                          }}
+                          disabled={jobReviewSubmitting}
+                          className="w-full sm:w-auto bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
+                        >
+                          {jobReviewSubmitting ? "Submitting..." : "Submit"}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {isAwardedProfessionalUser && (
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-5">
-                    {job.clientReviewAt && job.clientReviewRating != null ? (
-                      <>
-                        <p className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f] mb-3">Client review</p>
-                        <div className="flex items-center gap-1 mb-2">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`w-6 h-6 ${
-                                star <= (job.clientReviewRating || 0)
-                                  ? "fill-[#FE8A0F] text-[#FE8A0F]"
-                                  : "fill-[#E5E5E5] text-[#E5E5E5]"
-                              }`}
-                            />
-                          ))}
-                          <span className="ml-2 font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                            {job.clientReviewRating}/5
-                          </span>
+                  <div className={isActualJobClient ? "mt-8 pt-8 border-t border-gray-200" : ""}>
+                    {(() => {
+                      const cr = jobReviewBundle?.review;
+                      const clientRatingShown = Number(cr?.rating ?? job.clientReviewRating ?? 0);
+                      const clientCommentShown = cr?.comment ?? job.clientReviewComment ?? "";
+                      const clientNameShown = cr?.reviewer?.name || job.clientName || "Client";
+                      const clientAvatarShown = cr?.reviewer?.avatar;
+                      const proResp = job.professionalResponse || cr?.response;
+                      const proRespDate = job.professionalResponseDate || cr?.responseAt;
+                      const hasClientReviewSubmitted = !!job.buyerReview?.reviewedAt;
+
+                      return hasClientReviewSubmitted ? (
+                        <div className="space-y-6">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h3 className="font-['Poppins',sans-serif] text-[16px] text-blue-800 font-semibold">Your Review of the Client</h3>
+                            <div className="mt-3 flex items-center gap-2">
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star key={star} className={`w-6 h-6 ${star <= (job.buyerReview?.rating || 0) ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
+                                ))}
+                              </div>
+                              <span className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] font-semibold ml-2">{formatNumber(Number(job.buyerReview?.rating || 0), 1)}/5</span>
+                            </div>
+                            {job.buyerReview?.comment ? <p className="mt-2 font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">{job.buyerReview.comment}</p> : null}
+                          </div>
+
+                          {(cr || job.clientReviewAt) && clientRatingShown > 0 ? (
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                              <h4 className="font-['Poppins',sans-serif] text-[15px] text-green-700 font-semibold mb-3">Client&apos;s Review</h4>
+                              <div className="flex items-start gap-3">
+                                <Avatar className="w-10 h-10">
+                                  {resolveAvatarUrl(clientAvatarShown) && <AvatarImage src={resolveAvatarUrl(clientAvatarShown)!} />}
+                                  <AvatarFallback className="bg-blue-100 text-blue-600">{getTwoLetterInitials(clientNameShown, "C")}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium mb-1">{clientNameShown}</p>
+                                  <div className="flex gap-1 mb-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star key={star} className={`w-4 h-4 ${star <= clientRatingShown ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
+                                    ))}
+                                  </div>
+                                  {clientCommentShown ? <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">&quot;{clientCommentShown}&quot;</p> : null}
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-4 border-t border-green-300">
+                                {proResp ? (
+                                  <div>
+                                    <h5 className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-semibold mb-2">{jobReviewProfessionalName}&apos;s Response</h5>
+                                    <div className="bg-white border border-green-200 rounded-lg p-3">
+                                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] whitespace-pre-wrap">{proResp}</p>
+                                      {proRespDate ? (
+                                        <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b] mt-2">
+                                          {new Date(proRespDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <label className="font-['Poppins',sans-serif] text-[13px] text-[#2c353f] font-medium mb-2 block">Respond to the Feedback (Public)</label>
+                                    <textarea
+                                      value={jobReviewResponseText}
+                                      onChange={(e) => setJobReviewResponseText(e.target.value)}
+                                      placeholder="Your respond..."
+                                      className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg font-['Poppins',sans-serif] text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                      rows={4}
+                                    />
+                                    <Button
+                                      type="button"
+                                      onClick={async () => {
+                                        const t = jobReviewResponseText.trim();
+                                        if (!t) return;
+                                        setJobReviewResponseSubmitting(true);
+                                        try {
+                                          await respondToJobClientReview(job.slug || job.id, t);
+                                          toast.success("Response submitted successfully");
+                                          setJobReviewResponseText("");
+                                          await fetchJobById(job.slug || job.id);
+                                          await refreshJobReviewBundle();
+                                        } catch (e: any) {
+                                          toast.error(e?.message || "Failed to submit response");
+                                        } finally {
+                                          setJobReviewResponseSubmitting(false);
+                                        }
+                                      }}
+                                      disabled={!jobReviewResponseText.trim() || jobReviewResponseSubmitting}
+                                      className="mt-3 bg-[#FE8A0F] hover:bg-[#FFB347] text-white font-['Poppins',sans-serif] text-[13px]"
+                                    >
+                                      {jobReviewResponseSubmitting ? "Submitting..." : "Submit Response"}
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
-                        {job.clientReviewComment ? (
-                          <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] whitespace-pre-wrap">
-                            {job.clientReviewComment}
-                          </p>
-                        ) : (
-                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b]">No written comment.</p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
-                        The client has not submitted a review yet.
-                      </p>
-                    )}
+                      ) : (
+                        <div className="space-y-6">
+                          {clientRatingShown > 0 ? (
+                            <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                              <Avatar className="w-10 h-10">
+                                {resolveAvatarUrl(clientAvatarShown) && <AvatarImage src={resolveAvatarUrl(clientAvatarShown)!} />}
+                                <AvatarFallback className="bg-blue-100 text-blue-600">{getTwoLetterInitials(clientNameShown, "C")}</AvatarFallback>
+                              </Avatar>
+                              <p className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] mt-2">
+                                <span className="font-semibold">{clientNameShown}</span> has left feedback. To see it fully, please leave your own feedback.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                              <p className="font-['Poppins',sans-serif] text-[13px] text-yellow-700">
+                                The client hasn&apos;t left a review yet. You can still leave your feedback about working with this client.
+                              </p>
+                            </div>
+                          )}
+
+                          <Collapsible defaultOpen className="border border-gray-200 rounded-lg overflow-hidden">
+                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                              <div className="flex items-center gap-2">
+                                <Star className="w-5 h-5 text-[#FE8A0F]" />
+                                <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] font-medium">Review your experience with this client</span>
+                              </div>
+                              <ChevronDown className="w-5 h-5 text-[#6b6b6b]" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="p-4 border-t border-gray-200">
+                              <div className="mb-6">
+                                <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">Rate your experience</h4>
+                                <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-3">How would you rate your overall experience with this client?</p>
+                                <div className="flex gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button key={star} type="button" onClick={() => setProBuyerRating(star)} className="transition-transform hover:scale-110">
+                                      <Star className={`w-8 h-8 ${star <= proBuyerRating ? "fill-[#FE8A0F] text-[#FE8A0F]" : "text-gray-300"}`} />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="mb-6">
+                                <h4 className="font-['Poppins',sans-serif] text-[15px] text-[#2c353f] font-semibold mb-1">Share some more about your experience by words (public)</h4>
+                                <Textarea
+                                  placeholder="Your review..."
+                                  value={proBuyerReviewText}
+                                  onChange={(e) => setProBuyerReviewText(e.target.value)}
+                                  rows={5}
+                                  maxLength={100}
+                                  className="font-['Poppins',sans-serif] text-[14px] border-gray-300 focus:border-[#3D78CB] resize-none"
+                                />
+                                <p className="text-xs text-gray-500 text-right mt-2">{proBuyerReviewText.length}/100 characters</p>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  if (proBuyerRating === 0) {
+                                    toast.error("Please select a rating");
+                                    return;
+                                  }
+                                  toast.promise(
+                                    (async () => {
+                                      await submitProfessionalJobBuyerReview(job.slug || job.id, proBuyerRating, proBuyerReviewText);
+                                      await fetchJobById(job.slug || job.id);
+                                      await refreshJobReviewBundle();
+                                      setProBuyerRating(0);
+                                      setProBuyerReviewText("");
+                                    })(),
+                                    { loading: "Processing...", success: "Review submitted successfully!", error: (e: any) => e?.message || "Failed to submit review" }
+                                  );
+                                }}
+                                disabled={proBuyerRating === 0}
+                                className="bg-[#FE8A0F] hover:bg-[#e07a0d] text-white font-['Poppins',sans-serif] text-[14px] px-8 py-3 rounded-lg"
+                              >
+                                Submit
+                              </Button>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
