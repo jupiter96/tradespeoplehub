@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown, ArrowUp, ArrowDown, FileText, Wallet, CreditCard, CircleDollarSign, Eye } from "lucide-react";
+import { Target, Loader2, Calendar, ChevronDown, ChevronUp, Search, ArrowUpDown, ArrowUp, ArrowDown, FileText, CreditCard, CircleDollarSign, Eye } from "lucide-react";
 import { Button } from "./ui/button";
 import { resolveApiUrl } from "../config/api";
 import { toast } from "sonner@2.0.3";
@@ -103,7 +103,7 @@ export default function BidsAndMembershipSection({
   const [purchasingCustom, setPurchasingCustom] = useState(false);
 
   // Quote credits purchase payment method
-  const [quoteCreditPaymentMethod, setQuoteCreditPaymentMethod] = useState<"balance" | "card" | "paypal">("balance");
+  const [quoteCreditPaymentMethod, setQuoteCreditPaymentMethod] = useState<"card" | "paypal">("card");
   const [showWalletFundModal, setShowWalletFundModal] = useState(false);
   const [waitingForExternalPayment, setWaitingForExternalPayment] = useState(false);
   const pendingPurchaseRef = useRef<{ kind: "custom"; qty: number } | { kind: "plan"; planId: string } | null>(null);
@@ -350,14 +350,15 @@ export default function BidsAndMembershipSection({
       : selectedPlan
         ? selectedPlan.amountPence / 100
         : 0;
-  const canPayFromWallet =
-    purchaseRequiredGBP <= 0 || walletBalanceGBP + 1e-6 >= purchaseRequiredGBP;
+  const walletDeductGBP = Math.min(walletBalanceGBP, Math.max(0, purchaseRequiredGBP));
+  const externalShortfallGBP = Math.max(0, purchaseRequiredGBP - walletBalanceGBP);
+  const isWalletSufficientForPurchase = purchaseRequiredGBP > 0 && externalShortfallGBP <= 1e-6;
 
   useLayoutEffect(() => {
-    if (purchaseRequiredGBP <= 0) return;
-    if (walletBalanceGBP + 1e-6 >= purchaseRequiredGBP) return;
-    setQuoteCreditPaymentMethod((m) => (m === "balance" ? "card" : m));
-  }, [purchaseRequiredGBP, walletBalanceGBP]);
+    if (quoteCreditPaymentMethod !== "card" && quoteCreditPaymentMethod !== "paypal") {
+      setQuoteCreditPaymentMethod("card");
+    }
+  }, [quoteCreditPaymentMethod]);
 
   const handleBuyCredit = async () => {
     if (!purchaseRequiredGBP || purchaseRequiredGBP <= 0) {
@@ -365,19 +366,14 @@ export default function BidsAndMembershipSection({
       return;
     }
 
-    // Account balance: purchase directly from wallet
-    if (quoteCreditPaymentMethod === "balance") {
-      if (walletBalanceGBP + 1e-6 < purchaseRequiredGBP) {
-        toast.error("Insufficient wallet balance. Choose Card or PayPal, or add funds.");
-        setQuoteCreditPaymentMethod("card");
-        return;
-      }
+    // Wallet-first: if wallet fully covers it, purchase directly from wallet.
+    if (isWalletSufficientForPurchase) {
       if (selectedOption === CUSTOM_OPTION_VALUE) return handlePurchaseCustom();
       if (selectedPlan?.id) return handlePurchase(selectedPlan.id);
       return;
     }
 
-    // Card/PayPal: fund wallet first, then purchase
+    // Wallet-first with shortfall top-up: fund only the missing amount, then purchase from wallet.
     pendingPurchaseRef.current =
       selectedOption === CUSTOM_OPTION_VALUE
         ? { kind: "custom", qty: customQty }
@@ -390,7 +386,7 @@ export default function BidsAndMembershipSection({
       return;
     }
 
-    const amountSelectedCurrency = fromGBP(purchaseRequiredGBP);
+    const amountSelectedCurrency = fromGBP(externalShortfallGBP);
     setWalletFundInitialAmount(amountSelectedCurrency.toFixed(2));
     setWaitingForExternalPayment(true);
     setShowWalletFundModal(true);
@@ -503,18 +499,16 @@ export default function BidsAndMembershipSection({
             Purchase credit
           </h3>
           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-6">
-            Credits are valid for one month from purchase. Choose how to pay.
+            Credits are valid for one month from purchase. We always deduct your account balance first, then charge only the shortfall.
           </p>
 
           <div className="mb-6 flex flex-wrap gap-2">
             {(
               [
-                { id: "balance" as const, label: "Account balance" },
                 { id: "card" as const, label: "Card" },
                 { id: "paypal" as const, label: "PayPal" },
               ] as const
             )
-              .filter((opt) => opt.id !== "balance" || canPayFromWallet)
               .map((opt) => (
                 <button
                   key={opt.id}
@@ -528,7 +522,6 @@ export default function BidsAndMembershipSection({
                   ].join(" ")}
                 >
                   <span className="inline-flex items-center gap-2">
-                    {opt.id === "balance" && <Wallet className="w-4 h-4 text-[#FE8A0F]" />}
                     {opt.id === "card" && <CreditCard className="w-4 h-4 text-[#FE8A0F]" />}
                     {opt.id === "paypal" && <CircleDollarSign className="w-4 h-4 text-[#FE8A0F]" />}
                     {opt.label}
@@ -536,6 +529,24 @@ export default function BidsAndMembershipSection({
                 </button>
               ))}
           </div>
+
+          {purchaseRequiredGBP > 0 && (
+            <div className="mb-6 rounded-lg border border-gray-200 bg-[#f8f9fa] p-4 space-y-2">
+              <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">Invoice summary</p>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                <span>Credit purchase total</span>
+                <span>{formatPrice(purchaseRequiredGBP)}</span>
+              </div>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                <span>Deducted from account balance</span>
+                <span>{formatPrice(walletDeductGBP)}</span>
+              </div>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
+                <span>{quoteCreditPaymentMethod === "paypal" ? "PayPal shortfall" : "Card shortfall"}</span>
+                <span>{formatPrice(externalShortfallGBP)}</span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-6">
             <div>
@@ -651,7 +662,7 @@ export default function BidsAndMembershipSection({
                       disabled={isPurchasing}
                       className="bg-[#FE8A0F] hover:bg-[#e57d0e] text-white font-['Poppins',sans-serif] h-11"
                     >
-                      {purchasingCustom || (waitingForExternalPayment && quoteCreditPaymentMethod !== "balance") ? (
+                      {purchasingCustom || waitingForExternalPayment ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         "Buy credit"
@@ -671,7 +682,7 @@ export default function BidsAndMembershipSection({
                         disabled={isPurchasing}
                         className="bg-[#FE8A0F] hover:bg-[#e57d0e] text-white font-['Poppins',sans-serif] h-11 shrink-0"
                       >
-                        {waitingForExternalPayment && quoteCreditPaymentMethod !== "balance" ? (
+                        {waitingForExternalPayment ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : purchasingPlanId === selectedOption ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -879,7 +890,7 @@ export default function BidsAndMembershipSection({
         restrictToSelectedPaymentType
         lockAmount
         forQuoteCreditPurchase
-        initialPaymentType={quoteCreditPaymentMethod === "paypal" ? "paypal" : "card"}
+        initialPaymentType={quoteCreditPaymentMethod}
         initialAmount={walletFundInitialAmount}
       />
     </div>

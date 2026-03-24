@@ -2424,8 +2424,25 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
 
       if (totalMilestoneAmount > 0) {
         const paymentSource = req.body.paymentSource === 'card' ? 'card' : 'wallet';
+        const client = await User.findById(job.clientId).select(
+          'walletBalance stripeCustomerId paymentMethods email firstName'
+        );
+        if (!client) return res.status(400).json({ error: 'Client not found' });
 
-        if (paymentSource === 'card') {
+        const currentBalance = Number(client.walletBalance || 0);
+        const walletDeduct = Math.min(currentBalance, totalMilestoneAmount);
+        const externalShortfall = Math.max(0, totalMilestoneAmount - currentBalance);
+
+        if (externalShortfall > 0 && paymentSource !== 'card') {
+          return res.status(400).json({
+            error: 'Insufficient wallet balance',
+            code: 'INSUFFICIENT_BALANCE',
+            required: totalMilestoneAmount,
+            current: currentBalance,
+          });
+        }
+
+        if (externalShortfall > 0 && paymentSource === 'card') {
           const paymentMethodId = req.body.paymentMethodId && String(req.body.paymentMethodId).trim();
           if (!paymentMethodId) {
             return res.status(400).json({ error: 'paymentMethodId is required for card payments' });
@@ -2440,11 +2457,6 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
           } catch (e) {
             return res.status(400).json({ error: e.message || 'Stripe is not configured' });
           }
-
-          const client = await User.findById(job.clientId).select(
-            'walletBalance stripeCustomerId paymentMethods email firstName'
-          );
-          if (!client) return res.status(400).json({ error: 'Client not found' });
           if (!client.stripeCustomerId) {
             return res.status(400).json({ error: 'Add a card in Billing before paying by card' });
           }
@@ -2456,8 +2468,8 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
           const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
           const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
           const stripeCommission =
-            (totalMilestoneAmount * stripeCommissionPercentage) / 100 + stripeCommissionFixed;
-          const totalChargeAmount = totalMilestoneAmount + stripeCommission;
+            (externalShortfall * stripeCommissionPercentage) / 100 + stripeCommissionFixed;
+          const totalChargeAmount = externalShortfall + stripeCommission;
 
           let paymentIntent;
           try {
@@ -2474,6 +2486,7 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
                 type: 'job_milestone_award',
                 jobId: job._id.toString(),
                 quoteId: quote._id.toString(),
+                shortfallAmount: String(externalShortfall),
               },
             });
           } catch (err) {
@@ -2498,74 +2511,51 @@ router.patch('/:id/quotes/:quoteId', authenticateToken, requireRole(['client']),
             });
           }
 
-          const balanceBefore = client.walletBalance || 0;
-          client.walletBalance = balanceBefore + totalMilestoneAmount;
+          client.walletBalance = Number(client.walletBalance || 0) + externalShortfall;
           await Wallet.create({
             userId: job.clientId,
             type: 'deposit',
-            amount: totalMilestoneAmount,
+            amount: externalShortfall,
             balance: client.walletBalance,
             status: 'completed',
             paymentMethod: 'card',
             stripePaymentIntentId: paymentIntent.id,
             stripeChargeId: paymentIntent.latest_charge || undefined,
-            description: `Card funding for job milestone — charged £${totalChargeAmount.toFixed(2)} (incl. fee)`,
+            description: `Card funding for milestone shortfall — charged £${totalChargeAmount.toFixed(2)} (incl. fee)`,
             jobId: job._id,
             metadata: {
-              source: 'job_milestone_award_card',
+              source: 'job_milestone_award_card_shortfall',
               jobId: job._id.toString(),
               milestoneEscrowAmount: totalMilestoneAmount,
+              shortfallAmount: externalShortfall,
+              walletDeductAmount: walletDeduct,
               fee: stripeCommission,
               feePercentage: stripeCommissionPercentage,
               feeFixed: stripeCommissionFixed,
               totalCharged: totalChargeAmount,
             },
           });
-
-          client.walletBalance = client.walletBalance - totalMilestoneAmount;
-          await client.save();
-
-          await Wallet.create({
-            userId: job.clientId,
-            type: 'payment',
-            amount: totalMilestoneAmount,
-            balance: client.walletBalance,
-            status: 'completed',
-            paymentMethod: 'wallet',
-            description: `Job milestones - ${job.title || 'Job'}`,
-            jobId: job._id,
-            metadata: {
-              jobId: job._id.toString(),
-              source: 'job_milestones',
-              fundedViaCard: true,
-            },
-          });
-        } else {
-          const client = await User.findById(job.clientId).select('walletBalance');
-          if (!client) return res.status(400).json({ error: 'Client not found' });
-          const currentBalance = client.walletBalance || 0;
-          if (currentBalance < totalMilestoneAmount) {
-            return res.status(400).json({
-              error: 'Insufficient wallet balance',
-              code: 'INSUFFICIENT_BALANCE',
-              required: totalMilestoneAmount,
-              current: currentBalance,
-            });
-          }
-          client.walletBalance = currentBalance - totalMilestoneAmount;
-          await client.save();
-          await Wallet.create({
-            userId: job.clientId,
-            type: 'payment',
-            amount: totalMilestoneAmount,
-            balance: client.walletBalance,
-            status: 'completed',
-            paymentMethod: 'wallet',
-            description: `Job milestones - ${job.title || 'Job'}`,
-            jobId: job._id,
-            metadata: { jobId: job._id.toString(), source: 'job_milestones' },
-          });
         }
+
+        client.walletBalance = Number(client.walletBalance || 0) - totalMilestoneAmount;
+        await client.save();
+        await Wallet.create({
+          userId: job.clientId,
+          type: 'payment',
+          amount: totalMilestoneAmount,
+          balance: client.walletBalance,
+          status: 'completed',
+          paymentMethod: 'wallet',
+          description: `Job milestones - ${job.title || 'Job'}`,
+          jobId: job._id,
+          metadata: {
+            jobId: job._id.toString(),
+            source: 'job_milestones',
+            walletDeductAmount: walletDeduct,
+            externalShortfallAmount: externalShortfall,
+            fundedViaCard: externalShortfall > 0 && paymentSource === 'card',
+          },
+        });
       }
 
       if (milestonesPayload && milestonesPayload.length > 0) {

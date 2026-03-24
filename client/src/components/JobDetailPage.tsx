@@ -40,7 +40,6 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  Info,
   CreditCard,
   Eye,
   FileSearch,
@@ -121,7 +120,6 @@ import ServiceCard from "./ServiceCard";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import BidsAndMembershipSection from "./BidsAndMembershipSection";
 import WalletFundModal from "./WalletFundModal";
-import PaymentMethodModal from "./PaymentMethodModal";
 
 type SocialShareLink = {
   name: string;
@@ -365,28 +363,12 @@ export default function JobDetailPage() {
   const [awardWithMilestone, setAwardWithMilestone] = useState(true);
   const [awardMilestones, setAwardMilestones] = useState<Array<{ name: string; amount: string }>>([{ name: "", amount: "" }]);
 
-  type AwardSavedCard = {
-    paymentMethodId: string;
-    isDefault?: boolean;
-    card: { brand: string; last4: string; expMonth: number; expYear: number };
-  };
-
   const [awardWalletBalanceGBP, setAwardWalletBalanceGBP] = useState(0);
   const [awardFundingLoading, setAwardFundingLoading] = useState(false);
-  const [awardPaymentSource, setAwardPaymentSource] = useState<"wallet" | "card" | "paypal">("wallet");
-  const [awardPayMethods, setAwardPayMethods] = useState<AwardSavedCard[]>([]);
-  const [awardSelectedCardId, setAwardSelectedCardId] = useState<string | null>(null);
-  const [awardPublishableKey, setAwardPublishableKey] = useState<string | null>(null);
+  const [awardPaymentSource, setAwardPaymentSource] = useState<"card" | "paypal">("card");
   const [awardStripeEnabled, setAwardStripeEnabled] = useState(false);
   const [awardPaypalClientId, setAwardPaypalClientId] = useState<string | null>(null);
   const [awardPaypalEnabled, setAwardPaypalEnabled] = useState(false);
-  const [awardFeeSettings, setAwardFeeSettings] = useState({
-    stripeCommissionPercentage: 1.55,
-    stripeCommissionFixed: 0.29,
-    paypalCommissionPercentage: 3,
-    paypalCommissionFixed: 0.3,
-  });
-  const [showAwardAddCardModal, setShowAwardAddCardModal] = useState(false);
   const [showAwardPayPalFundModal, setShowAwardPayPalFundModal] = useState(false);
   const [awardSubmitting, setAwardSubmitting] = useState(false);
   const pendingPayPalAwardRef = useRef<{ milestones: { name: string; amount: number }[] } | null>(null);
@@ -558,21 +540,14 @@ export default function JobDetailPage() {
     }, 0);
   }, [selectedQuoteForAward, awardMilestones, toGBP]);
 
-  const awardInvoiceFees = useMemo(() => {
-    const sub = awardMilestoneTotalDisplay;
-    if (sub <= 0) return { subtotal: 0, fee: 0, totalDue: 0 };
-    if (awardPaymentSource === "wallet") {
-      return { subtotal: sub, fee: 0, totalDue: sub };
-    }
-    const fixedStripe = fromGBP(awardFeeSettings.stripeCommissionFixed);
-    const fixedPaypal = fromGBP(awardFeeSettings.paypalCommissionFixed);
-    if (awardPaymentSource === "card") {
-      const fee = (sub * awardFeeSettings.stripeCommissionPercentage) / 100 + fixedStripe;
-      return { subtotal: sub, fee, totalDue: sub + fee };
-    }
-    const fee = (sub * awardFeeSettings.paypalCommissionPercentage) / 100 + fixedPaypal;
-    return { subtotal: sub, fee, totalDue: sub + fee };
-  }, [awardMilestoneTotalDisplay, awardPaymentSource, awardFeeSettings, fromGBP]);
+  const awardWalletDeductDisplay = useMemo(
+    () => Math.min(awardMilestoneTotalDisplay, fromGBP(awardWalletBalanceGBP)),
+    [awardMilestoneTotalDisplay, awardWalletBalanceGBP, fromGBP]
+  );
+  const awardExternalShortfallDisplay = useMemo(
+    () => Math.max(0, awardMilestoneTotalDisplay - awardWalletDeductDisplay),
+    [awardMilestoneTotalDisplay, awardWalletDeductDisplay]
+  );
 
   const canPayAwardFromWallet =
     awardMilestoneTotalGBP > 0 && awardWalletBalanceGBP + 1e-6 >= awardMilestoneTotalGBP;
@@ -580,10 +555,9 @@ export default function JobDetailPage() {
   const fetchAwardFundingData = useCallback(async () => {
     setAwardFundingLoading(true);
     try {
-      const [balRes, pkRes, pmRes] = await Promise.all([
+      const [balRes, pkRes] = await Promise.all([
         fetch(resolveApiUrl("/api/wallet/balance"), { credentials: "include" }),
         fetch(resolveApiUrl("/api/payment/publishable-key"), { credentials: "include" }),
-        fetch(resolveApiUrl("/api/payment-methods"), { credentials: "include" }),
       ]);
       if (balRes.ok) {
         const b = await balRes.json().catch(() => ({}));
@@ -591,26 +565,9 @@ export default function JobDetailPage() {
       }
       if (pkRes.ok) {
         const d = await pkRes.json().catch(() => ({}));
-        setAwardPublishableKey(d.publishableKey || null);
         setAwardStripeEnabled(d.stripeEnabled === true);
         setAwardPaypalEnabled(d.paypalEnabled === true);
         setAwardPaypalClientId(d.paypalClientId || null);
-        setAwardFeeSettings({
-          stripeCommissionPercentage: d.stripeCommissionPercentage ?? 1.55,
-          stripeCommissionFixed: d.stripeCommissionFixed ?? 0.29,
-          paypalCommissionPercentage: d.paypalCommissionPercentage ?? 3,
-          paypalCommissionFixed: d.paypalCommissionFixed ?? 0.3,
-        });
-      }
-      if (pmRes.ok) {
-        const d = await pmRes.json().catch(() => ({}));
-        const pms = (d.paymentMethods || []) as AwardSavedCard[];
-        setAwardPayMethods(pms);
-        const def = pms.find((p) => p.isDefault);
-        setAwardSelectedCardId((prev) => {
-          if (prev && pms.some((p) => p.paymentMethodId === prev)) return prev;
-          return def?.paymentMethodId || pms[0]?.paymentMethodId || null;
-        });
       }
     } finally {
       setAwardFundingLoading(false);
@@ -624,21 +581,14 @@ export default function JobDetailPage() {
   }, [showAwardModal, awardWithMilestone, fetchAwardFundingData]);
 
   useEffect(() => {
-    if (!showAwardModal || !awardWithMilestone || awardMilestoneTotalGBP <= 0) return;
-    if (awardPaymentSource === "wallet" && !canPayAwardFromWallet) {
-      if (awardStripeEnabled && awardPayMethods.length > 0) setAwardPaymentSource("card");
-      else if (awardPaypalEnabled) setAwardPaymentSource("paypal");
+    if (!showAwardModal || !awardWithMilestone) return;
+    if (awardPaymentSource === "card" && !awardStripeEnabled && awardPaypalEnabled) {
+      setAwardPaymentSource("paypal");
     }
-  }, [
-    showAwardModal,
-    awardWithMilestone,
-    awardMilestoneTotalGBP,
-    canPayAwardFromWallet,
-    awardPaymentSource,
-    awardStripeEnabled,
-    awardPayMethods.length,
-    awardPaypalEnabled,
-  ]);
+    if (awardPaymentSource === "paypal" && !awardPaypalEnabled && awardStripeEnabled) {
+      setAwardPaymentSource("card");
+    }
+  }, [showAwardModal, awardWithMilestone, awardPaymentSource, awardStripeEnabled, awardPaypalEnabled]);
 
   // Keep URL canonical: if we have job with slug and URL param differs (e.g. old id), replace with slug so refresh works
   useEffect(() => {
@@ -1063,7 +1013,7 @@ export default function JobDetailPage() {
     setSelectedQuoteForAward(quote);
     setAwardWithMilestone(true);
     setAwardMilestones(buildAwardMilestonesFromQuote(quote));
-    setAwardPaymentSource("wallet");
+    setAwardPaymentSource("card");
     setAwardSubmitting(false);
     setShowAwardPayPalFundModal(false);
     pendingPayPalAwardRef.current = null;
@@ -1137,28 +1087,19 @@ export default function JobDetailPage() {
         amount: toGBP(parseFloat(m.amount)),
       }));
 
-      if (awardPaymentSource === "paypal") {
-        if (!awardPaypalEnabled || !awardPaypalClientId) {
-          toast.error("PayPal is not available.");
-          return;
-        }
-        pendingPayPalAwardRef.current = { milestones };
-        setShowAwardPayPalFundModal(true);
+      if (awardPaymentSource === "paypal" && (!awardPaypalEnabled || !awardPaypalClientId)) {
+        toast.error("PayPal is not available.");
+        return;
+      }
+      if (awardPaymentSource === "card" && !awardStripeEnabled) {
+        toast.error("Card payments are not available.");
         return;
       }
 
-      if (awardPaymentSource === "card") {
-        if (!awardStripeEnabled) {
-          toast.error("Card payments are not available.");
-          return;
-        }
-        if (!awardSelectedCardId) {
-          toast.error("Select a saved card or add a new one.");
-          setShowAwardAddCardModal(true);
-          return;
-        }
-      } else if (awardPaymentSource === "wallet" && !canPayAwardFromWallet) {
-        toast.error("Insufficient wallet balance. Choose card or PayPal, or add funds in Billing.");
+      const shortfallGBP = Math.max(0, awardMilestoneTotalGBP - awardWalletBalanceGBP);
+      if (shortfallGBP > 0) {
+        pendingPayPalAwardRef.current = { milestones };
+        setShowAwardPayPalFundModal(true);
         return;
       }
 
@@ -1169,9 +1110,7 @@ export default function JobDetailPage() {
           selectedQuoteForAward.id,
           selectedQuoteForAward.professionalId,
           milestones,
-          awardPaymentSource === "card"
-            ? { paymentSource: "card", paymentMethodId: awardSelectedCardId! }
-            : { paymentSource: "wallet" }
+          { paymentSource: "wallet" }
         );
         await refreshUser?.();
         await fetchJobById(job.slug || job.id);
@@ -1184,8 +1123,7 @@ export default function JobDetailPage() {
         navigate(`/job/${job.slug || jobSlug}?tab=payment`, { replace: true });
       } catch (e: any) {
         if (e?.code === "INSUFFICIENT_BALANCE") {
-          toast.error("Insufficient balance. Pay with card or PayPal, or add funds in Billing.");
-          navigate("/account?tab=billing&section=fund");
+          toast.error("Insufficient balance. Please try again.");
         } else {
           toast.error(e?.message || "Failed to award job");
         }
@@ -5693,25 +5631,13 @@ export default function JobDetailPage() {
           }
         }}
         lockAmount={true}
-        initialAmount={awardMilestoneTotalDisplay > 0 ? String(awardMilestoneTotalDisplay) : "0"}
+        initialAmount={awardExternalShortfallDisplay > 0 ? String(awardExternalShortfallDisplay) : "0"}
         restrictToSelectedPaymentType={true}
-        initialPaymentType="paypal"
+        initialPaymentType={awardPaymentSource}
         forJobMilestoneAward={true}
         hideBankOption={true}
-        titleText="PayPal — fund wallet for milestone"
+        titleText={`${awardPaymentSource === "paypal" ? "PayPal" : "Card"} — fund wallet shortfall`}
       />
-
-      {showAwardAddCardModal && awardPublishableKey ? (
-        <PaymentMethodModal
-          isOpen={showAwardAddCardModal}
-          onClose={() => setShowAwardAddCardModal(false)}
-          onSuccess={() => {
-            setShowAwardAddCardModal(false);
-            fetchAwardFundingData();
-          }}
-          publishableKey={awardPublishableKey}
-        />
-      ) : null}
 
       {/* Attachment preview modal (job post attachments) */}
       <Dialog open={!!attachmentPreview} onOpenChange={(open) => { if (!open) setAttachmentPreview(null); }}>
@@ -6457,26 +6383,9 @@ export default function JobDetailPage() {
                   ) : (
                     <RadioGroup
                       value={awardPaymentSource}
-                      onValueChange={(v) => setAwardPaymentSource(v as "wallet" | "card" | "paypal")}
-                      className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                      onValueChange={(v) => setAwardPaymentSource(v as "card" | "paypal")}
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-2"
                     >
-                      {canPayAwardFromWallet && (
-                        <div
-                          className={`flex items-center gap-2 rounded-lg border-2 p-3 cursor-pointer ${
-                            awardPaymentSource === "wallet"
-                              ? "border-[#3B82F6] bg-[#EFF6FF]"
-                              : "border-gray-200"
-                          }`}
-                          onClick={() => setAwardPaymentSource("wallet")}
-                        >
-                          <RadioGroupItem value="wallet" id="award-pay-wallet" />
-                          <Label htmlFor="award-pay-wallet" className="cursor-pointer font-['Poppins',sans-serif] text-[12px] flex-1">
-                            <span className="block text-[11px] text-[#6b6b6b] font-normal mt-0.5">
-                              Available balance {formatAmountInSelectedCurrency(fromGBP(awardWalletBalanceGBP))}
-                            </span>
-                          </Label>
-                        </div>
-                      )}
                       {awardStripeEnabled && (
                         <div
                           className={`flex items-center gap-2 rounded-lg border-2 p-3 cursor-pointer ${
@@ -6517,91 +6426,9 @@ export default function JobDetailPage() {
                       )}
                     </RadioGroup>
                   )}
-                  {!awardFundingLoading &&
-                    !canPayAwardFromWallet &&
-                    awardMilestoneTotalGBP > 0 && (
-                      <p className="font-['Poppins',sans-serif] text-[11px] text-[#92400e] bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
-                        Your balance is less than this milestone total. Account balance is hidden — use card or PayPal (funds go to your wallet first, then escrow).
-                      </p>
-                    )}
-                  {awardPaymentSource === "card" && awardStripeEnabled && (
-                    <div className="space-y-2 rounded-lg border border-gray-200 p-3 bg-white">
-                      <p className="font-['Poppins',sans-serif] text-[12px] font-medium text-[#2c353f]">Saved cards</p>
-                      {awardPayMethods.length === 0 ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="font-['Poppins',sans-serif]"
-                          onClick={() => {
-                            if (!awardPublishableKey) {
-                              toast.error("Payment setup is still loading. Try again in a moment.");
-                              return;
-                            }
-                            setShowAwardAddCardModal(true);
-                          }}
-                        >
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Add new card
-                        </Button>
-                      ) : (
-                        <>
-                          <RadioGroup
-                            value={awardSelectedCardId || ""}
-                            onValueChange={(id) => setAwardSelectedCardId(id)}
-                            className="space-y-2"
-                          >
-                            {awardPayMethods.map((pm) => (
-                              <div
-                                key={pm.paymentMethodId}
-                                className={`flex items-center gap-2 rounded-md border p-2 cursor-pointer ${
-                                  awardSelectedCardId === pm.paymentMethodId
-                                    ? "border-[#FE8A0F] bg-[#FFF5EB]"
-                                    : "border-gray-200"
-                                }`}
-                                onClick={() => setAwardSelectedCardId(pm.paymentMethodId)}
-                              >
-                                <RadioGroupItem value={pm.paymentMethodId} id={`award-card-${pm.paymentMethodId}`} />
-                                <Label
-                                  htmlFor={`award-card-${pm.paymentMethodId}`}
-                                  className="cursor-pointer flex-1 font-['Poppins',sans-serif] text-[13px]"
-                                >
-                                  <span className="capitalize">{pm.card.brand}</span> •••• {pm.card.last4}
-                                  <span className="text-[11px] text-[#6b6b6b] ml-2">
-                                    {String(pm.card.expMonth).padStart(2, "0")}/{pm.card.expYear}
-                                  </span>
-                                  {pm.isDefault ? (
-                                    <span className="ml-2 text-[10px] bg-[#FE8A0F] text-white px-1.5 py-0.5 rounded">Default</span>
-                                  ) : null}
-                                </Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="font-['Poppins',sans-serif] w-full mt-1"
-                            onClick={() => {
-                              if (!awardPublishableKey) {
-                                toast.error("Payment setup is still loading. Try again in a moment.");
-                                return;
-                              }
-                              setShowAwardAddCardModal(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add new card
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {awardPaymentSource === "paypal" && awardPaypalEnabled && (
-                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
-                      You will complete PayPal in the next step. Your wallet will be funded for the milestone total (plus fee), then the same amount is held for the milestone — both lines appear in billing history.
-                    </p>
-                  )}
+                  <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
+                    We always deduct your account balance first. If your balance is not enough, only the shortfall is charged via {awardPaymentSource === "paypal" ? "PayPal" : "Card"}.
+                  </p>
                   {awardMilestoneTotalDisplay > 0 && (
                     <div className="rounded-lg border border-gray-200 bg-[#f8f9fa] p-4 space-y-2">
                       <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
@@ -6609,29 +6436,15 @@ export default function JobDetailPage() {
                       </p>
                       <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
                         <span>Milestone total (escrow)</span>
-                        <span>{formatAmountInSelectedCurrency(awardInvoiceFees.subtotal)}</span>
+                        <span>{formatAmountInSelectedCurrency(awardMilestoneTotalDisplay)}</span>
                       </div>
                       <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                        <span className="inline-flex items-center gap-1">
-                          Processing fee
-                          <Info
-                            className="w-3.5 h-3.5 text-blue-500 cursor-help shrink-0"
-                            title={
-                              awardPaymentSource === "wallet"
-                                ? "No fee when paying from your Sortars balance."
-                                : awardPaymentSource === "card"
-                                  ? `Card: ${awardFeeSettings.stripeCommissionPercentage}% + ${formatPrice(awardFeeSettings.stripeCommissionFixed)} per charge.`
-                                  : `PayPal: ${awardFeeSettings.paypalCommissionPercentage}% + ${formatPrice(awardFeeSettings.paypalCommissionFixed)}.`
-                            }
-                          />
-                        </span>
-                        <span>{formatAmountInSelectedCurrency(awardInvoiceFees.fee)}</span>
+                        <span>Deducted from account balance</span>
+                        <span>{formatAmountInSelectedCurrency(awardWalletDeductDisplay)}</span>
                       </div>
                       <div className="border-t border-gray-300 pt-2 flex justify-between font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-semibold text-[#2c353f]">
-                        <span>
-                          {awardPaymentSource === "wallet" ? "Deducted from balance" : "Total you pay"}
-                        </span>
-                        <span>{formatAmountInSelectedCurrency(awardInvoiceFees.totalDue)}</span>
+                        <span>{awardPaymentSource === "paypal" ? "PayPal shortfall" : "Card shortfall"}</span>
+                        <span>{formatAmountInSelectedCurrency(awardExternalShortfallDisplay)}</span>
                       </div>
                     </div>
                   )}
@@ -6688,11 +6501,7 @@ export default function JobDetailPage() {
                     Processing…
                   </>
                 ) : awardWithMilestone ? (
-                  awardPaymentSource === "paypal" ? (
-                    `Pay with PayPal & award job`
-                  ) : (
-                    `Award and Create ${quoteHasSuggestedMilestonePlan(selectedQuoteForAward) ? awardMilestones.length : 1} Milestone(s)`
-                  )
+                  `Award and Create ${quoteHasSuggestedMilestonePlan(selectedQuoteForAward) ? awardMilestones.length : 1} Milestone(s)`
                 ) : (
                   `Award Job`
                 )}
