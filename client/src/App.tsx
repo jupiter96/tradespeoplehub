@@ -15,7 +15,7 @@ import ProfessionalProfileSetup from "./components/ProfessionalProfileSetup";
 import ProfessionalAboutService from "./components/ProfessionalAboutService";
 import ProfessionalRegistrationSteps from "./components/ProfessionalRegistrationSteps";
 import PostJobPage from "./components/PostJobPage";
-import JobDetailPage from "./components/JobDetailPage";
+import { JobDetailPage } from "./components/JobDetailPage";
 import AllCategoriesPage from "./components/AllCategoriesPage";
 import SectorPage from "./components/SectorPage";
 import DisputeDiscussionPage from "./components/DisputeDiscussionPage";

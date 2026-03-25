@@ -90,6 +90,7 @@ export default function AvailableJobsSection() {
   const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
   const [quoteMessageBeforeAi, setQuoteMessageBeforeAi] = useState<string | null>(null);
   const [isQuoteMessageAiGenerated, setIsQuoteMessageAiGenerated] = useState(false);
+  const [isQuoteMessageAiRevertedToOriginal, setIsQuoteMessageAiRevertedToOriginal] = useState(false);
   
   // Milestone state
   const [milestones, setMilestones] = useState<Array<{ description: string; amount: string }>>([
@@ -320,6 +321,7 @@ export default function AvailableJobsSection() {
       setQuoteMessage("");
       setQuoteMessageBeforeAi(null);
       setIsQuoteMessageAiGenerated(false);
+      setIsQuoteMessageAiRevertedToOriginal(false);
       setMilestones([{ description: "", amount: "" }]);
     } catch (e: any) {
       const msg = String(e?.message || "");
@@ -362,6 +364,7 @@ export default function AvailableJobsSection() {
       if (data.message) {
         setQuoteMessage(data.message);
         setIsQuoteMessageAiGenerated(true);
+        setIsQuoteMessageAiRevertedToOriginal(false);
       }
       toast.success("Message generated. You can edit it before sending.");
     } catch {
@@ -578,7 +581,11 @@ export default function AvailableJobsSection() {
         open={isQuoteDialogOpen}
         onOpenChange={(open: boolean) => {
           setIsQuoteDialogOpen(open);
-          if (!open) setShowInsufficientCreditsAlert(false);
+          if (!open) {
+            setShowInsufficientCreditsAlert(false);
+            setIsQuoteMessageAiRevertedToOriginal(false);
+          }
+          if (open) setIsQuoteMessageAiRevertedToOriginal(false);
         }}
       >
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
@@ -687,6 +694,7 @@ export default function AvailableJobsSection() {
                                 setQuoteMessage(quoteMessageBeforeAi);
                               }
                               setIsQuoteMessageAiGenerated(false);
+                              setIsQuoteMessageAiRevertedToOriginal(true);
                             }}
                             className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f]"
                             aria-label="Restore previous message"
@@ -701,6 +709,7 @@ export default function AvailableJobsSection() {
                             onClick={() => {
                               setQuoteMessage("");
                               setIsQuoteMessageAiGenerated(false);
+                              setIsQuoteMessageAiRevertedToOriginal(true);
                             }}
                             className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#DC3545]"
                             aria-label="Clear message"
@@ -714,11 +723,14 @@ export default function AvailableJobsSection() {
                     <Textarea
                       placeholder="Enter key points or a few words, then use Generate text by AI to write a full message..."
                       value={quoteMessage}
-                      onChange={(e) => setQuoteMessage(e.target.value)}
+                      onChange={(e) => {
+                        setQuoteMessage(e.target.value);
+                        setIsQuoteMessageAiRevertedToOriginal(false);
+                      }}
                       className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                     />
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      {!isQuoteMessageAiGenerated && (
+                      {!isQuoteMessageAiGenerated && !isQuoteMessageAiRevertedToOriginal && (
                       <button
                         type="button"
                         onClick={handleGenerateQuoteMessage}
@@ -885,6 +897,7 @@ export default function AvailableJobsSection() {
                   variant="outline"
                   onClick={() => {
                     setIsQuoteDialogOpen(false);
+                  setIsQuoteMessageAiRevertedToOriginal(false);
                     setQuotePrice("");
                     setQuoteDeliveryTime("");
                     setQuoteMessage("");

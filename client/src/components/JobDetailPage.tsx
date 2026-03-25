@@ -330,6 +330,7 @@ export default function JobDetailPage() {
   const [aiQuoteMessageGenerating, setAiQuoteMessageGenerating] = useState(false);
   const [quoteMessageBeforeAi, setQuoteMessageBeforeAi] = useState<string | null>(null);
   const [isQuoteMessageAiGenerated, setIsQuoteMessageAiGenerated] = useState(false);
+  const [isQuoteMessageAiRevertedToOriginal, setIsQuoteMessageAiRevertedToOriginal] = useState(false);
   const [quoteToWithdraw, setQuoteToWithdraw] = useState<{ jobId: string; quoteId: string } | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const [editingQuoteMeta, setEditingQuoteMeta] = useState<{ jobId: string; quoteId: string } | null>(null);
@@ -523,6 +524,21 @@ export default function JobDetailPage() {
   }, [jobSlug, authReady, isLoggedIn, fetchJobById]);
 
   const job = getJobById(jobSlug || "");
+
+  // Payments tab: collapse "Suggested milestone plan" sections by default once milestones are already funded/created.
+  const [suggestedPlanSectionOpen, setSuggestedPlanSectionOpen] = useState(true);
+  const [requestedPlanSectionOpen, setRequestedPlanSectionOpen] = useState(true);
+  const didInitPaymentPlanCollapseRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!job?.id) return;
+    // Only initialize once per job to preserve the user's manual toggle during the session.
+    if (didInitPaymentPlanCollapseRef.current === String(job.id)) return;
+    didInitPaymentPlanCollapseRef.current = String(job.id);
+    const hasFundedMilestones = !!(job.milestones && job.milestones.length > 0);
+    const defaultOpen = !hasFundedMilestones;
+    setSuggestedPlanSectionOpen(defaultOpen);
+    setRequestedPlanSectionOpen(defaultOpen);
+  }, [job?.id]);
 
   const awardMilestoneTotalDisplay = useMemo(() => {
     if (!selectedQuoteForAward) return 0;
@@ -1011,6 +1027,7 @@ export default function JobDetailPage() {
       if (data.message) {
         setQuoteForm((f) => ({ ...f, message: data.message }));
         setIsQuoteMessageAiGenerated(true);
+        setIsQuoteMessageAiRevertedToOriginal(false);
       }
       toast.success("Message generated. You can edit it before sending.");
     } catch {
@@ -1859,6 +1876,7 @@ export default function JobDetailPage() {
       } catch {}
       setShowQuoteDialog(false);
       setQuoteForm({ price: "", deliveryTime: "", message: "" });
+      setIsQuoteMessageAiRevertedToOriginal(false);
       setMilestones([{ description: "", amount: "" }]);
     } catch (e: any) {
       const msg = String(e?.message || "");
@@ -2753,7 +2771,7 @@ export default function JobDetailPage() {
                               ) : (
                                 <ChevronDown className="w-4 h-4" />
                               )}
-                              View Milestones
+                              View suggested milestone payment plan
                             </button>
 
                             {milestonesExpanded && (
@@ -2959,7 +2977,7 @@ export default function JobDetailPage() {
                                   ) : (
                                     <ChevronDown className="w-4 h-4" />
                                   )}
-                                  View Milestones
+                                  View suggested milestone payment plan
                                 </button>
 
                                 {milestonesExpanded && (
@@ -3135,29 +3153,54 @@ export default function JobDetailPage() {
                   if (!awardedQuote || suggested.length === 0) return null;
                   const hasPending = suggested.some((m) => m.status === "pending");
                   const noFundedMilestonesYet = !job.milestones || job.milestones.length === 0;
+                  const jobMilestones = job.milestones || [];
+                  const normalize = (s: any) => String(s || "").trim().toLowerCase();
+                  const approxEqualMoney = (a: any, b: any) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+                  const wasMilestoneCreatedFromSuggestedPlan = (m: any) => {
+                    const mDesc = normalize(m?.description);
+                    const mAmt = Number(m?.amount) || 0;
+                    if (!mDesc || mAmt <= 0) return false;
+                    return jobMilestones.some((jm: any) => {
+                      const jmDesc = normalize(jm?.name || jm?.description);
+                      const jmAmt = Number(jm?.amount) || 0;
+                      return approxEqualMoney(jmAmt, mAmt) && (!!jmDesc && (jmDesc === mDesc || jmDesc.includes(mDesc) || mDesc.includes(jmDesc)));
+                    });
+                  };
                   const bulkBusy = !!suggestedBulkAction;
                   const rowBusy = !!updatingSuggestedMilestoneId || bulkBusy;
                   const suggestedTotalAmount = suggested
                     .filter((m) => m.status === "pending")
                     .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
                   return (
-                    <div className="mb-6 border border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/60">
-                      <div className="mb-2">
-                        <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#047857] flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          Suggested milestone plan
-                        </h3>
-                      </div>
-                      <p className="font-['Poppins',sans-serif] text-[13px] text-[#166534] mb-2">
-                        From the professional&apos;s quote. Accept to fund each step from your wallet (same as creating a milestone), or decline if you prefer a different plan.
-                      </p>
-                      {noFundedMilestonesYet && hasPending && (
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#065f46] mb-3 rounded-lg bg-white/80 border border-emerald-100 px-3 py-2">
-                          You can use this plan as-is, or add your own milestones in the section below.
-                        </p>
-                      )}
-                      <div className="overflow-x-auto rounded-lg border border-emerald-100 bg-white">
-                        <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                    <Collapsible open={suggestedPlanSectionOpen} onOpenChange={setSuggestedPlanSectionOpen}>
+                      <div className="mb-6 border border-dashed border-emerald-200 rounded-xl p-4 bg-emerald-50/60">
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="w-full flex items-center justify-between gap-3 mb-2 text-left"
+                          >
+                            <span className="font-['Poppins',sans-serif] text-[16px] text-[#047857] flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              Suggested milestone plan
+                            </span>
+                            {suggestedPlanSectionOpen ? (
+                              <ChevronUp className="w-4 h-4 text-[#047857]" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-[#047857]" />
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <p className="font-['Poppins',sans-serif] text-[13px] text-[#166534] mb-2">
+                            From the professional&apos;s quote. Accept to fund each step from your wallet (same as creating a milestone), or decline if you prefer a different plan.
+                          </p>
+                          {noFundedMilestonesYet && hasPending && (
+                            <p className="font-['Poppins',sans-serif] text-[12px] text-[#065f46] mb-3 rounded-lg bg-white/80 border border-emerald-100 px-3 py-2">
+                              You can use this plan as-is, or add your own milestones in the section below.
+                            </p>
+                          )}
+                          <div className="overflow-x-auto rounded-lg border border-emerald-100 bg-white">
+                            <table className="w-full font-['Poppins',sans-serif] text-[13px]">
                           <thead>
                             <tr className="bg-emerald-50 border-b border-emerald-100">
                               <th className="text-left py-2.5 px-3 text-[#064e3b] font-medium">Description</th>
@@ -3178,17 +3221,22 @@ export default function JobDetailPage() {
                                   {formatPriceWhole(Number(m.amount || 0))}
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
-                                  {m.status === "pending" && (
+                                  {wasMilestoneCreatedFromSuggestedPlan(m) && (
+                                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0">
+                                      Approved
+                                    </Badge>
+                                  )}
+                                  {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "pending" && (
                                     <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
                                       Pending
                                     </Badge>
                                   )}
-                                  {m.status === "accepted" && (
+                                  {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "accepted" && (
                                     <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
-                                      Accepted
+                                      Approved
                                     </Badge>
                                   )}
-                                  {m.status === "rejected" && (
+                                  {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "rejected" && (
                                     <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
                                       declined
                                     </span>
@@ -3325,7 +3373,9 @@ export default function JobDetailPage() {
                           )}
                         </div>
                       </div>
-                    </div>
+                        </CollapsibleContent>
+                      </div>
+                    </Collapsible>
                   );
                 })()}
 
@@ -3343,23 +3393,35 @@ export default function JobDetailPage() {
                       .filter((m) => m.status === "pending")
                       .reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
                     return (
-                      <div className="mb-6 border border-dashed border-sky-200 rounded-xl p-4 bg-sky-50/60">
-                        <div className="mb-2">
-                          <h3 className="font-['Poppins',sans-serif] text-[16px] text-[#0369a1] flex items-center gap-2">
-                            <ListChecks className="w-4 h-4" />
-                            Professional&apos;s milestone plan request
-                          </h3>
-                        </div>
-                        <p className="font-['Poppins',sans-serif] text-[13px] text-[#0c4a6e] mb-2">
-                          The professional proposed these payment steps. Accept to fund each from your wallet (same as quote suggested milestones), or decline if you prefer a different plan.
-                        </p>
-                        {noFundedMilestonesYetReq && hasPendingReq && isJobOwner && (
-                          <p className="font-['Poppins',sans-serif] text-[12px] text-[#075985] mb-3 rounded-lg bg-white/80 border border-sky-100 px-3 py-2">
-                            You can use this plan as-is, or add your own milestones in the section below.
-                          </p>
-                        )}
-                        <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
-                          <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                      <Collapsible open={requestedPlanSectionOpen} onOpenChange={setRequestedPlanSectionOpen}>
+                        <div className="mb-6 border border-dashed border-sky-200 rounded-xl p-4 bg-sky-50/60">
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-full flex items-center justify-between gap-3 mb-2 text-left"
+                            >
+                              <span className="font-['Poppins',sans-serif] text-[16px] text-[#0369a1] flex items-center gap-2">
+                                <ListChecks className="w-4 h-4" />
+                                Professional&apos;s milestone plan request
+                              </span>
+                              {requestedPlanSectionOpen ? (
+                                <ChevronUp className="w-4 h-4 text-[#0369a1]" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-[#0369a1]" />
+                              )}
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <p className="font-['Poppins',sans-serif] text-[13px] text-[#0c4a6e] mb-2">
+                              The professional proposed these payment steps. Accept to fund each from your wallet (same as quote suggested milestones), or decline if you prefer a different plan.
+                            </p>
+                            {noFundedMilestonesYetReq && hasPendingReq && isJobOwner && (
+                              <p className="font-['Poppins',sans-serif] text-[12px] text-[#075985] mb-3 rounded-lg bg-white/80 border border-sky-100 px-3 py-2">
+                                You can use this plan as-is, or add your own milestones in the section below.
+                              </p>
+                            )}
+                            <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
+                              <table className="w-full font-['Poppins',sans-serif] text-[13px]">
                             <thead>
                               <tr className="bg-sky-50 border-b border-sky-100">
                                 <th className="text-left py-2.5 px-3 text-[#0c4a6e] font-medium">Description</th>
@@ -3527,7 +3589,9 @@ export default function JobDetailPage() {
                             )}
                           </div>
                         </div>
-                      </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
                     );
                   })()}
 
@@ -5881,6 +5945,7 @@ export default function JobDetailPage() {
             setIsQuoteMessageAiGenerated(false);
             setShowInsufficientCreditsPrompt(false);
             setShowInsufficientCreditsAlert(false);
+            setIsQuoteMessageAiRevertedToOriginal(false);
           }
         }}
       >
@@ -5992,6 +6057,7 @@ export default function JobDetailPage() {
                               setQuoteForm((f) => ({ ...f, message: quoteMessageBeforeAi }));
                             }
                             setIsQuoteMessageAiGenerated(false);
+                            setIsQuoteMessageAiRevertedToOriginal(true);
                           }}
                           className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#2c353f]"
                           aria-label="Restore previous message"
@@ -6006,6 +6072,7 @@ export default function JobDetailPage() {
                           onClick={() => {
                             setQuoteForm((f) => ({ ...f, message: "" }));
                             setIsQuoteMessageAiGenerated(false);
+                            setIsQuoteMessageAiRevertedToOriginal(true);
                           }}
                           className="h-8 w-8 rounded-full text-[#6b6b6b] hover:bg-gray-100 hover:text-[#DC3545]"
                           aria-label="Clear message"
@@ -6019,11 +6086,14 @@ export default function JobDetailPage() {
                   <Textarea
                     placeholder="Enter key points or a few words, then use Generate text by AI to write a full message..."
                     value={quoteForm.message}
-                    onChange={(e) => setQuoteForm({ ...quoteForm, message: e.target.value })}
+                    onChange={(e) => {
+                      setQuoteForm({ ...quoteForm, message: e.target.value });
+                      setIsQuoteMessageAiRevertedToOriginal(false);
+                    }}
                     className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                   />
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {!isQuoteMessageAiGenerated && (
+                    {!isQuoteMessageAiGenerated && !isQuoteMessageAiRevertedToOriginal && (
                       <button
                         type="button"
                         onClick={handleGenerateQuoteMessage}
@@ -6406,18 +6476,7 @@ export default function JobDetailPage() {
                       )}
                     </div>
                   ))}
-                  {awardModalQuoteHasPlan && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setAwardMilestones((prev) => [...prev, { name: "", amount: "" }])}
-                      className="font-['Poppins',sans-serif] text-[13px]"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add another milestone
-                    </Button>
-                  )}
+                  {/* If milestones were pre-filled from the pro's quote, do not allow adding new ones here. */}
                 </div>
                 );
               })()}
@@ -7074,3 +7133,5 @@ export default function JobDetailPage() {
     </div>
   );
 }
+
+export { JobDetailPage };

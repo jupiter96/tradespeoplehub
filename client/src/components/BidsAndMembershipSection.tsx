@@ -532,18 +532,22 @@ export default function BidsAndMembershipSection({
 
           {purchaseRequiredGBP > 0 && (
             <div className="mb-6 rounded-lg border border-gray-200 bg-[#f8f9fa] p-4 space-y-2">
-              <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">Invoice summary</p>
+              <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                Invoice summary
+              </p>
               <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                <span>Credit purchase total</span>
+                <span>Total</span>
                 <span>{formatPrice(purchaseRequiredGBP)}</span>
               </div>
               <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                <span>Deducted from account balance</span>
+                <span>Wallet Balance Used</span>
                 <span>{formatPrice(walletDeductGBP)}</span>
               </div>
-              <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                <span>{quoteCreditPaymentMethod === "paypal" ? "PayPal shortfall" : "Card shortfall"}</span>
-                <span>{formatPrice(externalShortfallGBP)}</span>
+              <div className="border-t border-gray-300 pt-2 flex justify-between font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-semibold text-[#2c353f]">
+                <span>{externalShortfallGBP > 0 ? "Remaining to Pay" : "Paid by Wallet"}</span>
+                <span>
+                  {formatPrice(externalShortfallGBP > 0 ? externalShortfallGBP : purchaseRequiredGBP)}
+                </span>
               </div>
             </div>
           )}
