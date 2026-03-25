@@ -365,7 +365,7 @@ export default function JobDetailPage() {
 
   const [awardWalletBalanceGBP, setAwardWalletBalanceGBP] = useState(0);
   const [awardFundingLoading, setAwardFundingLoading] = useState(false);
-  const [awardPaymentSource, setAwardPaymentSource] = useState<"card" | "paypal">("card");
+  const [awardPaymentSource, setAwardPaymentSource] = useState<"card" | "paypal" | null>(null);
   const [awardStripeEnabled, setAwardStripeEnabled] = useState(false);
   const [awardPaypalClientId, setAwardPaypalClientId] = useState<string | null>(null);
   const [awardPaypalEnabled, setAwardPaypalEnabled] = useState(false);
@@ -582,13 +582,22 @@ export default function JobDetailPage() {
 
   useEffect(() => {
     if (!showAwardModal || !awardWithMilestone) return;
+    if (awardExternalShortfallDisplay <= 0) {
+      setAwardPaymentSource(null);
+      return;
+    }
+    if (!awardPaymentSource) {
+      if (awardStripeEnabled) setAwardPaymentSource("card");
+      else if (awardPaypalEnabled) setAwardPaymentSource("paypal");
+      return;
+    }
     if (awardPaymentSource === "card" && !awardStripeEnabled && awardPaypalEnabled) {
       setAwardPaymentSource("paypal");
     }
     if (awardPaymentSource === "paypal" && !awardPaypalEnabled && awardStripeEnabled) {
       setAwardPaymentSource("card");
     }
-  }, [showAwardModal, awardWithMilestone, awardPaymentSource, awardStripeEnabled, awardPaypalEnabled]);
+  }, [showAwardModal, awardWithMilestone, awardPaymentSource, awardStripeEnabled, awardPaypalEnabled, awardExternalShortfallDisplay]);
 
   // Keep URL canonical: if we have job with slug and URL param differs (e.g. old id), replace with slug so refresh works
   useEffect(() => {
@@ -1013,7 +1022,7 @@ export default function JobDetailPage() {
     setSelectedQuoteForAward(quote);
     setAwardWithMilestone(true);
     setAwardMilestones(buildAwardMilestonesFromQuote(quote));
-    setAwardPaymentSource("card");
+    setAwardPaymentSource(null);
     setAwardSubmitting(false);
     setShowAwardPayPalFundModal(false);
     pendingPayPalAwardRef.current = null;
@@ -1086,7 +1095,12 @@ export default function JobDetailPage() {
         name: (hasPlan ? m.name.trim() : m.name.trim() || DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN),
         amount: toGBP(parseFloat(m.amount)),
       }));
+      const shortfallGBP = Math.max(0, awardMilestoneTotalGBP - awardWalletBalanceGBP);
 
+      if (shortfallGBP > 0 && !awardPaymentSource) {
+        toast.error("Select Card or PayPal for the remaining amount.");
+        return;
+      }
       if (awardPaymentSource === "paypal" && (!awardPaypalEnabled || !awardPaypalClientId)) {
         toast.error("PayPal is not available.");
         return;
@@ -1096,7 +1110,6 @@ export default function JobDetailPage() {
         return;
       }
 
-      const shortfallGBP = Math.max(0, awardMilestoneTotalGBP - awardWalletBalanceGBP);
       if (shortfallGBP > 0) {
         pendingPayPalAwardRef.current = { milestones };
         setShowAwardPayPalFundModal(true);
@@ -5633,7 +5646,7 @@ export default function JobDetailPage() {
         lockAmount={true}
         initialAmount={awardExternalShortfallDisplay > 0 ? String(awardExternalShortfallDisplay) : "0"}
         restrictToSelectedPaymentType={true}
-        initialPaymentType={awardPaymentSource}
+        initialPaymentType={awardPaymentSource === "paypal" ? "paypal" : "card"}
         forJobMilestoneAward={true}
         hideBankOption={true}
         titleText={`${awardPaymentSource === "paypal" ? "PayPal" : "Card"} — fund wallet shortfall`}
@@ -6380,9 +6393,9 @@ export default function JobDetailPage() {
                       <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                       Loading payment options…
                     </div>
-                  ) : (
+                  ) : awardExternalShortfallDisplay > 0 ? (
                     <RadioGroup
-                      value={awardPaymentSource}
+                      value={awardPaymentSource || ""}
                       onValueChange={(v) => setAwardPaymentSource(v as "card" | "paypal")}
                       className="grid grid-cols-1 sm:grid-cols-2 gap-2"
                     >
@@ -6425,6 +6438,10 @@ export default function JobDetailPage() {
                         </div>
                       )}
                     </RadioGroup>
+                  ) : (
+                    <p className="font-['Poppins',sans-serif] text-[11px] text-[#2c353f] bg-green-50 border border-green-200 rounded-md px-2 py-1.5">
+                      Your wallet balance is sufficient. No card or PayPal payment is required.
+                    </p>
                   )}
                   <p className="font-['Poppins',sans-serif] text-[11px] text-[#6b6b6b]">
                     We always deduct your account balance first. If your balance is not enough, only the shortfall is charged via {awardPaymentSource === "paypal" ? "PayPal" : "Card"}.
@@ -6435,16 +6452,16 @@ export default function JobDetailPage() {
                         Invoice summary
                       </p>
                       <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                        <span>Milestone total (escrow)</span>
+                        <span>Total</span>
                         <span>{formatAmountInSelectedCurrency(awardMilestoneTotalDisplay)}</span>
                       </div>
                       <div className="flex justify-between font-['Poppins',sans-serif] text-[12px] sm:text-[13px] text-[#2c353f]">
-                        <span>Deducted from account balance</span>
+                        <span>Wallet Balance Used</span>
                         <span>{formatAmountInSelectedCurrency(awardWalletDeductDisplay)}</span>
                       </div>
                       <div className="border-t border-gray-300 pt-2 flex justify-between font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-semibold text-[#2c353f]">
-                        <span>{awardPaymentSource === "paypal" ? "PayPal shortfall" : "Card shortfall"}</span>
-                        <span>{formatAmountInSelectedCurrency(awardExternalShortfallDisplay)}</span>
+                        <span>{awardExternalShortfallDisplay > 0 ? "Remaining to Pay" : "Paid by Wallet"}</span>
+                        <span>{formatAmountInSelectedCurrency(awardExternalShortfallDisplay > 0 ? awardExternalShortfallDisplay : awardMilestoneTotalDisplay)}</span>
                       </div>
                     </div>
                   )}
