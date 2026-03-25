@@ -662,9 +662,12 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
     }
     
     // Calculate Stripe commission (fee is taken separately, full amount is deposited)
+    const isQuoteCreditFunding = forQuoteCreditPurchase === true;
     const stripeCommissionPercentage = settings.stripeCommissionPercentage || 1.55;
     const stripeCommissionFixed = settings.stripeCommissionFixed || 0.29;
-    const stripeCommission = (amount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
+    const stripeCommission = isQuoteCreditFunding
+      ? 0
+      : (amount * stripeCommissionPercentage / 100) + stripeCommissionFixed;
     
     
     // Create payment intent with saved payment method (charge full amount)
@@ -698,8 +701,9 @@ router.post('/wallet/fund/stripe', authenticateToken, async (req, res) => {
       metadata: {
         depositAmount: amount, // Full amount deposited to user balance
         fee: stripeCommission, // Fee taken by platform (separate)
-        feePercentage: stripeCommissionPercentage,
-        feeFixed: stripeCommissionFixed,
+        feePercentage: isQuoteCreditFunding ? 0 : stripeCommissionPercentage,
+        feeFixed: isQuoteCreditFunding ? 0 : stripeCommissionFixed,
+        ...(isQuoteCreditFunding ? { forQuoteCreditPurchase: true } : {}),
       },
     });
     
@@ -843,7 +847,10 @@ router.post('/wallet/fund/stripe/confirm', authenticateToken, async (req, res) =
       try {
         const { sendTemplatedEmail } = await import('../services/notifier.js');
         const settings = await PaymentSettings.getSettings();
-        const stripeCommission = (transaction.amount * (settings.stripeCommissionPercentage || 1.55) / 100) + (settings.stripeCommissionFixed || 0.29);
+        const isQuoteCreditFunding = transaction.metadata?.forQuoteCreditPurchase === true;
+        const stripeCommission = isQuoteCreditFunding
+          ? 0
+          : (transaction.amount * (settings.stripeCommissionPercentage || 1.55) / 100) + (settings.stripeCommissionFixed || 0.29);
         
         await sendTemplatedEmail(
           user.email,
@@ -1058,9 +1065,12 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
     }
     
     // Calculate PayPal commission (fee is taken separately, full amount is deposited)
+    const isQuoteCreditFunding = forQuoteCreditPurchase === true;
     const paypalCommissionPercentage = settings.paypalCommissionPercentage || 3.00;
     const paypalCommissionFixed = settings.paypalCommissionFixed || 0.30;
-    const paypalCommission = (amount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
+    const paypalCommission = isQuoteCreditFunding
+      ? 0
+      : (amount * paypalCommissionPercentage / 100) + paypalCommissionFixed;
     const totalAmount = amount + paypalCommission; // Total amount to charge
     
     
@@ -1104,9 +1114,10 @@ router.post('/wallet/fund/paypal', authenticateToken, async (req, res) => {
       metadata: {
         depositAmount: amount, // Full amount deposited to user balance
         fee: paypalCommission, // Fee taken by platform (separate)
-        feePercentage: paypalCommissionPercentage,
-        feeFixed: paypalCommissionFixed,
+        feePercentage: isQuoteCreditFunding ? 0 : paypalCommissionPercentage,
+        feeFixed: isQuoteCreditFunding ? 0 : paypalCommissionFixed,
         totalAmount: totalAmount, // Total amount charged
+        ...(forQuoteCreditPurchase === true ? { forQuoteCreditPurchase: true } : {}),
         ...(forJobMilestoneAward === true ? { forJobMilestoneAward: true } : {}),
       },
     });
@@ -1668,7 +1679,10 @@ router.post('/wallet/stripe-webhook', express.raw({ type: 'application/json' }),
             try {
               const { sendTemplatedEmail } = await import('../services/notifier.js');
               const settings = await PaymentSettings.getSettings();
-              const stripeCommission = (transaction.amount * (settings.stripeCommissionPercentage || 1.55) / 100) + (settings.stripeCommissionFixed || 0.29);
+              const isQuoteCreditFunding = transaction.metadata?.forQuoteCreditPurchase === true;
+              const stripeCommission = isQuoteCreditFunding
+                ? 0
+                : (transaction.amount * (settings.stripeCommissionPercentage || 1.55) / 100) + (settings.stripeCommissionFixed || 0.29);
               
               await sendTemplatedEmail(
                 user.email,

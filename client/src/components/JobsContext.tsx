@@ -199,6 +199,10 @@ interface JobsContextType {
   getProfessionalQuotes: (professionalId: string) => { job: Job; quote: JobQuote }[];
   getProfessionalActiveJobs: (professionalId: string) => Job[];
   getProfessionalCompletedJobs: (professionalId: string) => Job[];
+  /** Same sector filter as browse / quotes / active lists (for My Jobs tab routing). */
+  isJobInProfessionalSector: (job: Job) => boolean;
+  /** Pro has a quote, is awarded, or appears on milestone deliveries for this job. */
+  professionalHasStakeInJob: (job: Job, professionalId: string) => boolean;
   awardJobWithMilestone: (
     jobId: string,
     quoteId: string,
@@ -635,6 +639,24 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         (job.milestoneDeliveries || []).some((d) => toIdString(getDeliveredById(d)) === pid)
       );
     });
+
+  const isJobInProfessionalSector = (job: Job) => matchesProfessionalSector(job);
+
+  const professionalHasStakeInJob = (job: Job, professionalId: string): boolean => {
+    const pid = String(professionalId || '');
+    if (!pid) return false;
+    const toIdString = (v: unknown) => (v == null ? '' : String(v));
+    if (toIdString(job.awardedProfessionalId) === pid) return true;
+    if ((job.quotes || []).some((q) => toIdString(q.professionalId) === pid)) return true;
+    if ((job.milestoneDeliveries || []).some((d) => {
+      const deliveredBy = toIdString(
+        (d as { deliveredBy?: string; deliveredById?: string }).deliveredBy ??
+          (d as { deliveredBy?: string; deliveredById?: string }).deliveredById
+      );
+      return deliveredBy === pid;
+    })) return true;
+    return false;
+  };
 
   const normalizeAvatar = (value?: string) =>
     value && !/images\.unsplash\.com/i.test(value) ? value : undefined;
@@ -1102,6 +1124,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         getProfessionalQuotes,
         getProfessionalActiveJobs,
         getProfessionalCompletedJobs,
+        isJobInProfessionalSector,
+        professionalHasStakeInJob,
         awardJobWithMilestone,
         awardJobWithoutMilestone,
         acceptAward,

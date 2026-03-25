@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from "react";
+import { useMemo, useState, type ComponentType, type MouseEvent } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import AvailableJobsSection from "./AvailableJobsSection";
 import MyQuotesSection from "./MyQuotesSection";
@@ -16,9 +16,12 @@ import {
   Calendar,
   MapPin,
   Briefcase,
-  CheckCircle,
+  Handshake,
   Send,
   Archive,
+  Package,
+  XCircle,
+  FolderOpen,
 } from "lucide-react";
 import {
   Select,
@@ -41,6 +44,10 @@ import {
   RequestMilestonesDialog,
   proCanRequestMilestones,
 } from "./JobMilestonePaymentDialogs";
+
+function jobHasDisputedMilestone(job: Job): boolean {
+  return (job.milestones ?? []).some((m) => m.status === "disputed");
+}
 
 type ProMyJobListCardMode = "active" | "completed";
 
@@ -225,23 +232,109 @@ function ProMyJobListCard({
   );
 }
 
+type ProMyJobsTabId =
+  | "available"
+  | "quoted"
+  | "awarded"
+  | "delivered"
+  | "completed"
+  | "cancelled"
+  | "other";
+
 export default function ProfessionalJobsSection() {
-  const [activeTab, setActiveTab] = useState("available");
+  const [activeTab, setActiveTab] = useState<ProMyJobsTabId>("available");
   const {
+    jobs,
     getProfessionalActiveJobs,
     getProfessionalCompletedJobs,
     getProfessionalQuotes,
     getAvailableJobs,
+    isJobInProfessionalSector,
+    professionalHasStakeInJob,
   } = useJobs();
   const { userInfo } = useAccount();
+  const proId = userInfo?.id || "";
 
-  // Get counts for badges (Available Jobs: exclude jobs the pro already quoted)
-  const availableJobsCount = getAvailableJobs().filter(
-    (job) => !(job.quotes || []).some((q) => q.professionalId === userInfo?.id)
-  ).length;
-  const myQuotesTotalCount = getProfessionalQuotes(userInfo?.id || "").length;
-  const activeJobsCount = getProfessionalActiveJobs(userInfo?.id || "").length;
-  const completedJobsCount = getProfessionalCompletedJobs(userInfo?.id || "").length;
+  const availableJobs = useMemo(
+    () =>
+      getAvailableJobs().filter(
+        (job) => !(job.quotes || []).some((q) => String(q.professionalId) === String(proId))
+      ),
+    [getAvailableJobs, proId, jobs]
+  );
+
+  const quotedEntries = getProfessionalQuotes(proId);
+  const myQuotesTotalCount = quotedEntries.length;
+  const quotedJobs = useMemo(() => {
+    const map = new Map<string, Job>();
+    quotedEntries.forEach(({ job }) => map.set(job.id, job));
+    return Array.from(map.values());
+  }, [quotedEntries]);
+
+  const activeJobs = useMemo(() => getProfessionalActiveJobs(proId), [getProfessionalActiveJobs, proId, jobs]);
+
+  const awardedJobs = useMemo(
+    () =>
+      activeJobs.filter(
+        (j) =>
+          !jobHasDisputedMilestone(j) &&
+          (j.status === "awaiting-accept" || j.status === "in-progress")
+      ),
+    [activeJobs]
+  );
+
+  const deliveredJobs = useMemo(
+    () =>
+      activeJobs.filter(
+        (j) => !jobHasDisputedMilestone(j) && j.status === "delivered"
+      ),
+    [activeJobs]
+  );
+
+  const completedJobs = useMemo(
+    () => getProfessionalCompletedJobs(proId),
+    [getProfessionalCompletedJobs, proId, jobs]
+  );
+
+  const cancelledJobs = useMemo(
+    () =>
+      jobs.filter(
+        (j) =>
+          isJobInProfessionalSector(j) &&
+          j.status === "cancelled" &&
+          professionalHasStakeInJob(j, proId)
+      ),
+    [jobs, proId, isJobInProfessionalSector, professionalHasStakeInJob]
+  );
+
+  const otherJobs = useMemo(() => {
+    const covered = new Set<string>([
+      ...availableJobs.map((j) => j.id),
+      ...quotedJobs.map((j) => j.id),
+      ...awardedJobs.map((j) => j.id),
+      ...deliveredJobs.map((j) => j.id),
+      ...completedJobs.map((j) => j.id),
+      ...cancelledJobs.map((j) => j.id),
+    ]);
+    return jobs.filter(
+      (j) =>
+        isJobInProfessionalSector(j) &&
+        professionalHasStakeInJob(j, proId) &&
+        !covered.has(j.id)
+    );
+  }, [
+    jobs,
+    proId,
+    availableJobs,
+    quotedJobs,
+    awardedJobs,
+    deliveredJobs,
+    completedJobs,
+    cancelledJobs,
+    isJobInProfessionalSector,
+    professionalHasStakeInJob,
+  ]);
+
   const [myQuotesVisibleCount, setMyQuotesVisibleCount] = useState(myQuotesTotalCount);
 
   return (
@@ -252,103 +345,216 @@ export default function ProfessionalJobsSection() {
           My Jobs
         </h2>
         <p className="font-['Poppins',sans-serif] text-[13px] sm:text-[14px] text-[#6b6b6b]">
-          Manage available jobs, your quotes, active projects, and completed work
+          Browse open work, track quotes, awarded work, delivery, completion, and everything else in one place
         </p>
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v: string) => setActiveTab(v as ProMyJobsTabId)} className="w-full">
         <div className="overflow-x-auto mb-4 md:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-          <TabsList className="inline-flex w-auto min-w-full sm:w-full sm:grid sm:grid-cols-2 lg:grid-cols-4 bg-gray-100 p-1 rounded-xl h-auto gap-1">
+          <TabsList className="inline-flex w-max min-w-full sm:min-w-0 gap-1 bg-gray-100 p-1 rounded-xl h-auto flex-nowrap">
             <TabsTrigger
               value="available"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
               <Briefcase className="w-4 h-4" />
-              Available Jobs
-              {availableJobsCount > 0 && (
+              Available
+              {availableJobs.length > 0 && (
                 <StatusCountBadge
                   status="open"
-                  count={availableJobsCount}
+                  count={availableJobs.length}
                   variant="client"
-                  className="ml-2"
+                  className="ml-1"
                 />
               )}
             </TabsTrigger>
             <TabsTrigger
-              value="quotes"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              value="quoted"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
               <MessageCircle className="w-4 h-4" />
-              My Quotes
-              {(activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount) > 0 && (
+              Quoted
+              {(activeTab === "quoted" ? myQuotesVisibleCount : myQuotesTotalCount) > 0 && (
                 <StatusCountBadge
                   status="awaiting-accept"
-                  count={activeTab === "quotes" ? myQuotesVisibleCount : myQuotesTotalCount}
+                  count={activeTab === "quoted" ? myQuotesVisibleCount : myQuotesTotalCount}
                   variant="client"
-                  className="ml-2"
+                  className="ml-1"
                 />
               )}
             </TabsTrigger>
             <TabsTrigger
-              value="active"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              value="awarded"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
-              <CheckCircle className="w-4 h-4" />
-              Active Jobs
-              {activeJobsCount > 0 && (
+              <Handshake className="w-4 h-4" />
+              Awarded
+              {awardedJobs.length > 0 && (
                 <StatusCountBadge
                   status="in-progress"
-                  count={activeJobsCount}
+                  count={awardedJobs.length}
                   variant="pro"
-                  className="ml-2"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="delivered"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <Package className="w-4 h-4" />
+              Delivered
+              {deliveredJobs.length > 0 && (
+                <StatusCountBadge
+                  status="delivered"
+                  count={deliveredJobs.length}
+                  variant="pro"
+                  className="ml-1"
                 />
               )}
             </TabsTrigger>
             <TabsTrigger
               value="completed"
-              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
             >
               <Archive className="w-4 h-4" />
-              Completed Jobs
-              {completedJobsCount > 0 && (
+              Completed
+              {completedJobs.length > 0 && (
                 <StatusCountBadge
                   status="completed"
-                  count={completedJobsCount}
+                  count={completedJobs.length}
                   variant="pro"
-                  className="ml-2"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="cancelled"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancelled
+              {cancelledJobs.length > 0 && (
+                <StatusCountBadge
+                  status="cancelled"
+                  count={cancelledJobs.length}
+                  variant="pro"
+                  className="ml-1"
+                />
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="other"
+              className="font-['Poppins',sans-serif] data-[state=active]:bg-white data-[state=active]:text-[#FE8A0F] data-[state=active]:shadow-sm rounded-lg py-3 px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
+            >
+              <FolderOpen className="w-4 h-4" />
+              Other jobs
+              {otherJobs.length > 0 && (
+                <StatusCountBadge
+                  status="open"
+                  count={otherJobs.length}
+                  variant="client"
+                  className="ml-1"
                 />
               )}
             </TabsTrigger>
           </TabsList>
         </div>
 
-        {/* Available Jobs Tab */}
         <TabsContent value="available" className="mt-0">
           <AvailableJobsSection />
         </TabsContent>
 
-        {/* My Quotes Tab */}
-        <TabsContent value="quotes" className="mt-0">
+        <TabsContent value="quoted" className="mt-0">
           <MyQuotesSection onVisibleCountChange={setMyQuotesVisibleCount} />
         </TabsContent>
 
-        {/* Active Jobs Tab */}
-        <TabsContent value="active" className="mt-0">
-          <ActiveJobsSection />
+        <TabsContent value="awarded" className="mt-0">
+          <ProPipelineJobsList
+            jobs={awardedJobs}
+            statLabel="Awarded work"
+            statIcon={Briefcase}
+            statGradient="from-green-50 to-white border-green-200"
+            statIconBg="bg-green-100"
+            statIconColor="text-green-600"
+            emptyTitle="No awarded jobs"
+            emptyHint="When a client awards you a project, it will appear here until you deliver."
+            searchPlaceholder="Search awarded jobs..."
+          />
+        </TabsContent>
+
+        <TabsContent value="delivered" className="mt-0">
+          <ProPipelineJobsList
+            jobs={deliveredJobs}
+            statLabel="Delivered"
+            statIcon={Package}
+            statGradient="from-purple-50 to-white border-purple-200"
+            statIconBg="bg-purple-100"
+            statIconColor="text-purple-600"
+            emptyTitle="No delivered jobs"
+            emptyHint="When the client marks delivery, jobs move here until completion."
+            searchPlaceholder="Search delivered jobs..."
+          />
         </TabsContent>
 
         <TabsContent value="completed" className="mt-0">
           <CompletedJobsSection />
+        </TabsContent>
+
+        <TabsContent value="cancelled" className="mt-0">
+          <ProPipelineJobsList
+            jobs={cancelledJobs}
+            statLabel="Cancelled"
+            statIcon={XCircle}
+            statGradient="from-red-50 to-white border-red-200"
+            statIconBg="bg-red-100"
+            statIconColor="text-red-600"
+            emptyTitle="No cancelled jobs"
+            emptyHint="Jobs that were cancelled will appear here."
+            searchPlaceholder="Search cancelled jobs..."
+          />
+        </TabsContent>
+
+        <TabsContent value="other" className="mt-0">
+          <ProPipelineJobsList
+            jobs={otherJobs}
+            statLabel="Other"
+            statIcon={FolderOpen}
+            statGradient="from-amber-50 to-white border-amber-200"
+            statIconBg="bg-amber-100"
+            statIconColor="text-amber-700"
+            emptyTitle="No other jobs"
+            emptyHint="Closed jobs, disputes, or edge cases that don’t fit the tabs above appear here."
+            searchPlaceholder="Search other jobs..."
+          />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-// Active Jobs Section Component
-function ActiveJobsSection() {
-  const { getProfessionalActiveJobs, fetchJobById } = useJobs();
+function ProPipelineJobsList({
+  jobs: sourceJobs,
+  statLabel,
+  statIcon: StatIcon,
+  statGradient,
+  statIconBg,
+  statIconColor,
+  emptyTitle,
+  emptyHint,
+  searchPlaceholder,
+}: {
+  jobs: Job[];
+  statLabel: string;
+  statIcon: ComponentType<{ className?: string }>;
+  statGradient: string;
+  statIconBg: string;
+  statIconColor: string;
+  emptyTitle: string;
+  emptyHint: string;
+  searchPlaceholder: string;
+}) {
+  const { fetchJobById } = useJobs();
   const { userInfo } = useAccount();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<string>("date");
@@ -357,10 +563,8 @@ function ActiveJobsSection() {
   const [jobForDeliver, setJobForDeliver] = useState<Job | null>(null);
   const [requestMilestoneJob, setRequestMilestoneJob] = useState<Job | null>(null);
 
-  const activeJobs = getProfessionalActiveJobs(userInfo?.id || "");
-
   // Filter and sort
-  const filteredJobs = activeJobs
+  const filteredJobs = sourceJobs
     .filter((job) => {
       const matchesSearch =
         searchQuery === "" ||
@@ -387,18 +591,18 @@ function ActiveJobsSection() {
   return (
     <div>
       {/* Stats Card */}
-      <div className="bg-gradient-to-br from-green-50 to-white border-2 border-green-200 rounded-xl p-6 mb-6">
+      <div className={`bg-gradient-to-br border-2 rounded-xl p-6 mb-6 ${statGradient}`}>
         <div className="flex items-center justify-between">
           <div>
             <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-1">
-              Active Projects
+              {statLabel}
             </p>
             <h3 className="font-['Poppins',sans-serif] text-[32px] text-[#2c353f]">
-              {activeJobs.length}
+              {sourceJobs.length}
             </h3>
           </div>
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-            <Briefcase className="w-8 h-8 text-green-600" />
+          <div className={`w-16 h-16 ${statIconBg} rounded-full flex items-center justify-center`}>
+            <StatIcon className={`w-8 h-8 ${statIconColor}`} />
           </div>
         </div>
       </div>
@@ -408,7 +612,7 @@ function ActiveJobsSection() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#6b6b6b]" />
           <Input
-            placeholder="Search active jobs..."
+            placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 font-['Poppins',sans-serif]"
@@ -442,12 +646,10 @@ function ActiveJobsSection() {
         <div className="border-2 border-dashed border-gray-200 rounded-xl p-12 text-center">
           <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f] mb-2">
-            No active jobs
+            {emptyTitle}
           </h3>
           <p className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b] mb-4">
-            {searchQuery
-              ? "No jobs match your search"
-              : "Submit quotes on available jobs to get started"}
+            {searchQuery ? "No jobs match your search" : emptyHint}
           </p>
         </div>
       ) : (

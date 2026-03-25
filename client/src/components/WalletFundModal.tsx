@@ -13,6 +13,7 @@ import { resolveApiUrl } from "../config/api";
 import PaymentMethodModal from "./PaymentMethodModal";
 import { useCurrency } from "./CurrencyContext";
 import { useAccount } from "./AccountContext";
+import paypalLogo from "../assets/paypal-logo.png";
 
 interface PaymentMethod {
   paymentMethodId: string;
@@ -64,11 +65,7 @@ const MastercardLogo = () => (
 );
 
 const PayPalLogo = () => (
-  <svg width="60" height="20" viewBox="0 0 60 20" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-    <path d="M7.5 2.5C7.5 1.67 8.17 1 9 1H15C17.76 1 20 3.24 20 6C20 8.76 17.76 11 15 11H11.5L10.5 16H7.5V2.5ZM11 8H14.5C15.88 8 17 6.88 17 5.5C17 4.12 15.88 3 14.5 3H11V8Z" fill="#003087"/>
-    <path d="M22 1H25.5L28 11H31.5L30 1H34L35.5 11H39L40.5 1H44L42 16H38.5L37 6H33.5L35 16H31.5L30 6H26.5L28 16H24.5L22 1Z" fill="#009CDE"/>
-    <path d="M45 1H48.5C50.43 1 52 2.57 52 4.5C52 6.43 50.43 8 48.5 8H47V16H45V1ZM47 6H48.5C49.33 6 50 5.33 50 4.5C50 3.67 49.33 3 48.5 3H47V6Z" fill="#012169"/>
-  </svg>
+  <img src={paypalLogo} alt="PayPal" className="h-5 w-auto shrink-0 object-contain" />
 );
 
 const BankLogo = () => (
@@ -133,6 +130,10 @@ export default function WalletFundModal({
   const calculateFees = () => {
     const amountNum = parseFloat(amount) || 0;
     if (amountNum <= 0) return { total: 0, fee: 0, paymentDue: 0 };
+
+    if (isQuoteCreditTopUp) {
+      return { total: amountNum, fee: 0, paymentDue: amountNum };
+    }
 
     let fee = 0;
     if (selectedPaymentType === "card") {
@@ -596,7 +597,15 @@ export default function WalletFundModal({
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent
-          className="max-w-5xl max-h-[90vh] overflow-y-auto"
+          className={[
+            "w-full min-w-0 overflow-y-auto p-4 sm:p-6",
+            "max-h-[90vh]",
+            /* Mobile: full-viewport width sheet; undo default centered narrow dialog */
+            "max-sm:mx-0 max-sm:max-h-[100dvh] max-sm:h-full max-sm:max-w-none max-sm:w-full max-sm:rounded-none max-sm:border-x-0",
+            "max-sm:inset-x-0 max-sm:top-0 max-sm:bottom-auto max-sm:left-0 max-sm:right-0 max-sm:translate-x-0 max-sm:translate-y-0",
+            /* Desktop / tablet: ~60% of viewport width (not full-width) */
+            "sm:mx-auto sm:w-[60%] sm:max-w-[60vw]",
+          ].join(" ")}
           style={{ zIndex: 2000001 }}
         >
           <DialogHeader>
@@ -611,7 +620,7 @@ export default function WalletFundModal({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+          <div className="w-full min-w-0 max-w-full mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
             {/* Left Section: Select Payment Method */}
             <div className="space-y-4">
               <h3 className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
@@ -629,7 +638,7 @@ export default function WalletFundModal({
               >
                 {/* Card Payment Option */}
                 {(!restrictPaymentType || selectedPaymentType === "card") && (
-                  <div className="border-2 rounded-lg overflow-hidden">
+                  <div className="border-2 rounded-lg">
                   <div
                     className={`p-4 cursor-pointer transition-all ${
                       selectedPaymentType === "card"
@@ -638,16 +647,18 @@ export default function WalletFundModal({
                     }`}
                     onClick={() => togglePaymentType("card")}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                         <RadioGroupItem
                           value="card"
                           id="payment-card"
-                          className="mt-0"
+                          className="mt-0.5 shrink-0"
                         />
-                        <div className="flex items-center gap-2">
-                          {getCardBrandLogo(paymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.brand || "visa")}
-                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                          <span className="shrink-0">
+                            {getCardBrandLogo(paymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.brand || "visa")}
+                          </span>
+                          <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f] break-words">
                             {selectedPaymentMethod && paymentMethods.length > 0
                               ? `•••• ${paymentMethods.find(m => m.paymentMethodId === selectedPaymentMethod)?.card.last4} (${currency})`
                               : "Debit or credit card"}
@@ -655,9 +666,9 @@ export default function WalletFundModal({
                         </div>
                       </div>
                       {expandedPaymentType === "card" ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                        <ChevronUp className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                        <ChevronDown className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
                       )}
                     </div>
                     {!expandedPaymentType && selectedPaymentType === "card" && (
@@ -694,20 +705,21 @@ export default function WalletFundModal({
                             }`}
                             onClick={() => setSelectedPaymentMethod(method.paymentMethodId)}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-start gap-3 min-w-0">
                               <RadioGroupItem
                                 value={method.paymentMethodId}
                                 id={`method-${method.paymentMethodId}`}
+                                className="mt-0.5 shrink-0"
                               />
-                              <div className="flex items-center gap-2 flex-1">
-                                {getCardBrandLogo(method.card.brand)}
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f]">
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <span className="shrink-0 pt-0.5">{getCardBrandLogo(method.card.brand)}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="font-['Poppins',sans-serif] text-[14px] font-medium text-[#2c353f] break-all sm:break-words">
                                       •••• {method.card.last4}
                                     </span>
                                     {method.isDefault && (
-                                      <span className="px-2 py-0.5 bg-[#FE8A0F] text-white text-[10px] rounded">
+                                      <span className="px-2 py-0.5 bg-[#FE8A0F] text-white text-[10px] rounded shrink-0">
                                         Default
                                       </span>
                                     )}
@@ -718,7 +730,7 @@ export default function WalletFundModal({
                                 </div>
                               </div>
                               {selectedPaymentMethod === method.paymentMethodId && (
-                                <Check className="w-5 h-5 text-[#FE8A0F]" />
+                                <Check className="w-5 h-5 text-[#FE8A0F] shrink-0 mt-0.5" />
                               )}
                             </div>
                           </div>
@@ -753,7 +765,7 @@ export default function WalletFundModal({
 
                 {/* PayPal Option */}
                 {(!restrictPaymentType || selectedPaymentType === "paypal") && (
-                  <div className="border-2 rounded-lg overflow-hidden">
+                  <div className="border-2 rounded-lg">
                   <div
                     className={`p-4 cursor-pointer transition-all ${
                       selectedPaymentType === "paypal"
@@ -762,24 +774,24 @@ export default function WalletFundModal({
                     }`}
                     onClick={() => togglePaymentType("paypal")}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <RadioGroupItem
                           value="paypal"
                           id="payment-paypal"
-                          className="mt-0"
+                          className="mt-0 shrink-0"
                         />
-                        <div className="flex items-center gap-2">
-                          <PayPalLogo />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="shrink-0"><PayPalLogo /></span>
                           <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                             PayPal
                           </span>
                         </div>
                       </div>
                       {expandedPaymentType === "paypal" ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                        <ChevronUp className="w-5 h-5 text-gray-400 shrink-0" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
+                        <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />
                       )}
                     </div>
                   </div>
@@ -797,7 +809,7 @@ export default function WalletFundModal({
                 {!hideBankOption && (!restrictPaymentType || selectedPaymentType === "bank") && (
                   <>
                     {/* Bank Transfer Option */}
-                    <div className="border-2 rounded-lg overflow-hidden">
+                    <div className="border-2 rounded-lg">
                       <div
                         className={`p-4 cursor-pointer transition-all ${
                           selectedPaymentType === "bank"
@@ -806,24 +818,24 @@ export default function WalletFundModal({
                         }`}
                         onClick={() => togglePaymentType("bank")}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between gap-3 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
                             <RadioGroupItem
                               value="bank"
                               id="payment-bank"
-                              className="mt-0"
+                              className="mt-0 shrink-0"
                             />
-                            <div className="flex items-center gap-2">
-                              <BankLogo />
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="shrink-0"><BankLogo /></span>
                               <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
                                 Bank Transfer
                               </span>
                             </div>
                           </div>
                           {expandedPaymentType === "bank" ? (
-                            <ChevronUp className="w-5 h-5 text-gray-400" />
+                            <ChevronUp className="w-5 h-5 text-gray-400 shrink-0" />
                           ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                            <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />
                           )}
                         </div>
                       </div>
@@ -1003,30 +1015,32 @@ export default function WalletFundModal({
                     {formatAmountInSelectedCurrency(fees.total)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
-                      Processing fee:
+                {!isQuoteCreditTopUp && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-['Poppins',sans-serif] text-[14px] text-[#2c353f]">
+                        Processing fee:
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-4 h-4 text-blue-500 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-white border border-gray-200 text-gray-800 shadow-lg p-3 max-w-xs">
+                          <p className="font-['Poppins',sans-serif] text-[13px]">
+                            {selectedPaymentType === "card"
+                              ? `Card charges (${paymentSettings.stripeCommissionPercentage}%+${symbol}${paymentSettings.stripeCommissionFixed}) processing fee and processes your payment immediately.`
+                              : selectedPaymentType === "bank"
+                              ? `We charge ${paymentSettings.bankProcessingFeePercentage}% processing fee and process your payment within 1-2 working days.`
+                              : "PayPal processing fee information"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
+                      {formatAmountInSelectedCurrency(fees.fee)}
                     </span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="w-4 h-4 text-blue-500 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-white border border-gray-200 text-gray-800 shadow-lg p-3 max-w-xs">
-                        <p className="font-['Poppins',sans-serif] text-[13px]">
-                          {selectedPaymentType === "card"
-                            ? `Card charges (${paymentSettings.stripeCommissionPercentage}%+${symbol}${paymentSettings.stripeCommissionFixed}) processing fee and processes your payment immediately.`
-                            : selectedPaymentType === "bank"
-                            ? `We charge ${paymentSettings.bankProcessingFeePercentage}% processing fee and process your payment within 1-2 working days.`
-                            : "PayPal processing fee information"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
                   </div>
-                  <span className="font-['Poppins',sans-serif] text-[14px] font-semibold text-[#2c353f]">
-                    {formatAmountInSelectedCurrency(fees.fee)}
-                  </span>
-                </div>
+                )}
                 <div className="border-t border-gray-300 pt-3">
                   <div className="flex items-center justify-between">
                     <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f]">
