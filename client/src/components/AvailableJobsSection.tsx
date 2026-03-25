@@ -25,6 +25,7 @@ import {
   Star,
   Undo2,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { resolveApiUrl } from "../config/api";
 import { formatNumber } from "../utils/formatNumber";
@@ -48,6 +49,15 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -69,6 +79,7 @@ export default function AvailableJobsSection() {
   const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP } = useCurrency();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
+  const [showInsufficientCreditsAlert, setShowInsufficientCreditsAlert] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   
@@ -317,7 +328,8 @@ export default function AvailableJobsSection() {
         /credit|bid/i.test(msg); // keep narrow to avoid unrelated errors
 
       if (isCreditError) {
-        openQuoteCreditsSlider();
+        setIsQuoteDialogOpen(false);
+        setShowInsufficientCreditsAlert(true);
         return;
       }
 
@@ -562,7 +574,13 @@ export default function AvailableJobsSection() {
       </div>
 
       {/* Send Quote Dialog */}
-      <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
+      <Dialog
+        open={isQuoteDialogOpen}
+        onOpenChange={(open: boolean) => {
+          setIsQuoteDialogOpen(open);
+          if (!open) setShowInsufficientCreditsAlert(false);
+        }}
+      >
         <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b border-gray-200 pb-4 mb-6">
             <DialogTitle className="font-['Poppins',sans-serif] text-[26px] text-[#2c353f]">
@@ -891,6 +909,39 @@ export default function AvailableJobsSection() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={showInsufficientCreditsAlert}
+        onOpenChange={(open: boolean) => {
+          if (!open) setShowInsufficientCreditsAlert(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <AlertDialogTitle className="font-['Poppins',sans-serif]">Insufficient credits</AlertDialogTitle>
+                <AlertDialogDescription className="font-['Poppins',sans-serif] text-[13px]">
+                  insuffient credits! you have insuffient credit to quote this job. please top up.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+            <Button
+              onClick={() => {
+                setShowInsufficientCreditsAlert(false);
+                openQuoteCreditsSlider();
+              }}
+              className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
+            >
+              Top up now
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Quote credits purchase slider (shown when pro has no credits) */}
       {showQuoteCreditsSlider &&

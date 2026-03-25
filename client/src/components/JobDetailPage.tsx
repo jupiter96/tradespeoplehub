@@ -320,6 +320,8 @@ export default function JobDetailPage() {
     setSearchParams(next, { replace: true });
   };
   const [showQuoteDialog, setShowQuoteDialog] = useState(false);
+  const [, setShowInsufficientCreditsPrompt] = useState(false);
+  const [showInsufficientCreditsAlert, setShowInsufficientCreditsAlert] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
     price: "",
     deliveryTime: "",
@@ -1864,7 +1866,9 @@ export default function JobDetailPage() {
         /credit|credits|bid|bids|insufficient/i.test(msg) &&
         /credit|bid/i.test(msg); // keep narrow to avoid hijacking unrelated errors
       if (isCreditError) {
-        openQuoteCreditsSlider();
+        setShowQuoteDialog(false);
+        setShowInsufficientCreditsPrompt(false);
+        setShowInsufficientCreditsAlert(true);
       } else {
         toast.error(msg || "Failed to submit quote");
       }
@@ -5875,6 +5879,8 @@ export default function JobDetailPage() {
             setEditingQuoteMeta(null);
             setQuoteMessageBeforeAi(null);
             setIsQuoteMessageAiGenerated(false);
+            setShowInsufficientCreditsPrompt(false);
+            setShowInsufficientCreditsAlert(false);
           }
         }}
       >
@@ -6196,6 +6202,39 @@ export default function JobDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={showInsufficientCreditsAlert}
+        onOpenChange={(open: boolean) => {
+          if (!open) setShowInsufficientCreditsAlert(false);
+        }}
+      >
+        <AlertDialogContent className="font-['Poppins',sans-serif]">
+          <AlertDialogHeader>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <AlertDialogTitle>Insufficient credits</AlertDialogTitle>
+                <AlertDialogDescription className="text-[13px]">
+                  insuffient credits! you have insuffient credit to quote this job. please top up.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="font-['Poppins',sans-serif]">Cancel</AlertDialogCancel>
+            <Button
+              onClick={() => {
+                setShowInsufficientCreditsAlert(false);
+                openQuoteCreditsSlider();
+              }}
+              className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
+            >
+              Top up now
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Award Job Modal */}
       <Dialog open={showAwardModal} onOpenChange={setShowAwardModal}>
