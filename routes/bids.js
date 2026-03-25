@@ -14,9 +14,11 @@ const PDFDocument = requirePdf('pdfkit');
 
 const CURRENCY_RATES = { GBP: 1, USD: 1 / 0.75, EUR: 0.87 / 0.75 };
 const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€' };
-function formatAmountInCurrency(gbpAmount, currencyCode = 'GBP') {
+function formatAmountInCurrency(gbpAmount, currencyCode = 'GBP', requestedRate) {
   const code = ['GBP', 'USD', 'EUR'].includes(currencyCode) ? currencyCode : 'GBP';
-  const rate = CURRENCY_RATES[code];
+  const fallbackRate = CURRENCY_RATES[code];
+  const parsedRequestedRate = Number(requestedRate);
+  const rate = Number.isFinite(parsedRequestedRate) && parsedRequestedRate > 0 ? parsedRequestedRate : fallbackRate;
   const symbol = CURRENCY_SYMBOLS[code];
   const value = (Number(gbpAmount) * rate).toFixed(2);
   return `${symbol}${value}`;
@@ -308,6 +310,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
     if (!purchase) return res.status(404).json({ error: 'Invoice not found' });
 
     const currency = ['GBP', 'USD', 'EUR'].includes(req.query.currency) ? req.query.currency : 'GBP';
+    const requestedRate = req.query.rate;
     const user = await User.findById(req.user.id)
       .select('firstName lastName tradingName address postcode townCity county')
       .lean();
@@ -364,7 +367,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
 
     doc.font('Helvetica').fillColor('#333');
     doc.text(description, 50, y, { width: 390 });
-    doc.text(formatAmountInCurrency(purchase.amountPounds || 0, currency), 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(purchase.amountPounds || 0, currency, requestedRate), 450, y, { width: 95, align: 'right' });
     y += 24;
 
     doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
@@ -372,7 +375,7 @@ router.get('/invoice/:id', authenticateToken, requireRole(['professional']), asy
 
     doc.font('Helvetica-Bold').fillColor('#2c353f');
     doc.text('Total', 50, y);
-    doc.text(formatAmountInCurrency(purchase.amountPounds || 0, currency), 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(purchase.amountPounds || 0, currency, requestedRate), 450, y, { width: 95, align: 'right' });
     y += 30;
 
     doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');

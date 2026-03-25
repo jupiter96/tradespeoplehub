@@ -32,6 +32,24 @@ import { sendTemplatedEmail } from '../services/notifier.js';
 import { revertJobAwardToOpen } from '../services/revertJobAward.js';
 
 const router = express.Router();
+const ALLOWED_INVOICE_CURRENCIES = ['GBP', 'USD', 'EUR'];
+const CURRENCY_RATES = { GBP: 1, USD: 1 / 0.75, EUR: 0.87 / 0.75 };
+const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€' };
+
+function getInvoiceCurrencyContext(query = {}) {
+  const currency = ALLOWED_INVOICE_CURRENCIES.includes(query.currency) ? query.currency : 'GBP';
+  const defaultRate = CURRENCY_RATES[currency] || 1;
+  const requestedRate = Number(query.rate);
+  const rate = Number.isFinite(requestedRate) && requestedRate > 0 ? requestedRate : defaultRate;
+  return { currency, rate, symbol: CURRENCY_SYMBOLS[currency] || '£' };
+}
+
+function formatInvoiceAmount(gbpAmount, invoiceCurrencyContext) {
+  const gbp = Number(gbpAmount) || 0;
+  const rate = invoiceCurrencyContext?.rate || 1;
+  const symbol = invoiceCurrencyContext?.symbol || '£';
+  return `${symbol}${(gbp * rate).toFixed(2)}`;
+}
 
 function getStripeInstanceForJobs(settings) {
   const isLive = settings?.stripeLiveMode === true;
@@ -4483,6 +4501,7 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     const jobTitle = job.title || 'Job';
     const milestoneName = milestone.name || milestone.description || 'Milestone';
     const amount = Number(milestone.amount) || 0;
+    const invoiceCurrencyContext = getInvoiceCurrencyContext(req.query || {});
     const invoiceNumber = `INV-${(job.slug || job._id.toString()).slice(-8)}-${milestone._id.toString().slice(-6)}`;
     const invoiceDate = (milestone.releasedAt ? new Date(milestone.releasedAt) : new Date()).toLocaleDateString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric',
@@ -4505,8 +4524,9 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     doc.fontSize(10).font('Helvetica').fillColor('#6b6b6b');
     doc.text(`Invoice # ${invoiceNumber}`, 400, 78, { width: 150, align: 'right' });
     doc.text(`Date: ${invoiceDate}`, 400, 92, { width: 150, align: 'right' });
+    doc.text(`Currency: ${invoiceCurrencyContext.currency}`, 400, 106, { width: 150, align: 'right' });
 
-    let y = 120;
+    let y = 130;
 
     // Bill To / From section (ecommerce style)
     doc.fontSize(10).font('Helvetica-Bold').fillColor('#2c353f');
@@ -4536,7 +4556,7 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     // Milestone line – description: Job title (Milestone name)
     doc.font('Helvetica').fillColor('#333');
     doc.text(`${jobTitle} (${milestoneName})`, 50, y, { width: 390 });
-    doc.text(`£${amount.toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    doc.text(formatInvoiceAmount(amount, invoiceCurrencyContext), 450, y, { width: 95, align: 'right' });
     y += 24;
 
     doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
@@ -4545,7 +4565,7 @@ router.get('/:id/milestones/:milestoneId/invoice', authenticateToken, async (req
     // Total
     doc.font('Helvetica-Bold').fillColor('#2c353f');
     doc.text('Total', 50, y);
-    doc.text(`£${amount.toFixed(2)}`, 450, y, { width: 95, align: 'right' });
+    doc.text(formatInvoiceAmount(amount, invoiceCurrencyContext), 450, y, { width: 95, align: 'right' });
     y += 30;
 
     doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');

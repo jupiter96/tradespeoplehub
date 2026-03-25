@@ -89,7 +89,7 @@ export default function BidsAndMembershipSection({
   onWalletFundModalOpenChange?: (open: boolean) => void;
   onQuoteCreditsPurchaseSuccess?: () => void;
 }) {
-  const { formatPrice, currency, fromGBP } = useCurrency();
+  const { formatPrice, currency, rate, fromGBP } = useCurrency();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CreditTab>("balance");
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -244,7 +244,8 @@ export default function BidsAndMembershipSection({
   }, [historyList, historySearch, historySortBy, historySortDir]);
 
   const handleViewInvoice = (purchaseId: string) => {
-    const url = resolveApiUrl(`/api/bids/invoice/${purchaseId}?currency=${encodeURIComponent(currency)}`);
+    const query = `currency=${encodeURIComponent(currency)}&rate=${encodeURIComponent(String(rate))}`;
+    const url = resolveApiUrl(`/api/bids/invoice/${purchaseId}?${query}`);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

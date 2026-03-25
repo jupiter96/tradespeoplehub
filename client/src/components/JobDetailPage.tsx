@@ -283,7 +283,7 @@ export default function JobDetailPage() {
   const { getJobById, fetchJobById, updateQuoteStatus, addQuoteToJob, withdrawQuote, updateQuoteByProfessional, awardJobWithMilestone, awardJobWithoutMilestone, acceptAward, rejectAward, updateJob, closeJobProject, deleteMilestone, acceptMilestone, requestMilestoneCancel, respondToCancelRequest, respondToReleaseRequest, createDispute, deleteJob, approveMilestoneDelivery, requestMilestoneRevision, submitClientJobReview, submitProfessionalJobBuyerReview, respondToJobClientReview } = useJobs();
   const { userInfo, userRole, isLoggedIn, authReady, refreshUser } = useAccount();
   const { startConversation, addMessage, getOrCreateContact, getContactById } = useMessenger();
-  const { formatPrice, formatPriceWhole, symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
+  const { formatPrice, formatPriceWhole, symbol, currency, rate, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
 
   /** When the pro did not suggest milestones on the quote, award flow uses a single default milestone. */
   const DEFAULT_AWARD_MILESTONE_WITHOUT_PLAN = "Word milestone";
@@ -1502,7 +1502,8 @@ export default function JobDetailPage() {
 
   const handleViewInvoice = (milestoneId: string) => {
     if (!job?.id) return;
-    const url = resolveApiUrl(`/api/jobs/${job.id}/milestones/${milestoneId}/invoice`);
+    const query = `currency=${encodeURIComponent(currency)}&rate=${encodeURIComponent(String(rate))}`;
+    const url = resolveApiUrl(`/api/jobs/${job.id}/milestones/${milestoneId}/invoice?${query}`);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -3672,8 +3673,11 @@ export default function JobDetailPage() {
                     )
                   );
                   const hasRequestedPlan = !!(job.requestedMilestonePlan && job.requestedMilestonePlan.length > 0);
+                  const isAwardedProfessionalViewing =
+                    !isJobOwner && String(job.awardedProfessionalId || "") === String(userInfo?.id || "");
+                  const canViewSingleQuoteMilestoneRow = isJobOwner || isAwardedProfessionalViewing;
                   const shouldShowSingleQuoteMilestoneRow =
-                    isJobOwner &&
+                    canViewSingleQuoteMilestoneRow &&
                     noMilestonesYet &&
                     !!awardedQuote &&
                     !hasSuggestedPlan &&
@@ -3708,9 +3712,15 @@ export default function JobDetailPage() {
                                   type="button"
                                   size="sm"
                                   className="h-8 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm font-['Poppins',sans-serif]"
-                                  onClick={() => setShowQuickPayMilestoneDialog(true)}
+                                  onClick={() => {
+                                    if (isJobOwner) {
+                                      setShowQuickPayMilestoneDialog(true);
+                                      return;
+                                    }
+                                    setShowRequestMilestonesDialog(true);
+                                  }}
                                 >
-                                  Pay Now
+                                  {isJobOwner ? "Pay Now" : "Request Payment"}
                                 </Button>
                               </td>
                             </tr>
@@ -3803,32 +3813,17 @@ export default function JobDetailPage() {
                               </td>
                               <td className="py-3 px-4 text-right text-[#2c353f]">{formatPrice(Number(milestone.amount))}</td>
                               <td className="py-3 px-4 text-right">
-                                {/* Client: awaiting-accept (pro not accepted yet) → Close + View invoice */}
+                                {/* Client: awaiting-accept (pro not accepted yet) → View invoice only */}
                                 {isJobOwner && milestone.status === "awaiting-accept" && (
-                                  <DropdownMenu>
-                                    <div className="inline-flex items-stretch rounded-md overflow-hidden border border-orange-300 bg-orange-50 shadow-sm">
-                                      <button
-                                        type="button"
-                                        className="h-8 px-3 rounded-l-md rounded-r-none border-0 bg-transparent text-orange-600 font-['Poppins',sans-serif] text-[13px] font-medium hover:bg-orange-100 transition-colors cursor-pointer"
-                                        onClick={() => setCloseMilestoneConfirm({ jobId: job.id, milestone })}
-                                      >
-                                        Close
-                                      </button>
-                                      <DropdownMenuTrigger asChild>
-                                        <button
-                                          type="button"
-                                          className="h-8 w-8 rounded-l-none rounded-r-md border-0 border-l border-orange-400/50 bg-transparent text-orange-600 hover:bg-orange-100 transition-colors cursor-pointer inline-flex items-center justify-center flex-shrink-0"
-                                        >
-                                          <ChevronDown className="w-4 h-4" />
-                                        </button>
-                                      </DropdownMenuTrigger>
-                                    </div>
-                                    <DropdownMenuContent align="end" className="font-['Poppins',sans-serif]">
-                                      <DropdownMenuItem onClick={() => handleViewInvoice(milestone.id)} className="cursor-pointer">
-                                        View invoice
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-3 border-orange-300 text-orange-600 hover:bg-orange-50 font-['Poppins',sans-serif]"
+                                    onClick={() => handleViewInvoice(milestone.id)}
+                                  >
+                                    View invoice
+                                  </Button>
                                 )}
                                 {/* Client: in-progress/delivered → action area */}
                                 {isJobOwner && (milestone.status === "in-progress" || milestone.status === "delivered") && (

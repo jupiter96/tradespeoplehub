@@ -3150,7 +3150,7 @@ const BankLogo = () => (
 // Billing Section
 function BillingSection() {
   const { userInfo, refreshUser } = useAccount();
-  const { formatPrice, symbol, currency, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
+  const { formatPrice, symbol, currency, rate, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
   const location = useLocation();
   const [billingTab, setBillingTab] = useState<"wallet" | "card" | "history">("wallet");
   
@@ -4753,7 +4753,8 @@ function TransactionHistoryTab() {
   };
 
   const handleViewInvoice = (transactionId: string) => {
-    const url = resolveApiUrl(`/api/wallet/transactions/${transactionId}/invoice?currency=${encodeURIComponent(currency)}`);
+    const query = `currency=${encodeURIComponent(currency)}&rate=${encodeURIComponent(String(rate))}`;
+    const url = resolveApiUrl(`/api/wallet/transactions/${transactionId}/invoice?${query}`);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -5016,7 +5017,7 @@ function TransactionHistoryTab() {
 // Withdraw Section (Professional)
 function WithdrawSection() {
   const { userInfo } = useAccount();
-  const { formatPrice, currency, symbol, toGBP } = useCurrency();
+  const { formatPrice, currency, rate, symbol, toGBP } = useCurrency();
   const [withdrawTab, setWithdrawTab] = useState<"balance" | "accounts" | "withdraw" | "history">("balance");
   const [showAddPayPal, setShowAddPayPal] = useState(false);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
@@ -5283,7 +5284,8 @@ function WithdrawSection() {
   };
 
   const handleViewInvoice = (transactionId: string) => {
-    const url = resolveApiUrl(`/api/wallet/transactions/${transactionId}/invoice?currency=${encodeURIComponent(currency)}`);
+    const query = `currency=${encodeURIComponent(currency)}&rate=${encodeURIComponent(String(rate))}`;
+    const url = resolveApiUrl(`/api/wallet/transactions/${transactionId}/invoice?${query}`);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 

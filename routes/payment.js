@@ -16,11 +16,13 @@ const router = express.Router();
 // Currency display for invoice PDF (same defaults as frontend CurrencyContext)
 const CURRENCY_RATES = { GBP: 1, USD: 1 / 0.75, EUR: 0.87 / 0.75 };
 const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€' };
-function formatAmountInCurrency(gbpAmount, currencyCode = 'GBP') {
+function formatAmountInCurrency(gbpAmount, currencyCode = 'GBP', requestedRate) {
   const code = ['GBP', 'USD', 'EUR'].includes(currencyCode) ? currencyCode : 'GBP';
-  const rate = CURRENCY_RATES[code];
+  const fallbackRate = CURRENCY_RATES[code];
+  const parsedRequestedRate = Number(requestedRate);
+  const rate = Number.isFinite(parsedRequestedRate) && parsedRequestedRate > 0 ? parsedRequestedRate : fallbackRate;
   const symbol = CURRENCY_SYMBOLS[code];
-  const value = (gbpAmount * rate).toFixed(2);
+  const value = ((Number(gbpAmount) || 0) * rate).toFixed(2);
   return `${symbol}${value}`;
 }
 
@@ -198,6 +200,7 @@ router.get('/wallet/transactions/:id/invoice', authenticateToken, async (req, re
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
 
     const currency = ['GBP', 'USD', 'EUR'].includes(req.query.currency) ? req.query.currency : 'GBP';
+    const requestedRate = req.query.rate;
     const invoiceNumber = `INV-WLT-${transaction._id.toString().slice(-8)}`;
     const invoiceDate = new Date(transaction.createdAt).toLocaleDateString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -254,7 +257,7 @@ router.get('/wallet/transactions/:id/invoice', authenticateToken, async (req, re
     const description = transaction.description || `${typeLabel} – Wallet transaction`;
     doc.font('Helvetica').fillColor('#333');
     doc.text(description, 50, y, { width: 390 });
-    doc.text(formatAmountInCurrency(transaction.amount, currency), 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(transaction.amount, currency, requestedRate), 450, y, { width: 95, align: 'right' });
     y += 24;
 
     doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, y).lineTo(545, y).stroke();
@@ -262,11 +265,11 @@ router.get('/wallet/transactions/:id/invoice', authenticateToken, async (req, re
 
     doc.font('Helvetica-Bold').fillColor('#2c353f');
     doc.text('Amount', 50, y);
-    doc.text(formatAmountInCurrency(transaction.amount, currency), 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(transaction.amount, currency, requestedRate), 450, y, { width: 95, align: 'right' });
     y += 20;
     doc.font('Helvetica').fillColor('#333');
     doc.text('Balance after', 50, y);
-    doc.text(formatAmountInCurrency(transaction.balance ?? 0, currency), 450, y, { width: 95, align: 'right' });
+    doc.text(formatAmountInCurrency(transaction.balance ?? 0, currency, requestedRate), 450, y, { width: 95, align: 'right' });
     y += 30;
 
     doc.font('Helvetica').fontSize(9).fillColor('#6b6b6b');
