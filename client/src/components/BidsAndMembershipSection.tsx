@@ -81,11 +81,15 @@ function notifyBidsChanged() {
 
 export default function BidsAndMembershipSection({
   hideHeader = false,
+  hideHistoryTab = false,
+  purchaseOnlyMode = false,
   onWalletFundModalOpenChange,
   /** After wallet top-up + credit purchase (or balance purchase) succeeds from this UI — e.g. close quote-credits slider so Send Quote modal is visible again. */
   onQuoteCreditsPurchaseSuccess,
 }: {
   hideHeader?: boolean;
+  hideHistoryTab?: boolean;
+  purchaseOnlyMode?: boolean;
   onWalletFundModalOpenChange?: (open: boolean) => void;
   onQuoteCreditsPurchaseSuccess?: () => void;
 }) {
@@ -206,6 +210,19 @@ export default function BidsAndMembershipSection({
     if (activeTab === "history") fetchHistory();
   }, [activeTab]);
 
+  useEffect(() => {
+    if (hideHistoryTab && activeTab === "history") {
+      setActiveTab("balance");
+    }
+  }, [hideHistoryTab, activeTab]);
+
+  useEffect(() => {
+    if (purchaseOnlyMode) {
+      setActiveTab("balance");
+      setPurchaseExpanded(true);
+    }
+  }, [purchaseOnlyMode]);
+
   const filteredAndSortedHistory = useMemo(() => {
     let list = [...historyList];
     if (historySearch.trim()) {
@@ -275,8 +292,18 @@ export default function BidsAndMembershipSection({
       } else {
         const isInsufficient = (data.error || "").toLowerCase().includes("insufficient wallet");
         if (isInsufficient) {
-          toast.error("Insufficient wallet balance. Please add funds to your wallet first.");
-          navigate("/account?tab=billing&section=fund");
+          // Keep user on the same page/modal; fund the shortfall via selected payment method.
+          const selectedPlanNow = plans.find((p) => p.id === planId);
+          if (selectedPlanNow) {
+            const requiredGBP = selectedPlanNow.amountPence / 100;
+            const amountSelectedCurrency = fromGBP(Math.max(0, requiredGBP - walletBalanceGBP));
+            pendingPurchaseRef.current = { kind: "plan", planId };
+            setWalletFundInitialAmount(amountSelectedCurrency.toFixed(2));
+            setWaitingForExternalPayment(true);
+            setShowWalletFundModal(true);
+          } else {
+            toast.error("Insufficient wallet balance. Please try again.");
+          }
         } else {
           toast.error(data.error || "Purchase failed");
         }
@@ -316,8 +343,13 @@ export default function BidsAndMembershipSection({
       } else {
         const isInsufficient = (data.error || "").toLowerCase().includes("insufficient wallet");
         if (isInsufficient) {
-          toast.error("Insufficient wallet balance. Please add funds to your wallet first.");
-          navigate("/account?tab=billing&section=fund");
+          // Keep user on the same page/modal; fund the shortfall via selected payment method.
+          const requiredGBP = qty * pricePerBid;
+          const amountSelectedCurrency = fromGBP(Math.max(0, requiredGBP - walletBalanceGBP));
+          pendingPurchaseRef.current = { kind: "custom", qty };
+          setWalletFundInitialAmount(amountSelectedCurrency.toFixed(2));
+          setWaitingForExternalPayment(true);
+          setShowWalletFundModal(true);
         } else {
           toast.error(data.error || "Purchase failed");
         }
@@ -416,85 +448,86 @@ export default function BidsAndMembershipSection({
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-6" aria-label="Quote credits tabs">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`font-['Poppins',sans-serif] text-[15px] font-medium pb-3 -mb-px border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? "border-[#FE8A0F] text-[#FE8A0F]"
-                  : "border-transparent text-[#6b6b6b] hover:text-[#2c353f]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      {!purchaseOnlyMode && (
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-6" aria-label="Quote credits tabs">
+            {(hideHistoryTab ? TABS.filter((tab) => tab.id !== "history") : TABS).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`font-['Poppins',sans-serif] text-[15px] font-medium pb-3 -mb-px border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? "border-[#FE8A0F] text-[#FE8A0F]"
+                    : "border-transparent text-[#6b6b6b] hover:text-[#2c353f]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
 
       {/* Balance tab */}
       {activeTab === "balance" && (
         <>
-      {/* Balance card */}
-      <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-[#FFF9F5] to-white p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Target className="w-5 h-5 text-[#FE8A0F]" />
-          <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">Your credit balance</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total available</p>
-            <p className="font-['Poppins',sans-serif] text-[28px] font-semibold text-[#2c353f]">
-              {balance?.totalAvailable ?? 0} <span className="text-[14px] font-normal text-[#6b6b6b]">credits</span>
-            </p>
+      {!purchaseOnlyMode && (
+        <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-[#FFF9F5] to-white p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="w-5 h-5 text-[#FE8A0F]" />
+            <h3 className="font-['Poppins',sans-serif] text-[18px] text-[#2c353f]">Your credit balance</h3>
           </div>
-          <div>
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Free (this month)</p>
-            <p className="font-['Poppins',sans-serif] text-[20px] font-medium text-[#2c353f]">
-              {balance?.freeBidsRemaining ?? 0} <span className="text-[13px] font-normal text-[#6b6b6b]">credits</span>
-            </p>
-            {balance?.freeBidsResetAt && (
-              <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" /> Resets {formatDate(balance.freeBidsResetAt)}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Total available</p>
+              <p className="font-['Poppins',sans-serif] text-[28px] font-semibold text-[#2c353f]">
+                {balance?.totalAvailable ?? 0} <span className="text-[14px] font-normal text-[#6b6b6b]">credits</span>
               </p>
-            )}
+            </div>
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Free (this month)</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] font-medium text-[#2c353f]">
+                {balance?.freeBidsRemaining ?? 0} <span className="text-[13px] font-normal text-[#6b6b6b]">credits</span>
+              </p>
+              {balance?.freeBidsResetAt && (
+                <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-1 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" /> Resets {formatDate(balance.freeBidsResetAt)}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Purchased</p>
+              <p className="font-['Poppins',sans-serif] text-[20px] font-medium text-[#2c353f]">
+                {balance?.purchasedTotal ?? 0} <span className="text-[13px] font-normal text-[#6b6b6b]">credits</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-['Poppins',sans-serif] text-[13px] text-[#6b6b6b] mb-1">Purchased</p>
-            <p className="font-['Poppins',sans-serif] text-[20px] font-medium text-[#2c353f]">
-              {balance?.purchasedTotal ?? 0} <span className="text-[13px] font-normal text-[#6b6b6b]">credits</span>
-            </p>
-          </div>
-        </div>
 
-        {/* Recharge button */}
-        <div className="mt-6">
-          <Button
-            onClick={() => setPurchaseExpanded((prev) => !prev)}
-            variant="outline"
-            className="font-['Poppins',sans-serif] border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] hover:border-[#FE8A0F]"
-          >
-            {purchaseExpanded ? (
-              <>
-                <ChevronUp className="w-4 h-4 mr-2" />
-                Hide purchase
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4 mr-2" />
-                Recharge
-              </>
-            )}
-          </Button>
+          <div className="mt-6">
+            <Button
+              onClick={() => setPurchaseExpanded((prev) => !prev)}
+              variant="outline"
+              className="font-['Poppins',sans-serif] border-2 border-[#FE8A0F] text-[#FE8A0F] hover:bg-[#FFF5EB] hover:border-[#FE8A0F]"
+            >
+              {purchaseExpanded ? (
+                <>
+                  <ChevronUp className="w-4 h-4 mr-2" />
+                  Hide purchase
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                  Recharge
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Expandable Purchase credit section */}
-      {purchaseExpanded && (
+      {(purchaseOnlyMode || purchaseExpanded) && (
         <div className="rounded-xl border border-gray-200 bg-white p-6">
           <h3 className="font-['Poppins',sans-serif] text-[18px] font-medium text-[#2c353f] mb-2">
             Purchase credit
@@ -558,11 +591,11 @@ export default function BidsAndMembershipSection({
               <p className="font-['Poppins',sans-serif] text-[13px] font-medium text-[#2c353f] mb-3">
                 Select an option
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {plans.map((plan) => (
                   <label
                     key={plan.id}
-                    className={`flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[120px] ${
+                  className={`flex flex-col gap-2 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[132px] ${
                       selectedOption === plan.id
                         ? "border-[#FE8A0F] bg-[#FFF5EB]"
                         : "border-gray-200 hover:border-gray-300"
@@ -586,22 +619,22 @@ export default function BidsAndMembershipSection({
                         aria-hidden
                       />
                       <div className="min-w-0 flex-1">
-                        <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f] block">
+                        <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-medium text-[#2c353f] block break-words leading-snug">
                           {plan.name}
                         </span>
-                        <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
+                        <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mt-0.5 break-words leading-snug">
                           {plan.bids} credit{plan.bids !== 1 ? "s" : ""} · {plan.validityMonths} month
                           {plan.validityMonths !== 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>
-                    <span className="font-['Poppins',sans-serif] text-[16px] font-semibold text-[#2c353f] pl-7">
+                    <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[16px] font-semibold text-[#2c353f] pl-7 break-words leading-snug">
                       {formatPrice(plan.amountPence / 100)}
                     </span>
                   </label>
                 ))}
                 <label
-                  className={`flex flex-col gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[120px] ${
+                  className={`flex flex-col gap-2 p-3 sm:p-4 rounded-xl border-2 cursor-pointer transition-all min-h-[132px] ${
                     selectedOption === CUSTOM_OPTION_VALUE
                       ? "border-[#FE8A0F] bg-[#FFF5EB]"
                       : "border-gray-200 hover:border-gray-300"
@@ -625,10 +658,10 @@ export default function BidsAndMembershipSection({
                       aria-hidden
                     />
                     <div className="min-w-0 flex-1">
-                      <span className="font-['Poppins',sans-serif] text-[15px] font-medium text-[#2c353f] block">
+                      <span className="font-['Poppins',sans-serif] text-[14px] sm:text-[15px] font-medium text-[#2c353f] block break-words leading-snug">
                         Custom
                       </span>
-                      <p className="font-['Poppins',sans-serif] text-[12px] text-[#6b6b6b] mt-0.5">
+                      <p className="font-['Poppins',sans-serif] text-[11px] sm:text-[12px] text-[#6b6b6b] mt-0.5 break-words leading-snug">
                         {formatPrice(pricePerBid)}/credit
                       </p>
                     </div>

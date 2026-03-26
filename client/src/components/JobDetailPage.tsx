@@ -483,12 +483,8 @@ export default function JobDetailPage() {
   const [proProfileServicesLoading, setProProfileServicesLoading] = useState(false);
   const [proProfileExpandedReviewResponses, setProProfileExpandedReviewResponses] = useState<Set<string>>(new Set());
 
-  // Quote credits purchase slider (shown when pro has no credits)
-  const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
-  const [quoteCreditsSliderAnimateIn, setQuoteCreditsSliderAnimateIn] = useState(false);
-  const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
-  const [hideQuoteCreditsSliderPanel, setHideQuoteCreditsSliderPanel] = useState(false);
-  const [showFundWalletModal, setShowFundWalletModal] = useState(false);
+  // Quote credits purchase modal (shown when pro has no credits)
+  const [showQuoteCreditsModal, setShowQuoteCreditsModal] = useState(false);
   const [jobReviewCommunication, setJobReviewCommunication] = useState(0);
   const [jobReviewServiceAsDescribed, setJobReviewServiceAsDescribed] = useState(0);
   const [jobReviewBuyAgain, setJobReviewBuyAgain] = useState(0);
@@ -1706,29 +1702,6 @@ export default function JobDetailPage() {
   const isUserOnline = (id?: string | null) => {
     if (!id) return false;
     return getContactById(id)?.online === true;
-  };
-
-  const openQuoteCreditsSlider = () => {
-    setShowQuoteCreditsSlider(true);
-    setQuoteCreditsSliderAnimateIn(false);
-    setHideQuoteCreditsSliderPanel(false);
-    if (quoteCreditsSliderAnimTimerRef.current) {
-      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
-      quoteCreditsSliderAnimTimerRef.current = null;
-    }
-    quoteCreditsSliderAnimTimerRef.current = window.setTimeout(() => {
-      setQuoteCreditsSliderAnimateIn(true);
-    }, 30);
-  };
-
-  const closeQuoteCreditsSlider = () => {
-    setShowQuoteCreditsSlider(false);
-    setQuoteCreditsSliderAnimateIn(false);
-    setHideQuoteCreditsSliderPanel(false);
-    if (quoteCreditsSliderAnimTimerRef.current) {
-      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
-      quoteCreditsSliderAnimTimerRef.current = null;
-    }
   };
 
   /** Pro: open chat with the job client (when job is in progress). */
@@ -5679,65 +5652,21 @@ export default function JobDetailPage() {
         </div>
       )}
 
-      {/* Quote credits purchase slider (top-most) */}
-      {showQuoteCreditsSlider &&
-        createPortal(
-          <div className="fixed inset-0 z-[1000000] flex" style={{ zIndex: 1000000 }}>
-            {/* Left side overlay (kept non-blur, just to catch outside clicks) */}
-            <button
-              type="button"
-            className={["flex-1 bg-black/0", hideQuoteCreditsSliderPanel ? "opacity-0 pointer-events-none" : ""].join(" ")}
-              onClick={closeQuoteCreditsSlider}
-              aria-label="Close quote credits"
-            />
-            <div
-              className={[
-                "w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col",
-                "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-                hideQuoteCreditsSliderPanel ? "pointer-events-none" : "",
-              ].join(" ")}
-              style={{
-                transform: quoteCreditsSliderAnimateIn ? "translateX(0)" : "translateX(100%)",
-                opacity: quoteCreditsSliderAnimateIn ? (hideQuoteCreditsSliderPanel ? 0 : 1) : 0,
+      <Dialog open={showQuoteCreditsModal} onOpenChange={setShowQuoteCreditsModal}>
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-[#f0f0f0] p-0">
+          <div className="p-4 md:p-6">
+            <BidsAndMembershipSection
+              hideHeader
+              hideHistoryTab
+              purchaseOnlyMode
+              onQuoteCreditsPurchaseSuccess={() => {
+                setShowQuoteCreditsModal(false);
+                setShowQuoteDialog(true);
               }}
-            >
-              <button
-                type="button"
-                onClick={closeQuoteCreditsSlider}
-                className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
-                <div className="p-4 md:p-6">
-                  <BidsAndMembershipSection
-                    hideHeader
-                    onWalletFundModalOpenChange={(open) => setHideQuoteCreditsSliderPanel(open)}
-                    onQuoteCreditsPurchaseSuccess={() => {
-                      closeQuoteCreditsSlider();
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* Wallet funding modal (card / paypal / bank) */}
-      <WalletFundModal
-        isOpen={showFundWalletModal}
-        onClose={() => {
-          setShowFundWalletModal(false);
-          openQuoteCreditsSlider();
-        }}
-        onSuccess={() => {
-          // After funding, reopen credits slider so user can buy credits immediately.
-          setShowFundWalletModal(false);
-          openQuoteCreditsSlider();
-        }}
-      />
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <WalletFundModal
         isOpen={showAwardPayPalFundModal}
@@ -6406,7 +6335,7 @@ export default function JobDetailPage() {
             <Button
               onClick={() => {
                 setShowInsufficientCreditsAlert(false);
-                openQuoteCreditsSlider();
+                setShowQuoteCreditsModal(true);
               }}
               className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
             >

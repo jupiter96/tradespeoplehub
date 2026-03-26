@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, type MouseEvent } from "react";
+import { useState, useEffect, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { createPortal } from "react-dom";
 import { useJobs } from "./JobsContext";
 import { useAccount } from "./AccountContext";
 import { useMessenger } from "./MessengerContext";
@@ -149,34 +148,8 @@ export default function AvailableJobsSection() {
   const isMilestonesOver = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff < 0;
   const isMilestonesUnder = quotePriceSelectedValid && hasAnyMilestoneInput && milestoneDiff > 0;
 
-  // Quote credits purchase slider (professional insufficient credits)
-  const [showQuoteCreditsSlider, setShowQuoteCreditsSlider] = useState(false);
-  const [quoteCreditsSliderAnimateIn, setQuoteCreditsSliderAnimateIn] = useState(false);
-  const quoteCreditsSliderAnimTimerRef = useRef<number | null>(null);
-  const [hideQuoteCreditsSliderPanel, setHideQuoteCreditsSliderPanel] = useState(false);
-
-  const openQuoteCreditsSlider = () => {
-    setShowQuoteCreditsSlider(true);
-    setQuoteCreditsSliderAnimateIn(false);
-    setHideQuoteCreditsSliderPanel(false);
-    if (quoteCreditsSliderAnimTimerRef.current) {
-      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
-      quoteCreditsSliderAnimTimerRef.current = null;
-    }
-    quoteCreditsSliderAnimTimerRef.current = window.setTimeout(() => {
-      setQuoteCreditsSliderAnimateIn(true);
-    }, 30);
-  };
-
-  const closeQuoteCreditsSlider = () => {
-    setShowQuoteCreditsSlider(false);
-    setQuoteCreditsSliderAnimateIn(false);
-    setHideQuoteCreditsSliderPanel(false);
-    if (quoteCreditsSliderAnimTimerRef.current) {
-      window.clearTimeout(quoteCreditsSliderAnimTimerRef.current);
-      quoteCreditsSliderAnimTimerRef.current = null;
-    }
-  };
+  // Quote credits modal (professional insufficient credits)
+  const [showQuoteCreditsModal, setShowQuoteCreditsModal] = useState(false);
 
   // When currency changes, keep "Your Price" inside the converted budget range.
   useEffect(() => {
@@ -946,7 +919,7 @@ export default function AvailableJobsSection() {
             <Button
               onClick={() => {
                 setShowInsufficientCreditsAlert(false);
-                openQuoteCreditsSlider();
+                setShowQuoteCreditsModal(true);
               }}
               className="font-['Poppins',sans-serif] bg-[#FE8A0F] hover:bg-[#FFB347]"
             >
@@ -956,50 +929,21 @@ export default function AvailableJobsSection() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Quote credits purchase slider (shown when pro has no credits) */}
-      {showQuoteCreditsSlider &&
-        createPortal(
-          <div className="fixed inset-0 z-[1000000] flex" style={{ zIndex: 1000000 }}>
-            <button
-              type="button"
-              className={["flex-1 bg-black/0", hideQuoteCreditsSliderPanel ? "opacity-0 pointer-events-none" : ""].join(" ")}
-              onClick={closeQuoteCreditsSlider}
-              aria-label="Close quote credits"
-            />
-            <div
-              className={[
-                "w-1/2 max-w-[900px] bg-white h-full shadow-2xl relative flex flex-col",
-                "transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-                hideQuoteCreditsSliderPanel ? "pointer-events-none" : "",
-              ].join(" ")}
-              style={{
-                transform: quoteCreditsSliderAnimateIn ? "translateX(0)" : "translateX(100%)",
-                opacity: quoteCreditsSliderAnimateIn ? (hideQuoteCreditsSliderPanel ? 0 : 1) : 0,
+      <Dialog open={showQuoteCreditsModal} onOpenChange={setShowQuoteCreditsModal}>
+        <DialogContent className="w-[70vw] max-h-[90vh] overflow-y-auto bg-[#f0f0f0] p-0">
+          <div className="p-4 md:p-6">
+            <BidsAndMembershipSection
+              hideHeader
+              hideHistoryTab
+              purchaseOnlyMode
+              onQuoteCreditsPurchaseSuccess={() => {
+                setShowQuoteCreditsModal(false);
+                setIsQuoteDialogOpen(true);
               }}
-            >
-              <button
-                type="button"
-                onClick={closeQuoteCreditsSlider}
-                className="absolute top-4 right-4 z-10 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:bg-gray-50 h-9 w-9 shadow-sm"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <div className="h-full overflow-y-auto bg-[#f0f0f0] font-['Poppins',sans-serif]">
-                <div className="p-4 md:p-6">
-                  <BidsAndMembershipSection
-                    hideHeader
-                    onWalletFundModalOpenChange={(open) => setHideQuoteCreditsSliderPanel(open)}
-                    onQuoteCreditsPurchaseSuccess={() => {
-                      closeQuoteCreditsSlider();
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
