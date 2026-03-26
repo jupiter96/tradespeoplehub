@@ -752,3 +752,464 @@ export function QuickPayMilestoneDialog({
     </Dialog>
   );
 }
+
+type AcceptSuggestedMilestonesPaymentDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  jobId: string | undefined;
+  fetchJobKey: string;
+  suggestedMilestones: Array<{ id: string; description: string; amount: number }>;
+  totalAmount: number; // in selected currency
+};
+
+export function AcceptSuggestedMilestonesPaymentDialog({
+  open,
+  onOpenChange,
+  jobId,
+  fetchJobKey,
+  suggestedMilestones,
+  totalAmount,
+}: AcceptSuggestedMilestonesPaymentDialogProps) {
+  const { symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
+  const { fetchJobById } = useJobs();
+  const [walletBalanceGBP, setWalletBalanceGBP] = useState(0);
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [paypalEnabled, setPaypalEnabled] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | null>(null);
+  const [loadingFunding, setLoadingFunding] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const run = async () => {
+      setLoadingFunding(true);
+      try {
+        const [balRes, pkRes] = await Promise.all([
+          fetch(resolveApiUrl("/api/wallet/balance"), { credentials: "include" }),
+          fetch(resolveApiUrl("/api/payment/publishable-key"), { credentials: "include" }),
+        ]);
+        if (!cancelled && balRes.ok) {
+          const b = await balRes.json().catch(() => ({}));
+          setWalletBalanceGBP(Number(b.balance) || 0);
+        }
+        if (!cancelled && pkRes.ok) {
+          const d = await pkRes.json().catch(() => ({}));
+          const sEnabled = d.stripeEnabled === true;
+          const pEnabled = d.paypalEnabled === true;
+          setStripeEnabled(sEnabled);
+          setPaypalEnabled(pEnabled);
+          if (!paymentMethod) {
+            if (sEnabled) setPaymentMethod("card");
+            else if (pEnabled) setPaymentMethod("paypal");
+          }
+        }
+      } finally {
+        if (!cancelled) setLoadingFunding(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const totalDisplayAmount = totalAmount;
+  const walletDisplay = fromGBP(walletBalanceGBP);
+  const walletUsedDisplay = Math.min(totalDisplayAmount, walletDisplay);
+  const externalShortfallDisplay = Math.max(0, totalDisplayAmount - walletUsedDisplay);
+
+  const handlePayNow = async () => {
+    if (!jobId) return;
+    setIsProcessing(true);
+    const loadingToastId = toast.loading("Processing payment and accepting milestones...");
+    try {
+      // Get the awarded quote ID from the API
+      const jobRes = await fetch(resolveApiUrl(`/api/jobs/${jobId}`), { credentials: "include" });
+      if (!jobRes.ok) throw new Error("Failed to fetch job");
+      const job = await jobRes.json();
+      
+      const awardedQuote = Array.isArray(job.quotes) 
+        ? job.quotes.find((q: any) => q.status === "awarded")
+        : null;
+      
+      if (!awardedQuote?.id) {
+        throw new Error("No awarded quote found");
+      }
+
+      // Accept all pending suggested milestones
+      for (const m of suggestedMilestones) {
+        const res = await fetch(
+          resolveApiUrl(
+            `/api/jobs/${jobId}/quotes/${awardedQuote.id}/suggested-milestones/${m.id}/accept`
+          ),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ paymentMethod }),
+          }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to accept a milestone");
+        }
+      }
+
+      if (fetchJobKey) await fetchJobById(fetchJobKey);
+      toast.success("Payment processed and all milestones accepted.", { id: loadingToastId });
+      onOpenChange(false);
+    } catch (e: any) {
+      if (fetchJobKey) void fetchJobById(fetchJobKey);
+      toast.error(e?.message || "Failed to process payment", { id: loadingToastId });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[90vw] max-w-2xl p-6 font-['Poppins',sans-serif]">
+        <DialogHeader>
+          <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
+            Accept Suggested Milestone Payment Plan
+          </DialogTitle>
+          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            Review and pay for the professional&apos;s suggested milestones. You only pay when work is completed and you&apos;re satisfied.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-3">
+          <div className="rounded-lg border border-blue-200 bg-[#EFF6FF] px-3 py-2 font-['Poppins',sans-serif] text-[12px] text-[#1e40af]">
+            Review the {suggestedMilestones.length} milestone(s) below and select your payment method.
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">Milestones</p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+              <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-200">
+                    <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
+                    <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suggestedMilestones.map((m) => (
+                    <tr key={m.id} className="border-b border-gray-100 last:border-0 bg-white">
+                      <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                      <td className="py-2.5 px-3 text-right text-[#2c353f]">
+                        {formatAmountInSelectedCurrency(m.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 p-4 bg-white">
+            <p className="text-[13px] text-[#6b6b6b] mb-2">Payment method</p>
+            {loadingFunding ? (
+              <div className="flex items-center gap-2 text-[13px] text-[#6b6b6b]">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading payment options...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={paymentMethod === "card" ? "default" : "outline"}
+                  className={paymentMethod === "card" ? "bg-[#3B82F6] hover:bg-[#2563eb] text-white" : ""}
+                  onClick={() => setPaymentMethod("card")}
+                  disabled={!stripeEnabled}
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Card
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "paypal" ? "default" : "outline"}
+                  className={paymentMethod === "paypal" ? "bg-[#3B82F6] hover:bg-[#2563eb] text-white" : ""}
+                  onClick={() => setPaymentMethod("paypal")}
+                  disabled={!paypalEnabled}
+                >
+                  <img src={paypalLogo} alt="" className="w-8 h-8 object-contain mr-2" />
+                  PayPal
+                </Button>
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-[#6b6b6b]">
+              We always deduct your wallet balance first. If your balance is not enough, only the shortfall is charged via {paymentMethod === "paypal" ? "PayPal" : "Card"}.
+            </p>
+          </div>
+
+          {totalDisplayAmount > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-[#f8f9fa] p-4 space-y-2">
+              <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                Invoice summary
+              </p>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                <span>Total</span>
+                <span>{formatAmountInSelectedCurrency(totalDisplayAmount)}</span>
+              </div>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                <span>Wallet Balance Used</span>
+                <span>{formatAmountInSelectedCurrency(walletUsedDisplay)}</span>
+              </div>
+              <div className="border-t border-gray-300 pt-2 flex justify-between font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f]">
+                <span>{externalShortfallDisplay > 0 ? "Remaining to Pay" : "Paid by Wallet"}</span>
+                <span>{formatAmountInSelectedCurrency(externalShortfallDisplay > 0 ? externalShortfallDisplay : totalDisplayAmount)}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white disabled:opacity-50"
+              disabled={isProcessing || !paymentMethod}
+              onClick={handlePayNow}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                `Pay Now and Accept ${suggestedMilestones.length} Milestone(s)`
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AcceptRequestedMilestonesPaymentDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  jobId: string | undefined;
+  fetchJobKey: string;
+  requestedMilestones: Array<{ id: string; description: string; amount: number }>;
+  totalAmount: number; // in selected currency
+};
+
+export function AcceptRequestedMilestonesPaymentDialog({
+  open,
+  onOpenChange,
+  jobId,
+  fetchJobKey,
+  requestedMilestones,
+  totalAmount,
+}: AcceptRequestedMilestonesPaymentDialogProps) {
+  const { symbol, toGBP, fromGBP, formatAmountInSelectedCurrency } = useCurrency();
+  const { fetchJobById } = useJobs();
+  const [walletBalanceGBP, setWalletBalanceGBP] = useState(0);
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [paypalEnabled, setPaypalEnabled] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | null>(null);
+  const [loadingFunding, setLoadingFunding] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const run = async () => {
+      setLoadingFunding(true);
+      try {
+        const [balRes, pkRes] = await Promise.all([
+          fetch(resolveApiUrl("/api/wallet/balance"), { credentials: "include" }),
+          fetch(resolveApiUrl("/api/payment/publishable-key"), { credentials: "include" }),
+        ]);
+        if (!cancelled && balRes.ok) {
+          const b = await balRes.json().catch(() => ({}));
+          setWalletBalanceGBP(Number(b.balance) || 0);
+        }
+        if (!cancelled && pkRes.ok) {
+          const d = await pkRes.json().catch(() => ({}));
+          const sEnabled = d.stripeEnabled === true;
+          const pEnabled = d.paypalEnabled === true;
+          setStripeEnabled(sEnabled);
+          setPaypalEnabled(pEnabled);
+          if (!paymentMethod) {
+            if (sEnabled) setPaymentMethod("card");
+            else if (pEnabled) setPaymentMethod("paypal");
+          }
+        }
+      } finally {
+        if (!cancelled) setLoadingFunding(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const totalDisplayAmount = totalAmount;
+  const walletDisplay = fromGBP(walletBalanceGBP);
+  const walletUsedDisplay = Math.min(totalDisplayAmount, walletDisplay);
+  const externalShortfallDisplay = Math.max(0, totalDisplayAmount - walletUsedDisplay);
+
+  const handlePayNow = async () => {
+    if (!jobId) return;
+    setIsProcessing(true);
+    const loadingToastId = toast.loading("Processing payment and accepting milestones...");
+    try {
+      // Accept all pending requested milestones
+      for (const m of requestedMilestones) {
+        const res = await fetch(
+          resolveApiUrl(
+            `/api/jobs/${jobId}/requested-milestones/${m.id}/accept`
+          ),
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ paymentMethod }),
+          }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to accept a milestone");
+        }
+      }
+
+      if (fetchJobKey) await fetchJobById(fetchJobKey);
+      toast.success("Payment processed and all milestone requests accepted.", { id: loadingToastId });
+      onOpenChange(false);
+    } catch (e: any) {
+      if (fetchJobKey) void fetchJobById(fetchJobKey);
+      toast.error(e?.message || "Failed to process payment", { id: loadingToastId });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[90vw] max-w-2xl p-6 font-['Poppins',sans-serif]">
+        <DialogHeader>
+          <DialogTitle className="font-['Poppins',sans-serif] text-[22px] text-[#2c353f]">
+            Accept Professional&apos;s Milestone Plan Request
+          </DialogTitle>
+          <DialogDescription className="font-['Poppins',sans-serif] text-[14px] text-[#6b6b6b]">
+            Review and pay for the professional&apos;s requested payment milestones. You only pay when work is completed and you&apos;re satisfied.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-3">
+          <div className="rounded-lg border border-blue-200 bg-[#EFF6FF] px-3 py-2 font-['Poppins',sans-serif] text-[12px] text-[#1e40af]">
+            Review the {requestedMilestones.length} milestone(s) below and select your payment method.
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">Milestones</p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden">
+              <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-200">
+                    <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
+                    <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requestedMilestones.map((m) => (
+                    <tr key={m.id} className="border-b border-gray-100 last:border-0 bg-white">
+                      <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                      <td className="py-2.5 px-3 text-right text-[#2c353f]">
+                        {formatAmountInSelectedCurrency(m.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 p-4 bg-white">
+            <p className="text-[13px] text-[#6b6b6b] mb-2">Payment method</p>
+            {loadingFunding ? (
+              <div className="flex items-center gap-2 text-[13px] text-[#6b6b6b]">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading payment options...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={paymentMethod === "card" ? "default" : "outline"}
+                  className={paymentMethod === "card" ? "bg-[#3B82F6] hover:bg-[#2563eb] text-white" : ""}
+                  onClick={() => setPaymentMethod("card")}
+                  disabled={!stripeEnabled}
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Card
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "paypal" ? "default" : "outline"}
+                  className={paymentMethod === "paypal" ? "bg-[#3B82F6] hover:bg-[#2563eb] text-white" : ""}
+                  onClick={() => setPaymentMethod("paypal")}
+                  disabled={!paypalEnabled}
+                >
+                  <img src={paypalLogo} alt="" className="w-8 h-8 object-contain mr-2" />
+                  PayPal
+                </Button>
+              </div>
+            )}
+            <p className="mt-2 text-[11px] text-[#6b6b6b]">
+              We always deduct your wallet balance first. If your balance is not enough, only the shortfall is charged via {paymentMethod === "paypal" ? "PayPal" : "Card"}.
+            </p>
+          </div>
+
+          {totalDisplayAmount > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-[#f8f9fa] p-4 space-y-2">
+              <p className="font-['Poppins',sans-serif] text-[13px] font-semibold text-[#2c353f]">
+                Invoice summary
+              </p>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                <span>Total</span>
+                <span>{formatAmountInSelectedCurrency(totalDisplayAmount)}</span>
+              </div>
+              <div className="flex justify-between font-['Poppins',sans-serif] text-[13px] text-[#2c353f]">
+                <span>Wallet Balance Used</span>
+                <span>{formatAmountInSelectedCurrency(walletUsedDisplay)}</span>
+              </div>
+              <div className="border-t border-gray-300 pt-2 flex justify-between font-['Poppins',sans-serif] text-[15px] font-semibold text-[#2c353f]">
+                <span>{externalShortfallDisplay > 0 ? "Remaining to Pay" : "Paid by Wallet"}</span>
+                <span>{formatAmountInSelectedCurrency(externalShortfallDisplay > 0 ? externalShortfallDisplay : totalDisplayAmount)}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isProcessing}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 bg-[#FE8A0F] hover:bg-[#FFB347] text-white disabled:opacity-50"
+              disabled={isProcessing || !paymentMethod}
+              onClick={handlePayNow}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                `Pay Now and Accept ${requestedMilestones.length} Milestone(s)`
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

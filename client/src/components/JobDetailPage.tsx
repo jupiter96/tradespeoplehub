@@ -116,6 +116,8 @@ import {
   RequestMilestonesDialog,
   CreateNewMilestoneDialog,
   QuickPayMilestoneDialog,
+  AcceptSuggestedMilestonesPaymentDialog,
+  AcceptRequestedMilestonesPaymentDialog,
 } from "./JobMilestonePaymentDialogs";
 import ServiceCard from "./ServiceCard";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -407,6 +409,8 @@ export default function JobDetailPage() {
   // New milestone state
   const [showNewMilestoneDialog, setShowNewMilestoneDialog] = useState(false);
   const [showQuickPayMilestoneDialog, setShowQuickPayMilestoneDialog] = useState(false);
+  const [showAcceptSuggestedMilestonesPaymentDialog, setShowAcceptSuggestedMilestonesPaymentDialog] = useState(false);
+  const [showAcceptRequestedMilestonesPaymentDialog, setShowAcceptRequestedMilestonesPaymentDialog] = useState(false);
 
   // Dispute modal state
   const [showDisputeModal, setShowDisputeModal] = useState(false);
@@ -3676,18 +3680,11 @@ export default function JobDetailPage() {
                                   <Button
                                     type="button"
                                     size="sm"
-                                    disabled={rowBusy}
+                                    disabled={false}
                                     className="h-9 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm font-['Poppins',sans-serif]"
-                                    onClick={() => void handleAcceptAllSuggestedMilestones()}
+                                    onClick={() => setShowAcceptSuggestedMilestonesPaymentDialog(true)}
                                   >
-                                    {suggestedBulkAction === "accept-all" ? (
-                                      <>
-                                        <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin inline" />
-                                        Accepting…
-                                      </>
-                                    ) : (
-                                      "Pay Now"
-                                    )}
+                                    Pay Now
                                   </Button>
                                 </>
                               )}
@@ -3990,7 +3987,7 @@ export default function JobDetailPage() {
                                   size="sm"
                                   disabled={rowReqBusy}
                                   className="h-9 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm font-['Poppins',sans-serif]"
-                                  onClick={() => void handleAcceptAllRequestedMilestones()}
+                                  onClick={() => setShowAcceptRequestedMilestonesPaymentDialog(true)}
                                 >
                                   {requestedBulkAction === "accept-all" ? (
                                     <>
@@ -7163,6 +7160,54 @@ export default function JobDetailPage() {
             ? (job?.quotes || []).find((q) => String(q.professionalId) === String(job.awardedProfessionalId))
             : null;
           return awardedQuote ? fromGBP(Number(awardedQuote.price || 0)) : 0;
+        })()}
+      />
+
+      <AcceptSuggestedMilestonesPaymentDialog
+        open={showAcceptSuggestedMilestonesPaymentDialog}
+        onOpenChange={setShowAcceptSuggestedMilestonesPaymentDialog}
+        jobId={job?.id}
+        fetchJobKey={job?.slug || job?.id || ""}
+        suggestedMilestones={(() => {
+          const awardedQuote = job?.awardedProfessionalId && job?.quotes
+            ? job.quotes.find((q) => String(q.professionalId) === String(job.awardedProfessionalId))
+            : null;
+          const suggested = awardedQuote?.suggestedMilestones || [];
+          const pending = suggested.filter((m) => m.status === "pending");
+          return pending.map((m) => ({
+            id: m.id,
+            description: m.description || "Milestone",
+            amount: fromGBP(Number(m.amount || 0)),
+          }));
+        })()}
+        totalAmount={(() => {
+          const awardedQuote = job?.awardedProfessionalId && job?.quotes
+            ? job.quotes.find((q) => String(q.professionalId) === String(job.awardedProfessionalId))
+            : null;
+          const suggested = awardedQuote?.suggestedMilestones || [];
+          const pending = suggested.filter((m) => m.status === "pending");
+          return pending.reduce((sum, m) => sum + fromGBP(Number(m.amount || 0)), 0);
+        })()}
+      />
+
+      <AcceptRequestedMilestonesPaymentDialog
+        open={showAcceptRequestedMilestonesPaymentDialog}
+        onOpenChange={setShowAcceptRequestedMilestonesPaymentDialog}
+        jobId={job?.id}
+        fetchJobKey={job?.slug || job?.id || ""}
+        requestedMilestones={(() => {
+          const requested = job?.requestedMilestonePlan || [];
+          const pending = requested.filter((m) => m.status === "pending");
+          return pending.map((m) => ({
+            id: m.id,
+            description: m.description || "Milestone",
+            amount: fromGBP(Number(m.amount || 0)),
+          }));
+        })()}
+        totalAmount={(() => {
+          const requested = job?.requestedMilestonePlan || [];
+          const pending = requested.filter((m) => m.status === "pending");
+          return pending.reduce((sum, m) => sum + fromGBP(Number(m.amount || 0)), 0);
         })()}
       />
 
