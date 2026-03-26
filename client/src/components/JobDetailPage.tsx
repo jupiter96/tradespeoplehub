@@ -540,6 +540,55 @@ export default function JobDetailPage() {
     setRequestedPlanSectionOpen(defaultOpen);
   }, [job?.id]);
 
+  // Pro UX: once milestones have already been created from the pro's suggested plan,
+  // hide "Suggested milestone plan" in the Payment tab and expand the table in Quotes tab.
+  useEffect(() => {
+    if (!job?.id) return;
+    if (userRole !== "professional") return;
+    if (!userInfo?.id) return;
+    if (!job.quotes || job.quotes.length === 0) return;
+    if (!job.awardedProfessionalId) return;
+    if (String(job.awardedProfessionalId) !== String(userInfo.id)) return;
+
+    const myAwardedQuoteLocal =
+      job.quotes.find(
+        (quote: any) =>
+          String(quote.professionalId) === String(userInfo.id) &&
+          (quote.status === "awarded" || quote.status === "accepted")
+      ) || null;
+    if (!myAwardedQuoteLocal) return;
+    if (!job.milestones || job.milestones.length === 0) return;
+
+    const suggested = Array.isArray(myAwardedQuoteLocal.suggestedMilestones)
+      ? myAwardedQuoteLocal.suggestedMilestones
+      : [];
+    if (suggested.length === 0) return;
+
+    const normalize = (v: any) => String(v || "").trim().toLowerCase();
+    const approxEqualMoney = (a: any, b: any) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+
+    const jobMilestones = job.milestones || [];
+    const createdFromSuggestedPlan = suggested.some((m: any) => {
+      const mDesc = normalize(m?.description);
+      const mAmt = Number(m?.amount) || 0;
+      if (!mDesc || mAmt <= 0) return false;
+      return jobMilestones.some((jm: any) => {
+        const jmDesc = normalize(jm?.name || jm?.description);
+        const jmAmt = Number(jm?.amount) || 0;
+        return approxEqualMoney(jmAmt, mAmt) && (!!jmDesc && (jmDesc === mDesc || jmDesc.includes(mDesc) || mDesc.includes(jmDesc)));
+      });
+    });
+
+    if (!createdFromSuggestedPlan) return;
+
+    setSuggestedPlanSectionOpen(false);
+    setExpandedQuoteMilestones((prev) => {
+      const next = new Set(prev);
+      next.add(myAwardedQuoteLocal.id);
+      return next;
+    });
+  }, [job?.id, userRole, userInfo?.id, job?.awardedProfessionalId, job?.milestones, job?.quotes]);
+
   const awardMilestoneTotalDisplay = useMemo(() => {
     if (!selectedQuoteForAward) return 0;
     const hasPlan = quoteHasSuggestedMilestonePlan(selectedQuoteForAward);
@@ -2400,6 +2449,133 @@ export default function JobDetailPage() {
                               );
                             })()}
                           </div>
+
+                          {(() => {
+                            const suggestedMilestones = Array.isArray(myAwardedQuote.suggestedMilestones) ? myAwardedQuote.suggestedMilestones : [];
+                            const hasSuggestedMilestones = suggestedMilestones.length > 0;
+                            const milestonesExpanded = expandedQuoteMilestones.has(myAwardedQuote.id);
+                            
+                            // Check if milestone was created from suggested plan
+                            const jobMilestones = job.milestones || [];
+                            const normalize = (s: any) => String(s || "").trim().toLowerCase();
+                            const approxEqualMoney = (a: any, b: any) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+                            const wasMilestoneCreatedFromSuggestedPlan = (m: any) => {
+                              const mDesc = normalize(m?.description);
+                              const mAmt = Number(m?.amount) || 0;
+                              if (!mDesc || mAmt <= 0) return false;
+                              return jobMilestones.some((jm: any) => {
+                                const jmDesc = normalize(jm?.name || jm?.description);
+                                const jmAmt = Number(jm?.amount) || 0;
+                                return approxEqualMoney(jmAmt, mAmt) && (!!jmDesc && (jmDesc === mDesc || jmDesc.includes(mDesc) || mDesc.includes(jmDesc)));
+                              });
+                            };
+
+                            return hasSuggestedMilestones ? (
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleQuoteMilestonesExpanded(myAwardedQuote.id)}
+                                  className="inline-flex items-center gap-2 text-[12px] font-['Poppins',sans-serif] text-[#1976D2] hover:text-[#1565C0] hover:underline"
+                                >
+                                  {milestonesExpanded ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                  View suggested milestone payment plan
+                                </button>
+
+                                {milestonesExpanded && (
+                                  <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                    <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                      <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                          <th className="text-left py-2 px-3 font-medium text-[#2c353f]">Description</th>
+                                          <th className="text-right py-2 px-3 font-medium text-[#2c353f]">Amount</th>
+                                          <th className="text-center py-2 px-3 font-medium text-[#2c353f]">Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {suggestedMilestones.map((m) => (
+                                          <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                            <td className="py-2 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                            <td className="py-2 px-3 text-right text-[#2c353f]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                            <td className="py-2 px-3 text-center">
+                                              {wasMilestoneCreatedFromSuggestedPlan(m) && (
+                                                <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0">
+                                                  Approved
+                                                </Badge>
+                                              )}
+                                              {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "pending" && (
+                                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                                  Pending
+                                                </Badge>
+                                              )}
+                                              {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "accepted" && (
+                                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                                  Approved
+                                                </Badge>
+                                              )}
+                                              {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "rejected" && (
+                                                <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                  rejected
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+
+                                {/* Additional milestone plan proposals */}
+                                {milestonesExpanded && job.requestedMilestonePlan && job.requestedMilestonePlan.length > 0 && (
+                                  <div className="mt-3 overflow-x-auto rounded-lg border border-sky-200 bg-sky-50/60 p-3">
+                                    <div className="font-['Poppins',sans-serif] text-[12px] text-[#0369a1] font-medium mb-2">
+                                      Additional milestone plan proposals
+                                    </div>
+                                    <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
+                                      <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                        <thead>
+                                          <tr className="bg-sky-50 border-b border-sky-100">
+                                            <th className="text-left py-2 px-3 text-[#0c4a6e] font-medium">Description</th>
+                                            <th className="text-right py-2 px-3 text-[#0c4a6e] font-medium">Amount</th>
+                                            <th className="text-center py-2 px-3 text-[#0c4a6e] font-medium">Status</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {job.requestedMilestonePlan.map((m) => (
+                                            <tr key={m.id} className="border-b border-sky-50 last:border-0">
+                                              <td className="py-2 px-3 text-[#1f2933]">{m.description || "Milestone"}</td>
+                                              <td className="py-2 px-3 text-right text-[#1f2933]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                              <td className="py-2 px-3 text-center">
+                                                {m.status === "pending" && (
+                                                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                                    Pending
+                                                  </Badge>
+                                                )}
+                                                {m.status === "accepted" && (
+                                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                                    Accepted
+                                                  </Badge>
+                                                )}
+                                                {m.status === "rejected" && (
+                                                  <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                    declined
+                                                  </span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
 
                         {/* Right column (30%) */}
@@ -2546,6 +2722,133 @@ export default function JobDetailPage() {
                                   </button>
                                 )}
                               </div>
+
+                              {(() => {
+                                const suggestedMilestones = Array.isArray(quote.suggestedMilestones) ? quote.suggestedMilestones : [];
+                                const hasSuggestedMilestones = suggestedMilestones.length > 0;
+                                const milestonesExpanded = expandedQuoteMilestones.has(quote.id);
+                                
+                                // Check if milestone was created from suggested plan
+                                const jobMilestones = job.milestones || [];
+                                const normalize = (s: any) => String(s || "").trim().toLowerCase();
+                                const approxEqualMoney = (a: any, b: any) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+                                const wasMilestoneCreatedFromSuggestedPlan = (m: any) => {
+                                  const mDesc = normalize(m?.description);
+                                  const mAmt = Number(m?.amount) || 0;
+                                  if (!mDesc || mAmt <= 0) return false;
+                                  return jobMilestones.some((jm: any) => {
+                                    const jmDesc = normalize(jm?.name || jm?.description);
+                                    const jmAmt = Number(jm?.amount) || 0;
+                                    return approxEqualMoney(jmAmt, mAmt) && (!!jmDesc && (jmDesc === mDesc || jmDesc.includes(mDesc) || mDesc.includes(jmDesc)));
+                                  });
+                                };
+
+                                return hasSuggestedMilestones ? (
+                                  <div className="mt-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleQuoteMilestonesExpanded(quote.id)}
+                                      className="inline-flex items-center gap-2 text-[12px] font-['Poppins',sans-serif] text-[#1976D2] hover:text-[#1565C0] hover:underline"
+                                    >
+                                      {milestonesExpanded ? (
+                                        <ChevronUp className="w-4 h-4" />
+                                      ) : (
+                                        <ChevronDown className="w-4 h-4" />
+                                      )}
+                                      View suggested milestone payment plan
+                                    </button>
+
+                                    {milestonesExpanded && (
+                                      <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                        <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                          <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                              <th className="text-left py-2 px-3 font-medium text-[#2c353f]">Description</th>
+                                              <th className="text-right py-2 px-3 font-medium text-[#2c353f]">Amount</th>
+                                              <th className="text-center py-2 px-3 font-medium text-[#2c353f]">Status</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {suggestedMilestones.map((m) => (
+                                              <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                                <td className="py-2 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                                <td className="py-2 px-3 text-right text-[#2c353f]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                                <td className="py-2 px-3 text-center">
+                                                  {wasMilestoneCreatedFromSuggestedPlan(m) && (
+                                                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0">
+                                                      Approved
+                                                    </Badge>
+                                                  )}
+                                                  {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "pending" && (
+                                                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                                      Pending
+                                                    </Badge>
+                                                  )}
+                                                  {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "accepted" && (
+                                                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                                      Approved
+                                                    </Badge>
+                                                  )}
+                                                  {!wasMilestoneCreatedFromSuggestedPlan(m) && m.status === "rejected" && (
+                                                    <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                      rejected
+                                                    </span>
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+
+                                    {/* Additional milestone plan proposals */}
+                                    {milestonesExpanded && job.requestedMilestonePlan && job.requestedMilestonePlan.length > 0 && (
+                                      <div className="mt-3 overflow-x-auto rounded-lg border border-sky-200 bg-sky-50/60 p-3">
+                                        <div className="font-['Poppins',sans-serif] text-[12px] text-[#0369a1] font-medium mb-2">
+                                          Additional milestone plan proposals
+                                        </div>
+                                        <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
+                                          <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                            <thead>
+                                              <tr className="bg-sky-50 border-b border-sky-100">
+                                                <th className="text-left py-2 px-3 text-[#0c4a6e] font-medium">Description</th>
+                                                <th className="text-right py-2 px-3 text-[#0c4a6e] font-medium">Amount</th>
+                                                <th className="text-center py-2 px-3 text-[#0c4a6e] font-medium">Status</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {job.requestedMilestonePlan.map((m) => (
+                                                <tr key={m.id} className="border-b border-sky-50 last:border-0">
+                                                  <td className="py-2 px-3 text-[#1f2933]">{m.description || "Milestone"}</td>
+                                                  <td className="py-2 px-3 text-right text-[#1f2933]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                                  <td className="py-2 px-3 text-center">
+                                                    {m.status === "pending" && (
+                                                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                                        Pending
+                                                      </Badge>
+                                                    )}
+                                                    {m.status === "accepted" && (
+                                                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                                        Accepted
+                                                      </Badge>
+                                                    )}
+                                                    {m.status === "rejected" && (
+                                                      <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                        declined
+                                                      </span>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : null;
+                              })()}
                             </div>
 
                             {/* Right column (30%) — price top, Chat pinned to card bottom on sm+ */}
@@ -2753,42 +3056,107 @@ export default function JobDetailPage() {
                             </button>
 
                             {milestonesExpanded && (
-                              <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                                <table className="w-full font-['Poppins',sans-serif] text-[12px]">
-                                  <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-200">
-                                      <th className="text-left py-2 px-3 font-medium text-[#2c353f]">Description</th>
-                                      <th className="text-right py-2 px-3 font-medium text-[#2c353f]">Amount</th>
-                                      <th className="text-center py-2 px-3 font-medium text-[#2c353f]">Status</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {suggestedMilestones.map((m) => (
-                                      <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
-                                        <td className="py-2 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
-                                        <td className="py-2 px-3 text-right text-[#2c353f]">{formatPriceWhole(Number(m.amount || 0))}</td>
-                                        <td className="py-2 px-3 text-center">
-                                          {m.status === "pending" && (
-                                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
-                                              Pending
-                                            </Badge>
-                                          )}
-                                          {m.status === "accepted" && (
-                                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
-                                              Accepted
-                                            </Badge>
-                                          )}
-                                          {m.status === "rejected" && (
-                                            <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
-                                              rejected
-                                            </span>
-                                          )}
-                                        </td>
+                              <>
+                                <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                  <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                    <thead>
+                                      <tr className="bg-gray-50 border-b border-gray-200">
+                                        <th className="text-left py-2 px-3 font-medium text-[#2c353f]">Description</th>
+                                        <th className="text-right py-2 px-3 font-medium text-[#2c353f]">Amount</th>
+                                        <th className="text-center py-2 px-3 font-medium text-[#2c353f]">Status</th>
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
+                                    </thead>
+                                    <tbody>
+                                      {suggestedMilestones.map((m) => {
+                                        const jobMilestones = job.milestones || [];
+                                        const normalize = (s: any) => String(s || "").trim().toLowerCase();
+                                        const approxEqualMoney = (a: any, b: any) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+                                        const wasMilestoneCreatedFromSuggestedPlan = jobMilestones.some((jm: any) => {
+                                          const mDesc = normalize(m?.description);
+                                          const mAmt = Number(m?.amount) || 0;
+                                          if (!mDesc || mAmt <= 0) return false;
+                                          const jmDesc = normalize(jm?.name || jm?.description);
+                                          const jmAmt = Number(jm?.amount) || 0;
+                                          return approxEqualMoney(jmAmt, mAmt) && (!!jmDesc && (jmDesc === mDesc || jmDesc.includes(mDesc) || mDesc.includes(jmDesc)));
+                                        });
+                                        return (
+                                          <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                            <td className="py-2 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                            <td className="py-2 px-3 text-right text-[#2c353f]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                            <td className="py-2 px-3 text-center">
+                                              {wasMilestoneCreatedFromSuggestedPlan && (
+                                                <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0">
+                                                  Approved
+                                                </Badge>
+                                              )}
+                                              {!wasMilestoneCreatedFromSuggestedPlan && m.status === "pending" && (
+                                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                                  Pending
+                                                </Badge>
+                                              )}
+                                              {!wasMilestoneCreatedFromSuggestedPlan && m.status === "accepted" && (
+                                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                                  Approved
+                                                </Badge>
+                                              )}
+                                              {!wasMilestoneCreatedFromSuggestedPlan && m.status === "rejected" && (
+                                                <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                  rejected
+                                                </span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+
+                                {/* Additional milestone plan proposals */}
+                                {job.requestedMilestonePlan && job.requestedMilestonePlan.length > 0 && (
+                                  <div className="mt-3 overflow-x-auto rounded-lg border border-sky-200 bg-sky-50/60 p-3">
+                                    <div className="font-['Poppins',sans-serif] text-[12px] text-[#0369a1] font-medium mb-2">
+                                      Additional milestone plan proposals
+                                    </div>
+                                    <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
+                                      <table className="w-full font-['Poppins',sans-serif] text-[12px]">
+                                        <thead>
+                                          <tr className="bg-sky-50 border-b border-sky-100">
+                                            <th className="text-left py-2 px-3 text-[#0c4a6e] font-medium">Description</th>
+                                            <th className="text-right py-2 px-3 text-[#0c4a6e] font-medium">Amount</th>
+                                            <th className="text-center py-2 px-3 text-[#0c4a6e] font-medium">Status</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {job.requestedMilestonePlan.map((m) => (
+                                            <tr key={m.id} className="border-b border-sky-50 last:border-0">
+                                              <td className="py-2 px-3 text-[#1f2933]">{m.description || "Milestone"}</td>
+                                              <td className="py-2 px-3 text-right text-[#1f2933]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                              <td className="py-2 px-3 text-center">
+                                                {m.status === "pending" && (
+                                                  <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] px-2 py-0">
+                                                    Pending
+                                                  </Badge>
+                                                )}
+                                                {m.status === "accepted" && (
+                                                  <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0">
+                                                    Accepted
+                                                  </Badge>
+                                                )}
+                                                {m.status === "rejected" && (
+                                                  <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                    declined
+                                                  </span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         )}
@@ -2959,44 +3327,109 @@ export default function JobDetailPage() {
                                 </button>
 
                                 {milestonesExpanded && (
-                                  <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
-                                    <table className="w-full font-['Poppins',sans-serif] text-[13px]">
-                                      <thead>
-                                        <tr className="bg-gray-50 border-b border-gray-200">
-                                          <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
-                                          <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
-                                          <th className="text-center py-2.5 px-3 font-medium text-[#2c353f]">Status</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {suggestedMilestones.map((m) => (
-                                          <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
-                                            <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
-                                            <td className="py-2.5 px-3 text-right text-[#2c353f]">
-                                              {formatPriceWhole(Number(m.amount || 0))}
-                                            </td>
-                                            <td className="py-2.5 px-3 text-center">
-                                              {m.status === "pending" && (
-                                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] px-2 py-0">
-                                                  Pending
-                                                </Badge>
-                                              )}
-                                              {m.status === "accepted" && (
-                                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0">
-                                                  Accepted
-                                                </Badge>
-                                              )}
-                                              {m.status === "rejected" && (
-                                                <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
-                                                  rejected
-                                                </span>
-                                              )}
-                                            </td>
+                                  <>
+                                    <div className="mt-2 overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                      <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                                        <thead>
+                                          <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="text-left py-2.5 px-3 font-medium text-[#2c353f]">Description</th>
+                                            <th className="text-right py-2.5 px-3 font-medium text-[#2c353f]">Amount</th>
+                                            <th className="text-center py-2.5 px-3 font-medium text-[#2c353f]">Status</th>
                                           </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                        </thead>
+                                        <tbody>
+                                          {suggestedMilestones.map((m) => {
+                                            const jobMilestones = job.milestones || [];
+                                            const normalize = (s: any) => String(s || "").trim().toLowerCase();
+                                            const approxEqualMoney = (a: any, b: any) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.01;
+                                            const wasMilestoneCreatedFromSuggestedPlan = jobMilestones.some((jm: any) => {
+                                              const mDesc = normalize(m?.description);
+                                              const mAmt = Number(m?.amount) || 0;
+                                              if (!mDesc || mAmt <= 0) return false;
+                                              const jmDesc = normalize(jm?.name || jm?.description);
+                                              const jmAmt = Number(jm?.amount) || 0;
+                                              return approxEqualMoney(jmAmt, mAmt) && (!!jmDesc && (jmDesc === mDesc || jmDesc.includes(mDesc) || mDesc.includes(jmDesc)));
+                                            });
+                                            return (
+                                              <tr key={m.id} className="border-b border-gray-100 last:border-b-0">
+                                                <td className="py-2.5 px-3 text-[#2c353f]">{m.description || "Milestone"}</td>
+                                                <td className="py-2.5 px-3 text-right text-[#2c353f]">
+                                                  {formatPriceWhole(Number(m.amount || 0))}
+                                                </td>
+                                                <td className="py-2.5 px-3 text-center">
+                                                  {wasMilestoneCreatedFromSuggestedPlan && (
+                                                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[11px] px-2 py-0">
+                                                      Approved
+                                                    </Badge>
+                                                  )}
+                                                  {!wasMilestoneCreatedFromSuggestedPlan && m.status === "pending" && (
+                                                    <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] px-2 py-0">
+                                                      Pending
+                                                    </Badge>
+                                                  )}
+                                                  {!wasMilestoneCreatedFromSuggestedPlan && m.status === "accepted" && (
+                                                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0">
+                                                      Approved
+                                                    </Badge>
+                                                  )}
+                                                  {!wasMilestoneCreatedFromSuggestedPlan && m.status === "rejected" && (
+                                                    <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                      rejected
+                                                    </span>
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+
+                                    {/* Additional milestone plan proposals */}
+                                    {job.requestedMilestonePlan && job.requestedMilestonePlan.length > 0 && (
+                                      <div className="mt-3 overflow-x-auto rounded-lg border border-sky-200 bg-sky-50/60 p-3">
+                                        <div className="font-['Poppins',sans-serif] text-[12px] text-[#0369a1] font-medium mb-2">
+                                          Additional milestone plan proposals
+                                        </div>
+                                        <div className="overflow-x-auto rounded-lg border border-sky-100 bg-white">
+                                          <table className="w-full font-['Poppins',sans-serif] text-[13px]">
+                                            <thead>
+                                              <tr className="bg-sky-50 border-b border-sky-100">
+                                                <th className="text-left py-2.5 px-3 text-[#0c4a6e] font-medium">Description</th>
+                                                <th className="text-right py-2.5 px-3 text-[#0c4a6e] font-medium">Amount</th>
+                                                <th className="text-center py-2.5 px-3 text-[#0c4a6e] font-medium">Status</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {job.requestedMilestonePlan.map((m) => (
+                                                <tr key={m.id} className="border-b border-sky-50 last:border-0">
+                                                  <td className="py-2.5 px-3 text-[#1f2933]">{m.description || "Milestone"}</td>
+                                                  <td className="py-2.5 px-3 text-right text-[#1f2933]">{formatPriceWhole(Number(m.amount || 0))}</td>
+                                                  <td className="py-2.5 px-3 text-center">
+                                                    {m.status === "pending" && (
+                                                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[11px] px-2 py-0">
+                                                        Pending
+                                                      </Badge>
+                                                    )}
+                                                    {m.status === "accepted" && (
+                                                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] px-2 py-0">
+                                                        Accepted
+                                                      </Badge>
+                                                    )}
+                                                    {m.status === "rejected" && (
+                                                      <span className="text-[11px] font-semibold text-red-600 uppercase tracking-wide">
+                                                        declined
+                                                      </span>
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             )}
@@ -3128,7 +3561,8 @@ export default function JobDetailPage() {
                     (q) => String(q.professionalId) === String(job.awardedProfessionalId)
                   );
                   const suggested = awardedQuote?.suggestedMilestones || [];
-                  if (!awardedQuote || suggested.length === 0) return null;
+                  const clientHasCreatedMilestones = job.milestones && job.milestones.length > 0;
+                  if (!awardedQuote || suggested.length === 0 || clientHasCreatedMilestones) return null;
                   const hasPending = suggested.some((m) => m.status === "pending");
                   const noFundedMilestonesYet = !job.milestones || job.milestones.length === 0;
                   const canProRequestMilestones =
