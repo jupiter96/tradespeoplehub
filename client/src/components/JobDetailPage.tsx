@@ -932,7 +932,6 @@ export default function JobDetailPage() {
   const quoteBudgetMinGBP = job.budgetMin ?? job.budgetAmount ?? 0;
   const quoteBudgetMaxGBP = job.budgetMax ?? (job.budgetAmount ?? 0) * 1.2;
   const quoteBudgetMinSelected = fromGBP(quoteBudgetMinGBP);
-  const quoteBudgetMaxSelected = fromGBP(quoteBudgetMaxGBP);
 
   const quotePriceSelected = parseFloat(quoteForm.price);
   const quotePriceSelectedValid = Number.isFinite(quotePriceSelected) && quotePriceSelected > 0;
@@ -1786,9 +1785,10 @@ export default function JobDetailPage() {
     }
     const priceGBP = toGBP(priceInSelected);
     const minPrice = job.budgetMin ?? job.budgetAmount;
-    const maxPrice = job.budgetMax ?? job.budgetAmount * 1.2;
-    if (priceGBP < minPrice || priceGBP > maxPrice) {
-      toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)} (job budget range)`);
+    // Client's suggested price is the minimum allowed.
+    // Pros can quote higher, but not lower.
+    if (priceGBP < minPrice) {
+      toast.error(`Price must be at least ${formatPrice(minPrice)} (client suggested price)`);
       return;
     }
     if (editingQuoteMeta) {
@@ -6041,14 +6041,14 @@ export default function JobDetailPage() {
                     type="number"
                     placeholder="Enter your price"
                     min={quoteBudgetMinSelected}
-                    max={quoteBudgetMaxSelected}
                     step="0.01"
                     value={quoteForm.price}
                     onChange={(e) => setQuoteForm({ ...quoteForm, price: e.target.value })}
                     onBlur={() => {
                       const v = parseFloat(quoteForm.price);
                       if (quoteForm.price !== "" && !isNaN(v)) {
-                        const clamped = Math.min(quoteBudgetMaxSelected, Math.max(quoteBudgetMinSelected, v));
+                        // Pro can quote higher than client's suggested price, but not lower.
+                        const clamped = Math.max(quoteBudgetMinSelected, v);
                         const rounded = Math.round(clamped * 100) / 100;
                         if (rounded !== v) setQuoteForm((f) => ({ ...f, price: rounded.toFixed(2) }));
                       }
@@ -6056,7 +6056,7 @@ export default function JobDetailPage() {
                     className="font-['Poppins',sans-serif] text-[15px] border-2 border-gray-200 focus:border-[#FE8A0F] h-12"
                   />
                   <p className="font-['Poppins',sans-serif] text-[12px] text-[#8d8d8d] mt-2 bg-yellow-50 px-3 py-1 rounded-md inline-block">
-                    💡 Client's budget: {formatPriceWhole(quoteBudgetMinGBP)} - {formatPriceWhole(quoteBudgetMaxGBP)} (price must be within this range)
+                    💡 Client's budget: {formatPriceWhole(quoteBudgetMinGBP)} - {formatPriceWhole(quoteBudgetMaxGBP)} (price must be at least {formatPriceWhole(quoteBudgetMinGBP)})
                   </p>
                 </div>
 
@@ -6127,7 +6127,6 @@ export default function JobDetailPage() {
                     value={quoteForm.message}
                     onChange={(e) => {
                       setQuoteForm({ ...quoteForm, message: e.target.value });
-                      setIsQuoteMessageAiRevertedToOriginal(false);
                     }}
                     className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                   />

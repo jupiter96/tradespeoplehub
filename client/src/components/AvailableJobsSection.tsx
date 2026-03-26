@@ -127,9 +127,7 @@ export default function AvailableJobsSection() {
 
   const currentJob = selectedJob ? availableJobs.find(j => j.id === selectedJob) : null;
   const quoteBudgetMinGBP = currentJob ? (currentJob.budgetMin ?? currentJob.budgetAmount) : 0;
-  const quoteBudgetMaxGBP = currentJob ? (currentJob.budgetMax ?? currentJob.budgetAmount * 1.2) : 0;
   const quoteBudgetMinSelected = currentJob ? fromGBP(quoteBudgetMinGBP) : 0;
-  const quoteBudgetMaxSelected = currentJob ? fromGBP(quoteBudgetMaxGBP) : 0;
 
   // Suggested milestones: totals vs "Your Price" (selected currency) — same logic as JobDetailPage send-quote modal
   const quotePriceSelected = parseFloat(quotePrice);
@@ -157,16 +155,15 @@ export default function AvailableJobsSection() {
     if (!isQuoteDialogOpen) return;
 
     const minGBP = currentJob.budgetMin ?? currentJob.budgetAmount;
-    const maxGBP = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
     const minSelected = fromGBP(minGBP);
-    const maxSelected = fromGBP(maxGBP);
 
     setQuotePrice((prev) => {
       // Keep empty until the user types something.
       if (!prev || prev.trim() === "") return prev;
       const v = parseFloat(prev);
       if (Number.isNaN(v) || v <= 0) return minSelected.toFixed(2);
-      const clamped = Math.min(maxSelected, Math.max(minSelected, v));
+      // Pro can quote higher than the client's suggested price, but not lower.
+      const clamped = Math.max(minSelected, v);
       if (Math.abs(clamped - v) < 1e-9) return prev;
       return clamped.toFixed(2);
     });
@@ -245,9 +242,9 @@ export default function AvailableJobsSection() {
     }
     const priceGBP = toGBP(priceInSelected);
     const minPrice = currentJob.budgetMin ?? currentJob.budgetAmount;
-    const maxPrice = currentJob.budgetMax ?? currentJob.budgetAmount * 1.2;
-    if (priceGBP < minPrice || priceGBP > maxPrice) {
-      toast.error(`Price must be between ${formatPrice(minPrice)} and ${formatPrice(maxPrice)} (job budget range)`);
+    // Client's suggested price is the minimum allowed.
+    if (priceGBP < minPrice) {
+      toast.error(`Price must be at least ${formatPrice(minPrice)} (client suggested price)`);
       return;
     }
     // Suggested milestones validation: if user entered any milestone fields, total must match the quote price (in selected currency).
@@ -611,14 +608,14 @@ export default function AvailableJobsSection() {
                       type="number"
                       placeholder="Enter your price"
                       min={quoteBudgetMinSelected}
-                      max={quoteBudgetMaxSelected}
                       step="0.01"
                       value={quotePrice}
                       onChange={(e) => setQuotePrice(e.target.value)}
                       onBlur={() => {
                         const v = parseFloat(quotePrice);
                         if (quotePrice !== "" && !isNaN(v)) {
-                          const clamped = Math.min(quoteBudgetMaxSelected, Math.max(quoteBudgetMinSelected, v));
+                          // Allow quote higher than client's suggested price, but enforce minimum.
+                          const clamped = Math.max(quoteBudgetMinSelected, v);
                           if (Math.abs(clamped - v) > 1e-9) setQuotePrice(clamped.toFixed(2));
                         }
                       }}
@@ -698,7 +695,6 @@ export default function AvailableJobsSection() {
                       value={quoteMessage}
                       onChange={(e) => {
                         setQuoteMessage(e.target.value);
-                        setIsQuoteMessageAiRevertedToOriginal(false);
                       }}
                       className="font-['Poppins',sans-serif] text-[14px] min-h-[180px] border-2 border-gray-200 focus:border-[#FE8A0F] resize-none"
                     />
