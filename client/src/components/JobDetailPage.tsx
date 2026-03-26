@@ -3779,7 +3779,7 @@ export default function JobDetailPage() {
                                         size="sm"
                                         disabled={rowReqBusy}
                                         className="h-9 px-3 bg-green-600 hover:bg-green-700 !text-white border-0 shadow-sm font-['Poppins',sans-serif]"
-                                        onClick={() => void handleAcceptAllRequestedMilestones()}
+                                        onClick={() => setShowAcceptRequestedMilestonesPaymentDialog(true)}
                                       >
                                         {requestedBulkAction === "accept-all" ? (
                                           <>
